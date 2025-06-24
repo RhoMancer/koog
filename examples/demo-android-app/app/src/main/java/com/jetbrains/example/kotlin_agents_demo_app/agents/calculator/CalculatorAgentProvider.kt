@@ -14,6 +14,8 @@ import ai.koog.prompt.executor.llms.all.simpleOpenAIExecutor
 import com.jetbrains.example.kotlin_agents_demo_app.agents.common.AgentProvider
 import com.jetbrains.example.kotlin_agents_demo_app.agents.common.ExitTool
 import com.jetbrains.example.kotlin_agents_demo_app.settings.AppSettings
+import kotlin.uuid.ExperimentalUuidApi
+import kotlin.uuid.Uuid
 
 /**
  * Factory for creating calculator agents
@@ -22,6 +24,7 @@ object CalculatorAgentProvider : AgentProvider {
     override val title: String = "Calculator"
     override val description: String = "Hi, I'm a calculator agent, I can do math"
 
+    @OptIn(ExperimentalUuidApi::class)
     override suspend fun provideAgent(
         appSettings: AppSettings,
         onToolCallEvent: suspend (String) -> Unit,
