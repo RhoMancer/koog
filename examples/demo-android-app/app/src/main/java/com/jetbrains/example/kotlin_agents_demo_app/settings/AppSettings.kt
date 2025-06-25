@@ -39,6 +39,10 @@ class AppSettings(private val context: Context) {
         }.first()
     }
 
+    suspend fun getContext(): Context {
+        return context
+    }
+
     suspend fun setCurrentSettings(settings: AppSettingsData) {
         context.settingsDataStore.edit { preferences ->
             preferences[OPENAI_TOKEN_KEY] = settings.openAiToken

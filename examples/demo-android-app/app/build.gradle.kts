@@ -94,6 +94,10 @@ dependencies {
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
+
+    // Local android models
+    implementation(libs.genai)
+    implementation(libs.localagents)
 }
 
 configurations.all {

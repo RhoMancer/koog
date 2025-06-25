@@ -1,6 +1,7 @@
 package com.jetbrains.example.kotlin_agents_demo_app.agents.common
 
 import ai.koog.agents.core.agent.AIAgent
+import androidx.compose.runtime.Composable
 import com.jetbrains.example.kotlin_agents_demo_app.settings.AppSettings
 
 /**

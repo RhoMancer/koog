@@ -9,8 +9,13 @@ import ai.koog.agents.core.environment.ReceivedToolResult
 import ai.koog.agents.core.tools.ToolRegistry
 import ai.koog.agents.features.eventHandler.feature.handleEvents
 import ai.koog.prompt.dsl.prompt
+import ai.koog.prompt.executor.clients.anthropic.AnthropicLLMClient
+import ai.koog.prompt.executor.clients.openai.OpenAILLMClient
 import ai.koog.prompt.executor.clients.openai.OpenAIModels
+import ai.koog.prompt.executor.llms.MultiLLMPromptExecutor
+import ai.koog.prompt.executor.llms.SingleLLMPromptExecutor
 import ai.koog.prompt.executor.llms.all.simpleOpenAIExecutor
+import ai.koog.prompt.llm.LLMProvider
 import com.jetbrains.example.kotlin_agents_demo_app.agents.common.AgentProvider
 import com.jetbrains.example.kotlin_agents_demo_app.agents.common.ExitTool
 import com.jetbrains.example.kotlin_agents_demo_app.settings.AppSettings
@@ -22,7 +27,8 @@ import kotlin.uuid.Uuid
  */
 object WeatherAgentProvider : AgentProvider {
     override val title: String = "Weather Forecast"
-    override val description: String = "Hi, I'm a weather agent. I can provide weather forecasts for any location."
+    override val description: String =
+        "Hi, I'm a weather agent. I can provide weather forecasts for any location."
 
     @OptIn(ExperimentalUuidApi::class)
     override suspend fun provideAgent(
@@ -31,10 +37,10 @@ object WeatherAgentProvider : AgentProvider {
         onErrorEvent: suspend (String) -> Unit,
         onAssistantMessage: suspend (String) -> String,
     ): AIAgent<String, String> {
-        val openAiApiKey = appSettings.getCurrentSettings().openAiToken
-        require(openAiApiKey.isNotEmpty()) { "OpenAI api key is not configured." }
-
-        val executor = simpleOpenAIExecutor(openAiApiKey)
+        val executor = MultiLLMPromptExecutor(
+            LLMProvider.OpenAI to OpenAILLMClient(appSettings.getCurrentSettings().openAiToken),
+            LLMProvider.Anthropic to AnthropicLLMClient(appSettings.getCurrentSettings().anthropicToken),
+        )
 
         // Create tool registry with weather tools
         val toolRegistry = ToolRegistry {
@@ -57,13 +63,13 @@ object WeatherAgentProvider : AgentProvider {
 
             edge(
                 nodeRequestLLM forwardTo nodeExecuteToolMultiple
-                    onMultipleToolCalls { true }
+                        onMultipleToolCalls { true }
             )
 
             edge(
                 nodeRequestLLM forwardTo nodeAssistantMessage
-                    transformed { it.first() }
-                    onAssistantMessage { true }
+                        transformed { it.first() }
+                        onAssistantMessage { true }
             )
 
             edge(nodeAssistantMessage forwardTo nodeRequestLLM)
@@ -71,31 +77,31 @@ object WeatherAgentProvider : AgentProvider {
             // Finish condition - if exit tool is called, go to nodeFinish with tool call result.
             edge(
                 nodeExecuteToolMultiple forwardTo nodeFinish
-                    onCondition  { it.singleOrNull()?.tool == ExitTool.name }
-                    transformed { it.single().result!!.toStringDefault() }
+                        onCondition { it.singleOrNull()?.tool == ExitTool.name }
+                        transformed { it.single().result!!.toStringDefault() }
             )
 
             edge(
                 (nodeExecuteToolMultiple forwardTo nodeCompressHistory)
-                    onCondition { _ -> llm.readSession { prompt.messages.size > 100 } }
+                        onCondition { _ -> llm.readSession { prompt.messages.size > 100 } }
             )
 
             edge(nodeCompressHistory forwardTo nodeSendToolResultMultiple)
 
             edge(
                 (nodeExecuteToolMultiple forwardTo nodeSendToolResultMultiple)
-                    onCondition { _ -> llm.readSession { prompt.messages.size <= 100 } }
+                        onCondition { _ -> llm.readSession { prompt.messages.size <= 100 } }
             )
 
             edge(
                 (nodeSendToolResultMultiple forwardTo nodeExecuteToolMultiple)
-                    onMultipleToolCalls { true }
+                        onMultipleToolCalls { true }
             )
 
             edge(
                 nodeSendToolResultMultiple forwardTo nodeAssistantMessage
-                    transformed { it.first() }
-                    onAssistantMessage { true }
+                        transformed { it.first() }
+                        onAssistantMessage { true }
             )
 
         }
