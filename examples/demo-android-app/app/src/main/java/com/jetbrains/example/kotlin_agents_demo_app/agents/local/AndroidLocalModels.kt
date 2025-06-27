@@ -7,21 +7,19 @@ import ai.koog.prompt.llm.LLModel
 object AndroidLocalModels : LLModelDefinitions {
     object Chat {
         /**
-         * GGPT-4o (“o” for “omni”) is a versatile, high-intelligence flagship model.
-         * It accepts both text and image inputs, and produces text outputs (including Structured Outputs).
-         * It is the best model for most tasks, and is currently the most capable model
-         * outside of the o-series models.
-         *
-         * 128,000 context window
-         * 16,384 max output tokens
-         * Oct 01, 2023 knowledge cutoff
-         *
-         *
-         * @see <a href="https://platform.openai.com/docs/models/gpt-4o">
+         * https://huggingface.co/google/gemma-3-1b-it
          */
         val Gemma: LLModel = LLModel(
             provider = AndroidLocalLLMProvider, id = "gemma3-1b-it-int4", capabilities = listOf(
-                LLMCapability.Temperature,
+                LLMCapability.Completion
+            )
+        )
+
+        /**
+         * https://huggingface.co/litert-community/Hammer2.1-1.5b
+         */
+        val Hammer: LLModel = LLModel(
+            provider = AndroidLocalLLMProvider, id = "hammer2.1_1.5b_q8_ekv4096", capabilities = listOf(
                 LLMCapability.Tools,
                 LLMCapability.Completion
             )

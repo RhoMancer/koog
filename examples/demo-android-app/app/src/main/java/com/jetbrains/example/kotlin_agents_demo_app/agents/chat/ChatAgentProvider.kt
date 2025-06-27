@@ -20,6 +20,8 @@ import ai.koog.prompt.llm.LLMProvider
 import androidx.compose.runtime.Composable
 import com.jetbrains.example.kotlin_agents_demo_app.agents.common.AgentProvider
 import com.jetbrains.example.kotlin_agents_demo_app.agents.common.ExitTool
+import com.jetbrains.example.kotlin_agents_demo_app.agents.local.AndroidLLocalLLMClient
+import com.jetbrains.example.kotlin_agents_demo_app.agents.local.AndroidLocalLLMProvider
 import com.jetbrains.example.kotlin_agents_demo_app.agents.local.AndroidLocalModels
 import com.jetbrains.example.kotlin_agents_demo_app.agents.local.simpleAndroidLocalExecutor
 import com.jetbrains.example.kotlin_agents_demo_app.settings.AppSettings
@@ -40,12 +42,14 @@ object ChatAgentProvider : AgentProvider {
         onErrorEvent: suspend (String) -> Unit,
         onAssistantMessage: suspend (String) -> String,
     ): AIAgent {
-//        val executor = MultiLLMPromptExecutor(
-//            LLMProvider.OpenAI to OpenAILLMClient(appSettings.getCurrentSettings().openAiToken),
-//            LLMProvider.Anthropic to AnthropicLLMClient(appSettings.getCurrentSettings().anthropicToken),
-//        )
-
-        val executor = simpleAndroidLocalExecutor(appSettings.getContext(), "data/local/tmp/llm")
+        val executor = MultiLLMPromptExecutor(
+            LLMProvider.OpenAI to OpenAILLMClient(appSettings.getCurrentSettings().openAiToken),
+            LLMProvider.Anthropic to AnthropicLLMClient(appSettings.getCurrentSettings().anthropicToken),
+            AndroidLocalLLMProvider to AndroidLLocalLLMClient(
+                appSettings.getContext(),
+                "data/local/tmp/llm"
+            )
+        )
 
         // Create tool registry with just the exit tool
         val toolRegistry = ToolRegistry {
@@ -85,7 +89,7 @@ object ChatAgentProvider : AgentProvider {
                     """.trimIndent()
                 )
             },
-            model = AndroidLocalModels.Chat.Gemma,
+            model = AndroidLocalModels.Chat.Hammer,
             maxAgentIterations = 50
         )
 

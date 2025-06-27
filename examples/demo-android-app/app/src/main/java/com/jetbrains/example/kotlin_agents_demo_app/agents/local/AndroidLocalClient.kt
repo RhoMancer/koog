@@ -25,6 +25,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.datetime.Clock
 import kotlinx.serialization.json.*
 import com.google.ai.edge.localagents.core.proto.Type
+import com.google.ai.edge.localagents.fc.HammerFormatter
 import com.google.protobuf.Struct
 import com.google.protobuf.Value
 import kotlin.collections.component1
@@ -65,7 +66,7 @@ open class AndroidLLocalLLMClient(
             .build()
         val llmInference = LlmInference.createFromOptions(context, taskOptions)
 
-        val formatter = GemmaFormatter()
+        val formatter = HammerFormatter()
         val sessionOptions = LlmInferenceSession.LlmInferenceSessionOptions.builder().build()
         val session = LlmInferenceSession.createFromOptions(llmInference, sessionOptions)
 
