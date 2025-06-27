@@ -49,6 +49,7 @@ object ChatAgentProvider : AgentProvider {
 
         // Create tool registry with just the exit tool
         val toolRegistry = ToolRegistry {
+            tool(ExitTool)
         }
 
         val strategy = strategy(title) {
@@ -60,6 +61,12 @@ object ChatAgentProvider : AgentProvider {
             edge(
                 nodeRequestLLM forwardTo nodeAssistantMessage
                         onAssistantMessage { true }
+            )
+
+            edge(
+                nodeRequestLLM forwardTo nodeFinish
+                        onToolCall { true }
+                        transformed { it.content }
             )
 
             edge(nodeAssistantMessage forwardTo nodeRequestLLM)
