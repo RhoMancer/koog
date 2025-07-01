@@ -4,20 +4,25 @@ import ai.koog.agents.core.agent.AIAgent
 import ai.koog.agents.core.agent.config.AIAgentConfig
 import ai.koog.agents.core.dsl.builder.forwardTo
 import ai.koog.agents.core.dsl.builder.strategy
-import ai.koog.agents.core.dsl.extension.*
+import ai.koog.agents.core.dsl.extension.nodeExecuteMultipleTools
+import ai.koog.agents.core.dsl.extension.nodeLLMCompressHistory
+import ai.koog.agents.core.dsl.extension.nodeLLMRequestMultiple
+import ai.koog.agents.core.dsl.extension.nodeLLMSendMultipleToolResults
+import ai.koog.agents.core.dsl.extension.onAssistantMessage
+import ai.koog.agents.core.dsl.extension.onMultipleToolCalls
 import ai.koog.agents.core.environment.ReceivedToolResult
 import ai.koog.agents.core.tools.ToolRegistry
 import ai.koog.agents.features.eventHandler.feature.handleEvents
 import ai.koog.prompt.dsl.prompt
 import ai.koog.prompt.executor.clients.anthropic.AnthropicLLMClient
 import ai.koog.prompt.executor.clients.openai.OpenAILLMClient
-import ai.koog.prompt.executor.clients.openai.OpenAIModels
 import ai.koog.prompt.executor.llms.MultiLLMPromptExecutor
-import ai.koog.prompt.executor.llms.SingleLLMPromptExecutor
-import ai.koog.prompt.executor.llms.all.simpleOpenAIExecutor
 import ai.koog.prompt.llm.LLMProvider
 import com.jetbrains.example.kotlin_agents_demo_app.agents.common.AgentProvider
 import com.jetbrains.example.kotlin_agents_demo_app.agents.common.ExitTool
+import com.jetbrains.example.kotlin_agents_demo_app.agents.local.AndroidLLocalLLMClient
+import com.jetbrains.example.kotlin_agents_demo_app.agents.local.AndroidLocalLLMProvider
+import com.jetbrains.example.kotlin_agents_demo_app.agents.local.AndroidLocalModels
 import com.jetbrains.example.kotlin_agents_demo_app.settings.AppSettings
 import kotlin.uuid.ExperimentalUuidApi
 import kotlin.uuid.Uuid
@@ -40,6 +45,10 @@ object WeatherAgentProvider : AgentProvider {
         val executor = MultiLLMPromptExecutor(
             LLMProvider.OpenAI to OpenAILLMClient(appSettings.getCurrentSettings().openAiToken),
             LLMProvider.Anthropic to AnthropicLLMClient(appSettings.getCurrentSettings().anthropicToken),
+            AndroidLocalLLMProvider to AndroidLLocalLLMClient(
+                appSettings.getContext(),
+                "data/local/tmp/llm"
+            )
         )
 
         // Create tool registry with weather tools
@@ -125,7 +134,7 @@ object WeatherAgentProvider : AgentProvider {
                     """.trimIndent()
                 )
             },
-            model = OpenAIModels.Chat.GPT4o,
+            model = AndroidLocalModels.Chat.Hammer,
             maxAgentIterations = 50
         )
 
