@@ -9,6 +9,7 @@ import ai.koog.agents.testing.tools.getMockExecutor
 import ai.koog.agents.testing.tools.mockLLMAnswer
 import ai.koog.prompt.executor.model.PromptExecutor
 import kotlinx.coroutines.test.runTest
+import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.put
@@ -155,8 +156,12 @@ class AIAgentToolTest {
         val args = tool.decodeArgs(argsJson)
         val result = tool.execute(args, Enabler)
 
-        val serialized = result.toStringDefault()
-        assertTrue(serialized.contains("\"successful\": true"))
-        assertTrue(serialized.contains("\"result\": \"This is the agent's response\""))
+        assertEquals(
+            AIAgentTool.AgentToolResult(
+                successful = true,
+                result = JsonPrimitive("This is the agent's response")
+            ),
+            result
+        )
     }
 }

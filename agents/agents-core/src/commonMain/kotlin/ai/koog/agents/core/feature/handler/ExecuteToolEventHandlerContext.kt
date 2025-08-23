@@ -1,8 +1,6 @@
 package ai.koog.agents.core.feature.handler
 
 import ai.koog.agents.core.tools.Tool
-import ai.koog.agents.core.tools.ToolArgs
-import ai.koog.agents.core.tools.ToolResult
 
 /**
  * Represents the context for handling tool-specific events within the framework.
@@ -19,7 +17,7 @@ public data class ToolCallContext(
     val runId: String,
     val toolCallId: String?,
     val tool: Tool<*, *>,
-    val toolArgs: ToolArgs
+    val toolArgs: Any?
 ) : ToolEventHandlerContext
 
 /**
@@ -33,7 +31,7 @@ public data class ToolValidationErrorContext(
     val runId: String,
     val toolCallId: String?,
     val tool: Tool<*, *>,
-    val toolArgs: ToolArgs,
+    val toolArgs: Any?,
     val error: String
 ) : ToolEventHandlerContext
 
@@ -48,7 +46,7 @@ public data class ToolCallFailureContext(
     val runId: String,
     val toolCallId: String?,
     val tool: Tool<*, *>,
-    val toolArgs: ToolArgs,
+    val toolArgs: Any?,
     val throwable: Throwable
 ) : ToolEventHandlerContext
 
@@ -63,6 +61,6 @@ public data class ToolCallResultContext(
     val runId: String,
     val toolCallId: String?,
     val tool: Tool<*, *>,
-    val toolArgs: ToolArgs,
-    val result: ToolResult?
+    val toolArgs: Any?,
+    val result: Any?
 ) : ToolEventHandlerContext

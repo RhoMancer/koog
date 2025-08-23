@@ -21,9 +21,7 @@ import ai.koog.agents.core.feature.handler.ToolCallFailureContext
 import ai.koog.agents.core.feature.handler.ToolCallResultContext
 import ai.koog.agents.core.feature.handler.ToolValidationErrorContext
 import ai.koog.agents.core.tools.Tool
-import ai.koog.agents.core.tools.ToolArgs
 import ai.koog.agents.core.tools.ToolDescriptor
-import ai.koog.agents.core.tools.ToolResult
 import ai.koog.prompt.dsl.Prompt
 import ai.koog.prompt.llm.LLModel
 import ai.koog.prompt.message.Message
@@ -306,8 +304,8 @@ public class EventHandlerConfig : FeatureConfig() {
     @Deprecated(message = "Please use onToolCall() instead", replaceWith = ReplaceWith("onToolCall(handler)"))
     public var onToolCall: suspend (
         tool: Tool<*, *>,
-        toolArgs: ToolArgs
-    ) -> Unit = { _: Tool<*, *>, _: ToolArgs -> }
+        toolArgs: Any?
+    ) -> Unit = { _: Tool<*, *>, _: Any? -> }
         set(value) {
             this.onToolCall { eventContext ->
                 value(eventContext.tool, eventContext.toolArgs)
@@ -331,9 +329,9 @@ public class EventHandlerConfig : FeatureConfig() {
     )
     public var onToolValidationError: suspend (
         tool: Tool<*, *>,
-        toolArgs: ToolArgs,
+        toolArgs: Any?,
         value: String
-    ) -> Unit = { tool: Tool<*, *>, toolArgs: ToolArgs, value: String -> }
+    ) -> Unit = { tool: Tool<*, *>, toolArgs: Any?, value: String -> }
         set(value) {
             this.onToolValidationError { eventContext ->
                 value(eventContext.tool, eventContext.toolArgs, eventContext.error)
@@ -354,9 +352,9 @@ public class EventHandlerConfig : FeatureConfig() {
     )
     public var onToolCallFailure: suspend (
         tool: Tool<*, *>,
-        toolArgs: ToolArgs,
+        toolArgs: Any?,
         throwable: Throwable
-    ) -> Unit = { tool: Tool<*, *>, toolArgs: ToolArgs, throwable: Throwable -> }
+    ) -> Unit = { tool: Tool<*, *>, toolArgs: Any?, throwable: Throwable -> }
         set(value) {
             this.onToolCallFailure { eventContext ->
                 value(eventContext.tool, eventContext.toolArgs, eventContext.throwable)
@@ -376,9 +374,9 @@ public class EventHandlerConfig : FeatureConfig() {
     )
     public var onToolCallResult: suspend (
         tool: Tool<*, *>,
-        toolArgs: ToolArgs,
-        result: ToolResult?
-    ) -> Unit = { tool: Tool<*, *>, toolArgs: ToolArgs, result: ToolResult? -> }
+        toolArgs: Any?,
+        result: Any?
+    ) -> Unit = { tool: Tool<*, *>, toolArgs: Any?, result: Any? -> }
         set(value) {
             this.onToolCallResult { eventContext ->
                 value(eventContext.tool, eventContext.toolArgs, eventContext.result)
