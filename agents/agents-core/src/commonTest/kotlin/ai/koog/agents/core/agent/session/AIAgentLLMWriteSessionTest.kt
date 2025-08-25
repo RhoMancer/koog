@@ -216,7 +216,7 @@ class AIAgentLLMWriteSessionTest {
         val result = session.callTool(testTool, TestTool.Args("test input"))
 
         assertTrue(result.isSuccessful())
-        assertEquals("Processed: test input", result.asSuccessful().result.text)
+        assertEquals("Processed: test input", result.asSuccessful().result)
     }
 
     @Test
@@ -257,12 +257,12 @@ class AIAgentLLMWriteSessionTest {
         val testTool = TestTool()
         val session = createSession(mockExecutor, listOf(testTool))
 
-        val safeTool = session.findTool<TestTool.Args, ToolResult.Text>(TestTool::class)
+        val safeTool = session.findTool<TestTool.Args, String>(TestTool::class)
         assertNotNull(safeTool)
 
         val result = safeTool.execute(TestTool.Args("test input"))
         assertTrue(result.isSuccessful())
-        assertEquals("Processed: test input", result.asSuccessful().result.text)
+        assertEquals("Processed: test input", result.asSuccessful().result)
     }
 
     @Test

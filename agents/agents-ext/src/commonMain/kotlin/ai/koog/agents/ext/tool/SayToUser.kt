@@ -4,7 +4,6 @@ import ai.koog.agents.core.tools.SimpleTool
 import ai.koog.agents.core.tools.ToolDescriptor
 import ai.koog.agents.core.tools.ToolParameterDescriptor
 import ai.koog.agents.core.tools.ToolParameterType
-import ai.koog.agents.core.tools.ToolResult
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.Serializable
 
@@ -22,7 +21,6 @@ public object SayToUser : SimpleTool<SayToUser.Args>() {
     public data class Args(val message: String)
 
     override val argsSerializer: KSerializer<Args> = Args.serializer()
-    override val resultSerializer: KSerializer<ToolResult.Text> = ToolResult.Text.serializer()
 
     override val descriptor: ToolDescriptor = ToolDescriptor(
         name = "say_to_user",

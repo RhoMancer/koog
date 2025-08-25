@@ -1,7 +1,6 @@
 package ai.koog.agents.features.opentelemetry.span
 
 import ai.koog.agents.core.tools.Tool
-import ai.koog.agents.core.tools.ToolResult
 import ai.koog.agents.features.opentelemetry.attribute.SpanAttributes
 import io.opentelemetry.api.trace.SpanKind
 
@@ -45,7 +44,7 @@ internal class ExecuteToolSpan(
 
         // Tool arguments custom attribute
         @Suppress("UNCHECKED_CAST")
-        (tool as? Tool<Any?, ToolResult>)?.let { tool ->
+        (tool as? Tool<Any?, Any?>)?.let { tool ->
             addAttribute(SpanAttributes.Tool.InputValue(tool.encodeArgsToString(toolArgs)))
         }
     }

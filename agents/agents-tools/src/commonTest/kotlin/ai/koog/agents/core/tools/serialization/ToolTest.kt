@@ -45,7 +45,7 @@ class ToolTest {
         val args = JsonObject(emptyMap())
         val result = UnstructuredTool.execute(UnstructuredTool.decodeArgs(args), Enabler)
 
-        assertEquals("Simple result", result.toStringDefault())
+        assertEquals("Simple result", result)
     }
 
     // Structured tool
@@ -97,7 +97,7 @@ class ToolTest {
 
     // Custom format tool
 
-    private abstract class CustomFormatSerializer<T : ToolResult> : KSerializer<T> {
+    private abstract class CustomFormatSerializer<T> : KSerializer<T> {
         final override val descriptor = PrimitiveSerialDescriptor("CustomFormat", PrimitiveKind.STRING)
 
         abstract fun toCustomFormat(value: T): String

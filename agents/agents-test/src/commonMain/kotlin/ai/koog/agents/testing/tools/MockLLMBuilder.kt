@@ -9,6 +9,7 @@ import ai.koog.prompt.message.Message
 import ai.koog.prompt.message.ResponseMetaInfo
 import ai.koog.prompt.tokenizer.Tokenizer
 import kotlinx.datetime.Clock
+import kotlin.jvm.JvmName
 
 /**
  * Represents a condition for a tool call and its corresponding result.
@@ -651,6 +652,19 @@ public class MockLLMBuilder(private val clock: Clock, private val tokenizer: Tok
      * @param action A function that produces the string result
      * @return The result of the alwaysDoes call
      */
+    public infix fun <Args> MockToolReceiver<Args, String>.alwaysTells(
+        action: suspend () -> String
+    ): Unit =
+        alwaysDoes { action() }
+
+    /**
+     * Convenience extension function for configuring a text tool to always execute the specified action
+     * and return its string result.
+     *
+     * @param action A function that produces the string result
+     * @return The result of the alwaysDoes call
+     */
+    @JvmName("alwaysTellsText")
     public infix fun <Args> MockToolReceiver<Args, ToolResult.Text>.alwaysTells(
         action: suspend () -> String
     ): Unit =

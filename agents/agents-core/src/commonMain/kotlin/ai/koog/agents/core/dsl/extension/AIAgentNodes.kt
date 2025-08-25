@@ -10,7 +10,6 @@ import ai.koog.agents.core.environment.executeTool
 import ai.koog.agents.core.environment.result
 import ai.koog.agents.core.tools.Tool
 import ai.koog.agents.core.tools.ToolDescriptor
-import ai.koog.agents.core.tools.ToolResult
 import ai.koog.prompt.dsl.ModerationResult
 import ai.koog.prompt.dsl.PromptBuilder
 import ai.koog.prompt.dsl.prompt
@@ -434,7 +433,7 @@ public fun AIAgentSubgraphBuilderBase<*, *>.nodeLLMSendMultipleToolResults(
  * @param doUpdatePrompt Specifies whether to add tool call details to the prompt.
  */
 @AIAgentBuilderDslMarker
-public inline fun <reified ToolArg, reified TResult : ToolResult> AIAgentSubgraphBuilderBase<*, *>.nodeExecuteSingleTool(
+public inline fun <reified ToolArg, reified TResult> AIAgentSubgraphBuilderBase<*, *>.nodeExecuteSingleTool(
     name: String? = null,
     tool: Tool<ToolArg, TResult>,
     doUpdatePrompt: Boolean = true

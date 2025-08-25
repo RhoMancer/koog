@@ -4,7 +4,6 @@ import ai.koog.agents.core.tools.SimpleTool
 import ai.koog.agents.core.tools.ToolDescriptor
 import ai.koog.agents.core.tools.ToolParameterDescriptor
 import ai.koog.agents.core.tools.ToolParameterType
-import ai.koog.agents.core.tools.ToolResult
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.Serializable
 
@@ -33,8 +32,6 @@ public object ExitTool : SimpleTool<ExitTool.Args>() {
 
     override val argsSerializer: KSerializer<Args>
         get() = Args.serializer()
-    override val resultSerializer: KSerializer<ToolResult.Text>
-        get() = ToolResult.Text.serializer()
 
     override val descriptor: ToolDescriptor
         get() = ToolDescriptor(

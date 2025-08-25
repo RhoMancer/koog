@@ -7,18 +7,23 @@ import ai.koog.agents.core.tools.ToolParameterType
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.builtins.serializer
+import kotlin.jvm.JvmInline
 
 object CalculatorTools {
 
     abstract class CalculatorTool(
         name: String,
         description: String,
-    ) : Tool<CalculatorTool.Args, Float>() {
+    ) : Tool<CalculatorTool.Args, CalculatorTool.Result>() {
         @Serializable
         data class Args(val a: Float, val b: Float)
 
+        @Serializable
+        @JvmInline
+        value class Result(val result: Float)
+
         final override val argsSerializer = Args.serializer()
-        override val resultSerializer: KSerializer<Float> = Float.serializer()
+        override val resultSerializer: KSerializer<Result> = Result.serializer()
 
         final override val descriptor = ToolDescriptor(
             name = name,
@@ -42,7 +47,8 @@ object CalculatorTools {
         name = "plus",
         description = "Adds a and b",
     ) {
-        override suspend fun execute(args: Args): Float =
-            args.a + args.b
+        override suspend fun execute(args: Args): Result {
+            return Result(args.a + args.b)
+        }
     }
 }

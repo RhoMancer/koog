@@ -23,7 +23,6 @@ import ai.koog.agents.core.feature.model.ToolCallResultEvent
 import ai.koog.agents.core.feature.model.ToolValidationErrorEvent
 import ai.koog.agents.core.feature.model.toAgentError
 import ai.koog.agents.core.tools.Tool
-import ai.koog.agents.core.tools.ToolResult
 import ai.koog.agents.features.tracing.eventString
 import io.github.oshai.kotlinlogging.KotlinLogging
 
@@ -238,7 +237,7 @@ public class Tracing {
             pipeline.interceptToolCall(interceptContext) intercept@{ eventContext ->
 
                 @Suppress("UNCHECKED_CAST")
-                val tool = eventContext.tool as Tool<Any?, ToolResult>
+                val tool = eventContext.tool as Tool<Any?, Any?>
 
                 val event = ToolCallEvent(
                     runId = eventContext.runId,
@@ -252,7 +251,7 @@ public class Tracing {
             pipeline.interceptToolValidationError(interceptContext) intercept@{ eventContext ->
 
                 @Suppress("UNCHECKED_CAST")
-                val tool = eventContext.tool as Tool<Any?, ToolResult>
+                val tool = eventContext.tool as Tool<Any?, Any?>
 
                 val event = ToolValidationErrorEvent(
                     runId = eventContext.runId,
@@ -267,7 +266,7 @@ public class Tracing {
             pipeline.interceptToolCallFailure(interceptContext) intercept@{ eventContext ->
 
                 @Suppress("UNCHECKED_CAST")
-                val tool = eventContext.tool as Tool<Any?, ToolResult>
+                val tool = eventContext.tool as Tool<Any?, Any?>
 
                 val event = ToolCallFailureEvent(
                     runId = eventContext.runId,

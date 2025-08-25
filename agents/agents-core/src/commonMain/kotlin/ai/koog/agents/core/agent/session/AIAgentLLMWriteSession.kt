@@ -6,7 +6,6 @@ import ai.koog.agents.core.environment.SafeTool
 import ai.koog.agents.core.tools.Tool
 import ai.koog.agents.core.tools.ToolDescriptor
 import ai.koog.agents.core.tools.ToolRegistry
-import ai.koog.agents.core.tools.ToolResult
 import ai.koog.agents.core.utils.ActiveProperty
 import ai.koog.prompt.dsl.Prompt
 import ai.koog.prompt.dsl.PromptBuilder
@@ -196,7 +195,7 @@ public class AIAgentLLMWriteSession internal constructor(
      * @param concurrency the maximum number of parallel executions allowed. Defaults to 16.
      * @return a flow of results wrapped in SafeTool.Result for each input argument.
      */
-    public inline fun <reified TArgs, reified TResult : ToolResult> Flow<TArgs>.toParallelToolCalls(
+    public inline fun <reified TArgs, reified TResult> Flow<TArgs>.toParallelToolCalls(
         safeTool: SafeTool<TArgs, TResult>,
         concurrency: Int = 16
     ): Flow<SafeTool.Result<TResult>> = flatMapMerge(concurrency) { args ->
@@ -213,7 +212,7 @@ public class AIAgentLLMWriteSession internal constructor(
      * @param concurrency The maximum number of parallel calls to the tool. Default is 16.
      * @return A flow of string results derived from executing the tool's raw method.
      */
-    public inline fun <reified TArgs, reified TResult : ToolResult> Flow<TArgs>.toParallelToolCallsRaw(
+    public inline fun <reified TArgs, reified TResult> Flow<TArgs>.toParallelToolCallsRaw(
         safeTool: SafeTool<TArgs, TResult>,
         concurrency: Int = 16
     ): Flow<String> = flatMapMerge(concurrency) { args ->
@@ -231,7 +230,7 @@ public class AIAgentLLMWriteSession internal constructor(
      * @param concurrency The maximum number of concurrent executions. Default value is 16.
      * @return A flow emitting the results of the tool executions wrapped in a SafeTool.Result object.
      */
-    public inline fun <reified TArgs, reified TResult : ToolResult> Flow<TArgs>.toParallelToolCalls(
+    public inline fun <reified TArgs, reified TResult> Flow<TArgs>.toParallelToolCalls(
         tool: Tool<TArgs, TResult>,
         concurrency: Int = 16
     ): Flow<SafeTool.Result<TResult>> = flatMapMerge(concurrency) { args ->
@@ -250,7 +249,7 @@ public class AIAgentLLMWriteSession internal constructor(
      * @param concurrency The maximum number of parallel executions allowed. Default is 16.
      * @return A Flow containing the results of the tool executions, wrapped in `SafeTool.Result`.
      */
-    public inline fun <reified TArgs, reified TResult : ToolResult> Flow<TArgs>.toParallelToolCalls(
+    public inline fun <reified TArgs, reified TResult> Flow<TArgs>.toParallelToolCalls(
         toolClass: KClass<out Tool<TArgs, TResult>>,
         concurrency: Int = 16
     ): Flow<SafeTool.Result<TResult>> {
@@ -267,7 +266,7 @@ public class AIAgentLLMWriteSession internal constructor(
      * @param concurrency the number of concurrent tool calls to be executed. Defaults to 16.
      * @return a flow of raw string results from the parallel tool calls.
      */
-    public inline fun <reified TArgs, reified TResult : ToolResult> Flow<TArgs>.toParallelToolCallsRaw(
+    public inline fun <reified TArgs, reified TResult> Flow<TArgs>.toParallelToolCallsRaw(
         toolClass: KClass<out Tool<TArgs, TResult>>,
         concurrency: Int = 16
     ): Flow<String> {
@@ -286,7 +285,7 @@ public class AIAgentLLMWriteSession internal constructor(
      * @return the tool that matches the specified name and types
      * @throws IllegalArgumentException if the tool is not defined or the types are incompatible
      */
-    public inline fun <reified TArgs, reified TResult : ToolResult> findToolByNameAndArgs(
+    public inline fun <reified TArgs, reified TResult> findToolByNameAndArgs(
         toolName: String
     ): Tool<TArgs, TResult> =
         @Suppress("UNCHECKED_CAST")
