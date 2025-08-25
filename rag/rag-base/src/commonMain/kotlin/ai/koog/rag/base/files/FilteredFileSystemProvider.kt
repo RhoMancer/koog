@@ -16,6 +16,14 @@ public fun <Path> FileSystemProvider.ReadOnly<Path>.filter(
 }
 
 /**
+ * Filters the current read-only file system implementation such that
+ * only paths that are based on the specified [root] path are visible and accessible.
+ */
+public fun <Path> FileSystemProvider.ReadOnly<Path>.filterByRoot(root: Path): FileSystemProvider.ReadOnly<Path> {
+    return FilteredReadOnly(this, createFilterByRoot(root))
+}
+
+/**
  * Filters the current read-write file system implementation such that
  * only paths that are accepted by [filter] are visible and accessible.
  */
@@ -23,6 +31,18 @@ public fun <Path> FileSystemProvider.ReadWrite<Path>.filter(
     filter: TraversalFilter<Path>
 ): FileSystemProvider.ReadWrite<Path> {
     return FilteredReadWrite(this, filter)
+}
+
+/**
+ * Filters the current read-write file system implementation such that
+ * only paths that are based on the specified [root] path are visible and accessible.
+ */
+public fun <Path> FileSystemProvider.ReadWrite<Path>.filterByRoot(root: Path): FileSystemProvider.ReadWrite<Path> {
+    return FilteredReadWrite(this, createFilterByRoot(root))
+}
+
+internal fun <Path> createFilterByRoot(root: Path): TraversalFilter<Path> = TraversalFilter { path, fs ->
+    root.contains(path, fs) || path.contains(root, fs)
 }
 
 internal open class FilteredReadOnly<P>(
