@@ -11,6 +11,6 @@ import kotlin.test.Ignore
 //   - LANGFUSE_SECRET_KEY
 //   - LANGFUSE_PUBLIC_KEY
 //   - LANGFUSE_HOST
-@Ignore
+//@Ignore
 class LangfuseTraceStructureTest :
     TraceStructureTestBase(openTelemetryConfigurator = { addLangfuseExporter() })

@@ -17,6 +17,7 @@ internal abstract class EventBodyField {
 
     companion object {
         private val logger = KotlinLogging.logger { }
+        private val json = Json { allowStructuredMapKeys = true }
     }
 
     abstract val key: String
@@ -24,12 +25,14 @@ internal abstract class EventBodyField {
     abstract val value: Any
 
     fun valueString(verbose: Boolean): String {
-        return Json.encodeToString(JsonElement.serializer(), convertValueToString(value, verbose))
+        val v = convertValueToString(value, verbose)
+        val result = json.encodeToString(JsonElement.serializer(), v)
+        return result
     }
 
     //region Private Methods
 
-    private fun convertValueToString(value: Any, verbose: Boolean): JsonElement {
+    fun convertValueToString(value: Any, verbose: Boolean): JsonElement {
         return when (value) {
             is HiddenString -> {
                 JsonPrimitive(
@@ -58,7 +61,7 @@ internal abstract class EventBodyField {
                     .associate { (k, v) ->
                         k.toString() to (
                             v?.let { convertValueToString(it, verbose) } ?: JsonNull
-                            )
+                        )
                     }
             )
             else -> {

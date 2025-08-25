@@ -10,6 +10,6 @@ import kotlin.test.Ignore
 // Required env variables:
 //   - WEAVE_ENTITY
 //   - WEAVE_API_KEY
-@Ignore
+//@Ignore
 class WeaveTraceStructureTest :
     TraceStructureTestBase(openTelemetryConfigurator = { addWeaveExporter() })

@@ -131,9 +131,11 @@ abstract class TraceStructureTestBase(private val openTelemetryConfigurator: Ope
             val toolResponse = TestGetWeatherTool.DEFAULT_PARIS_RESULT
             val finalResponse = "The weather in Paris is rainy and overcast, with temperatures around 57°F"
 
+            val toolCallId = "get-weather-tool-call-id"
+
             val mockExecutor = getMockExecutor {
-                mockLLMToolCall(TestGetWeatherTool, toolCallArgs) onRequestEquals userPrompt
-                mockLLMAnswer(finalResponse) onRequestContains toolResponse
+                mockLLMToolCall(tool = TestGetWeatherTool, args = toolCallArgs, toolCallId = toolCallId) onRequestEquals userPrompt
+                mockLLMAnswer(response = finalResponse) onRequestContains toolResponse
             }
 
             val toolRegistry = ToolRegistry {
@@ -189,7 +191,7 @@ abstract class TraceStructureTestBase(private val openTelemetryConfigurator: Ope
                 "gen_ai.prompt.1.role" to Message.Role.User.name.lowercase(),
                 "gen_ai.prompt.1.content" to userPrompt,
                 "gen_ai.completion.0.role" to Message.Role.Assistant.name.lowercase(),
-                "gen_ai.completion.0.content" to "[{\"function\":{\"name\":\"${TestGetWeatherTool.name}\",\"arguments\":\"{\"location\":\"Paris\"}\"},\"id\":\"\",\"type\":\"function\"}]",
+                "gen_ai.completion.0.content" to "[{\"function\":{\"name\":\"${TestGetWeatherTool.name}\",\"arguments\":\"{\\\"location\\\":\\\"Paris\\\"}\"},\"id\":\"\",\"type\":\"function\"}]",
                 "gen_ai.completion.0.finish_reason" to SpanAttributes.Response.FinishReasonType.ToolCalls.id,
             )
 
