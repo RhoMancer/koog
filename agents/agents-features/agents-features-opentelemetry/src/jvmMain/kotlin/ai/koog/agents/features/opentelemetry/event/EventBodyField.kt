@@ -25,8 +25,8 @@ internal abstract class EventBodyField {
     abstract val value: Any
 
     fun valueString(verbose: Boolean): String {
-        val v = convertValueToString(value, verbose)
-        val result = json.encodeToString(JsonElement.serializer(), v)
+        val valueJsonElement = convertValueToString(value, verbose)
+        val result = json.encodeToString(JsonElement.serializer(), valueJsonElement)
         return result
     }
 
