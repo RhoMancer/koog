@@ -39,19 +39,7 @@ public fun SerialDescriptor.toolDescription(name: String): ToolDescriptor {
 
         StructureKind.CLASS -> {
             val required = mutableListOf<String>()
-            val properties = List(elementsCount) { i ->
-                val name = getElementName(i)
-                if (!isElementOptional(i)) {
-                    required.add(name)
-                }
-                val descriptor = getElementDescriptor(i)
-                val annotations = getElementAnnotations(i)
-                ToolParameterDescriptor(
-                    name,
-                    annotations.filterIsInstance<LLMDescription>().firstOrNull()?.description ?: "",
-                    descriptor.toToolParameterType()
-                )
-            }
+            val properties = parameterDescriptors(required)
             ToolDescriptor(
                 name,
                 description,
@@ -94,19 +82,7 @@ private fun SerialDescriptor.toToolParameterType(): ToolParameterType = when (ki
     StructureKind.CLASS -> {
         val required = mutableListOf<String>()
         ToolParameterType.Object(
-            List(elementsCount) { i ->
-                val name = getElementName(i)
-                if (!isElementOptional(i)) {
-                    required.add(name)
-                }
-                val descriptor = getElementDescriptor(i)
-                val annotations = getElementAnnotations(i)
-                ToolParameterDescriptor(
-                    name,
-                    annotations.filterIsInstance<LLMDescription>().firstOrNull()?.description ?: "",
-                    descriptor.toToolParameterType()
-                )
-            },
+            parameterDescriptors(required),
             required,
             false
         )
@@ -130,3 +106,15 @@ private fun ToolParameterType.asValueTool(name: String, description: String) = T
     description = description,
     requiredParameters = listOf(ToolParameterDescriptor(name = "value", description = "", this))
 )
+
+private fun SerialDescriptor.parameterDescriptors(required: MutableList<String>): List<ToolParameterDescriptor> =
+    List(elementsCount) { i ->
+        val name = getElementName(i)
+        val descriptor = getElementDescriptor(i)
+        if (!isElementOptional(i) || !descriptor.isNullable) required.add(name)
+        ToolParameterDescriptor(
+            name,
+            annotations.filterIsInstance<LLMDescription>().firstOrNull()?.description ?: "",
+            getElementDescriptor(i).toToolParameterType()
+        )
+    }
