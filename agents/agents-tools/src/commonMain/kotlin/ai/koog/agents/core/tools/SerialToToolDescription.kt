@@ -8,12 +8,15 @@ import kotlinx.serialization.descriptors.SerialDescriptor
 import kotlinx.serialization.descriptors.SerialKind
 import kotlinx.serialization.descriptors.StructureKind
 
+private fun SerialDescriptor.description(): String =
+    annotations.filterIsInstance<LLMDescription>().firstOrNull()?.description ?: ""
+
 /**
  * Convert a [SerialDescriptor] to a [ToolDescriptor].
  */
 @InternalAgentToolsApi
 public fun SerialDescriptor.toolDescription(name: String): ToolDescriptor {
-    val description = annotations.filterIsInstance<LLMDescription>().firstOrNull()?.description ?: ""
+    val description = description()
 
     return when (kind) {
         PrimitiveKind.STRING -> ToolParameterType.String.asValueTool(name, description)
@@ -41,10 +44,12 @@ public fun SerialDescriptor.toolDescription(name: String): ToolDescriptor {
                 if (!isElementOptional(i)) {
                     required.add(name)
                 }
+                val descriptor = getElementDescriptor(i)
+                val annotations = getElementAnnotations(i)
                 ToolParameterDescriptor(
                     name,
                     annotations.filterIsInstance<LLMDescription>().firstOrNull()?.description ?: "",
-                    getElementDescriptor(i).toToolParameterType()
+                    descriptor.toToolParameterType()
                 )
             }
             ToolDescriptor(
@@ -62,7 +67,7 @@ public fun SerialDescriptor.toolDescription(name: String): ToolDescriptor {
         PolymorphicKind.OPEN,
         StructureKind.MAP -> ToolDescriptor(
             name = name,
-            description = description ?: "",
+            description = description,
             requiredParameters = emptyList(),
             optionalParameters = emptyList()
         )
@@ -94,10 +99,12 @@ private fun SerialDescriptor.toToolParameterType(): ToolParameterType = when (ki
                 if (!isElementOptional(i)) {
                     required.add(name)
                 }
+                val descriptor = getElementDescriptor(i)
+                val annotations = getElementAnnotations(i)
                 ToolParameterDescriptor(
                     name,
                     annotations.filterIsInstance<LLMDescription>().firstOrNull()?.description ?: "",
-                    getElementDescriptor(i).toToolParameterType()
+                    descriptor.toToolParameterType()
                 )
             },
             required,
