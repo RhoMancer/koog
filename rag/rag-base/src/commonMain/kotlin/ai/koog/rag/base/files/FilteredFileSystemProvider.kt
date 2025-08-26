@@ -1,5 +1,6 @@
 package ai.koog.rag.base.files
 
+import ai.koog.rag.base.files.filter.PathFilters
 import ai.koog.rag.base.files.filter.TraversalFilter
 import kotlinx.io.IOException
 import kotlinx.io.Sink
@@ -20,7 +21,7 @@ public fun <Path> FileSystemProvider.ReadOnly<Path>.filter(
  * only paths that are based on the specified [root] path are visible and accessible.
  */
 public fun <Path> FileSystemProvider.ReadOnly<Path>.filterByRoot(root: Path): FileSystemProvider.ReadOnly<Path> {
-    return FilteredReadOnly(this, createFilterByRoot(root))
+    return FilteredReadOnly(this, PathFilters.byRoot(root))
 }
 
 /**
@@ -38,11 +39,7 @@ public fun <Path> FileSystemProvider.ReadWrite<Path>.filter(
  * only paths that are based on the specified [root] path are visible and accessible.
  */
 public fun <Path> FileSystemProvider.ReadWrite<Path>.filterByRoot(root: Path): FileSystemProvider.ReadWrite<Path> {
-    return FilteredReadWrite(this, createFilterByRoot(root))
-}
-
-internal fun <Path> createFilterByRoot(root: Path): TraversalFilter<Path> = TraversalFilter { path, fs ->
-    root.contains(path, fs) || path.contains(root, fs)
+    return FilteredReadWrite(this, PathFilters.byRoot(root))
 }
 
 internal open class FilteredReadOnly<P>(
