@@ -25,6 +25,7 @@
   - Allow setting a custom OpenTelemetry SDK instance in Koog (KG-169).
 - **LLM and Providers**:
   - Support Google’s “thinking” mode in generation config to improve reasoning quality (#414).
+  - Add responses API support for OpenAI (#645)
   - AWS Bedrock: support Inference Profiles for simpler, consistent configuration (#506) and accept `AWS_SESSION_TOKEN` (#456).
   - Add `maxTokens` as prompt parameters for finer control over generation length (#579).
   - Add `contextLength` and `maxOutputTokens` to `LLModel` (#438, KG-134)
@@ -43,6 +44,7 @@
 ## Bug Fixes
 
 - Make `parts` field nullable in Google responses to handle missing content from Gemini models (#652).
+- Fix enum parsing in MCP when type is not mentioned (#601, KG-49)
 - Fix function calling for `gemini-2.5-flash` models to correctly route tool invocations (#586).
 - Restore OpenAI `responseFormat` option support in requests (#643).
 - Correct `o4-mini` vs `gpt-4o-mini` model mix-up in configuration (#573).
