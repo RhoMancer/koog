@@ -1,3 +1,11 @@
+# 0.4.1
+
+> Published 28 Aug 2025
+
+## Bug Fixes
+
+Fixed iOS target publication
+
 # 0.4.0
 
 > Published 27 Aug 2025
