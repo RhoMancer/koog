@@ -26,6 +26,7 @@ import ai.koog.agents.core.feature.handler.BeforeAgentStartedHandler
 import ai.koog.agents.core.feature.handler.BeforeLLMCallContext
 import ai.koog.agents.core.feature.handler.BeforeLLMCallHandler
 import ai.koog.agents.core.feature.handler.BeforeNodeHandler
+import ai.koog.agents.core.feature.handler.EventHandlerContext
 import ai.koog.agents.core.feature.handler.ExecuteLLMHandler
 import ai.koog.agents.core.feature.handler.ExecuteNodeHandler
 import ai.koog.agents.core.feature.handler.ExecuteToolHandler
@@ -886,7 +887,10 @@ public class AIAgentPipeline {
     ) {
         val existingHandler = executeToolHandlers.getOrPut(interceptContext.feature.key) { ExecuteToolHandler() }
 
-        existingHandler.toolValidationErrorHandler = ToolValidationErrorHandler { eventContext ->
+        existingHandler.toolValidationErrorHandler = ToolValidationErrorHandler handler@{ eventContext ->
+            if (registeredFeatures[interceptContext.feature.key].isFiltered(eventContext)) {
+                return@handler
+            }
             with(interceptContext.featureImpl) { handle(eventContext) }
         }
     }
@@ -910,7 +914,10 @@ public class AIAgentPipeline {
     ) {
         val existingHandler = executeToolHandlers.getOrPut(interceptContext.feature.key) { ExecuteToolHandler() }
 
-        existingHandler.toolCallFailureHandler = ToolCallFailureHandler { eventContext ->
+        existingHandler.toolCallFailureHandler = ToolCallFailureHandler handler@{ eventContext ->
+            if (registeredFeatures[interceptContext.feature.key].isFiltered(eventContext)) {
+                return@handler
+            }
             with(interceptContext.featureImpl) { handle(eventContext) }
         }
     }
@@ -935,10 +942,21 @@ public class AIAgentPipeline {
     ) {
         val existingHandler = executeToolHandlers.getOrPut(interceptContext.feature.key) { ExecuteToolHandler() }
 
-        existingHandler.toolCallResultHandler = ToolCallResultHandler { eventContext ->
+        existingHandler.toolCallResultHandler = ToolCallResultHandler handler@{ eventContext ->
+            if (registeredFeatures[interceptContext.feature.key].isFiltered(eventContext)) {
+                return@handler
+            }
             with(interceptContext.featureImpl) { handle(eventContext) }
         }
     }
 
     //endregion Interceptors
+
+    //region Private Methods
+
+    private fun FeatureConfig?.isFiltered(eventContext: EventHandlerContext): Boolean {
+        return this?.eventFilter?.invoke(eventContext) == true
+    }
+
+    //endregion Private Methods
 }
