@@ -29,12 +29,12 @@ public class PromptExecutorProxy(
 
     override suspend fun execute(prompt: Prompt, model: LLModel, tools: List<ToolDescriptor>): List<Message.Response> {
         logger.debug { "Executing LLM call (prompt: $prompt, tools: [${tools.joinToString { it.name }}])" }
-        pipeline.onBeforeLLMCall(runId, prompt, model, tools)
+        pipeline.onLLMCallStarting(runId, prompt, model, tools)
 
         val responses = executor.execute(prompt, model, tools)
 
         logger.debug { "Finished LLM call with responses: [${responses.joinToString { "${it.role}: ${it.content}" }}]" }
-        pipeline.onAfterLLMCall(runId, prompt, model, tools, responses)
+        pipeline.onLLMCallCompleted(runId, prompt, model, tools, responses)
 
         return responses
     }
@@ -77,10 +77,10 @@ public class PromptExecutorProxy(
         model: LLModel
     ): ModerationResult {
         logger.debug { "Executing moderation LLM request (prompt: $prompt)" }
-        pipeline.onBeforeLLMCall(runId, prompt, model, emptyList())
+        pipeline.onLLMCallStarting(runId, prompt, model, emptyList())
         val result = executor.moderate(prompt, model)
         logger.debug { "Finished moderation LLM request with response: $result" }
-        pipeline.onAfterLLMCall(runId, prompt, model, emptyList(), responses = emptyList(), moderationResponse = result)
+        pipeline.onLLMCallCompleted(runId, prompt, model, emptyList(), responses = emptyList(), moderationResponse = result)
         return result
     }
 }

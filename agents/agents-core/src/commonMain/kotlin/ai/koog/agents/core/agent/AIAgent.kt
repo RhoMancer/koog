@@ -165,7 +165,7 @@ public open class AIAgent<Input, Output>(
             // Environment (initially equal to the current agent), transformed by some features
             //   (ex: testing feature transforms it into a MockEnvironment with mocked tools)
             val preparedEnvironment =
-                pipeline.transformEnvironment(strategy = strategy, agent = this@AIAgent, baseEnvironment = this@AIAgent)
+                pipeline.onAgentEnvironmentTransforming(strategy = strategy, agent = this@AIAgent, baseEnvironment = this@AIAgent)
 
             val agentContext = AIAgentContext(
                 environment = preparedEnvironment,
@@ -195,7 +195,7 @@ public open class AIAgent<Input, Output>(
             )
 
             logger.debug { formatLog(agentId = id, runId = runId, message = "Starting agent execution") }
-            pipeline.onBeforeAgentStarted(
+            pipeline.onAgentStarting(
                 runId = runId,
                 agent = this@AIAgent,
                 strategy = strategy,
@@ -211,7 +211,7 @@ public open class AIAgent<Input, Output>(
             }
 
             logger.debug { formatLog(agentId = id, runId = runId, message = "Finished agent execution") }
-            pipeline.onAgentFinished(agentId = id, runId = runId, result = result, resultType = outputType)
+            pipeline.onAgentCompleted(agentId = id, runId = runId, result = result, resultType = outputType)
 
             runningMutex.withLock {
                 isRunning = false
@@ -293,7 +293,7 @@ public open class AIAgent<Input, Output>(
     }
 
     override suspend fun close() {
-        pipeline.onAgentBeforeClosed(agentId = id)
+        pipeline.onAgentClosing(agentId = id)
         pipeline.closeFeaturesStreamProviders()
     }
 
@@ -327,7 +327,7 @@ public open class AIAgent<Input, Output>(
                 )
             }
 
-            pipeline.onToolCall(
+            pipeline.onToolExecutionStarting(
                 runId = content.runId,
                 toolCallId = content.toolCallId,
                 tool = tool,
@@ -339,7 +339,7 @@ public open class AIAgent<Input, Output>(
                 @Suppress("UNCHECKED_CAST")
                 (tool as Tool<ToolArgs, ToolResult>).execute(toolArgs, toolEnabler)
             } catch (e: ToolException) {
-                pipeline.onToolValidationError(
+                pipeline.onToolValidationFailed(
                     runId = content.runId,
                     toolCallId = content.toolCallId,
                     tool = tool,
@@ -357,7 +357,7 @@ public open class AIAgent<Input, Output>(
             } catch (e: Exception) {
                 logger.error(e) { "Tool \"${tool.name}\" failed to execute with arguments: ${content.toolArgs}" }
 
-                pipeline.onToolCallFailure(
+                pipeline.onToolExecutionFailed(
                     runId = content.runId,
                     toolCallId = content.toolCallId,
                     tool = tool,
@@ -375,7 +375,7 @@ public open class AIAgent<Input, Output>(
             }
 
             // Tool Finished with Result
-            pipeline.onToolCallResult(
+            pipeline.onToolExecutionCompleted(
                 runId = content.runId,
                 toolCallId = content.toolCallId,
                 tool = tool,
@@ -429,7 +429,7 @@ public open class AIAgent<Input, Output>(
             throw error.asException()
         } catch (e: AgentEngineException) {
             logger.error(e) { "Execution exception reported by server!" }
-            pipeline.onAgentRunError(agentId = agentId, runId = runId, throwable = e)
+            pipeline.onAgentExecutionFailed(agentId = agentId, runId = runId, throwable = e)
         }
     }
 

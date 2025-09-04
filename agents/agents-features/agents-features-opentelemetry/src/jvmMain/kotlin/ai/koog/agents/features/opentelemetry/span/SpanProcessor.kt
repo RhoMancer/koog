@@ -41,6 +41,7 @@ internal class SpanProcessor(
         span: GenAIAgentSpan,
         instant: Instant? = null,
     ) {
+        tracer.spanBuilder(span.name).setSpanKind(span.kind).setParent(span.context).startSpan().spanContext.traceId
         logger.debug { "Starting span (name: ${span.name}, id: ${span.spanId})" }
 
         if (_spans.containsKey(span.spanId)) {

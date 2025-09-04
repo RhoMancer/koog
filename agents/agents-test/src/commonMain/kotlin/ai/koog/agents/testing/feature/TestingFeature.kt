@@ -962,7 +962,7 @@ public class Testing {
             if (config.enableGraphTesting) {
                 feature.graphAssertions.add(config.getAssertions())
 
-                pipeline.interceptBeforeAgentStarted(interceptContext) { eventContext ->
+                pipeline.interceptAgentStarting(interceptContext) { eventContext ->
                     val strategyGraph = eventContext.strategy
                     val strategyAssertions = feature.graphAssertions.find { it.name == strategyGraph.name }
                     config.assert(

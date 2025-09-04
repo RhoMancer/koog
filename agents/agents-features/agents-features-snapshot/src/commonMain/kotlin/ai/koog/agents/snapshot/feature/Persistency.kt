@@ -97,7 +97,7 @@ public class Persistency(private val persistencyStorageProvider: PersistencyStor
                 return@interceptContextAgentFeature featureImpl
             }
 
-            pipeline.interceptBeforeAgentStarted(interceptContext) { ctx ->
+            pipeline.interceptAgentStarting(interceptContext) { ctx ->
                 require(ctx.strategy.metadata.uniqueNames) {
                     "Checkpoint feature requires unique node names in the strategy metadata"
                 }
@@ -110,7 +110,7 @@ public class Persistency(private val persistencyStorageProvider: PersistencyStor
                 }
             }
 
-            pipeline.interceptAfterNode(interceptContext) { eventCtx ->
+            pipeline.interceptNodeExecutionCompleted(interceptContext) { eventCtx ->
                 if (config.enableAutomaticPersistency) {
                     createCheckpoint(
                         agentContext = eventCtx.context,
@@ -121,7 +121,7 @@ public class Persistency(private val persistencyStorageProvider: PersistencyStor
                 }
             }
 
-            pipeline.interceptBeforeNode(interceptContext) { eventCtx ->
+            pipeline.interceptNodeExecutionStarting(interceptContext) { eventCtx ->
                 featureImpl.currentNodeId = eventCtx.node.id
             }
         }

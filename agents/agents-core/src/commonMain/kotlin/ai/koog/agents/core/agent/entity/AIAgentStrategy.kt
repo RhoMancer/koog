@@ -43,9 +43,9 @@ public class AIAgentStrategy<Input, Output>(
     @OptIn(InternalAgentsApi::class)
     override suspend fun execute(context: AIAgentContextBase, input: Input): Output? {
         return runCatchingCancellable {
-            context.pipeline.onStrategyStarted(this, context)
+            context.pipeline.onStrategyStarting(this, context)
             val result = super.execute(context = context, input = input)
-            context.pipeline.onStrategyFinished(this, context, result, outputType)
+            context.pipeline.onStrategyCompleted(this, context, result, outputType)
             result
         }.onFailure {
             context.environment.reportProblem(it)

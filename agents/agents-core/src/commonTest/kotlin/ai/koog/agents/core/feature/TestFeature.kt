@@ -24,11 +24,11 @@ class TestFeature(val events: MutableList<String>) {
             val feature = TestFeature(events = config.events ?: mutableListOf())
             val context = InterceptContext(this, feature)
 
-            pipeline.interceptBeforeAgentStarted(context) { eventContext ->
+            pipeline.interceptAgentStarting(context) { eventContext ->
                 feature.events += "Agent: before agent started (strategy name: ${eventContext.strategy.name})"
             }
 
-            pipeline.interceptStrategyStarted(context) { eventContext ->
+            pipeline.interceptStrategyStarting(context) { eventContext ->
                 feature.events += "Agent: strategy started (strategy name: ${eventContext.strategy.name})"
             }
 
@@ -37,38 +37,38 @@ class TestFeature(val events: MutableList<String>) {
                 TestFeature(mutableListOf())
             }
 
-            pipeline.interceptBeforeLLMCall(context) { event ->
+            pipeline.interceptLLMCallStaring(context) { event ->
                 feature.events +=
                     "LLM: start LLM call (prompt: ${event.prompt.messages.firstOrNull {
                         it.role == Message.Role.User
                     }?.content}, tools: [${event.tools.joinToString { it.name }}])"
             }
 
-            pipeline.interceptAfterLLMCall(context) { event ->
+            pipeline.interceptLLMCallCompleted(context) { event ->
                 feature.events +=
                     "LLM: finish LLM call (responses: [${event.responses.joinToString(", ") {
                         "${it.role.name}: ${it.content}"
                     }}])"
             }
 
-            pipeline.interceptBeforeNode(context) { event ->
+            pipeline.interceptNodeExecutionStarting(context) { event ->
                 feature.events += "Node: start node (name: ${event.node.name}, input: ${event.input})"
             }
 
-            pipeline.interceptAfterNode(context) { event ->
+            pipeline.interceptNodeExecutionCompleted(context) { event ->
                 feature.events +=
                     "Node: finish node (name: ${event.node.name}, input: ${event.input}, output: ${event.output})"
             }
 
-            pipeline.interceptNodeExecutionError(context) { event ->
+            pipeline.interceptNodeExecutionFailed(context) { event ->
                 feature.events += "Node: execution error (name: ${event.node.name}, error: ${event.throwable.message})"
             }
 
-            pipeline.interceptToolCall(context) { event ->
+            pipeline.interceptToolExecutionStarting(context) { event ->
                 feature.events += "Tool: call tool (tool: ${event.tool.name}, args: ${event.toolArgs})"
             }
 
-            pipeline.interceptToolCallResult(context) { event ->
+            pipeline.interceptToolExecutionCompleted(context) { event ->
                 feature.events +=
                     "Tool: finish tool call with result (tool: ${event.tool.name}, result: ${event.result?.toStringDefault() ?: "null"})"
             }

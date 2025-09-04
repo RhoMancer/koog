@@ -1,13 +1,15 @@
-package ai.koog.agents.core.feature.handler
+package ai.koog.agents.core.feature.handler.node
 
 import ai.koog.agents.core.agent.context.AIAgentContextBase
 import ai.koog.agents.core.agent.entity.AIAgentNodeBase
+import ai.koog.agents.core.feature.handler.AgentLifecycleEventContext
+import ai.koog.agents.core.feature.handler.AgentLifecycleEventType
 import kotlin.reflect.KType
 
 /**
  * Represents the context for handling node-specific events within the framework.
  */
-public interface NodeEventHandlerContext : EventHandlerContext
+public interface NodeExecutionEventContext : AgentLifecycleEventContext
 
 /**
  * Represents the context for handling a before node execution event.
@@ -17,13 +19,13 @@ public interface NodeEventHandlerContext : EventHandlerContext
  * @property input The input data for the node execution.
  * @property inputType [KType] representing the type of the [input].
  */
-public data class NodeBeforeExecuteContext(
+public data class NodeExecutionStartingContext(
     val node: AIAgentNodeBase<*, *>,
     val context: AIAgentContextBase,
     val input: Any?,
     val inputType: KType,
-) : NodeEventHandlerContext {
-    override val eventType: AgentEventType = AgentEventType.BeforeNodeExecute
+) : NodeExecutionEventContext {
+    override val eventType: AgentLifecycleEventType = AgentLifecycleEventType.NodeExecutionStarting
 }
 
 /**
@@ -36,15 +38,15 @@ public data class NodeBeforeExecuteContext(
  * @property inputType [KType] representing the type of the [input].
  * @property outputType [KType] representing the type of the [output].
  */
-public data class NodeAfterExecuteContext(
+public data class NodeExecutionCompletedContext(
     val node: AIAgentNodeBase<*, *>,
     val context: AIAgentContextBase,
     val input: Any?,
     val output: Any?,
     val inputType: KType,
     val outputType: KType,
-) : NodeEventHandlerContext {
-    override val eventType: AgentEventType = AgentEventType.AfterNodeExecute
+) : NodeExecutionEventContext {
+    override val eventType: AgentLifecycleEventType = AgentLifecycleEventType.NodeExecutionCompleted
 }
 
 /**
@@ -60,10 +62,26 @@ public data class NodeAfterExecuteContext(
  * runtime information and utilities for executing the node.
  * @property throwable The exception or error encountered during the node execution.
  */
-public data class NodeExecutionErrorContext(
+public data class NodeExecutionFailedContext(
     val node: AIAgentNodeBase<*, *>,
     val context: AIAgentContextBase,
     val throwable: Throwable
-) : NodeEventHandlerContext {
-    override val eventType: AgentEventType = AgentEventType.NodeExecutionError
+) : NodeExecutionEventContext {
+    override val eventType: AgentLifecycleEventType = AgentLifecycleEventType.NodeExecutionFailed
 }
+
+//region Deprecated
+
+@Deprecated(
+    message = "Scheduled for removal. Use NodeExecutionStartingContext instead",
+    replaceWith = ReplaceWith("NodeExecutionStartingContext")
+)
+public typealias NodeBeforeExecuteContext = NodeExecutionStartingContext
+
+@Deprecated(
+    message = "Scheduled for removal. Use NodeExecutionCompletedContext instead",
+    replaceWith = ReplaceWith("NodeExecutionCompletedContext")
+)
+public typealias NodeAfterExecuteContext = NodeExecutionCompletedContext
+
+//endregion Deprecated
