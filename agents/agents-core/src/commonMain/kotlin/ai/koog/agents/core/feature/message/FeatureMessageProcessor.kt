@@ -19,6 +19,11 @@ import kotlinx.coroutines.flow.StateFlow
  */
 public abstract class FeatureMessageProcessor : Closeable {
 
+    private var _messageFilter: (FeatureMessage) -> Boolean = { true }
+
+    public val messageFilter: (FeatureMessage) -> Boolean
+        get() = _messageFilter
+
     /**
      * A [StateFlow] representing the current open state of the processor.
      */
@@ -28,6 +33,10 @@ public abstract class FeatureMessageProcessor : Closeable {
      * Initializes the feature output stream provider to ensure it is ready for use.
      */
     public open suspend fun initialize() { }
+
+    public fun setMessageFilter(filter: (FeatureMessage) -> Boolean) {
+        _messageFilter = filter
+    }
 
     /**
      * Handles an incoming feature message or event for processing.
