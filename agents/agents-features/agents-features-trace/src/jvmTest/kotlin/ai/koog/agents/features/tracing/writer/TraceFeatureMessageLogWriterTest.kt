@@ -267,7 +267,7 @@ class TraceFeatureMessageLogWriterTest {
         TraceFeatureMessageLogWriter(targetLogger = targetLogger, format = customFormat).use { writer ->
             writer.initialize()
 
-            actualMessages.forEach { message -> writer.processMessage(message) }
+            actualMessages.forEach { message -> writer.onMessage(message) }
 
             assertEquals(expectedMessages.size, targetLogger.messages.size)
             assertContentEquals(expectedMessages, targetLogger.messages)

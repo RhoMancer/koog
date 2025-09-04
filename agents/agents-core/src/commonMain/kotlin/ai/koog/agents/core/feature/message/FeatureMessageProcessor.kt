@@ -43,5 +43,11 @@ public abstract class FeatureMessageProcessor : Closeable {
      *
      * @param message the feature message to be handled.
      */
-    public abstract suspend fun processMessage(message: FeatureMessage)
+    protected abstract suspend fun processMessage(message: FeatureMessage)
+
+    public suspend fun onMessage(message: FeatureMessage) {
+        if (messageFilter(message)) {
+            processMessage(message)
+        }
+    }
 }

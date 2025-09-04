@@ -141,7 +141,7 @@ class TraceFeatureMessageFileWriterTest {
                 promptExecutor = mockExecutor
             ) {
                 install(Tracing) {
-                    messageFilter = { message ->
+                    writer.setMessageFilter { message ->
                         if (message is AIAgentStartedEvent) {
                             runId = message.runId
                         }
@@ -284,7 +284,7 @@ class TraceFeatureMessageFileWriterTest {
         ).use { writer ->
             writer.initialize()
 
-            messagesToProcess.forEach { message -> writer.processMessage(message) }
+            messagesToProcess.forEach { message -> writer.onMessage(message) }
 
             val actualMessage = writer.targetPath.readLines()
 
