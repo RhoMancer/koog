@@ -337,7 +337,6 @@ class TraceFeatureMessageFileWriterTest {
 
             val agent = createAgent(strategy = strategy) {
                 install(Tracing) {
-                    messageFilter = { true }
                     addMessageProcessor(writer)
                 }
             }
@@ -368,9 +367,7 @@ class TraceFeatureMessageFileWriterTest {
             }
 
             val agent = createAgent(strategy = strategy) {
-                install(Tracing) {
-                    messageFilter = { true }
-                }
+                install(Tracing)
             }
 
             agent.run("")

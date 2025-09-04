@@ -1,7 +1,6 @@
 package ai.koog.agents.features.tracing.feature
 
 import ai.koog.agents.core.feature.config.FeatureConfig
-import ai.koog.agents.core.feature.message.FeatureMessage
 
 /**
  * Configuration for the tracing feature.
@@ -30,24 +29,4 @@ import ai.koog.agents.core.feature.message.FeatureMessage
  * }
  * ```
  */
-public class TraceFeatureConfig() : FeatureConfig() {
-
-    /**
-     * A filter for messages to be sent to the tracing message processors.
-     *
-     * This function is called for each trace event before it's sent to the message processors.
-     * If the function returns true, the event is processed; if it returns false, the event is ignored.
-     *
-     * By default, all messages are processed (the filter returns true for all messages).
-     *
-     * Example:
-     * ```kotlin
-     * // Only trace LLM-related events
-     * messageFilter = { message ->
-     *     message is LLMCallStartEvent ||
-     *     message is LLMCallEndEvent
-     * }
-     * ```
-     */
-    public var messageFilter: (FeatureMessage) -> Boolean = { true }
-}
+public class TraceFeatureConfig() : FeatureConfig()

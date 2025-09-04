@@ -21,6 +21,14 @@ public abstract class FeatureMessageProcessor : Closeable {
 
     private var _messageFilter: (FeatureMessage) -> Boolean = { true }
 
+    /**
+     * A filter for messages to be sent to message processors.
+     *
+     * This function is called for each event before it's sent to the message processors.
+     * If the function returns true, the event is processed; if it returns false, the event is ignored.
+     *
+     * By default, all messages are processed (the filter returns true for all messages).
+     */
     public val messageFilter: (FeatureMessage) -> Boolean
         get() = _messageFilter
 
@@ -34,6 +42,15 @@ public abstract class FeatureMessageProcessor : Closeable {
      */
     public open suspend fun initialize() { }
 
+    /**
+     * Sets the message filter used to determine which feature messages should be processed.
+     *
+     * The provided filter function is invoked for each incoming feature message. If the filter
+     * function returns `true`, the message is deemed to meet the criteria for further processing.
+     *
+     * @param filter A lambda function that accepts a [FeatureMessage] and returns a boolean
+     * indicating whether the message should be processed (`true`) or ignored (`false`).
+     */
     public fun setMessageFilter(filter: (FeatureMessage) -> Boolean) {
         _messageFilter = filter
     }
@@ -45,6 +62,14 @@ public abstract class FeatureMessageProcessor : Closeable {
      */
     protected abstract suspend fun processMessage(message: FeatureMessage)
 
+    /**
+     * Receives and processes an incoming feature message.
+     *
+     * This method evaluates the provided message using the configured message filter.
+     * If the message passes the filter, it is forwarded for further processing.
+     *
+     * @param message The incoming feature message to be evaluated and potentially processed.
+     */
     public suspend fun onMessage(message: FeatureMessage) {
         if (messageFilter(message)) {
             processMessage(message)

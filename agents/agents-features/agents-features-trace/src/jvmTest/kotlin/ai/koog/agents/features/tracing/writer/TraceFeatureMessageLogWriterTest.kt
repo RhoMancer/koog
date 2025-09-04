@@ -130,7 +130,7 @@ class TraceFeatureMessageLogWriterTest {
                 promptExecutor = mockExecutor
             ) {
                 install(Tracing) {
-                    messageFilter = { message ->
+                    writer.setMessageFilter { message ->
                         if (message is AIAgentStartedEvent) {
                             runId = message.runId
                         }
@@ -314,7 +314,6 @@ class TraceFeatureMessageLogWriterTest {
 
             val agent = createAgent(strategy = strategy) {
                 install(Tracing) {
-                    messageFilter = { true }
                     addMessageProcessor(writer)
                 }
             }
@@ -343,7 +342,6 @@ class TraceFeatureMessageLogWriterTest {
 
             val agent = createAgent(strategy = strategy) {
                 install(Tracing) {
-                    messageFilter = { true }
                     // Do not add stream providers
                 }
             }
@@ -433,7 +431,7 @@ class TraceFeatureMessageLogWriterTest {
                 promptExecutor = mockExecutor
             ) {
                 install(Tracing) {
-                    messageFilter = { message ->
+                    writer.setMessageFilter { message ->
                         if (message is AIAgentStartedEvent) {
                             runId = message.runId
                         }
