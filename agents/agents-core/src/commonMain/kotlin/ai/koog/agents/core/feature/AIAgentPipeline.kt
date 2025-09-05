@@ -1000,5 +1000,14 @@ public class AIAgentPipeline {
         return this?.eventFilter?.invoke(eventContext) == true
     }
 
+    fun addHandler() {
+        existingHandler.toolCallResultHandler = ToolCallResultHandler handler@{ eventContext ->
+            if (registeredFeatures[interceptContext.feature.key].isFiltered(eventContext)) {
+                return@handler
+            }
+            with(interceptContext.featureImpl) { handle(eventContext) }
+        }
+    }
+
     //endregion Private Methods
 }
