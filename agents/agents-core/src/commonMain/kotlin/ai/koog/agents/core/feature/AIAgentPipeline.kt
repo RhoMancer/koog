@@ -12,7 +12,7 @@ import ai.koog.agents.core.feature.handler.AfterLLMCallContext
 import ai.koog.agents.core.feature.handler.AfterLLMCallHandler
 import ai.koog.agents.core.feature.handler.AfterNodeHandler
 import ai.koog.agents.core.feature.handler.AgentBeforeCloseContext
-import ai.koog.agents.core.feature.handler.AgentBeforeCloseHandler
+import ai.koog.agents.core.feature.handler.BeforeAgentCloseHandler
 import ai.koog.agents.core.feature.handler.AgentContextHandler
 import ai.koog.agents.core.feature.handler.AgentEnvironmentTransformer
 import ai.koog.agents.core.feature.handler.AgentFinishedContext
@@ -26,7 +26,7 @@ import ai.koog.agents.core.feature.handler.BeforeAgentStartedHandler
 import ai.koog.agents.core.feature.handler.BeforeLLMCallContext
 import ai.koog.agents.core.feature.handler.BeforeLLMCallHandler
 import ai.koog.agents.core.feature.handler.BeforeNodeHandler
-import ai.koog.agents.core.feature.handler.EventHandlerContext
+import ai.koog.agents.core.feature.handler.AgentEventHandlerContext
 import ai.koog.agents.core.feature.handler.ExecuteLLMHandler
 import ai.koog.agents.core.feature.handler.ExecuteNodeHandler
 import ai.koog.agents.core.feature.handler.ExecuteToolHandler
@@ -669,7 +669,7 @@ public class AIAgentPipeline {
     ) {
         val existingHandler = agentHandlers.getOrPut(interceptContext.feature.key) { AgentHandler(interceptContext.featureImpl) }
 
-        existingHandler.agentBeforeCloseHandler = AgentBeforeCloseHandler handler@{ eventContext: AgentBeforeCloseContext ->
+        existingHandler.agentBeforeCloseHandler = BeforeAgentCloseHandler handler@{ eventContext: AgentBeforeCloseContext ->
             if (registeredFeatures[interceptContext.feature.key].isFiltered(eventContext)) {
                 return@handler
             }
@@ -996,7 +996,7 @@ public class AIAgentPipeline {
 
     //region Private Methods
 
-    private fun FeatureConfig?.isFiltered(eventContext: EventHandlerContext): Boolean {
+    private fun FeatureConfig?.isFiltered(eventContext: AgentEventHandlerContext): Boolean {
         return this?.eventFilter?.invoke(eventContext) == true
     }
 

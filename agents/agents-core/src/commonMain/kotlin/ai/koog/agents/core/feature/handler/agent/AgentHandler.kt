@@ -19,7 +19,7 @@ public class AgentHandler<TFeature : Any>(public val feature: TFeature) {
      * Allows customization of the environment during agent creation or updates by applying
      * the provided transformation logic.
      */
-    public var environmentTransformer: AgentEnvironmentTransformer<TFeature> =
+    private var _environmentTransformer: AgentEnvironmentTransformer<TFeature> =
         AgentEnvironmentTransformer { _, it -> it }
 
     /**
@@ -29,7 +29,7 @@ public class AgentHandler<TFeature : Any>(public val feature: TFeature) {
      * The handler is triggered with the context of the agent start process.
      * It is intended to allow for feature-specific setup or preparation.
      */
-    public var beforeAgentStartedHandler: BeforeAgentStartedHandler<TFeature> =
+    private var _onBeforeAgentStartedHandler: BeforeAgentStartedHandler<TFeature> =
         BeforeAgentStartedHandler { _ -> }
 
     /**
@@ -41,14 +41,14 @@ public class AgentHandler<TFeature : Any>(public val feature: TFeature) {
      * providing a suspendable function that takes the strategy name and an
      * optional result of the execution.
      */
-    public var agentFinishedHandler: AgentFinishedHandler =
+    private var _agentFinishedHandler: AgentFinishedHandler =
         AgentFinishedHandler { _ -> }
 
     /**
      * A handler invoked when an error occurs during an agent's execution.
      * This handler allows custom logic to be executed in response to execution errors.
      */
-    public var agentRunErrorHandler: AgentRunErrorHandler =
+    private var _agentRunErrorHandler: AgentRunErrorHandler =
         AgentRunErrorHandler { _ -> }
 
     /**
@@ -61,8 +61,30 @@ public class AgentHandler<TFeature : Any>(public val feature: TFeature) {
      * Use this handler to implement custom logic, resource cleanup, or other operations that should occur
      * before the agent is terminated or closed.
      */
-    public var agentBeforeCloseHandler: AgentBeforeCloseHandler =
-        AgentBeforeCloseHandler { _ -> }
+    private var _onBeforeAgentCloseHandler: BeforeAgentCloseHandler =
+        BeforeAgentCloseHandler { _ -> }
+
+    /**
+     * Appends a handler called before an agent is closed. This allows for additional behavior
+     * to be executed prior to the agent being closed.
+     */
+    public fun onBeforeAgentClose(handler: suspend (eventContext: AgentBeforeCloseContext) -> Unit) {
+        val originalHandler = this._onBeforeAgentCloseHandler
+        this._onBeforeAgentCloseHandler = BeforeAgentCloseHandler { eventContext ->
+            originalHandler.handle(eventContext)
+            handler.invoke(eventContext)
+        }
+    }
+
+    /**
+     * Invokes the handler responsible for executing operations before an agent is closed.
+     *
+     * @param eventContext The context containing information about the agent that is about to be closed,
+     *                     including its identifier.
+     */
+    public suspend fun invokeOnBeforeAgentCloseHandler(eventContext: AgentBeforeCloseContext) {
+        _onBeforeAgentCloseHandler.handle(eventContext)
+    }
 
     /**
      * Transforms the provided AgentEnvironment using the configured environment transformer.
@@ -73,7 +95,7 @@ public class AgentHandler<TFeature : Any>(public val feature: TFeature) {
         context: AgentTransformEnvironmentContext<TFeature>,
         environment: AIAgentEnvironment
     ): AIAgentEnvironment =
-        environmentTransformer.transform(context, environment)
+        _environmentTransformer.transform(context, environment)
 
     /**
      * Transforms the provided AgentEnvironment using the configured environment transformer.
@@ -226,7 +248,7 @@ public class AgentCreateContext<FeatureT>(
  *
  * @see AgentBeforeCloseContext
  */
-public fun interface AgentBeforeCloseHandler {
+public fun interface BeforeAgentCloseHandler {
     /**
      * Handles an event that occurs before an agent is closed, allowing for any necessary
      * pre-termination or cleanup operations to be executed.

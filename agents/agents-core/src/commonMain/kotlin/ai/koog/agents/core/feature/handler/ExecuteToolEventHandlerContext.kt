@@ -7,7 +7,7 @@ import ai.koog.agents.core.tools.ToolResult
 /**
  * Represents the context for handling tool-specific events within the framework.
  */
-public interface ToolEventHandlerContext : EventHandlerContext
+public interface ToolEventHandlerContext : AgentEventHandlerContext
 
 /**
  * Represents the context for handling a tool call event.

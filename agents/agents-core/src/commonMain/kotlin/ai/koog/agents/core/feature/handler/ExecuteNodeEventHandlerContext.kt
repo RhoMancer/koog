@@ -7,7 +7,7 @@ import kotlin.reflect.KType
 /**
  * Represents the context for handling node-specific events within the framework.
  */
-public interface NodeEventHandlerContext : EventHandlerContext
+public interface NodeEventHandlerContext : AgentEventHandlerContext
 
 /**
  * Represents the context for handling a before node execution event.

@@ -8,7 +8,7 @@ import kotlin.reflect.KType
  * Extends the base event handler context to include functionality and behavior dedicated to managing
  * the lifecycle and operations of strategies associated with AI agents.
  */
-public interface StrategyEventHandlerContext : EventHandlerContext
+public interface StrategyEventHandlerContext : AgentEventHandlerContext
 
 /**
  * Represents the context for updating AI agent strategies during execution.

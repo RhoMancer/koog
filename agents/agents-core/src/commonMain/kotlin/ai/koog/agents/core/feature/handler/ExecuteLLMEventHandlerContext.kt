@@ -9,7 +9,7 @@ import ai.koog.prompt.message.Message
 /**
  * Represents the context for handling LLM-specific events within the framework.
  */
-public interface LLMEventHandlerContext : EventHandlerContext
+public interface LLMEventHandlerContext : AgentEventHandlerContext
 
 /**
  * Represents the context for handling a before LLM call event.

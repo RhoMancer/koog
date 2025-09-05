@@ -36,7 +36,7 @@ class TestEventsCollector {
             )
         }
 
-        onAgentBeforeClose { eventContext ->
+        onBeforeAgentClose { eventContext ->
             _collectedEvents.add("OnAgentBeforeClose (agent id: ${eventContext.agentId})")
         }
 
