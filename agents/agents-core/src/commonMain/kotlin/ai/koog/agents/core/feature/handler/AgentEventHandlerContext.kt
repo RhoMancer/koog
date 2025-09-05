@@ -80,4 +80,4 @@ public data class AgentRunErrorContext(
  */
 public data class AgentBeforeCloseContext(
     val agentId: String,
-)
+) : AgentEventHandlerContext

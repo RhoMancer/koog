@@ -535,7 +535,7 @@ public class AIAgentPipeline {
      * This method registers a transformer function that will be called when an agent environment
      * is being created, allowing the feature to customize the environment based on the agent context.
      *
-     * @param context The context of the feature being intercepted, providing access to the feature key and implementation
+     * @param interceptContext The context of the feature being intercepted, providing access to the feature key and implementation
      * @param transform A function that transforms the environment, with access to the agent creation context
      *
      * Example:
@@ -549,15 +549,20 @@ public class AIAgentPipeline {
      * ```
      */
     public fun <TFeature : Any> interceptEnvironmentCreated(
-        context: InterceptContext<TFeature>,
+        interceptContext: InterceptContext<TFeature>,
         transform: AgentTransformEnvironmentContext<TFeature>.(AIAgentEnvironment) -> AIAgentEnvironment
     ) {
         @Suppress("UNCHECKED_CAST")
         val existingHandler: AgentHandler<TFeature> =
-            agentHandlers.getOrPut(context.feature.key) { AgentHandler(context.featureImpl) } as? AgentHandler<TFeature>
+            agentHandlers.getOrPut(interceptContext.feature.key) { AgentHandler(interceptContext.featureImpl) } as? AgentHandler<TFeature>
                 ?: return
 
-        existingHandler.environmentTransformer = AgentEnvironmentTransformer { context, env -> context.transform(env) }
+        existingHandler.environmentTransformer = AgentEnvironmentTransformer handler@{ eventContext, env ->
+            if (registeredFeatures[interceptContext.feature.key].isFiltered(eventContext)) {
+                return@handler env
+            }
+            eventContext.transform(env)
+        }
     }
 
     /**
@@ -575,16 +580,19 @@ public class AIAgentPipeline {
      * ```
      */
     public fun <TFeature : Any> interceptBeforeAgentStarted(
-        context: InterceptContext<TFeature>,
+        interceptContext: InterceptContext<TFeature>,
         handle: suspend (AgentStartContext<TFeature>) -> Unit
     ) {
         @Suppress("UNCHECKED_CAST")
         val existingHandler: AgentHandler<TFeature> =
-            agentHandlers.getOrPut(context.feature.key) { AgentHandler(context.featureImpl) } as? AgentHandler<TFeature>
+            agentHandlers.getOrPut(interceptContext.feature.key) { AgentHandler(interceptContext.featureImpl) } as? AgentHandler<TFeature>
                 ?: return
 
-        existingHandler.beforeAgentStartedHandler = BeforeAgentStartedHandler { context ->
-            handle(context)
+        existingHandler.beforeAgentStartedHandler = BeforeAgentStartedHandler handler@{ eventContext: AgentStartContext<TFeature> ->
+            if (registeredFeatures[interceptContext.feature.key].isFiltered(eventContext)) {
+                return@handler
+            }
+            handle(eventContext)
         }
     }
 
@@ -601,13 +609,16 @@ public class AIAgentPipeline {
      * ```
      */
     public fun <TFeature : Any> interceptAgentFinished(
-        context: InterceptContext<TFeature>,
+        interceptContext: InterceptContext<TFeature>,
         handle: suspend TFeature.(eventContext: AgentFinishedContext) -> Unit
     ) {
-        val existingHandler = agentHandlers.getOrPut(context.feature.key) { AgentHandler(context.featureImpl) }
+        val existingHandler = agentHandlers.getOrPut(interceptContext.feature.key) { AgentHandler(interceptContext.featureImpl) }
 
-        existingHandler.agentFinishedHandler = AgentFinishedHandler { eventContext ->
-            with(context.featureImpl) { handle(eventContext) }
+        existingHandler.agentFinishedHandler = AgentFinishedHandler handler@{ eventContext: AgentFinishedContext ->
+            if (registeredFeatures[interceptContext.feature.key].isFiltered(eventContext)) {
+                return@handler
+            }
+            with(interceptContext.featureImpl) { handle(eventContext) }
         }
     }
 
@@ -624,13 +635,16 @@ public class AIAgentPipeline {
      * ```
      */
     public fun <TFeature : Any> interceptAgentRunError(
-        context: InterceptContext<TFeature>,
+        interceptContext: InterceptContext<TFeature>,
         handle: suspend TFeature.(eventContext: AgentRunErrorContext) -> Unit
     ) {
-        val existingHandler = agentHandlers.getOrPut(context.feature.key) { AgentHandler(context.featureImpl) }
+        val existingHandler = agentHandlers.getOrPut(interceptContext.feature.key) { AgentHandler(interceptContext.featureImpl) }
 
-        existingHandler.agentRunErrorHandler = AgentRunErrorHandler { eventContext ->
-            with(context.featureImpl) { handle(eventContext) }
+        existingHandler.agentRunErrorHandler = AgentRunErrorHandler handler@{ eventContext: AgentRunErrorContext ->
+            if (registeredFeatures[interceptContext.feature.key].isFiltered(eventContext)) {
+                return@handler
+            }
+            with(interceptContext.featureImpl) { handle(eventContext) }
         }
     }
 
@@ -638,7 +652,7 @@ public class AIAgentPipeline {
      * Intercepts and sets a handler to be invoked before an agent is closed.
      *
      * @param TFeature The type of feature this handler is associated with.
-     * @param context The context containing details about the feature and its implementation.
+     * @param interceptContext The context containing details about the feature and its implementation.
      * @param handle A suspendable function that is executed during the agent's pre-close phase.
      *                The function receives the feature instance and the event context as parameters.
      *
@@ -650,13 +664,16 @@ public class AIAgentPipeline {
      * ```
      */
     public fun <TFeature : Any> interceptAgentBeforeClosed(
-        context: InterceptContext<TFeature>,
+        interceptContext: InterceptContext<TFeature>,
         handle: suspend TFeature.(eventContext: AgentBeforeCloseContext) -> Unit
     ) {
-        val existingHandler = agentHandlers.getOrPut(context.feature.key) { AgentHandler(context.featureImpl) }
+        val existingHandler = agentHandlers.getOrPut(interceptContext.feature.key) { AgentHandler(interceptContext.featureImpl) }
 
-        existingHandler.agentBeforeCloseHandler = AgentBeforeCloseHandler { eventContext ->
-            with(context.featureImpl) { handle(eventContext) }
+        existingHandler.agentBeforeCloseHandler = AgentBeforeCloseHandler handler@{ eventContext: AgentBeforeCloseContext ->
+            if (registeredFeatures[interceptContext.feature.key].isFiltered(eventContext)) {
+                return@handler
+            }
+            with(interceptContext.featureImpl) { handle(eventContext) }
         }
     }
 
@@ -674,22 +691,25 @@ public class AIAgentPipeline {
      * ```
      */
     public fun <TFeature : Any> interceptStrategyStarted(
-        context: InterceptContext<TFeature>,
+        interceptContext: InterceptContext<TFeature>,
         handle: suspend (StrategyStartContext<TFeature>) -> Unit
     ) {
         val existingHandler = strategyHandlers
-            .getOrPut(context.feature.key) { StrategyHandler(context.featureImpl) }
+            .getOrPut(interceptContext.feature.key) { StrategyHandler(interceptContext.featureImpl) }
 
         @Suppress("UNCHECKED_CAST")
         if (existingHandler as? StrategyHandler<TFeature> == null) {
             logger.debug {
-                "Expected to get an agent handler for feature of type <${context.featureImpl::class}>, but get a handler of type <${context.feature.key}> instead. " +
+                "Expected to get an agent handler for feature of type <${interceptContext.featureImpl::class}>, but get a handler of type <${interceptContext.feature.key}> instead. " +
                     "Skipping adding strategy started interceptor for feature."
             }
             return
         }
 
-        existingHandler.strategyStartedHandler = StrategyStartedHandler { eventContext ->
+        existingHandler.strategyStartedHandler = StrategyStartedHandler handler@{ eventContext ->
+            if (registeredFeatures[interceptContext.feature.key].isFiltered(eventContext)) {
+                return@handler
+            }
             handle(eventContext)
         }
     }
@@ -708,21 +728,25 @@ public class AIAgentPipeline {
      * ```
      */
     public fun <TFeature : Any> interceptStrategyFinished(
-        context: InterceptContext<TFeature>,
+        interceptContext: InterceptContext<TFeature>,
         handle: suspend (StrategyFinishContext<TFeature>) -> Unit
     ) {
-        val existingHandler = strategyHandlers.getOrPut(context.feature.key) { StrategyHandler(context.featureImpl) }
+        val existingHandler = strategyHandlers.getOrPut(interceptContext.feature.key) { StrategyHandler(interceptContext.featureImpl) }
 
         @Suppress("UNCHECKED_CAST")
         if (existingHandler as? StrategyHandler<TFeature> == null) {
             logger.debug {
-                "Expected to get an agent handler for feature of type <${context.featureImpl::class}>, but get a handler of type <${context.feature.key}> instead. " +
+                "Expected to get an agent handler for feature of type <${interceptContext.featureImpl::class}>, " +
+                    "but get a handler of type <${interceptContext.feature.key}> instead. " +
                     "Skipping adding strategy finished interceptor for feature."
             }
             return
         }
 
-        existingHandler.strategyFinishedHandler = StrategyFinishedHandler { eventContext ->
+        existingHandler.strategyFinishedHandler = StrategyFinishedHandler handler@{ eventContext ->
+            if (registeredFeatures[interceptContext.feature.key].isFiltered(eventContext)) {
+                return@handler
+            }
             handle(eventContext)
         }
     }
@@ -745,7 +769,10 @@ public class AIAgentPipeline {
     ) {
         val existingHandler = executeNodeHandlers.getOrPut(interceptContext.feature.key) { ExecuteNodeHandler() }
 
-        existingHandler.beforeNodeHandler = BeforeNodeHandler { eventContext: NodeBeforeExecuteContext ->
+        existingHandler.beforeNodeHandler = BeforeNodeHandler handler@{ eventContext: NodeBeforeExecuteContext ->
+            if (registeredFeatures[interceptContext.feature.key].isFiltered(eventContext)) {
+                return@handler
+            }
             with(interceptContext.featureImpl) { handle(eventContext) }
         }
     }
@@ -768,7 +795,10 @@ public class AIAgentPipeline {
     ) {
         val existingHandler = executeNodeHandlers.getOrPut(interceptContext.feature.key) { ExecuteNodeHandler() }
 
-        existingHandler.afterNodeHandler = AfterNodeHandler { eventContext: NodeAfterExecuteContext ->
+        existingHandler.afterNodeHandler = AfterNodeHandler handler@{ eventContext: NodeAfterExecuteContext ->
+            if (registeredFeatures[interceptContext.feature.key].isFiltered(eventContext)) {
+                return@handler
+            }
             with(interceptContext.featureImpl) { handle(eventContext) }
         }
     }
@@ -793,7 +823,10 @@ public class AIAgentPipeline {
         val existingHandler = executeNodeHandlers.getOrPut(interceptContext.feature.key) { ExecuteNodeHandler() }
 
         existingHandler.nodeExecutionErrorHandler =
-            NodeExecutionErrorHandler { eventContext: NodeExecutionErrorContext ->
+            NodeExecutionErrorHandler handler@{ eventContext: NodeExecutionErrorContext ->
+                if (registeredFeatures[interceptContext.feature.key].isFiltered(eventContext)) {
+                    return@handler
+                }
                 with(interceptContext.featureImpl) { handle(eventContext) }
             }
     }
@@ -816,7 +849,10 @@ public class AIAgentPipeline {
     ) {
         val existingHandler = executeLLMHandlers.getOrPut(interceptContext.feature.key) { ExecuteLLMHandler() }
 
-        existingHandler.beforeLLMCallHandler = BeforeLLMCallHandler { eventContext: BeforeLLMCallContext ->
+        existingHandler.beforeLLMCallHandler = BeforeLLMCallHandler handler@{ eventContext: BeforeLLMCallContext ->
+            if (registeredFeatures[interceptContext.feature.key].isFiltered(eventContext)) {
+                return@handler
+            }
             with(interceptContext.featureImpl) { handle(eventContext) }
         }
     }
@@ -839,7 +875,10 @@ public class AIAgentPipeline {
     ) {
         val existingHandler = executeLLMHandlers.getOrPut(interceptContext.feature.key) { ExecuteLLMHandler() }
 
-        existingHandler.afterLLMCallHandler = AfterLLMCallHandler { eventContext: AfterLLMCallContext ->
+        existingHandler.afterLLMCallHandler = AfterLLMCallHandler handler@{ eventContext: AfterLLMCallContext ->
+            if (registeredFeatures[interceptContext.feature.key].isFiltered(eventContext)) {
+                return@handler
+            }
             with(interceptContext.featureImpl) { handle(eventContext) }
         }
     }
@@ -863,8 +902,11 @@ public class AIAgentPipeline {
     ) {
         val existingHandler = executeToolHandlers.getOrPut(interceptContext.feature.key) { ExecuteToolHandler() }
 
-        existingHandler.toolCallHandler = ToolCallHandler { eventHandler: ToolCallContext ->
-            with(interceptContext.featureImpl) { handle(eventHandler) }
+        existingHandler.toolCallHandler = ToolCallHandler handler@{ eventContext: ToolCallContext ->
+            if (registeredFeatures[interceptContext.feature.key].isFiltered(eventContext)) {
+                return@handler
+            }
+            with(interceptContext.featureImpl) { handle(eventContext) }
         }
     }
 
