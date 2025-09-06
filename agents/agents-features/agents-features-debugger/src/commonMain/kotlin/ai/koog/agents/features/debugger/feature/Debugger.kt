@@ -93,7 +93,7 @@ public class Debugger {
                     runId = eventContext.runId,
                     strategyName = eventContext.strategy.name,
                 )
-                writer.processMessage(event)
+                writer.onMessage(event)
             }
 
             pipeline.interceptAgentFinished(interceptContext) intercept@{ eventContext ->
@@ -102,7 +102,7 @@ public class Debugger {
                     runId = eventContext.runId,
                     result = eventContext.result?.toString(),
                 )
-                writer.processMessage(event)
+                writer.onMessage(event)
             }
 
             pipeline.interceptAgentRunError(interceptContext) intercept@{ eventContext ->
@@ -111,14 +111,14 @@ public class Debugger {
                     runId = eventContext.runId,
                     error = eventContext.throwable.toAgentError(),
                 )
-                writer.processMessage(event)
+                writer.onMessage(event)
             }
 
             pipeline.interceptAgentBeforeClosed(interceptContext) intercept@{ eventContext ->
                 val event = AIAgentBeforeCloseEvent(
                     agentId = eventContext.agentId,
                 )
-                writer.processMessage(event)
+                writer.onMessage(event)
             }
 
             //endregion Intercept Agent Events
@@ -130,7 +130,7 @@ public class Debugger {
                     runId = eventContext.runId,
                     strategyName = eventContext.strategy.name,
                 )
-                writer.processMessage(event)
+                writer.onMessage(event)
             }
 
             pipeline.interceptStrategyFinished(interceptContext) intercept@{ eventContext ->
@@ -139,7 +139,7 @@ public class Debugger {
                     strategyName = eventContext.strategy.name,
                     result = eventContext.result?.toString(),
                 )
-                writer.processMessage(event)
+                writer.onMessage(event)
             }
 
             //endregion Intercept Strategy Events
@@ -152,7 +152,7 @@ public class Debugger {
                     nodeName = eventContext.node.name,
                     input = eventContext.input?.toString() ?: ""
                 )
-                writer.processMessage(event)
+                writer.onMessage(event)
             }
 
             pipeline.interceptAfterNode(interceptContext) intercept@{ eventContext ->
@@ -162,7 +162,7 @@ public class Debugger {
                     input = eventContext.input?.toString() ?: "",
                     output = eventContext.output?.toString() ?: ""
                 )
-                writer.processMessage(event)
+                writer.onMessage(event)
             }
 
             //endregion Intercept Node Events
@@ -176,7 +176,7 @@ public class Debugger {
                     model = eventContext.model.eventString,
                     tools = eventContext.tools.map { it.name }
                 )
-                writer.processMessage(event)
+                writer.onMessage(event)
             }
 
             pipeline.interceptAfterLLMCall(interceptContext) intercept@{ eventContext ->
@@ -187,7 +187,7 @@ public class Debugger {
                     responses = eventContext.responses,
                     moderationResponse = eventContext.moderationResponse
                 )
-                writer.processMessage(event)
+                writer.onMessage(event)
             }
 
             //endregion Intercept LLM Call Events
@@ -204,7 +204,7 @@ public class Debugger {
                     toolName = eventContext.tool.name,
                     toolArgs = tool.encodeArgs(eventContext.toolArgs),
                 )
-                writer.processMessage(event)
+                writer.onMessage(event)
             }
 
             pipeline.interceptToolValidationError(interceptContext) intercept@{ eventContext ->
@@ -218,7 +218,7 @@ public class Debugger {
                     toolArgs = tool.encodeArgs(eventContext.toolArgs),
                     error = eventContext.error
                 )
-                writer.processMessage(event)
+                writer.onMessage(event)
             }
 
             pipeline.interceptToolCallFailure(interceptContext) intercept@{ eventContext ->
@@ -232,7 +232,7 @@ public class Debugger {
                     toolArgs = tool.encodeArgs(eventContext.toolArgs),
                     error = eventContext.throwable.toAgentError()
                 )
-                writer.processMessage(event)
+                writer.onMessage(event)
             }
 
             pipeline.interceptToolCallResult(interceptContext) intercept@{ eventContext ->
@@ -246,7 +246,7 @@ public class Debugger {
                     toolArgs = tool.encodeArgs(eventContext.toolArgs),
                     result = eventContext.result?.let { result -> tool.encodeResultToString(result) }
                 )
-                writer.processMessage(event)
+                writer.onMessage(event)
             }
 
             //endregion Intercept Tool Call Events
