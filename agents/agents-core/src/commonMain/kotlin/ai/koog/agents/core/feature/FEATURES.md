@@ -88,6 +88,29 @@ install(TraceFeature) {
 
 The `FeatureMessageProcessor` class contains methods for initialization of a concrete processor instance and properly closing it when finished.
 
+#### Message filtering
+
+FeatureMessageProcessor supports filtering of messages before they reach your processor logic.
+
+- Default behavior: all messages are processed (the filter returns true).
+- You can set a custom filter with setMessageFilter { ... }.
+- The current filter is exposed via the messageFilter property.
+
+Example: only process LLM-related messages
+
+```kotlin
+// Suppose you created your processor instance
+val processor: FeatureMessageProcessor = myFeatureMessageProcessor
+
+// Configure the filter to allow only specific message types
+processor.setMessageFilter { message ->
+    message is LLMCallStartEvent ||
+    message is LLMCallEndEvent
+}
+```
+
+You can update the filter at any time during runtime if your criteria change. The onMessage(message) method applies the current filter and forwards only accepted messages to processMessage(message).
+
 ### Using FeatureMessageFileWriter
 
 For more advanced message processing, you can use `FeatureMessageFileWriter` to write feature messages to files. This abstract class provides functionality to convert and write feature messages to a target file using a specified file system provider.
