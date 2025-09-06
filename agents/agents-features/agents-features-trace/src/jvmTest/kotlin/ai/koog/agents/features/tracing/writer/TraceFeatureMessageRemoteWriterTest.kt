@@ -101,7 +101,6 @@ class TraceFeatureMessageRemoteWriterTest {
 
                 createAgent(strategy = strategy) {
                     install(Tracing) {
-                        messageFilter = { true }
                         addMessageProcessor(writer)
                     }
                 }.use { agent ->
@@ -419,7 +418,6 @@ class TraceFeatureMessageRemoteWriterTest {
 
                     createAgent(strategy = strategy) {
                         install(Tracing) {
-                            messageFilter = { true }
                             addMessageProcessor(testWriter)
                         }
                     }.use { agent ->
@@ -564,7 +562,7 @@ class TraceFeatureMessageRemoteWriterTest {
                     promptExecutor = mockExecutor
                 ) {
                     install(Tracing) {
-                        messageFilter = { message ->
+                        writer.setMessageFilter { message ->
                             message is BeforeLLMCallEvent || message is AfterLLMCallEvent
                         }
                         addMessageProcessor(writer)

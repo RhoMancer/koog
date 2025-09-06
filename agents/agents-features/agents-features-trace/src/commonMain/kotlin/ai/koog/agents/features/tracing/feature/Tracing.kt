@@ -301,10 +301,6 @@ public class Tracing {
         //region Private Methods
 
         private suspend fun processMessage(config: TraceFeatureConfig, message: FeatureMessage) {
-            if (!config.messageFilter(message)) {
-                return
-            }
-
             config.messageProcessors.onMessageForEachSafe(message)
         }
 
