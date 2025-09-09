@@ -37,7 +37,7 @@ open class AgentTestBase {
         }
     }
 
-    protected fun createTestConfig(id: String = "test-config"): AIAgentConfigBase {
+    protected fun createTestConfig(id: String = "test-config"): AIAgentConfig {
         return AIAgentConfig(
             prompt = createTestPrompt(),
             model = OllamaModels.Meta.LLAMA_3_2,
