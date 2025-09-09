@@ -255,7 +255,6 @@ class TraceFeatureMessageRemoteWriterTest {
                     AIAgentStartedEvent(
                         agentId = agentId,
                         runId = runId,
-                        strategyName = strategyName
                     ),
                     AIAgentStrategyStartEvent(
                         runId = runId,

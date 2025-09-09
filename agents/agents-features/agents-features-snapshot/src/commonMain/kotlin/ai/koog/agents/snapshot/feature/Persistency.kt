@@ -98,7 +98,8 @@ public class Persistency(private val persistencyStorageProvider: PersistencyStor
                 return@interceptContextAgentFeature featureImpl
             }
 
-            pipeline.interceptBeforeAgentStarted(interceptContext) { ctx ->
+            pipeline.interceptStrategyStarted(interceptContext) { ctx ->
+                val strategy = ctx.strategy as 
                 require(ctx.strategy.metadata.uniqueNames) {
                     "Checkpoint feature requires unique node names in the strategy metadata"
                 }
@@ -109,6 +110,10 @@ public class Persistency(private val persistencyStorageProvider: PersistencyStor
                 } else {
                     logger.info { "No checkpoint found, starting from the beginning" }
                 }
+            }
+
+            pipeline.interceptBeforeAgentStarted(interceptContext) { ctx ->
+                r
             }
 
             pipeline.interceptAfterNode(interceptContext) { eventCtx ->
