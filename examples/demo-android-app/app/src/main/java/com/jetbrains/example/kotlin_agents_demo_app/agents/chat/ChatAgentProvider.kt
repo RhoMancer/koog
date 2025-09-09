@@ -7,7 +7,6 @@ import ai.koog.agents.core.dsl.builder.strategy
 import ai.koog.agents.core.dsl.extension.nodeLLMRequest
 import ai.koog.agents.core.dsl.extension.onAssistantMessage
 import ai.koog.agents.core.dsl.extension.onToolCall
-import ai.koog.agents.core.tools.Tool
 import ai.koog.agents.core.tools.ToolRegistry
 import ai.koog.agents.features.eventHandler.feature.handleEvents
 import ai.koog.prompt.dsl.prompt
@@ -22,7 +21,6 @@ import com.jetbrains.example.kotlin_agents_demo_app.agents.local.AndroidLocalLLM
 import com.jetbrains.example.kotlin_agents_demo_app.agents.local.AndroidLocalModels
 import com.jetbrains.example.kotlin_agents_demo_app.settings.AppSettings
 import kotlin.uuid.ExperimentalUuidApi
-import kotlin.uuid.Uuid
 
 /**
  * Factory for creating chat agents
@@ -37,7 +35,7 @@ object ChatAgentProvider : AgentProvider {
         onToolCallEvent: suspend (String) -> Unit,
         onErrorEvent: suspend (String) -> Unit,
         onAssistantMessage: suspend (String) -> String,
-    ): AIAgent {
+    ): AIAgent<String, String> {
         val executor = MultiLLMPromptExecutor(
             LLMProvider.OpenAI to OpenAILLMClient(appSettings.getCurrentSettings().openAiToken),
             LLMProvider.Anthropic to AnthropicLLMClient(appSettings.getCurrentSettings().anthropicToken),
@@ -97,15 +95,15 @@ object ChatAgentProvider : AgentProvider {
             toolRegistry = toolRegistry,
         ) {
             handleEvents {
-                onToolCall { tool: Tool<*, *>, toolArgs: Tool.Args ->
-                    onToolCallEvent("Tool ${tool.name}, args $toolArgs")
+                onToolCall { ctx ->
+                    onToolCallEvent("Tool ${ctx.tool.name}, args ${ctx.toolArgs}")
                 }
 
-                onAgentRunError { strategyName: String, sessionUuid: Uuid?, throwable: Throwable ->
-                    onErrorEvent("${throwable.message}")
+                onAgentRunError { ctx ->
+                    onErrorEvent("${ctx.throwable.message}")
                 }
 
-                onAgentFinished { strategyName: String, result: String? ->
+                onAgentFinished { ctx ->
                     // Skip finish event handling
                 }
             }
