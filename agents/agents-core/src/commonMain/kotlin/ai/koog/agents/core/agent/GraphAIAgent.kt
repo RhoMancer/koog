@@ -56,7 +56,7 @@ public open class GraphAIAgent<Input, Output>(
     public val inputType: KType,
     public val outputType: KType,
     public val promptExecutor: PromptExecutor,
-    public val agentConfig: AIAgentConfigBase,
+    override val agentConfig: AIAgentConfigBase,
     public val toolRegistry: ToolRegistry = ToolRegistry.EMPTY,
     private val strategy: AIAgentGraphStrategy<Input, Output>,
     id: String? = null,
@@ -169,10 +169,9 @@ public open class GraphAIAgent<Input, Output>(
 
             logger.debug { formatLog(agentId = this@GraphAIAgent.id, runId = runId, message = "Starting agent execution") }
 
-            pipeline.onBeforeAgentStarted(
+            pipeline.onBeforeAgentStarted<Input, Output>(
                 runId = runId,
                 agent = this@GraphAIAgent,
-                strategy = strategy,
                 context = agentContext
             )
 
