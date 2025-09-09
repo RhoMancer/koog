@@ -76,7 +76,7 @@ open class AgentTestBase {
 
     protected open fun createTestContext(
         environment: AIAgentEnvironment = createTestEnvironment(),
-        config: AIAgentConfigBase = createTestConfig(),
+        config: AIAgentConfig = createTestConfig(),
         llmContext: AIAgentLLMContext = createTestLLMContext(),
         stateManager: AIAgentStateManager = createTestStateManager(),
         storage: AIAgentStorage = createTestStorage(),

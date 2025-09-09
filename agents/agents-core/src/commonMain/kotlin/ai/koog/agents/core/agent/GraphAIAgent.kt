@@ -175,15 +175,8 @@ public open class GraphAIAgent<Input, Output>(
                 context = agentContext
             )
 
-            setExecutionPointIfNeeded(agentContext)
-
             val result = try {
-                var strategyResult = strategy.execute(context = agentContext, input = agentInput)
-                while (strategyResult == null && agentContext.getAgentContextData() != null) {
-                    setExecutionPointIfNeeded(agentContext)
-                    strategyResult = strategy.execute(context = agentContext, input = agentInput)
-                }
-                strategyResult
+                strategy.execute(context = agentContext, input = agentInput)
             } catch (e: Throwable) {
                 logger.error(e) { "Execution exception reported by server!" }
                 pipeline.onAgentRunError(agentId = this@GraphAIAgent.id, runId = runId, throwable = e)
@@ -199,23 +192,6 @@ public open class GraphAIAgent<Input, Output>(
 
             return@withContext result ?: error("result is null")
         }
-    }
-
-    private suspend fun setExecutionPointIfNeeded(
-        agentContext: AIAgentGraphContext
-    ) {
-        val additionalContextData = agentContext.getAgentContextData() ?: return
-
-        additionalContextData.let { contextData ->
-            val nodeId = contextData.nodeId
-            strategy.setExecutionPoint(nodeId, contextData.lastInput)
-            val messages = contextData.messageHistory
-            agentContext.llm.withPrompt {
-                this.withMessages { (messages).sortedBy { m -> m.metaInfo.timestamp } }
-            }
-        }
-
-        agentContext.removeAgentContextData()
     }
 
     override suspend fun close() {
