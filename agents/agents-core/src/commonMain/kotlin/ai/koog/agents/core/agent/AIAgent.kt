@@ -95,11 +95,13 @@ public open class AIAgent<Input, Output>(
     public val promptExecutor: PromptExecutor,
     private val strategy: AIAgentStrategy<Input, Output>,
     public val agentConfig: AIAgentConfigBase,
-    override val id: String = Uuid.random().toString(),
+    id: String? = null, // If null, ID will be initialized as a random UUID lazily
     public val toolRegistry: ToolRegistry = ToolRegistry.EMPTY,
     public val clock: Clock = Clock.System,
     private val installFeatures: FeatureContext.() -> Unit = {},
 ) : AIAgentBase<Input, Output>, AIAgentEnvironment, Closeable {
+
+    override val id: String by lazy { id ?: Uuid.random().toString() }
 
     private companion object {
         private val logger = KotlinLogging.logger {}
@@ -457,7 +459,7 @@ public inline fun <reified Input, reified Output> AIAgent(
     promptExecutor: PromptExecutor,
     strategy: AIAgentStrategy<Input, Output>,
     agentConfig: AIAgentConfigBase,
-    id: String = Uuid.random().toString(),
+    id: String? = null, // If null, ID will be initialized as a random UUID lazily
     toolRegistry: ToolRegistry = ToolRegistry.EMPTY,
     clock: Clock = Clock.System,
     noinline installFeatures: FeatureContext.() -> Unit = {},
@@ -491,7 +493,7 @@ public inline fun <reified Input, reified Output> AIAgent(
 public fun AIAgent(
     executor: PromptExecutor,
     llmModel: LLModel,
-    id: String = Uuid.random().toString(),
+    id: String? = null, // If null, ID will be initialized as a random UUID lazily
     strategy: AIAgentStrategy<String, String> = singleRunStrategy(),
     systemPrompt: String = "",
     temperature: Double = 1.0,
