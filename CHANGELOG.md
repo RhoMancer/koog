@@ -1,3 +1,46 @@
+# 0.4.2
+
+> Published 12 Sep 2025
+
+## Features
+
+- Add Claude Opus 4.1 model support to Anthropic client to unlock latest reasoning capabilities (#730).
+- Add Gemini 2.5 Flash Lite model support to Google client to enable lower‑latency, cost‑efficient generations (#769).
+- Add Java‑compatible non‑streaming Prompt Executor so Java apps can call Koog without coroutines ([KG-312](https://youtrack.jetbrains.com/issue/KG-312), #715).
+- Add tool calling support for Bedrock Nova models so agents can invoke functions when using Nova ([KG-239](https://youtrack.jetbrains.com/issue/KG-239)).
+- Introduce EditFileTool and file system tools for agents:
+  - New EditFileTool to apply in‑place edits to files (#689).
+  - Tool to list directories for safe, discoverable browsing (#733).
+  - Tool to write files to disk when permitted (#740).
+- Add Android target support and migrate Android app to Kotlin Multiplatform to widen KMP coverage ([KG-315](https://youtrack.jetbrains.com/issue/KG-315), #728, #767).
+- Add Spring Boot Java example to jump‑start integration (#739).
+- Introduce Postgres persistence provider to store agent state and artifacts (#705).
+
+## Improvements
+
+- Make agents‑mcp support KMP targets to run across more platforms (#756).
+- Add LLM client retry support to Spring Boot auto‑configuration to improve resilience on transient failures (#748).
+- Support excluding properties in JSON Schema generation to fine‑tune structured outputs (#638).
+- Update Kotlin to 2.2.10 in dependency configuration for improved performance and language features (#764).
+- Decouple FileSystemEntry from FileSystemProvider to simplify testing and enable alternative providers (#664).
+- Refactor executeStreaming to remove suspend for simpler interop and better call sites (#720).
+- Add Java Spring auto‑config fixes: correct property binding and make Koog starter work out of the box (#698).
+- Fix split package issues in OpenAI LLM clients to avoid classpath/load errors ([KG-305](https://youtrack.jetbrains.com/issue/KG-305), #694).
+- Add Java‑compatible prompt executor (non‑streaming) wiring and polish across modules ([KG-312](https://youtrack.jetbrains.com/issue/KG-312), #715).
+- Update AWS SDK to latest compatible version for Bedrock integrations (no API changes).
+
+## Bug Fixes
+
+- Ensure Anthropic tool schemas include the required "type" field in serialized request bodies to prevent validation errors during tool calling (#582).
+- Fix AbstractOpenAILLMClient to correctly handle plain‑text responses in capabilities flow; add integration tests to prevent regressions (#564).
+- Fix GraalVM native image build failure so projects can compile native binaries again (#774).
+- Fix usages in OpenAI‑based data model to align with recent API changes (#688).
+
+## CI and Build
+
+- Nightly build configuration improvements and dependency submission workflow added (#695, #737).
+- Qodana action updated to v2025.2 with caching on default branch (#724).
+
 # 0.4.1
 
 > Published 28 Aug 2025

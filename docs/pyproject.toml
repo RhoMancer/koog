@@ -1,7 +1,7 @@
 [project]
 name = "koog-docs"
 # keep it synced with Koog version
-version = "0.4.1"
+version = "0.4.2"
 requires-python = ">=3.12"
 dependencies = [
     "mkdocs-material==9.6.19",
