@@ -92,6 +92,7 @@ object MessageConverter {
                     jsonElement.doubleOrNull != null -> Value.newBuilder()
                         .setNumberValue(jsonElement.double).build()
 
+                    // TODO(Support other types)
                     else -> Value.newBuilder().setStringValue(jsonElement.content).build()
                 }
             }

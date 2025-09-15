@@ -14,6 +14,8 @@ fun getFormatterByModelId(modelId: String): ModelFormatter {
         Chat.Hammer.id -> HammerFormatter()
         Chat.Gemma.id -> GemmaFormatter()
         Chat.Llama.id -> LlamaFormatter()
+        // TODO(Fix chat)
+        Chat.Qwen.id -> LlamaFormatter()
         else -> throw IllegalArgumentException("Unknown model id: $modelId")
     }
 }
@@ -51,6 +53,19 @@ object AndroidLocalModels : LLModelDefinitions {
         val Llama: LLModel = LLModel(
             provider = AndroidLocalLLMProvider,
             id = "Llama-3.2-1B-Instruct_multi-prefill-seq_q8_ekv1280",
+            contextLength = 2048,
+            capabilities = listOf(
+                LLMCapability.Tools,
+                LLMCapability.Completion
+            )
+        )
+
+        /**
+         * https://huggingface.co/litert-community/Qwen2.5-1.5B-Instruct
+         */
+        val Qwen: LLModel = LLModel(
+            provider = AndroidLocalLLMProvider,
+            id = "Qwen2.5-1.5B-Instruct_seq128_q8_ekv4096",
             contextLength = 2048,
             capabilities = listOf(
                 LLMCapability.Tools,

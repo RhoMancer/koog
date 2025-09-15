@@ -41,13 +41,13 @@ object ChatAgentProvider : AgentProvider {
             LLMProvider.Anthropic to AnthropicLLMClient(appSettings.getCurrentSettings().anthropicToken),
             AndroidLocalLLMProvider to AndroidLLocalLLMClient(
                 appSettings.getContext(),
-                "data/local/tmp/llm"
+                "/data/local/tmp/llm"
             )
         )
 
         // Create tool registry with just the exit tool
         val toolRegistry = ToolRegistry {
-            tool(ExitTool)
+//            tool(ExitTool)
         }
 
         val strategy = strategy(title) {
@@ -83,7 +83,7 @@ object ChatAgentProvider : AgentProvider {
                     """.trimIndent()
                 )
             },
-            model = AndroidLocalModels.Chat.Llama,
+            model = AndroidLocalModels.Chat.Gemma,
             maxAgentIterations = 50
         )
 
