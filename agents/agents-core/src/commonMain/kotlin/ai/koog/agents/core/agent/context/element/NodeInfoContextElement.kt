@@ -1,5 +1,6 @@
 package ai.koog.agents.core.agent.context.element
 
+import ai.koog.agents.core.annotation.InternalAgentsApi
 import kotlinx.coroutines.currentCoroutineContext
 import kotlin.coroutines.CoroutineContext
 
@@ -30,5 +31,9 @@ public data class NodeInfoContextElement(val nodeName: String) : CoroutineContex
  *
  * @return The `NodeInfoContextElement` if it exists in the current coroutine context, or `null` if not found.
  */
-public suspend fun CoroutineContext.getNodeInfoElement(): NodeInfoContextElement? =
+@InternalAgentsApi
+public suspend fun CoroutineContext.getNodeInfoElementOrThrow(): NodeInfoContextElement =
     currentCoroutineContext()[NodeInfoContextElement.Key]
+        ?: error("Unable to retrieve NodeInfoContextElement from CoroutineContext. " +
+            "Please make sure the NodeInfoContextElement is added to the current CoroutineContext."
+        )
