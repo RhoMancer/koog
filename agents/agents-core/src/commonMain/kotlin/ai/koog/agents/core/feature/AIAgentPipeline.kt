@@ -151,13 +151,25 @@ public abstract class AIAgentPipeline(public val clock: Clock) {
     }
 
     /**
+     * Clears all registered stream handlers to prevent memory leaks.
+     *
+     * This method should be called when features are removed or when the pipeline is being shut down
+     * to ensure that stream handlers don't retain references to feature implementations.
+     */
+    internal fun clearStreamHandlers() {
+        streamHandlers.clear()
+    }
+
+    /**
      * Closes all feature stream providers.
      *
      * This internal method properly shuts down all message processors of registered features,
      * ensuring resources are released appropriately.
      */
     internal suspend fun closeFeaturesStreamProviders() {
-        registeredFeatures.values.forEach { config -> config.messageProcessors.forEach { provider -> provider.close() } }
+        registeredFeatures.values.forEach { config ->
+            config.messageProcessors.forEach { provider -> provider.close() }
+        }
     }
 
     //region Trigger Agent Handlers
@@ -294,8 +306,13 @@ public abstract class AIAgentPipeline(public val clock: Clock) {
     public suspend fun onAgentBeforeClosed(
         agentId: String
     ) {
-        val eventContext = AgentBeforeCloseContext(agentId = agentId)
-        agentHandlers.values.forEach { handler -> handler.agentBeforeCloseHandler.handle(eventContext) }
+        try {
+            val eventContext = AgentBeforeCloseContext(agentId = agentId)
+            agentHandlers.values.forEach { handler -> handler.agentBeforeCloseHandler.handle(eventContext) }
+        } finally {
+            // Clear stream handlers to prevent memory leaks
+            clearStreamHandlers()
+        }
     }
 
     /**
@@ -507,7 +524,8 @@ public abstract class AIAgentPipeline(public val clock: Clock) {
      * This method registers a transformer function that will be called when an agent environment
      * is being created, allowing the feature to customize the environment based on the agent context.
      *
-     * @param context The context of the feature being intercepted, providing access to the feature key and implementation
+     * @param context The context of the feature being intercepted, providing access
+     *      to the feature key and implementation
      * @param transform A function that transforms the environment, with access to the agent creation context
      *
      * Example:
@@ -655,7 +673,8 @@ public abstract class AIAgentPipeline(public val clock: Clock) {
         @Suppress("UNCHECKED_CAST")
         if (existingHandler as? StrategyHandler<TFeature> == null) {
             logger.debug {
-                "Expected to get an agent handler for feature of type <${context.featureImpl::class}>, but get a handler of type <${context.feature.key}> instead. " +
+                "Expected to get an agent handler for feature of type <${context.featureImpl::class}>, " +
+                    "but get a handler of type <${context.feature.key}> instead. " +
                     "Skipping adding strategy started interceptor for feature."
             }
             return
@@ -688,7 +707,8 @@ public abstract class AIAgentPipeline(public val clock: Clock) {
         @Suppress("UNCHECKED_CAST")
         if (existingHandler as? StrategyHandler<TFeature> == null) {
             logger.debug {
-                "Expected to get an agent handler for feature of type <${context.featureImpl::class}>, but get a handler of type <${context.feature.key}> instead. " +
+                "Expected to get an agent handler for feature of type <${context.featureImpl::class}>, " +
+                    "but get a handler of type <${context.feature.key}> instead. " +
                     "Skipping adding strategy finished interceptor for feature."
             }
             return
@@ -847,7 +867,8 @@ public abstract class AIAgentPipeline(public val clock: Clock) {
      * Intercepts and handles tool calls for the specified feature and its implementation.
      * Updates the tool call handler for the given feature key with a custom handler.
      *
-     * @param handle A suspend lambda function that processes tool calls, taking the tool, and its arguments as parameters.
+     * @param handle A suspend lambda function that processes tool calls, taking the tool,
+     *  and its arguments as parameters.
      *
      * Example:
      * ```
@@ -871,7 +892,8 @@ public abstract class AIAgentPipeline(public val clock: Clock) {
      * Intercepts validation errors encountered during the execution of tools associated with the specified feature.
      *
      * @param handle A suspendable lambda function that will be invoked when a tool validation error occurs.
-     *        The lambda provides the tool's stage, tool instance, tool arguments, and the value that caused the validation error.
+     *        The lambda provides the tool's stage, tool instance, tool arguments,
+     *        and the value that caused the validation error.
      *
      * Example:
      * ```

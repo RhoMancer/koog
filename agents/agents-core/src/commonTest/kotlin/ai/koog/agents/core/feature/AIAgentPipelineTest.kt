@@ -6,12 +6,15 @@ import ai.koog.agents.core.agent.AIAgent
 import ai.koog.agents.core.agent.GraphAIAgent.FeatureContext
 import ai.koog.agents.core.agent.config.AIAgentConfig
 import ai.koog.agents.core.agent.entity.AIAgentGraphStrategy
+import ai.koog.agents.core.agent.entity.createStorageKey
 import ai.koog.agents.core.dsl.builder.forwardTo
 import ai.koog.agents.core.dsl.builder.strategy
 import ai.koog.agents.core.dsl.extension.nodeDoNothing
 import ai.koog.agents.core.dsl.extension.nodeExecuteTool
 import ai.koog.agents.core.dsl.extension.nodeLLMRequest
 import ai.koog.agents.core.dsl.extension.onToolCall
+import ai.koog.agents.core.feature.config.FeatureConfig
+import ai.koog.agents.core.tools.ToolDescriptor
 import ai.koog.agents.core.tools.ToolRegistry
 import ai.koog.agents.testing.tools.DummyTool
 import ai.koog.agents.testing.tools.getMockExecutor
@@ -30,6 +33,59 @@ import kotlin.test.assertEquals
 import kotlin.test.assertFails
 
 class AIAgentPipelineTest {
+
+    @Test
+    fun `clearStreamHandlers removes handlers onAgentBeforeClosed`() = runTest {
+        // Arrange: create a pipeline and a dummy feature with stream and before-close handlers
+        val pipeline = AIAgentGraphPipeline(clock = testClock)
+
+        class DummyFeatureImpl {
+            var beforeStreamCount = 0
+            var beforeCloseCount = 0
+        }
+
+        class DummyConfig : FeatureConfig()
+
+        val dummyFeature = object : AIAgentFeature<DummyConfig, DummyFeatureImpl> {
+            override val key = createStorageKey<DummyFeatureImpl>("dummy-test-feature")
+            override fun createInitialConfig(): DummyConfig = DummyConfig()
+        }
+
+        val impl = DummyFeatureImpl()
+        val interceptContext = InterceptContext(dummyFeature, impl)
+
+        // Register a before-stream interceptor that increments the counter
+        pipeline.interceptBeforeStream(interceptContext) { impl.beforeStreamCount++ }
+        // Also register a before-close interceptor to ensure it is invoked
+        pipeline.interceptAgentBeforeClosed(interceptContext) { impl.beforeCloseCount++ }
+
+        val prompt = prompt(id = "test", clock = testClock) { user("hi") }
+        val model = OllamaModels.Meta.LLAMA_3_2
+        val tools = emptyList<ToolDescriptor>()
+
+        // Act: trigger a before-stream event -> should be handled
+        pipeline.onBeforeStream(runId = "run-1", prompt = prompt, model = model, tools = tools)
+
+        // Sanity check: handler was called
+        assertEquals(1, impl.beforeStreamCount, "beforeStream should be invoked once before close")
+        assertEquals(0, impl.beforeCloseCount, "beforeClose should not be invoked yet")
+
+        // Act: close the agent (which should clear stream handlers)
+        pipeline.onAgentBeforeClosed(agentId = "agent-1")
+
+        // Assert: agent before close handler executed once
+        assertEquals(1, impl.beforeCloseCount, "beforeClose should be invoked exactly once")
+
+        // Act: trigger before-stream again after close -> should not be handled because handlers are cleared
+        pipeline.onBeforeStream(runId = "run-2", prompt = prompt, model = model, tools = tools)
+
+        // Assert: count unchanged after close
+        assertEquals(
+            expected = 1,
+            actual = impl.beforeStreamCount,
+            message = "beforeStream should NOT be invoked after handlers are cleared on close"
+        )
+    }
 
     @Test
     @JsName("testPipelineInterceptorsForNodeEvents")
@@ -113,7 +169,8 @@ class AIAgentPipelineTest {
         assertContentEquals(expectedEvents, actualEvents)
     }
 
-    @Test @JsName("testPipelineInterceptorsForLLmCallEvents")
+    @Test
+    @JsName("testPipelineInterceptorsForLLmCallEvents")
     fun `test pipeline interceptors for llm call events`() = runTest {
         val interceptedEvents = mutableListOf<String>()
 
