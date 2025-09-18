@@ -101,7 +101,7 @@ jobs:
 
       - name: JvmIntegrationTest with Gradle Wrapper
         env:
-          JAVA_OPTS: "-Xms8g -Xmx8g -Dfile.encoding=UTF-8 -Djava.awt.headless=true -Dkotlin.daemon.jvm.options=-Xmx6g"
+          JAVA_OPTS: "-Xms10g -Xmx10g -Dfile.encoding=UTF-8 -Djava.awt.headless=true -Dkotlin.daemon.jvm.options=-Xmx8g"
           ANTHROPIC_API_TEST_KEY: ${{ secrets.ANTHROPIC_API_TEST_KEY }}
           DEEPSEEK_API_TEST_KEY: ${{ secrets.DEEPSEEK_API_TEST_KEY }}
           GEMINI_API_TEST_KEY: ${{ secrets.GEMINI_API_TEST_KEY }}
