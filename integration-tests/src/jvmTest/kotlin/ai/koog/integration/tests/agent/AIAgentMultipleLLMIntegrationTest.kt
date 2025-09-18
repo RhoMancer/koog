@@ -43,6 +43,7 @@ import ai.koog.prompt.llm.LLModel
 import ai.koog.prompt.markdown.markdown
 import ai.koog.prompt.message.Message
 import ai.koog.prompt.params.LLMParams
+import ai.koog.prompt.streaming.StreamFrame
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.channels.Channel
@@ -107,7 +108,11 @@ internal class ReportingLLMLLMClient(
         return underlyingClient.execute(prompt, model, tools)
     }
 
-    override fun executeStreaming(prompt: Prompt, model: LLModel): Flow<String> = flow {
+    override fun executeStreaming(
+        prompt: Prompt,
+        model: LLModel,
+        tools: List<ToolDescriptor>
+    ): Flow<StreamFrame> = flow {
         coroutineScope {
             eventsChannel.send(
                 Event.Message(
@@ -119,7 +124,7 @@ internal class ReportingLLMLLMClient(
                 )
             )
         }
-        underlyingClient.executeStreaming(prompt, model)
+        underlyingClient.executeStreaming(prompt, model, tools)
             .collect(this)
     }
 
