@@ -64,15 +64,15 @@ val agent = AIAgent(
 
 ### Using FeatureMessageProcessor
 
-You can provide a list of `FeatureMessageProcessor` implementations when configuring a feature. These processors can be accessed by the feature configuration. A configuration class should inherit from `FeatureConfig` class to get access to the `messageProcessor` property:
+You can provide a list of `FeatureMessageProcessor` implementations when configuring a feature. These processors can be accessed by the feature configuration. A configuration class should inherit from `FeatureConfig` to get access to the `messageProcessors` property and helper methods like `addMessageProcessor(...)` and `setEventFilter(...)`:
 ```kotlin
-class MyFeatureConfig() : FeatureConfig() { }
+class MyFeatureConfig : FeatureConfig()
 ```
 
-To install a feature message processor, you can use the `addMessageProcessor()` method on a feature configuration step:
+To install a feature message processor, use the `addMessageProcessor()` method on a feature configuration step:
 ```kotlin
 // Create a FeatureMessageProcessor implementation
-val myFeatureMessageProcessor = object : FeatureMessageProcessor {
+val myFeatureMessageProcessor = object : FeatureMessageProcessor() {
     override suspend fun processMessage(message: FeatureMessage) {
         // Handle feature messages
         println("Received message: $message")
@@ -88,13 +88,13 @@ install(TraceFeature) {
 
 The `FeatureMessageProcessor` class contains methods for initialization of a concrete processor instance and properly closing it when finished.
 
-#### Message filtering
+#### Message filtering (per-processor)
 
 FeatureMessageProcessor supports filtering of messages before they reach your processor logic.
 
 - Default behavior: all messages are processed (the filter returns true).
-- You can set a custom filter with setMessageFilter { ... }.
-- The current filter is exposed via the messageFilter property.
+- You can set a custom filter with `setMessageFilter { ... }`.
+- The current filter is exposed via the `messageFilter` property.
 
 Example: only process LLM-related messages
 
@@ -109,7 +109,30 @@ processor.setMessageFilter { message ->
 }
 ```
 
-You can update the filter at any time during runtime if your criteria change. The onMessage(message) method applies the current filter and forwards only accepted messages to processMessage(message).
+You can update the filter at any time during runtime if your criteria change. 
+The `onMessage(message)` method applies the current filter and forwards only accepted messages to `processMessage(message)`.
+
+#### Event filtering (per-feature via FeatureConfig)
+
+In addition to per-processor filtering, you can filter events at the feature level using `FeatureConfig.setEventFilter { ... }`. This filter runs before events are dispatched to any registered `FeatureMessageProcessor`. If the filter returns `false`, the event will be ignored by all processors.
+
+- Default behavior: all events are processed (the filter returns true).
+- Set a custom filter with `setEventFilter { context -> ... }`.
+- The current filter is exposed via the `eventFilter` property.
+
+Example: only emit events for a specific type.
+
+```kotlin
+install(TraceFeature) {
+    // Only allow events that come from a particular stage or meet a condition
+    setEventFilter { context: EventHandlerContext ->
+        context.eventType is BeforeAgentStart
+    }
+}
+```
+
+Note: Feature-level event filtering and processor-level message filtering can be used together. 
+The event must pass the feature-level `eventFilter` first, and then it must also pass each processor's `messageFilter` to be processed.
 
 ### Using FeatureMessageFileWriter
 
