@@ -10,6 +10,7 @@ import ai.koog.agents.core.agent.entity.AIAgentGraphStrategy
 import ai.koog.agents.core.agent.entity.AIAgentStateManager
 import ai.koog.agents.core.agent.entity.AIAgentStorage
 import ai.koog.agents.core.annotation.InternalAgentsApi
+import ai.koog.agents.core.environment.AIAgentEnvironment
 import ai.koog.agents.core.environment.GenericAgentEnvironment
 import ai.koog.agents.core.feature.AIAgentFeature
 import ai.koog.agents.core.feature.AIAgentGraphFeature
@@ -17,7 +18,6 @@ import ai.koog.agents.core.feature.AIAgentGraphPipeline
 import ai.koog.agents.core.feature.PromptExecutorProxy
 import ai.koog.agents.core.feature.config.FeatureConfig
 import ai.koog.agents.core.tools.ToolRegistry
-import ai.koog.agents.utils.Closeable
 import ai.koog.prompt.executor.model.PromptExecutor
 import io.github.oshai.kotlinlogging.KotlinLogging
 import kotlinx.coroutines.sync.Mutex
@@ -49,28 +49,25 @@ import kotlin.uuid.Uuid
  * @property clock The clock used to calculate message timestamps
  * @constructor Initializes the AI agent instance and prepares the feature context and pipeline for use.
  */
-@OptIn(ExperimentalUuidApi::class)
 public open class GraphAIAgent<Input, Output>(
     public val inputType: KType,
     public val outputType: KType,
-    public val promptExecutor: PromptExecutor,
+    override val promptExecutor: PromptExecutor,
     override val agentConfig: AIAgentConfig,
-    public val toolRegistry: ToolRegistry = ToolRegistry.EMPTY,
-    private val strategy: AIAgentGraphStrategy<Input, Output>,
+    override val toolRegistry: ToolRegistry = ToolRegistry.EMPTY,
+    override val strategy: AIAgentGraphStrategy<Input, Output>,
     id: String? = null,
-    public val clock: Clock = Clock.System,
-    private val installFeatures: FeatureContext.() -> Unit = {},
-) : AIAgent<Input, Output>, Closeable {
+    clock: Clock = Clock.System,
+    installFeatures: FeatureContext.() -> Unit = {},
+) : AIAgent<Input, Output>(id, clock, installFeatures) {
 
     private companion object {
         private val logger = KotlinLogging.logger {}
     }
 
-    override val id: String by lazy { id ?: Uuid.random().toString() }
+    override val pipeline: AIAgentGraphPipeline = AIAgentGraphPipeline()
 
-    private val pipeline = AIAgentGraphPipeline()
-
-    private val environment = GenericAgentEnvironment(
+    override val environment: AIAgentEnvironment = GenericAgentEnvironment(
         this@GraphAIAgent.id,
         strategy.name,
         logger,
@@ -108,6 +105,7 @@ public open class GraphAIAgent<Input, Output>(
         FeatureContext(this).installFeatures()
     }
 
+    @OptIn(ExperimentalUuidApi::class)
     override suspend fun run(agentInput: Input): Output {
         runningMutex.withLock {
             if (isRunning) {
@@ -119,8 +117,7 @@ public open class GraphAIAgent<Input, Output>(
 
         pipeline.prepareFeatures()
 
-        val sessionUuid = Uuid.random()
-        val runId = sessionUuid.toString()
+        val runId = Uuid.random().toString()
 
         return withContext(
             AgentRunInfoContextElement(
@@ -165,7 +162,7 @@ public open class GraphAIAgent<Input, Output>(
                 agentId = this@GraphAIAgent.id,
             )
 
-            logger.debug { formatLog(agentId = this@GraphAIAgent.id, runId = runId, message = "Starting agent execution") }
+            logger.debug { formatLog(runId = runId, message = "Starting agent execution") }
 
             pipeline.onBeforeAgentStarted<Input, Output>(
                 runId = runId,
@@ -181,7 +178,7 @@ public open class GraphAIAgent<Input, Output>(
                 throw e
             }
 
-            logger.debug { formatLog(agentId = this@GraphAIAgent.id, runId = runId, message = "Finished agent execution") }
+            logger.debug { formatLog(runId = runId, message = "Finished agent execution") }
             pipeline.onAgentFinished(agentId = this@GraphAIAgent.id, runId = runId, result = result, resultType = outputType)
 
             runningMutex.withLock {
@@ -200,6 +197,5 @@ public open class GraphAIAgent<Input, Output>(
     private fun <Config : FeatureConfig, Feature : Any> install(feature: AIAgentGraphFeature<Config, Feature>, configure: Config.() -> Unit) =
         pipeline.install(feature, configure)
 
-    private fun formatLog(agentId: String, runId: String, message: String): String =
-        "[agent id: $agentId, run id: $runId] $message"
+
 }

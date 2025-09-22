@@ -56,7 +56,13 @@ public class Debugger {
 
         private val logger = KotlinLogging.logger { }
 
-        private const val KOOG_DEBUGGER_PORT_ENV_VAR: String = "KOOG_DEBUGGER_PORT"
+        /**
+         * The name of the environment variable used to specify the debugger's port.
+         *
+         * This constant represents the environment variable `KOOG_DEBUGGER_PORT`, which
+         * can be set to define the port number on which the debugger operates.
+         */
+        public const val KOOG_DEBUGGER_PORT_ENV_VAR: String = "KOOG_DEBUGGER_PORT"
 
         override val key: AIAgentStorageKey<Debugger> =
             AIAgentStorageKey("agents-features-debugger")
