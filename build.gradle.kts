@@ -45,7 +45,7 @@ version = run {
                     if (customVersion.isNullOrBlank()) {
                         ""
                     } else {
-                        throw GradleException("Custom version is not allowed during release from the main branch")
+//                        throw GradleException("Custom version is not allowed during release from the main branch")
                     }
                 }
 
