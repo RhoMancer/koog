@@ -7,14 +7,14 @@ import ai.koog.agents.core.agent.entity.AIAgentNodeBase
 import ai.koog.agents.core.agent.entity.AIAgentStorageKey
 import ai.koog.agents.core.environment.AIAgentEnvironment
 import ai.koog.agents.core.feature.config.FeatureConfig
-import ai.koog.agents.core.feature.handler.AfterNodeHandler
-import ai.koog.agents.core.feature.handler.AgentTransformEnvironmentContext
-import ai.koog.agents.core.feature.handler.BeforeNodeHandler
-import ai.koog.agents.core.feature.handler.ExecuteNodeHandler
-import ai.koog.agents.core.feature.handler.NodeAfterExecuteContext
-import ai.koog.agents.core.feature.handler.NodeBeforeExecuteContext
-import ai.koog.agents.core.feature.handler.NodeExecutionErrorContext
-import ai.koog.agents.core.feature.handler.NodeExecutionErrorHandler
+import ai.koog.agents.core.feature.handler.agent.AgentEnvironmentTransformingContext
+import ai.koog.agents.core.feature.handler.node.NodeExecutionCompletedContext
+import ai.koog.agents.core.feature.handler.node.NodeExecutionCompletedHandler
+import ai.koog.agents.core.feature.handler.node.NodeExecutionEventHandler
+import ai.koog.agents.core.feature.handler.node.NodeExecutionFailedContext
+import ai.koog.agents.core.feature.handler.node.NodeExecutionFailedHandler
+import ai.koog.agents.core.feature.handler.node.NodeExecutionStartingContext
+import ai.koog.agents.core.feature.handler.node.NodeExecutionStartingHandler
 import kotlinx.datetime.Clock
 import kotlin.reflect.KType
 
@@ -30,7 +30,7 @@ public class AIAgentGraphPipeline(clock: Clock = Clock.System) : AIAgentPipeline
      * Map of node execution handlers registered for different features.
      * Keys are feature storage keys, values are node execution handlers.
      */
-    private val executeNodeHandlers: MutableMap<AIAgentStorageKey<*>, ExecuteNodeHandler> = mutableMapOf()
+    private val executeNodeHandlers: MutableMap<AIAgentStorageKey<*>, NodeExecutionEventHandler> = mutableMapOf()
 
     /**
      * Installs a feature into the pipeline with the provided configuration.
@@ -75,7 +75,7 @@ public class AIAgentGraphPipeline(clock: Clock = Clock.System) : AIAgentPipeline
         baseEnvironment: AIAgentEnvironment
     ): AIAgentEnvironment {
         return agentHandlers.values.fold(baseEnvironment) { environment, handler ->
-            val eventContext = AgentTransformEnvironmentContext(strategy = strategy, agent = agent, feature = handler.feature)
+            val eventContext = AgentEnvironmentTransformingContext(strategy = strategy, agent = agent, feature = handler.feature)
             handler.transformEnvironmentUnsafe(eventContext, environment)
         }
     }
@@ -93,8 +93,8 @@ public class AIAgentGraphPipeline(clock: Clock = Clock.System) : AIAgentPipeline
         input: Any?,
         inputType: KType
     ) {
-        val eventContext = NodeBeforeExecuteContext(node, context, input, inputType)
-        executeNodeHandlers.values.forEach { handler -> handler.beforeNodeHandler.handle(eventContext) }
+        val eventContext = NodeExecutionStartingContext(node, context, input, inputType)
+        executeNodeHandlers.values.forEach { handler -> handler.nodeExecutionStartingHandler.handle(eventContext) }
     }
 
     /**
@@ -113,8 +113,8 @@ public class AIAgentGraphPipeline(clock: Clock = Clock.System) : AIAgentPipeline
         inputType: KType,
         outputType: KType,
     ) {
-        val eventContext = NodeAfterExecuteContext(node, context, input, output, inputType, outputType)
-        executeNodeHandlers.values.forEach { handler -> handler.afterNodeHandler.handle(eventContext) }
+        val eventContext = NodeExecutionCompletedContext(node, context, input, output, inputType, outputType)
+        executeNodeHandlers.values.forEach { handler -> handler.nodeExecutionCompletedHandler.handle(eventContext) }
     }
 
     /**
@@ -129,8 +129,8 @@ public class AIAgentGraphPipeline(clock: Clock = Clock.System) : AIAgentPipeline
         context: AIAgentContext,
         throwable: Throwable
     ) {
-        val eventContext = NodeExecutionErrorContext(node, context, throwable)
-        executeNodeHandlers.values.forEach { handler -> handler.nodeExecutionErrorHandler.handle(eventContext) }
+        val eventContext = NodeExecutionFailedContext(node, context, throwable)
+        executeNodeHandlers.values.forEach { handler -> handler.nodeExecutionFailedHandler.handle(eventContext) }
     }
 
     //endregion Trigger Node Handlers
@@ -151,10 +151,10 @@ public class AIAgentGraphPipeline(clock: Clock = Clock.System) : AIAgentPipeline
      */
     public fun <TFeature : Any> interceptBeforeNode(
         interceptContext: InterceptContext<TFeature>,
-        handle: suspend TFeature.(eventContext: NodeBeforeExecuteContext) -> Unit
+        handle: suspend TFeature.(eventContext: NodeExecutionStartingContext) -> Unit
     ) {
-        val handler = executeNodeHandlers.getOrPut(interceptContext.feature.key) { ExecuteNodeHandler() }
-        handler.beforeNodeHandler = BeforeNodeHandler(
+        val handler = executeNodeHandlers.getOrPut(interceptContext.feature.key) { NodeExecutionEventHandler() }
+        handler.nodeExecutionStartingHandler = NodeExecutionStartingHandler(
             function = createConditionalHandler(interceptContext, handle)
         )
     }
@@ -173,10 +173,10 @@ public class AIAgentGraphPipeline(clock: Clock = Clock.System) : AIAgentPipeline
      */
     public fun <TFeature : Any> interceptAfterNode(
         interceptContext: InterceptContext<TFeature>,
-        handle: suspend TFeature.(eventContext: NodeAfterExecuteContext) -> Unit
+        handle: suspend TFeature.(eventContext: NodeExecutionCompletedContext) -> Unit
     ) {
-        val handler = executeNodeHandlers.getOrPut(interceptContext.feature.key) { ExecuteNodeHandler() }
-        handler.afterNodeHandler = AfterNodeHandler(
+        val handler = executeNodeHandlers.getOrPut(interceptContext.feature.key) { NodeExecutionEventHandler() }
+        handler.nodeExecutionCompletedHandler = NodeExecutionCompletedHandler(
             function = createConditionalHandler(interceptContext, handle)
         )
     }
@@ -196,10 +196,10 @@ public class AIAgentGraphPipeline(clock: Clock = Clock.System) : AIAgentPipeline
      */
     public fun <TFeature : Any> interceptNodeExecutionError(
         interceptContext: InterceptContext<TFeature>,
-        handle: suspend TFeature.(eventContext: NodeExecutionErrorContext) -> Unit
+        handle: suspend TFeature.(eventContext: NodeExecutionFailedContext) -> Unit
     ) {
-        val handler = executeNodeHandlers.getOrPut(interceptContext.feature.key) { ExecuteNodeHandler() }
-        handler.nodeExecutionErrorHandler = NodeExecutionErrorHandler(
+        val handler = executeNodeHandlers.getOrPut(interceptContext.feature.key) { NodeExecutionEventHandler() }
+        handler.nodeExecutionFailedHandler = NodeExecutionFailedHandler(
             function = createConditionalHandler(interceptContext, handle)
         )
     }

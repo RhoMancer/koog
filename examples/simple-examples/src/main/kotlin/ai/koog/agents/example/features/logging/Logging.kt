@@ -7,7 +7,7 @@ import ai.koog.agents.core.feature.AIAgentGraphFeature
 import ai.koog.agents.core.feature.AIAgentGraphPipeline
 import ai.koog.agents.core.feature.InterceptContext
 import ai.koog.agents.core.feature.config.FeatureConfig
-import ai.koog.agents.core.feature.handler.BeforeNodeHandler
+import ai.koog.agents.core.feature.handler.node.BeforeNodeHandler
 import ai.koog.agents.example.ApiKeyService
 import ai.koog.prompt.executor.clients.openai.OpenAIModels
 import ai.koog.prompt.executor.llms.all.simpleOpenAIExecutor
