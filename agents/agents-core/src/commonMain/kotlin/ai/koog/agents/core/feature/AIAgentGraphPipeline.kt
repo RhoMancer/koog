@@ -59,35 +59,13 @@ public class AIAgentGraphPipeline(clock: Clock = Clock.System) : AIAgentPipeline
     //region Trigger Node Handlers
 
     /**
-     * Transforms the agent environment by applying all registered environment transformers.
-     *
-     * This method allows features to modify or enhance the agent's environment before it starts execution.
-     * Each registered handler can apply its own transformations to the environment in sequence.
-     *
-     * @param strategy The strategy associated with the agent
-     * @param agent The agent instance for which the environment is being transformed
-     * @param baseEnvironment The initial environment to be transformed
-     * @return The transformed environment after all handlers have been applied
-     */
-    public suspend fun transformEnvironment(
-        strategy: AIAgentGraphStrategy<*, *>,
-        agent: GraphAIAgent<*, *>,
-        baseEnvironment: AIAgentEnvironment
-    ): AIAgentEnvironment {
-        return agentHandlers.values.fold(baseEnvironment) { environment, handler ->
-            val eventContext = AgentEnvironmentTransformingContext(strategy = strategy, agent = agent, feature = handler.feature)
-            handler.transformEnvironmentUnsafe(eventContext, environment)
-        }
-    }
-
-    /**
      * Notifies all registered node handlers before a node is executed.
      *
      * @param node The node that is about to be executed
      * @param context The agent context in which the node is being executed
      * @param input The input data for the node execution
      */
-    public suspend fun onBeforeNode(
+    public suspend fun onNodeExecutionStarting(
         node: AIAgentNodeBase<*, *>,
         context: AIAgentContext,
         input: Any?,
@@ -105,7 +83,7 @@ public class AIAgentGraphPipeline(clock: Clock = Clock.System) : AIAgentPipeline
      * @param input The input data that was provided to the node
      * @param output The output data produced by the node execution
      */
-    public suspend fun onAfterNode(
+    public suspend fun onNodeExecutionCompleted(
         node: AIAgentNodeBase<*, *>,
         context: AIAgentContext,
         input: Any?,
@@ -124,7 +102,7 @@ public class AIAgentGraphPipeline(clock: Clock = Clock.System) : AIAgentPipeline
      * @param context The context associated with the AI agent executing the node.
      * @param throwable The exception or error that occurred during node execution.
      */
-    public suspend fun onNodeExecutionError(
+    public suspend fun onNodeExecutionFailed(
         node: AIAgentNodeBase<*, *>,
         context: AIAgentContext,
         throwable: Throwable
@@ -149,7 +127,7 @@ public class AIAgentGraphPipeline(clock: Clock = Clock.System) : AIAgentPipeline
      * }
      * ```
      */
-    public fun <TFeature : Any> interceptBeforeNode(
+    public fun <TFeature : Any> interceptNodeExecutionStarting(
         interceptContext: InterceptContext<TFeature>,
         handle: suspend TFeature.(eventContext: NodeExecutionStartingContext) -> Unit
     ) {
@@ -171,7 +149,7 @@ public class AIAgentGraphPipeline(clock: Clock = Clock.System) : AIAgentPipeline
      * }
      * ```
      */
-    public fun <TFeature : Any> interceptAfterNode(
+    public fun <TFeature : Any> interceptNodeExecutionCompleted(
         interceptContext: InterceptContext<TFeature>,
         handle: suspend TFeature.(eventContext: NodeExecutionCompletedContext) -> Unit
     ) {
@@ -194,7 +172,7 @@ public class AIAgentGraphPipeline(clock: Clock = Clock.System) : AIAgentPipeline
      * }
      * ```
      */
-    public fun <TFeature : Any> interceptNodeExecutionError(
+    public fun <TFeature : Any> interceptNodeExecutionFailed(
         interceptContext: InterceptContext<TFeature>,
         handle: suspend TFeature.(eventContext: NodeExecutionFailedContext) -> Unit
     ) {

@@ -90,7 +90,7 @@ public class Debugger {
 
             //region Intercept Agent Events
 
-            pipeline.interceptBeforeAgentStarted(interceptContext) intercept@{ eventContext ->
+            pipeline.interceptAgentStarting(interceptContext) intercept@{ eventContext ->
                 val event = AgentStartingEvent(
                     agentId = eventContext.agent.id,
                     runId = eventContext.runId,
@@ -99,7 +99,7 @@ public class Debugger {
                 writer.onMessage(event)
             }
 
-            pipeline.interceptAgentFinished(interceptContext) intercept@{ eventContext ->
+            pipeline.interceptAgentCompleted(interceptContext) intercept@{ eventContext ->
                 val event = AgentCompletedEvent(
                     agentId = eventContext.agentId,
                     runId = eventContext.runId,
@@ -109,7 +109,7 @@ public class Debugger {
                 writer.onMessage(event)
             }
 
-            pipeline.interceptAgentRunError(interceptContext) intercept@{ eventContext ->
+            pipeline.interceptAgentExecutionFailed(interceptContext) intercept@{ eventContext ->
                 val event = AgentExecutionFailedEvent(
                     agentId = eventContext.agentId,
                     runId = eventContext.runId,
@@ -119,7 +119,7 @@ public class Debugger {
                 writer.onMessage(event)
             }
 
-            pipeline.interceptAgentBeforeClosed(interceptContext) intercept@{ eventContext ->
+            pipeline.interceptAgentClosing(interceptContext) intercept@{ eventContext ->
                 val event = AgentClosingEvent(
                     agentId = eventContext.agentId,
                     timestamp = pipeline.clock.now().toEpochMilliseconds()
@@ -131,7 +131,7 @@ public class Debugger {
 
             //region Intercept Strategy Events
 
-            pipeline.interceptStrategyStarted(interceptContext) intercept@{ eventContext ->
+            pipeline.interceptStrategyStarting(interceptContext) intercept@{ eventContext ->
 
                 val strategy = eventContext.strategy as AIAgentGraphStrategy
 
@@ -145,7 +145,7 @@ public class Debugger {
                 writer.onMessage(event)
             }
 
-            pipeline.interceptStrategyFinished(interceptContext) intercept@{ eventContext ->
+            pipeline.interceptStrategyCompleted(interceptContext) intercept@{ eventContext ->
                 val event = StrategyCompletedEvent(
                     runId = eventContext.runId,
                     strategyName = eventContext.strategy.name,
@@ -159,7 +159,7 @@ public class Debugger {
 
             //region Intercept Node Events
 
-            pipeline.interceptBeforeNode(interceptContext) intercept@{ eventContext ->
+            pipeline.interceptNodeExecutionStarting(interceptContext) intercept@{ eventContext ->
                 val event = NodeExecutionStartingEvent(
                     runId = eventContext.context.runId,
                     nodeName = eventContext.node.name,
@@ -169,7 +169,7 @@ public class Debugger {
                 writer.onMessage(event)
             }
 
-            pipeline.interceptAfterNode(interceptContext) intercept@{ eventContext ->
+            pipeline.interceptNodeExecutionCompleted(interceptContext) intercept@{ eventContext ->
                 val event = NodeExecutionCompletedEvent(
                     runId = eventContext.context.runId,
                     nodeName = eventContext.node.name,
@@ -184,7 +184,7 @@ public class Debugger {
 
             //region Intercept LLM Call Events
 
-            pipeline.interceptBeforeLLMCall(interceptContext) intercept@{ eventContext ->
+            pipeline.interceptLLMCallStarting(interceptContext) intercept@{ eventContext ->
                 val event = LLMCallStartingEvent(
                     runId = eventContext.runId,
                     prompt = eventContext.prompt,
@@ -195,7 +195,7 @@ public class Debugger {
                 writer.onMessage(event)
             }
 
-            pipeline.interceptAfterLLMCall(interceptContext) intercept@{ eventContext ->
+            pipeline.interceptLLMCallCompleted(interceptContext) intercept@{ eventContext ->
                 val event = LLMCallCompletedEvent(
                     runId = eventContext.runId,
                     prompt = eventContext.prompt,
@@ -211,7 +211,7 @@ public class Debugger {
 
             //region Intercept Tool Call Events
 
-            pipeline.interceptToolCall(interceptContext) intercept@{ eventContext ->
+            pipeline.interceptToolExecutionStarting(interceptContext) intercept@{ eventContext ->
                 @Suppress("UNCHECKED_CAST")
                 val tool = eventContext.tool as Tool<ToolArgs, ToolResult>
 
@@ -225,7 +225,7 @@ public class Debugger {
                 writer.onMessage(event)
             }
 
-            pipeline.interceptToolValidationError(interceptContext) intercept@{ eventContext ->
+            pipeline.interceptToolValidationFailed(interceptContext) intercept@{ eventContext ->
                 @Suppress("UNCHECKED_CAST")
                 val tool = eventContext.tool as Tool<ToolArgs, ToolResult>
 
@@ -240,7 +240,7 @@ public class Debugger {
                 writer.onMessage(event)
             }
 
-            pipeline.interceptToolCallFailure(interceptContext) intercept@{ eventContext ->
+            pipeline.interceptToolExecutionFailed(interceptContext) intercept@{ eventContext ->
                 @Suppress("UNCHECKED_CAST")
                 val tool = eventContext.tool as Tool<ToolArgs, ToolResult>
 
@@ -255,7 +255,7 @@ public class Debugger {
                 writer.onMessage(event)
             }
 
-            pipeline.interceptToolCallResult(interceptContext) intercept@{ eventContext ->
+            pipeline.interceptToolExecutionCompleted(interceptContext) intercept@{ eventContext ->
                 @Suppress("UNCHECKED_CAST")
                 val tool = eventContext.tool as Tool<ToolArgs, ToolResult>
 

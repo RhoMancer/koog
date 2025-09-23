@@ -93,19 +93,19 @@ public class EventHandler {
             pipeline: AIAgentGraphPipeline,
             interceptContext: InterceptContext<EventHandler>
         ) {
-            pipeline.interceptBeforeAgentStarted(interceptContext) intercept@{ eventContext ->
+            pipeline.interceptAgentStarting(interceptContext) intercept@{ eventContext ->
                 config.invokeOnBeforeAgentStarted(eventContext)
             }
 
-            pipeline.interceptBeforeNode(interceptContext) intercept@{ eventContext: NodeExecutionStartingContext ->
+            pipeline.interceptNodeExecutionStarting(interceptContext) intercept@{ eventContext: NodeExecutionStartingContext ->
                 config.invokeOnBeforeNode(eventContext)
             }
 
-            pipeline.interceptAfterNode(interceptContext) intercept@{ eventContext: NodeExecutionCompletedContext ->
+            pipeline.interceptNodeExecutionCompleted(interceptContext) intercept@{ eventContext: NodeExecutionCompletedContext ->
                 config.invokeOnAfterNode(eventContext)
             }
 
-            pipeline.interceptNodeExecutionError(
+            pipeline.interceptNodeExecutionFailed(
                 interceptContext
             ) intercept@{ eventContext: NodeExecutionFailedContext ->
                 config.invokeOnNodeExecutionError(eventContext)
@@ -117,65 +117,65 @@ public class EventHandler {
             pipeline: AIAgentPipeline,
             interceptContext: InterceptContext<EventHandler>
         ) {
-            pipeline.interceptAgentFinished(interceptContext) intercept@{ eventContext ->
+            pipeline.interceptAgentCompleted(interceptContext) intercept@{ eventContext ->
                 config.invokeOnAgentFinished(eventContext)
             }
 
-            pipeline.interceptAgentRunError(interceptContext) intercept@{ eventContext ->
+            pipeline.interceptAgentExecutionFailed(interceptContext) intercept@{ eventContext ->
                 config.invokeOnAgentRunError(eventContext)
             }
 
-            pipeline.interceptAgentBeforeClosed(interceptContext) intercept@{ eventContext ->
+            pipeline.interceptAgentClosing(interceptContext) intercept@{ eventContext ->
                 config.invokeOnAgentBeforeClose(eventContext)
             }
 
-            pipeline.interceptStrategyStarted(interceptContext) intercept@{ eventContext ->
+            pipeline.interceptStrategyStarting(interceptContext) intercept@{ eventContext ->
                 config.invokeOnStrategyStarted(eventContext)
             }
 
-            pipeline.interceptStrategyFinished(interceptContext) intercept@{ eventContext ->
+            pipeline.interceptStrategyCompleted(interceptContext) intercept@{ eventContext ->
                 config.invokeOnStrategyFinished(eventContext)
             }
 
-            pipeline.interceptBeforeLLMCall(interceptContext) intercept@{ eventContext: LLMCallStartingContext ->
+            pipeline.interceptLLMCallStarting(interceptContext) intercept@{ eventContext: LLMCallStartingContext ->
                 config.invokeOnBeforeLLMCall(eventContext)
             }
 
-            pipeline.interceptAfterLLMCall(interceptContext) intercept@{ eventContext: LLMCallCompletedContext ->
+            pipeline.interceptLLMCallCompleted(interceptContext) intercept@{ eventContext: LLMCallCompletedContext ->
                 config.invokeOnAfterLLMCall(eventContext)
             }
 
-            pipeline.interceptToolCall(interceptContext) intercept@{ eventContext: ToolExecutionStartingContext ->
+            pipeline.interceptToolExecutionStarting(interceptContext) intercept@{ eventContext: ToolExecutionStartingContext ->
                 config.invokeOnToolCall(eventContext)
             }
 
-            pipeline.interceptToolValidationError(
+            pipeline.interceptToolValidationFailed(
                 interceptContext
             ) intercept@{ eventContext: ToolValidationFailedContext ->
                 config.invokeOnToolValidationError(eventContext)
             }
 
-            pipeline.interceptToolCallFailure(interceptContext) intercept@{ eventContext: ToolExecutionFailedContext ->
+            pipeline.interceptToolExecutionFailed(interceptContext) intercept@{ eventContext: ToolExecutionFailedContext ->
                 config.invokeOnToolCallFailure(eventContext)
             }
 
-            pipeline.interceptToolCallResult(interceptContext) intercept@{ eventContext: ToolExecutionCompletedContext ->
+            pipeline.interceptToolExecutionCompleted(interceptContext) intercept@{ eventContext: ToolExecutionCompletedContext ->
                 config.invokeOnToolCallResult(eventContext)
             }
 
-            pipeline.interceptBeforeStream(interceptContext) intercept@{ eventContext: LLMStreamingStartingContext ->
+            pipeline.interceptLLMStreamingStarting(interceptContext) intercept@{ eventContext: LLMStreamingStartingContext ->
                 config.invokeOnBeforeStream(eventContext)
             }
 
-            pipeline.interceptOnStreamFrame(interceptContext) intercept@{ eventContext: LLMStreamingFrameReceivedContext ->
+            pipeline.interceptLLMStreamingFrameReceived(interceptContext) intercept@{ eventContext: LLMStreamingFrameReceivedContext ->
                 config.invokeOnStreamFrame(eventContext)
             }
 
-            pipeline.interceptOnStreamError(interceptContext) intercept@{ eventContext ->
+            pipeline.interceptLLMStreamingFailed(interceptContext) intercept@{ eventContext ->
                 config.invokeOnStreamError(eventContext)
             }
 
-            pipeline.interceptAfterStream(interceptContext) intercept@{ eventContext: LLMStreamingCompletedContext ->
+            pipeline.interceptLLMStreamingCompleted(interceptContext) intercept@{ eventContext: LLMStreamingCompletedContext ->
                 config.invokeOnAfterStream(eventContext)
             }
         }

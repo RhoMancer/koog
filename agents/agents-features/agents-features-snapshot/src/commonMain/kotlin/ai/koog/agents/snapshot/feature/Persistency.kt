@@ -103,7 +103,7 @@ public class Persistency(
                 return@interceptContextAgentFeature featureImpl
             }
 
-            pipeline.interceptStrategyStarted(interceptContext) { ctx ->
+            pipeline.interceptStrategyStarting(interceptContext) { ctx ->
                 val strategy = ctx.strategy as AIAgentGraphStrategy<*, *>
                 require(strategy.metadata.uniqueNames) {
                     "Checkpoint feature requires unique node names in the strategy metadata"
@@ -117,9 +117,9 @@ public class Persistency(
                 }
             }
 
-            pipeline.interceptAfterNode(interceptContext) { eventCtx ->
+            pipeline.interceptNodeExecutionCompleted(interceptContext) { eventCtx ->
                 if (isTechnicalNode(eventCtx.node.id)) {
-                    return@interceptAfterNode
+                    return@interceptNodeExecutionCompleted
                 }
 
                 if (config.enableAutomaticPersistency) {
@@ -132,11 +132,11 @@ public class Persistency(
                 }
             }
 
-            pipeline.interceptBeforeNode(interceptContext) { eventCtx ->
+            pipeline.interceptNodeExecutionStarting(interceptContext) { eventCtx ->
                 featureImpl.currentNodeId = eventCtx.node.id
             }
 
-            pipeline.interceptStrategyFinished(interceptContext) { ctx ->
+            pipeline.interceptStrategyCompleted(interceptContext) { ctx ->
                 ctx.feature.createTombstoneCheckpoint(ctx.feature.clock.now())
             }
         }
