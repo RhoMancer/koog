@@ -115,8 +115,10 @@ public class PromptExecutorProxy(
     ): ModerationResult {
         logger.debug { "Executing moderation LLM request (prompt: $prompt)" }
         pipeline.onLLMCallStarting(runId, prompt, model, emptyList())
+
         val result = executor.moderate(prompt, model)
         logger.debug { "Finished moderation LLM request with response: $result" }
+
         pipeline.onLLMCallCompleted(runId, prompt, model, emptyList(), responses = emptyList(), moderationResponse = result)
         return result
     }

@@ -5,6 +5,7 @@ import ai.koog.agents.core.agent.context.getAgentContextData
 import ai.koog.agents.core.agent.context.removeAgentContextData
 import ai.koog.agents.core.annotation.InternalAgentsApi
 import ai.koog.agents.core.utils.runCatchingCancellable
+import io.github.oshai.kotlinlogging.KotlinLogging
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.serializer
@@ -30,6 +31,11 @@ public class AIAgentGraphStrategy<TInput, TOutput>(
     nodeFinish,
     toolSelectionStrategy
 ) {
+
+    private companion object {
+        private val logger = KotlinLogging.logger { }
+    }
+
     /**
      * Represents the metadata of the subgraph associated with the AI agent strategy.
      *
@@ -54,6 +60,8 @@ public class AIAgentGraphStrategy<TInput, TOutput>(
                 setExecutionPointIfNeeded(context)
                 result = super.execute(context = context, input = input)
             }
+
+            logger.debug { "Finished executing strategy (name: $name) with output: $result" }
 
             context.pipeline.onStrategyCompleted(this, context, result, outputType)
             result
