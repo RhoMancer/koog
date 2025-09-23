@@ -1,53 +1,42 @@
-group = rootProject.group
-version = rootProject.version
-
 plugins {
-    id("ai.kotlin.jvm")
+    alias(libs.plugins.kotlin.jvm)
     alias(libs.plugins.kotlin.serialization)
     id("ai.koog.gradle.plugins.credentialsresolver")
-    application
-    alias(libs.plugins.shadow)
-}
-
-repositories {
-    maven(url = "https://packages.jetbrains.team/maven/p/ij/intellij-dependencies")
-}
-
-// Configure the application plugin with a default main class
-application {
-    mainClass.set("ai.koog.agents.example.calculator.CalculatorKt")
 }
 
 dependencies {
-    api(project(":agents:agents-ext"))
-    api(project(":agents:agents-mcp"))
-    api(project(":agents:agents-features:agents-features-event-handler"))
-    api(project(":agents:agents-features:agents-features-memory"))
-    api(project(":agents:agents-features:agents-features-opentelemetry"))
-    api(project(":agents:agents-features:agents-features-snapshot"))
-    api(project(":agents:agents-features:agents-features-sql"))
+    implementation(platform(libs.kotlin.bom))
 
-    api(project(":prompt:prompt-markdown"))
-    api(project(":prompt:prompt-structure"))
-    api(project(":prompt:prompt-executor:prompt-executor-clients:prompt-executor-openai-client"))
-    api(project(":prompt:prompt-executor:prompt-executor-clients:prompt-executor-anthropic-client"))
-    api(project(":prompt:prompt-executor:prompt-executor-clients:prompt-executor-bedrock-client"))
-    api(project(":prompt:prompt-executor:prompt-executor-llms"))
-    api(project(":prompt:prompt-executor:prompt-executor-llms-all"))
-    api(project(":koog-ktor"))
+    /*
+     Koog dependencies from composite build.
+     You can replace them with dependencies on the exact published version instead of composite build.
+     */
+    //noinspection UseTomlInstead
+    implementation("ai.koog:koog-agents")
+    //noinspection UseTomlInstead
+    implementation("ai.koog:koog-ktor")
+    //noinspection UseTomlInstead
+    implementation("ai.koog:agents-features-sql")
+    //noinspection UseTomlInstead
+    testImplementation("ai.koog:agents-test")
 
-    api(libs.kotlinx.datetime)
+    implementation(libs.kotlinx.datetime)
 
     implementation(libs.logback.classic)
+
+    implementation(platform(libs.opentelemetry.bom))
     implementation(libs.opentelemetry.exporter.logging)
     implementation(libs.opentelemetry.exporter.otlp)
+
     implementation(libs.ktor.server.cio)
-    implementation(project.dependencies.platform(libs.opentelemetry.bom))
 
     testImplementation(kotlin("test"))
-    testImplementation(project(":agents:agents-test"))
     testImplementation(libs.kotlinx.coroutines.test)
     testImplementation(libs.mockk)
+}
+
+tasks.withType<Test> {
+    useJUnitPlatform()
 }
 
 val envs = credentialsResolver.resolve(
@@ -116,9 +105,4 @@ registerRunExampleTask("runExampleJokesWithModeration", "ai.koog.agents.example.
 registerRunExampleTask("runExampleFilePersistentAgent", "ai.koog.agents.example.snapshot.FilePersistentAgentExampleKt")
 registerRunExampleTask("runExampleSQLPersistentAgent", "ai.koog.agents.example.snapshot.sql.SQLPersistentAgentExample")
 registerRunExampleTask("runExampleWebSearchAgent", "ai.koog.agents.example.websearch.WebSearchAgentKt")
-
-dokka {
-    dokkaSourceSets.named("main") {
-        suppress.set(true)
-    }
-}
+registerRunExampleTask("runExampleStreamingWithTools", "ai.koog.agents.example.streaming.StreamingAgentWithToolsKt")
