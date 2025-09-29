@@ -213,7 +213,7 @@ public interface AIAgent<Input, Output> : Closeable {
             strategy: AIAgentGraphStrategy<Input, Output>,
             toolRegistry: ToolRegistry = ToolRegistry.EMPTY,
             id: String? = null,
-            clock: Clock = Clock.System,//unused
+            clock: Clock = Clock.System,
             systemPrompt: String = "",
             temperature: Double = 1.0,
             numberOfChoices: Int = 1,
@@ -238,6 +238,7 @@ public interface AIAgent<Input, Output> : Closeable {
                     maxAgentIterations = maxIterations,
                 ),
                 toolRegistry = toolRegistry,
+                clock = clock,
                 installFeatures = installFeatures
             )
         }
