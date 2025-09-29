@@ -21,6 +21,8 @@ import ai.koog.agents.utils.use
 import ai.koog.prompt.dsl.prompt
 import ai.koog.prompt.executor.model.PromptExecutor
 import ai.koog.prompt.llm.OllamaModels
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.test.runTest
 import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
@@ -379,6 +381,64 @@ class AIAgentPipelineTest {
         assertContentEquals(expectedEvents, actualEvents)
     }
 
+    @Test
+    @JsName("testSeveralAgentsShareOneFeatureDispatcher")
+    fun `test several agents share one feature dispatcher`() = runTest {
+        val interceptedEvents = mutableListOf<String>()
+        val interceptedRunIds = mutableListOf<String>()
+
+        val agent1Id = "agent3-id"
+        val agent2Id = "agent4-id"
+
+        val singleDispatcher = Dispatchers.Default.limitedParallelism(1)
+
+        createAgent(
+            id = agent1Id,
+            strategy = strategy("test-interceptors-strategy-3") {
+                edge(nodeStart forwardTo nodeFinish transformed { "Done" })
+            },
+            featureDispatcher = singleDispatcher
+        ) {
+            install(TestFeature) {
+                events = interceptedEvents
+                runIds = interceptedRunIds
+            }
+        }.use { agent1 ->
+
+            createAgent(
+                id = agent2Id,
+                strategy = strategy("test-interceptors-strategy-4") {
+                    edge(nodeStart forwardTo nodeFinish transformed { "Done" })
+                },
+                featureDispatcher = singleDispatcher
+            ) {
+                install(TestFeature) {
+                    events = interceptedEvents
+                    runIds = interceptedRunIds
+                }
+            }.use { agent2 ->
+
+                agent1.run("")
+                agent2.run("")
+            }
+        }
+
+        assertEquals(2, interceptedRunIds.size)
+
+        val actualEvents = interceptedEvents.filter { it.startsWith("Agent: before agent started") }
+        val expectedEvents = listOf(
+            "Agent: before agent started (id: $agent1Id, run id: ${interceptedRunIds[0]})",
+            "Agent: before agent started (id: $agent2Id, run id: ${interceptedRunIds[1]})",
+        )
+
+        assertEquals(
+            expectedEvents.size,
+            actualEvents.size,
+            "Miss intercepted events. Expected ${expectedEvents.size}, but received: ${actualEvents.size}"
+        )
+        assertContentEquals(expectedEvents, actualEvents)
+    }
+
     //region Private Methods
 
     private val testClock: Clock = object : Clock {
@@ -393,6 +453,7 @@ class AIAgentPipelineTest {
         assistantPrompt: String? = null,
         toolRegistry: ToolRegistry? = null,
         promptExecutor: PromptExecutor? = null,
+        featureDispatcher: CoroutineDispatcher = Dispatchers.Default,
         installFeatures: FeatureContext.() -> Unit = {}
     ): AIAgent<String, String> {
         val agentConfig = AIAgentConfig(
@@ -421,6 +482,7 @@ class AIAgentPipelineTest {
             toolRegistry = toolRegistry ?: ToolRegistry {
                 tool(DummyTool())
             },
+            featureDispatcher = featureDispatcher,
             installFeatures = installFeatures,
         )
     }

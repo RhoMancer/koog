@@ -46,7 +46,7 @@ public class FunctionalAIAgent<Input, Output>(
     public val strategy: AIAgentFunctionalStrategy<Input, Output>,
     id: String? = null,
     public val clock: Clock = Clock.System,
-    featureDispatcher: CoroutineDispatcher = Dispatchers.Default,
+    public val featureDispatcher: CoroutineDispatcher = Dispatchers.Default,
     featureContext: FeatureContext.() -> Unit = {}
 ) : AIAgent<Input, Output> {
 
@@ -56,7 +56,7 @@ public class FunctionalAIAgent<Input, Output>(
 
     override val id: String by lazy { id ?: Uuid.random().toString() }
 
-    private val pipeline = AIAgentNonGraphPipeline(clock, featureDispatcher)
+    private val pipeline = AIAgentNonGraphPipeline(clock)
 
     private val environment = GenericAgentEnvironment(
         this@FunctionalAIAgent.id,
@@ -108,7 +108,7 @@ public class FunctionalAIAgent<Input, Output>(
             isRunning = true
         }
 
-        pipeline.prepareFeatures()
+        pipeline.prepareFeatures(featureDispatcher)
         val runId = Uuid.random().toString()
 
         val llm = AIAgentLLMContext(

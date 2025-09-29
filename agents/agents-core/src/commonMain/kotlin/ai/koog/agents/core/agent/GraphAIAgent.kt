@@ -62,7 +62,7 @@ public open class GraphAIAgent<Input, Output>(
     private val strategy: AIAgentGraphStrategy<Input, Output>,
     id: String? = null, // If null, ID will be initialized as a random UUID lazily
     public val clock: Clock = Clock.System,
-    featureDispatcher: CoroutineDispatcher = Dispatchers.Default,
+    public val featureDispatcher: CoroutineDispatcher = Dispatchers.Default,
     private val installFeatures: FeatureContext.() -> Unit = {},
 ) : AIAgent<Input, Output>, Closeable {
 
@@ -73,7 +73,7 @@ public open class GraphAIAgent<Input, Output>(
     // Random UUID should be invoked lazily, so when compiling a native image, it will happen on runtime
     override val id: String by lazy { id ?: Uuid.random().toString() }
 
-    private val pipeline = AIAgentGraphPipeline(clock, featureDispatcher)
+    private val pipeline = AIAgentGraphPipeline(clock)
 
     private val environment = GenericAgentEnvironment(
         this@GraphAIAgent.id,
@@ -122,7 +122,7 @@ public open class GraphAIAgent<Input, Output>(
             isRunning = true
         }
 
-        pipeline.prepareFeatures()
+        pipeline.prepareFeatures(featureDispatcher)
 
         val sessionUuid = Uuid.random()
         val runId = sessionUuid.toString()

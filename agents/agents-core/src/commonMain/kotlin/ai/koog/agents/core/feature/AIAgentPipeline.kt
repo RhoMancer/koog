@@ -80,12 +80,8 @@ import kotlin.reflect.KType
  * and can hook into different stages of the agent's execution lifecycle.
  *
  * @property clock Clock instance for time-related operations
- * @property featureDispatcher The coroutine dispatcher used in preparing features
  */
-public abstract class AIAgentPipeline(
-    public val clock: Clock,
-    public val featureDispatcher: CoroutineDispatcher
-) {
+public abstract class AIAgentPipeline(public val clock: Clock) {
 
     /**
      * Companion object for the AIAgentPipeline class.
@@ -139,7 +135,7 @@ public abstract class AIAgentPipeline(
      */
     protected val llmStreamingEventHandlers: MutableMap<AIAgentStorageKey<*>, LLMStreamingEventHandler> = mutableMapOf()
 
-    internal suspend fun prepareFeatures() {
+    internal suspend fun prepareFeatures(featureDispatcher: CoroutineDispatcher) {
         withContext(featureDispatcher) {
             registeredFeatures.values.forEach { featureConfig ->
                 featureConfig.messageProcessors.map { processor ->

@@ -11,8 +11,6 @@ import ai.koog.agents.core.feature.handler.node.NodeExecutionFailedContext
 import ai.koog.agents.core.feature.handler.node.NodeExecutionFailedHandler
 import ai.koog.agents.core.feature.handler.node.NodeExecutionStartingContext
 import ai.koog.agents.core.feature.handler.node.NodeExecutionStartingHandler
-import kotlinx.coroutines.CoroutineDispatcher
-import kotlinx.coroutines.Dispatchers
 import kotlinx.datetime.Clock
 import kotlin.reflect.KType
 
@@ -21,12 +19,8 @@ import kotlin.reflect.KType
  * This class manages the execution of specific nodes in the pipeline using registered handlers.
  *
  * @property clock The clock used for time-based operations within the pipeline
- * @property featureDispatcher The coroutine dispatcher used in preparing features
  */
-public class AIAgentGraphPipeline(
-    clock: Clock = Clock.System,
-    featureDispatcher: CoroutineDispatcher = Dispatchers.Default
-) : AIAgentPipeline(clock, featureDispatcher) {
+public class AIAgentGraphPipeline(clock: Clock = Clock.System) : AIAgentPipeline(clock) {
 
     /**
      * Map of node execution handlers registered for different features.
