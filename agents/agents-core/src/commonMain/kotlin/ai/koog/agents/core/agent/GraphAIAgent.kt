@@ -20,6 +20,8 @@ import ai.koog.agents.core.tools.ToolRegistry
 import ai.koog.agents.utils.Closeable
 import ai.koog.prompt.executor.model.PromptExecutor
 import io.github.oshai.kotlinlogging.KotlinLogging
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
@@ -47,6 +49,7 @@ import kotlin.uuid.Uuid
  * @property toolRegistry Registry of tools the agent can interact with, defaulting to an empty registry.
  * @property installFeatures Lambda for installing additional features within the agent environment.
  * @property clock The clock used to calculate message timestamps
+ * @property featureDispatcher The coroutine dispatcher used in preparing features
  * @constructor Initializes the AI agent instance and prepares the feature context and pipeline for use.
  */
 @OptIn(ExperimentalUuidApi::class)
@@ -59,6 +62,7 @@ public open class GraphAIAgent<Input, Output>(
     private val strategy: AIAgentGraphStrategy<Input, Output>,
     id: String? = null, // If null, ID will be initialized as a random UUID lazily
     public val clock: Clock = Clock.System,
+    featureDispatcher: CoroutineDispatcher = Dispatchers.Default,
     private val installFeatures: FeatureContext.() -> Unit = {},
 ) : AIAgent<Input, Output>, Closeable {
 
@@ -69,7 +73,7 @@ public open class GraphAIAgent<Input, Output>(
     // Random UUID should be invoked lazily, so when compiling a native image, it will happen on runtime
     override val id: String by lazy { id ?: Uuid.random().toString() }
 
-    private val pipeline = AIAgentGraphPipeline(clock)
+    private val pipeline = AIAgentGraphPipeline(clock, featureDispatcher)
 
     private val environment = GenericAgentEnvironment(
         this@GraphAIAgent.id,

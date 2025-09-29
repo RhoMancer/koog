@@ -16,6 +16,8 @@ import ai.koog.agents.core.feature.config.FeatureConfig
 import ai.koog.agents.core.tools.ToolRegistry
 import ai.koog.prompt.executor.model.PromptExecutor
 import io.github.oshai.kotlinlogging.KotlinLogging
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
@@ -29,10 +31,13 @@ import kotlin.uuid.Uuid
  *
  * @param Input The type of input data expected by the agent.
  * @param Output The type of output data produced by the agent.
- * @param id The unique identifier for the agent instance.
- * @param promptExecutor The executor responsible for processing prompts and interacting with language models.
- * @param agentConfig The configuration for the agent, including the prompt structure and execution parameters.
- * @param toolRegistry The registry of tools available for the agent. Defaults to an empty registry if not specified.
+ * @property id The unique identifier for the agent instance.
+ * @property promptExecutor The executor responsible for processing prompts and interacting with language models.
+ * @property agentConfig The configuration for the agent, including the prompt structure and execution parameters.
+ * @property toolRegistry The registry of tools available for the agent. Defaults to an empty registry if not specified.
+ * @property strategy Strategy defining the local behavior of the agent.
+ * @property clock The clock used to calculate message timestamps
+ * @property featureDispatcher The coroutine dispatcher used in preparing features
  */
 public class FunctionalAIAgent<Input, Output>(
     public val promptExecutor: PromptExecutor,
@@ -41,6 +46,7 @@ public class FunctionalAIAgent<Input, Output>(
     public val strategy: AIAgentFunctionalStrategy<Input, Output>,
     id: String? = null,
     public val clock: Clock = Clock.System,
+    featureDispatcher: CoroutineDispatcher = Dispatchers.Default,
     featureContext: FeatureContext.() -> Unit = {}
 ) : AIAgent<Input, Output> {
 
@@ -50,7 +56,7 @@ public class FunctionalAIAgent<Input, Output>(
 
     override val id: String by lazy { id ?: Uuid.random().toString() }
 
-    private val pipeline = AIAgentNonGraphPipeline(clock)
+    private val pipeline = AIAgentNonGraphPipeline(clock, featureDispatcher)
 
     private val environment = GenericAgentEnvironment(
         this@FunctionalAIAgent.id,

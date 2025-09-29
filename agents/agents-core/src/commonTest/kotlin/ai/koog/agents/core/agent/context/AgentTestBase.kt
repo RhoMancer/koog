@@ -15,6 +15,7 @@ import ai.koog.prompt.dsl.Prompt
 import ai.koog.prompt.dsl.prompt
 import ai.koog.prompt.llm.OllamaModels
 import ai.koog.prompt.message.Message
+import kotlinx.coroutines.Dispatchers
 import kotlin.reflect.typeOf
 
 open class AgentTestBase {
@@ -81,7 +82,7 @@ open class AgentTestBase {
         storage: AIAgentStorage = createTestStorage(),
         runId: String = "test-run-id",
         strategyName: String = "test-strategy",
-        pipeline: AIAgentGraphPipeline = AIAgentGraphPipeline(testClock),
+        pipeline: AIAgentGraphPipeline = AIAgentGraphPipeline(testClock, Dispatchers.Default.limitedParallelism(5)),
         agentInput: String = "test-input"
     ): AIAgentGraphContext {
         return AIAgentGraphContext(

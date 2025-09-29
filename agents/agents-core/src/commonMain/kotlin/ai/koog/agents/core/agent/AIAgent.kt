@@ -10,6 +10,8 @@ import ai.koog.prompt.dsl.prompt
 import ai.koog.prompt.executor.model.PromptExecutor
 import ai.koog.prompt.llm.LLModel
 import ai.koog.prompt.params.LLMParams
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.Dispatchers
 import kotlinx.datetime.Clock
 import kotlin.reflect.typeOf
 
@@ -54,6 +56,7 @@ public interface AIAgent<Input, Output> : Closeable {
          * @param id An optional unique identifier for the agent. Defaults to null if not specified.
          * @param clock The clock to be used for time-related operations. Defaults to the system clock.
          * @param installFeatures A lambda expression to install additional features in the agent's feature context. Defaults to an empty implementation.
+         * @param featureDispatcher The coroutine dispatcher used in preparing features
          * @return An instance of an AI agent configured with the specified parameters and capable of executing its logic.
          */
         public inline operator fun <reified Input, reified Output> invoke(
@@ -63,6 +66,7 @@ public interface AIAgent<Input, Output> : Closeable {
             toolRegistry: ToolRegistry = ToolRegistry.EMPTY,
             id: String? = null,
             clock: Clock = Clock.System,
+            featureDispatcher: CoroutineDispatcher = Dispatchers.Default,
             noinline installFeatures: FeatureContext.() -> Unit = {},
         ): AIAgent<Input, Output> {
             return GraphAIAgent(
@@ -74,6 +78,7 @@ public interface AIAgent<Input, Output> : Closeable {
                 strategy = strategy,
                 id = id,
                 clock = clock,
+                featureDispatcher = featureDispatcher,
                 installFeatures = installFeatures
             )
         }
@@ -208,7 +213,7 @@ public interface AIAgent<Input, Output> : Closeable {
             strategy: AIAgentGraphStrategy<Input, Output>,
             toolRegistry: ToolRegistry = ToolRegistry.EMPTY,
             id: String? = null,
-            clock: Clock = Clock.System,
+            clock: Clock = Clock.System,//unused
             systemPrompt: String = "",
             temperature: Double = 1.0,
             numberOfChoices: Int = 1,

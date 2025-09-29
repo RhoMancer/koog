@@ -58,7 +58,7 @@ import ai.koog.prompt.llm.LLModel
 import ai.koog.prompt.message.Message
 import ai.koog.prompt.streaming.StreamFrame
 import io.github.oshai.kotlinlogging.KotlinLogging
-import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.datetime.Clock
@@ -79,9 +79,13 @@ import kotlin.reflect.KType
  * through a flexible interception system. Features can be installed with custom configurations
  * and can hook into different stages of the agent's execution lifecycle.
  *
- * @param clock Clock instance for time-related operations
+ * @property clock Clock instance for time-related operations
+ * @property featureDispatcher The coroutine dispatcher used in preparing features
  */
-public abstract class AIAgentPipeline(public val clock: Clock) {
+public abstract class AIAgentPipeline(
+    public val clock: Clock,
+    public val featureDispatcher: CoroutineDispatcher
+) {
 
     /**
      * Companion object for the AIAgentPipeline class.
@@ -92,8 +96,6 @@ public abstract class AIAgentPipeline(public val clock: Clock) {
          */
         private val logger = KotlinLogging.logger { }
     }
-
-    private val featurePrepareDispatcher = Dispatchers.Default.limitedParallelism(5)
 
     /**
      * Map of registered features and their configurations.
@@ -138,7 +140,7 @@ public abstract class AIAgentPipeline(public val clock: Clock) {
     protected val llmStreamingEventHandlers: MutableMap<AIAgentStorageKey<*>, LLMStreamingEventHandler> = mutableMapOf()
 
     internal suspend fun prepareFeatures() {
-        withContext(featurePrepareDispatcher) {
+        withContext(featureDispatcher) {
             registeredFeatures.values.forEach { featureConfig ->
                 featureConfig.messageProcessors.map { processor ->
                     launch {

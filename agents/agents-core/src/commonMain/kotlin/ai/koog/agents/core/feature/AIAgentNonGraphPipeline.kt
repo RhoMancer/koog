@@ -1,6 +1,8 @@
 package ai.koog.agents.core.feature
 
 import ai.koog.agents.core.feature.config.FeatureConfig
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.Dispatchers
 import kotlinx.datetime.Clock
 
 /**
@@ -10,9 +12,13 @@ import kotlinx.datetime.Clock
  * workflows or data processing tasks that do not require graph-based
  * data structures.
  *
- * @param clock The clock used for time-based operations within the pipeline
+ * @property clock The clock used for time-based operations within the pipeline
+ * @property featureDispatcher The coroutine dispatcher used in preparing features
  */
-public class AIAgentNonGraphPipeline(clock: Clock = Clock.System) : AIAgentPipeline(clock) {
+public class AIAgentNonGraphPipeline(
+    clock: Clock = Clock.System,
+    featureDispatcher: CoroutineDispatcher = Dispatchers.Default
+) : AIAgentPipeline(clock, featureDispatcher) {
 
     /**
      * Installs a non-graph feature into the pipeline with the provided configuration.
