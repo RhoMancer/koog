@@ -20,15 +20,14 @@ internal abstract class GenAIAgentSpan(
 
     private var _span: Span? = null
 
-
     var context: Context
-        get() = _context ?: error("Context for span '${spanId}' is not initialized")
+        get() = _context ?: error("Context for span '$spanId' is not initialized")
         set(value) {
             _context = value
         }
 
     var span: Span
-        get() = _span ?: error("Span '${spanId}' is not started")
+        get() = _span ?: error("Span '$spanId' is not started")
         set(value) {
             _span = value
         }
@@ -36,17 +35,25 @@ internal abstract class GenAIAgentSpan(
     val name: String
         get() = spanId.removePrefix(parent?.spanId ?: "").trimStart('.')
 
-
     open val kind: SpanKind = SpanKind.CLIENT
 
     abstract val spanId: String
 
     abstract val attributes: List<Attribute>
 
+    val events: Set<GenAIAgentEvent>
+        get() = _events
+
+    private val _events: MutableSet<GenAIAgentEvent> = mutableSetOf()
 
     fun addEvents(events: List<GenAIAgentEvent>) {
         events.forEach { event ->
-            logger.debug { "Adding event '${event.name}' to span '${spanId}'" }
+            logger.debug { "Adding event '${event.name}' to span '$spanId'" }
+
+            if (_events.contains(event)) {
+                logger.warn { "Event '${event.name}' already added to span '$spanId'" }
+                return@forEach
+            }
 
             // The 'opentelemetry-java' SDK does not have support for event body fields at the moment.
             // Pass body fields as attributes until an API is updated.
@@ -59,5 +66,6 @@ internal abstract class GenAIAgentSpan(
 
             span.addEvent(event.name, attributes.toSdkAttributes())
         }
+        _events.addAll(events)
     }
 }
