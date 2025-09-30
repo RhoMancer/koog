@@ -19,7 +19,7 @@ import kotlinx.io.readString
  * }.build()
  * ```
  *
- * @see Attachment
+ * @see Attachment 
  * @see MessageContentBuilder
  */
 @PromptDSL
@@ -86,13 +86,7 @@ public class AttachmentBuilder {
      */
     public fun image(url: String) {
         val fileData = url.urlFileData()
-        image(
-            Attachment.Image(
-                content = AttachmentContent.URL(url),
-                format = fileData.extension,
-                fileName = fileData.name
-            )
-        )
+        image(Attachment.Image(content = AttachmentContent.URL(url), format = fileData.extension, fileName = fileData.name))
     }
 
     /**
@@ -103,13 +97,7 @@ public class AttachmentBuilder {
      */
     public fun image(path: Path) {
         val fileData = path.fileData()
-        image(
-            Attachment.Image(
-                content = AttachmentContent.Binary.Bytes(path.readByteArray()),
-                format = fileData.extension,
-                fileName = fileData.name
-            )
-        )
+        image(Attachment.Image(content = AttachmentContent.Binary.Bytes(path.readByteArray()), format = fileData.extension, fileName = fileData.name))
     }
 
     /**
@@ -127,13 +115,7 @@ public class AttachmentBuilder {
      */
     public fun audio(url: String) {
         val fileData = url.urlFileData()
-        audio(
-            Attachment.Audio(
-                content = AttachmentContent.URL(url),
-                format = fileData.extension,
-                fileName = fileData.name
-            )
-        )
+        audio(Attachment.Audio(content = AttachmentContent.URL(url), format = fileData.extension, fileName = fileData.name))
     }
 
     /**
@@ -144,13 +126,7 @@ public class AttachmentBuilder {
      */
     public fun audio(path: Path) {
         val fileData = path.fileData()
-        audio(
-            Attachment.Audio(
-                content = AttachmentContent.Binary.Bytes(path.readByteArray()),
-                format = fileData.extension,
-                fileName = fileData.name
-            )
-        )
+        audio(Attachment.Audio(content = AttachmentContent.Binary.Bytes(path.readByteArray()), format = fileData.extension, fileName = fileData.name))
     }
 
     /**
@@ -168,13 +144,7 @@ public class AttachmentBuilder {
      */
     public fun video(url: String) {
         val fileData = url.urlFileData()
-        video(
-            Attachment.Video(
-                content = AttachmentContent.URL(url),
-                format = fileData.extension,
-                fileName = fileData.name
-            )
-        )
+        video(Attachment.Video(content = AttachmentContent.URL(url), format = fileData.extension, fileName = fileData.name))
     }
 
     /**
@@ -185,13 +155,7 @@ public class AttachmentBuilder {
      */
     public fun video(path: Path) {
         val fileData = path.fileData()
-        video(
-            Attachment.Video(
-                content = AttachmentContent.Binary.Bytes(path.readByteArray()),
-                format = fileData.extension,
-                fileName = fileData.name
-            )
-        )
+        video(Attachment.Video(content = AttachmentContent.Binary.Bytes(path.readByteArray()), format = fileData.extension, fileName = fileData.name))
     }
 
     /**
@@ -210,14 +174,7 @@ public class AttachmentBuilder {
      */
     public fun file(url: String, mimeType: String) {
         val fileData = url.urlFileData()
-        file(
-            Attachment.File(
-                content = AttachmentContent.URL(url),
-                format = fileData.extension,
-                mimeType = mimeType,
-                fileName = fileData.name
-            )
-        )
+        file(Attachment.File(content = AttachmentContent.URL(url), format = fileData.extension, mimeType = mimeType, fileName = fileData.name))
     }
 
     /**
@@ -229,14 +186,7 @@ public class AttachmentBuilder {
      */
     public fun binaryFile(path: Path, mimeType: String) {
         val fileData = path.fileData()
-        file(
-            Attachment.File(
-                content = AttachmentContent.Binary.Bytes(path.readByteArray()),
-                format = fileData.extension,
-                mimeType = mimeType,
-                fileName = fileData.name
-            )
-        )
+        file(Attachment.File(content = AttachmentContent.Binary.Bytes(path.readByteArray()), format = fileData.extension, mimeType = mimeType, fileName = fileData.name))
     }
 
     /**
@@ -248,14 +198,7 @@ public class AttachmentBuilder {
      */
     public fun textFile(path: Path, mimeType: String) {
         val fileData = path.fileData()
-        file(
-            Attachment.File(
-                content = AttachmentContent.PlainText(path.readText()),
-                format = fileData.extension,
-                mimeType = mimeType,
-                fileName = fileData.name
-            )
-        )
+        file(Attachment.File(content = AttachmentContent.PlainText(path.readText()), format = fileData.extension, mimeType = mimeType, fileName = fileData.name))
     }
 
     /**

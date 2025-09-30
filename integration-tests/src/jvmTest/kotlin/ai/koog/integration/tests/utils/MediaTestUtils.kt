@@ -16,6 +16,7 @@ object MediaTestUtils {
 
             MediaTestScenarios.ImageTestScenario.BASIC_JPG -> {
                 testResourcesDir.resolve("test.jpeg")
+
             }
 
             MediaTestScenarios.ImageTestScenario.EMPTY_IMAGE -> {
@@ -53,10 +54,10 @@ object MediaTestUtils {
 
             MediaTestScenarios.TextTestScenario.ASCII_ENCODING ->
                 "!\"#\$%&'()*+,-./:;<=>?@[\\]^_`{|}~\n" +
-                    "   /\\_/\\  \n" +
-                    "  ( o.o ) \n" +
-                    "   > ^ <\n" +
-                    "(∑, ∞, ∂)\n"
+                        "   /\\_/\\  \n" +
+                        "  ( o.o ) \n" +
+                        "   > ^ <\n" +
+                        "(∑, ∞, ∂)\n"
 
             MediaTestScenarios.TextTestScenario.CODE_SNIPPET -> """
             // Java code snippet

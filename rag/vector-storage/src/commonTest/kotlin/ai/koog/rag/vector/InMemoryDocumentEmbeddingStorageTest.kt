@@ -4,11 +4,7 @@ import ai.koog.embeddings.base.Vector
 import ai.koog.rag.vector.mocks.MockDocument
 import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.test.runTest
-import kotlin.test.Test
-import kotlin.test.assertEquals
-import kotlin.test.assertNotNull
-import kotlin.test.assertNull
-import kotlin.test.assertTrue
+import kotlin.test.*
 
 class InMemoryDocumentEmbeddingStorageTest {
 

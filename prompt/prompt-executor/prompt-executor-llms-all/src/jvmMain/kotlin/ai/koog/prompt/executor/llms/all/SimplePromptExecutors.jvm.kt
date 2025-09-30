@@ -14,7 +14,6 @@ import ai.koog.prompt.executor.llms.SingleLLMPromptExecutor
 public fun simpleBedrockExecutor(
     awsAccessKeyId: String,
     awsSecretAccessKey: String,
-    awsSessionToken: String? = null,
     settings: BedrockClientSettings = BedrockClientSettings()
 ): SingleLLMPromptExecutor =
-    SingleLLMPromptExecutor(BedrockLLMClient(awsAccessKeyId, awsSecretAccessKey, awsSessionToken, settings))
+    SingleLLMPromptExecutor(BedrockLLMClient(awsAccessKeyId, awsSecretAccessKey, settings))

@@ -109,4 +109,5 @@ public abstract class LLMProvider(public val id: String, public val display: Str
      */
     @Serializable
     public data object Bedrock : LLMProvider("bedrock", "AWS Bedrock")
+
 }

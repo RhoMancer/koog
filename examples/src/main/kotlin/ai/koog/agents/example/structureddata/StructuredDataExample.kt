@@ -23,6 +23,8 @@ import kotlinx.serialization.Serializable
 /**
  * A showcase what structured output can handle and how to use it
  */
+
+// Plain serializable class
 @Serializable
 @SerialName("WeatherForecast")
 @LLMDescription("Weather forecast for a given location")
@@ -85,7 +87,7 @@ data class WeatherForecast(
       1. Closed with sealed classes,
       2. Open: non-sealed classes with subclasses registered in json config
          https://github.com/Kotlin/kotlinx.serialization/blob/master/docs/polymorphism.md#registered-subclasses
-     */
+    */
     @Suppress("unused")
     @Serializable
     @SerialName("WeatherAlert")
@@ -103,7 +105,7 @@ data class WeatherForecast(
             override val severity: Severity,
             override val message: String,
             @property:LLMDescription("Wind speed in km/h")
-            val windSpeed: Double
+            val windSpeed: Double // km/h
         ) : WeatherAlert()
 
         @Serializable
@@ -112,7 +114,7 @@ data class WeatherForecast(
             override val severity: Severity,
             override val message: String,
             @property:LLMDescription("Expected rainfall in mm")
-            val expectedRainfall: Double
+            val expectedRainfall: Double // mm
         ) : WeatherAlert()
 
         @Serializable
@@ -134,6 +136,7 @@ data class WeatherForecastRequest(
 )
 
 fun main(): Unit = runBlocking {
+
     // Optional examples, to help LLM understand the format better
     val exampleForecasts = listOf(
         WeatherForecast(
@@ -231,7 +234,7 @@ fun main(): Unit = runBlocking {
                 """
                 You are a weather forecasting assistant.
                 When asked for a weather forecast, provide a realistic but fictional forecast.
-                """.trimIndent()
+            """.trimIndent()
             )
         },
         model = AnthropicModels.Sonnet_3_7,
@@ -248,9 +251,7 @@ fun main(): Unit = runBlocking {
     ) {
         handleEvents {
             onAgentRunError { eventContext ->
-                println(
-                    "An error occurred: ${eventContext.throwable.message}\n${eventContext.throwable.stackTraceToString()}"
-                )
+                println("An error occurred: ${eventContext.throwable.message}\n${eventContext.throwable.stackTraceToString()}")
             }
         }
     }

@@ -8,11 +8,7 @@ import ai.koog.prompt.message.ResponseMetaInfo
 import kotlinx.datetime.Instant
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
-import kotlin.test.Test
-import kotlin.test.assertEquals
-import kotlin.test.assertNotNull
-import kotlin.test.assertNull
-import kotlin.test.assertTrue
+import kotlin.test.*
 
 /**
  * Tests for Ollama tool call ID generation and extraction.

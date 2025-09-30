@@ -1,17 +1,10 @@
 package ai.koog.agents.features.opentelemetry.mock
 
-import ai.koog.agents.core.tools.SimpleTool
-import ai.koog.agents.core.tools.ToolArgs
-import ai.koog.agents.core.tools.ToolDescriptor
-import ai.koog.agents.core.tools.ToolParameterDescriptor
-import ai.koog.agents.core.tools.ToolParameterType
+import ai.koog.agents.core.tools.*
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.Serializable
 
 internal object TestGetWeatherTool : SimpleTool<TestGetWeatherTool.Args>() {
-
-    const val RESULT: String = "rainy, 57°F"
-
     @Serializable
     data class Args(val location: String) : ToolArgs
 
@@ -30,6 +23,6 @@ internal object TestGetWeatherTool : SimpleTool<TestGetWeatherTool.Args>() {
     )
 
     override suspend fun doExecute(args: Args): String {
-        return RESULT
+        return "rainy, 57°F"
     }
 }

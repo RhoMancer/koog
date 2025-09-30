@@ -6,6 +6,7 @@ import ai.koog.agents.testing.tools.MockLLMBuilder.ToolCallReceiver
 import kotlinx.serialization.json.Json
 import kotlin.reflect.KFunction
 
+
 /**
  * Mocks a tool call for the provided tool function and arguments.
  *
@@ -15,8 +16,7 @@ import kotlin.reflect.KFunction
  */
 public fun MockLLMBuilder.mockLLMToolCall(
     tool: KFunction<*>,
-    vararg args: Any?,
-    toolCallId: String? = null
+    vararg args: Any?
 ): ToolCallReceiver<ToolFromCallable.VarArgs> {
     val params = tool.parameters
 
@@ -24,12 +24,7 @@ public fun MockLLMBuilder.mockLLMToolCall(
         param to arg
     }
 
-    return ToolCallReceiver(
-        tool = tool.asTool(),
-        args = ToolFromCallable.VarArgs(argsMap),
-        toolCallId = toolCallId,
-        builder = this
-    )
+    return ToolCallReceiver(tool.asTool(), ToolFromCallable.VarArgs(argsMap), this)
 }
 
 /**
@@ -67,8 +62,7 @@ public class MockToolFromCallableReceiver<Result>(
 
             builder.addToolAction(
                 callable.asTool(),
-                { it == ToolFromCallable.VarArgs(argsMap) }
-            ) { buildResult(action(), callable) }
+                { it == ToolFromCallable.VarArgs(argsMap) }) { buildResult(action(), callable) }
         }
 
         /**

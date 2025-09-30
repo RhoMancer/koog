@@ -1,11 +1,6 @@
 package ai.koog.agents.example.subgraphwithtask
 
-import ai.koog.agents.core.tools.Tool
-import ai.koog.agents.core.tools.ToolArgs
-import ai.koog.agents.core.tools.ToolDescriptor
-import ai.koog.agents.core.tools.ToolParameterDescriptor
-import ai.koog.agents.core.tools.ToolParameterType
-import ai.koog.agents.core.tools.ToolResult
+import ai.koog.agents.core.tools.*
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
@@ -368,4 +363,5 @@ object ProjectGeneratorTools {
             }
         }
     }
+
 }

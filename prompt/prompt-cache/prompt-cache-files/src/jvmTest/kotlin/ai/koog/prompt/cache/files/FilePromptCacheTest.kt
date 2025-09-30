@@ -1,7 +1,5 @@
 package ai.koog.prompt.cache.files
 
-import ai.koog.prompt.cache.model.get
-import ai.koog.prompt.cache.model.put
 import ai.koog.prompt.dsl.Prompt
 import ai.koog.prompt.dsl.prompt
 import ai.koog.prompt.message.Message
@@ -11,10 +9,7 @@ import kotlinx.coroutines.runBlocking
 import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
 import org.junit.jupiter.api.AfterEach
-import org.junit.jupiter.api.Assertions.assertEquals
-import org.junit.jupiter.api.Assertions.assertNotNull
-import org.junit.jupiter.api.Assertions.assertNull
-import org.junit.jupiter.api.Assertions.assertTrue
+import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Disabled
 import org.junit.jupiter.api.Test
@@ -24,6 +19,7 @@ import java.nio.file.Path
 import kotlin.io.path.exists
 import kotlin.io.path.listDirectoryEntries
 import kotlin.time.Duration.Companion.milliseconds
+import ai.koog.prompt.cache.model.*
 
 class FilePromptCacheTest {
     @TempDir
@@ -54,10 +50,7 @@ class FilePromptCacheTest {
         user(content)
     }
 
-    private fun assistantMessage(content: String): Message.Assistant = Message.Assistant(
-        content,
-        ResponseMetaInfo.create(testClock)
-    )
+    private fun assistantMessage(content: String): Message.Assistant = Message.Assistant(content, ResponseMetaInfo.create(testClock))
 
     @Disabled("This test is flaky")
     @Test

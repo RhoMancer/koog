@@ -44,11 +44,7 @@ public interface LLMClient {
      * @param model The LLM model to use
      *  @return List of LLM choices
      */
-    public suspend fun executeMultipleChoices(
-        prompt: Prompt,
-        model: LLModel,
-        tools: List<ToolDescriptor>
-    ): List<LLMChoice> =
+    public suspend fun executeMultipleChoices(prompt: Prompt, model: LLModel, tools: List<ToolDescriptor>): List<LLMChoice> =
         throw UnsupportedOperationException("Not implemented for this client")
 
     /**

@@ -159,6 +159,7 @@ internal data class OpenRouterStreamDelta(
     val toolCalls: List<OpenRouterToolCall>? = null
 )
 
+
 @Serializable
 internal sealed interface OpenRouterToolChoice {
     @JvmInline
@@ -172,6 +173,7 @@ internal sealed interface OpenRouterToolChoice {
     data class Function(val name: FunctionName) : OpenRouterToolChoice {
         val type: String = "function"
     }
+
 
     companion object {
         // OpenAI api is too "dynamic", have to inline value here, so alas, no proper classes hierarchy, creating "objects" instead

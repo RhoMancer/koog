@@ -1,6 +1,6 @@
 package ai.koog.agents.features.opentelemetry.feature
 
-import ai.koog.agents.core.feature.config.FeatureConfig
+import ai.koog.agents.features.common.config.FeatureConfig
 import ai.koog.agents.features.opentelemetry.attribute.addAttributes
 import io.github.oshai.kotlinlogging.KotlinLogging
 import io.opentelemetry.api.common.AttributeKey
@@ -108,7 +108,7 @@ public class OpenTelemetryConfig : FeatureConfig() {
      * Provides access to the `Tracer` instance for tracking and recording tracing data.
      */
     public val tracer: Tracer
-        get() = sdk.getTracer(_instrumentationScopeName, _instrumentationScopeVersion)
+        get() = sdk.getTracer(_instrumentationScopeName,_instrumentationScopeVersion)
 
     /**
      * The name of the service associated with this OpenTelemetry configuration.
@@ -164,7 +164,7 @@ public class OpenTelemetryConfig : FeatureConfig() {
      *                   will be added to the resource.
      * @param T The type of the values in the attribute map, which must be non-null.
      */
-    public fun <T> addResourceAttributes(attributes: Map<AttributeKey<T>, T>) where T : Any {
+    public fun <T>addResourceAttributes(attributes: Map<AttributeKey<T>, T>) where T : Any {
         customResourceAttributes.putAll(attributes)
     }
 
@@ -189,26 +189,10 @@ public class OpenTelemetryConfig : FeatureConfig() {
         _verbose = verbose
     }
 
-    /**
-     *  Manually sets the [OpenTelemetrySdk] instance.
-     *
-     * This method allows injection of a pre-configured [OpenTelemetrySdk].
-     * When the SDK is set through this method, it also updates the instrumentation scope name and version
-     * based on the current service information.
-     *
-     * > Note: When using this method, any custom configuration applied via
-     * > [addSpanExporter], [addSpanProcessor], [addResourceAttributes] or [setSampler]
-     * > will be ignored, since the provided SDK is assumed to be fully configured.
-     *
-     * @param sdk The [OpenTelemetrySdk] instance to use for OpenTelemetry configuration.
-     */
-    public fun setSdk(sdk: OpenTelemetrySdk) {
-        _sdk = sdk
-    }
-
     //region Private Methods
 
     private fun initializeOpenTelemetry(): OpenTelemetrySdk {
+
         // SDK
         val builder = OpenTelemetrySdk.builder()
 
@@ -241,6 +225,7 @@ public class OpenTelemetryConfig : FeatureConfig() {
     }
 
     private fun createResources(): Resource {
+
         val defaultResourceAttributes: Map<AttributeKey<*>, String> = buildMap {
             put(AttributeKey.stringKey("service.name"), _serviceName)
             put(AttributeKey.stringKey("service.version"), _serviceVersion)
@@ -261,6 +246,7 @@ public class OpenTelemetryConfig : FeatureConfig() {
     }
 
     private fun createExporters(): List<SpanExporter> = buildList {
+
         if (customSpanExporters.isEmpty()) {
             logger.debug { "No custom span exporters configured. Use log span exporter by default." }
             add(LoggingSpanExporter.create())
@@ -273,10 +259,9 @@ public class OpenTelemetryConfig : FeatureConfig() {
     }
 
     private fun SdkTracerProviderBuilder.addProcessors(exporter: SpanExporter) {
+
         if (customSpanProcessorsCreator.isEmpty()) {
-            logger.debug {
-                "No custom span processors configured. Use batch span processor with ${exporter::class.simpleName} as an exporter."
-            }
+            logger.debug { "No custom span processors configured. Use batch span processor with ${exporter::class.simpleName} as an exporter." }
             addSpanProcessor(SimpleSpanProcessor.builder(exporter).build())
             return
         }

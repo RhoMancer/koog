@@ -4,14 +4,7 @@ import ai.koog.agents.core.tools.ToolDescriptor
 import ai.koog.agents.core.tools.ToolParameterDescriptor
 import ai.koog.agents.core.tools.ToolParameterType
 import io.modelcontextprotocol.kotlin.sdk.Tool
-import kotlinx.serialization.json.JsonObject
-import kotlinx.serialization.json.add
-import kotlinx.serialization.json.addJsonArray
-import kotlinx.serialization.json.addJsonObject
-import kotlinx.serialization.json.buildJsonObject
-import kotlinx.serialization.json.put
-import kotlinx.serialization.json.putJsonArray
-import kotlinx.serialization.json.putJsonObject
+import kotlinx.serialization.json.*
 import org.junit.jupiter.api.Test
 import kotlin.test.Ignore
 import kotlin.test.assertEquals
@@ -540,9 +533,7 @@ class DefaultMcpToolDescriptorParserTest {
             inputSchema = Tool.Input(
                 properties = properties,
                 required = required
-            ),
-            outputSchema = null,
-            annotations = null,
+            )
         )
     }
 }

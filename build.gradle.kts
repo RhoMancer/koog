@@ -62,7 +62,6 @@ buildscript {
 plugins {
     id("ai.kotlin.dokka")
     alias(libs.plugins.kotlinx.kover)
-    alias(libs.plugins.ktlint)
 }
 
 allprojects {
@@ -73,10 +72,9 @@ allprojects {
 
 disableDistTasks()
 
-// Apply Kover and ktlint to all subprojects
+// Apply Kover to all subprojects
 subprojects {
     apply(plugin = "org.jetbrains.kotlinx.kover")
-    apply(plugin = "org.jlleitschuh.gradle.ktlint")
 }
 
 subprojects {
@@ -92,7 +90,7 @@ subprojects {
                 "OPEN_AI_API_TEST_KEY" to System.getenv("OPEN_AI_API_TEST_KEY"),
                 "GEMINI_API_TEST_KEY" to System.getenv("GEMINI_API_TEST_KEY"),
                 "OPEN_ROUTER_API_TEST_KEY" to System.getenv("OPEN_ROUTER_API_TEST_KEY"),
-                "AWS_SECRET_ACCESS_KEY" to System.getenv("AWS_SECRET_ACCESS_KEY"),
+                "AWS_SECRET_KEY" to System.getenv("AWS_SECRET_KEY"),
                 "AWS_ACCESS_KEY_ID" to System.getenv("AWS_ACCESS_KEY_ID"),
             )
         )
@@ -171,13 +169,13 @@ tasks {
 
 dependencies {
     dokka(project(":agents:agents-core"))
-    dokka(project(":agents:agents-features:agents-features-debugger"))
-    dokka(project(":agents:agents-features:agents-features-event-handler"))
+    dokka(project(":agents:agents-features:agents-features-common"))
     dokka(project(":agents:agents-features:agents-features-memory"))
     dokka(project(":agents:agents-features:agents-features-opentelemetry"))
-    dokka(project(":agents:agents-features:agents-features-snapshot"))
     dokka(project(":agents:agents-features:agents-features-trace"))
     dokka(project(":agents:agents-features:agents-features-tokenizer"))
+    dokka(project(":agents:agents-features:agents-features-event-handler"))
+    dokka(project(":agents:agents-features:agents-features-snapshot"))
     dokka(project(":agents:agents-mcp"))
     dokka(project(":agents:agents-test"))
     dokka(project(":agents:agents-tools"))
@@ -206,7 +204,6 @@ dependencies {
     dokka(project(":prompt:prompt-tokenizer"))
     dokka(project(":prompt:prompt-xml"))
     dokka(project(":koog-spring-boot-starter"))
-    dokka(project(":koog-ktor"))
     dokka(project(":rag:rag-base"))
     dokka(project(":rag:vector-storage"))
 }
@@ -221,6 +218,7 @@ kover {
         subprojects {
             it.path !in excludedProjects
         }
+
     }
     reports {
         total {
@@ -229,4 +227,5 @@ kover {
             }
         }
     }
+
 }

@@ -31,6 +31,7 @@ class JsonSchemaGeneratorTest {
     private val jsonSchemaGenerator = JsonSchemaGenerator(json, JsonSchemaGenerator.SchemaFormat.JsonSchema, 10)
     private val simpleSchemaGenerator = JsonSchemaGenerator(json, JsonSchemaGenerator.SchemaFormat.Simple, 10)
 
+
     @Serializable
     @SerialName("TestClass")
     @LLMDescription("A test class")
@@ -109,6 +110,7 @@ class JsonSchemaGeneratorTest {
             val recursiveTypeProperty: TestOpenPolymorphism,
         ) : TestOpenPolymorphism()
     }
+
 
     @Test
     fun testGenerateJsonSchema() {
@@ -219,9 +221,7 @@ class JsonSchemaGeneratorTest {
             "TestClass.intProperty" to "An integer property"
         )
 
-        val schema = json.encodeToString(
-            jsonSchemaGenerator.generate("TestClass", serializer<TestClass>(), descriptions)
-        )
+        val schema = json.encodeToString(jsonSchemaGenerator.generate("TestClass", serializer<TestClass>(), descriptions))
 
         val expectedSchema = """
             {
@@ -282,9 +282,7 @@ class JsonSchemaGeneratorTest {
             "TestClass.intProperty" to "An integer property"
         )
 
-        val schema = json.encodeToString(
-            simpleSchemaGenerator.generate("TestClass", serializer<TestClass>(), descriptions)
-        )
+        val schema = json.encodeToString(simpleSchemaGenerator.generate("TestClass", serializer<TestClass>(), descriptions))
 
         val expectedSchema = """
             {
@@ -340,9 +338,7 @@ class JsonSchemaGeneratorTest {
             "NestedProperty.bar" to "Nested bar property",
         )
 
-        val schema = json.encodeToString(
-            jsonSchemaGenerator.generate("NestedTestClass", serializer<NestedTestClass>(), descriptions)
-        )
+        val schema = json.encodeToString(jsonSchemaGenerator.generate("NestedTestClass", serializer<NestedTestClass>(), descriptions))
 
         val expectedDotSchema = """
             {
@@ -417,9 +413,8 @@ class JsonSchemaGeneratorTest {
             "NestedProperty.bar" to "Nested bar property",
         )
 
-        val schema = json.encodeToString(
-            simpleSchemaGenerator.generate("NestedTestClass", serializer<NestedTestClass>(), descriptions)
-        )
+
+        val schema = json.encodeToString(simpleSchemaGenerator.generate("NestedTestClass", serializer<NestedTestClass>(), descriptions))
 
         val expectedDotSchema = """
             {
@@ -513,9 +508,7 @@ class JsonSchemaGeneratorTest {
             "ClosedSubclass2.property2" to "Property 2 for subclass 2",
         )
 
-        val schema = json.encodeToString(
-            jsonSchemaGenerator.generate("TestClosedPolymorphism", serializer<TestClosedPolymorphism>(), descriptions)
-        )
+        val schema = json.encodeToString(jsonSchemaGenerator.generate("TestClosedPolymorphism", serializer<TestClosedPolymorphism>(), descriptions))
 
         val expectedSchema = """
             {
@@ -623,13 +616,7 @@ class JsonSchemaGeneratorTest {
             "NonRecursiveSubclass2.property2" to "Property 2 for subclass 2",
         )
 
-        val schema = json.encodeToString(
-            simpleSchemaGenerator.generate(
-                "NonRecursivePolymorphism",
-                serializer<NonRecursivePolymorphism>(),
-                descriptions
-            )
-        )
+        val schema = json.encodeToString(simpleSchemaGenerator.generate("NonRecursivePolymorphism", serializer<NonRecursivePolymorphism>(), descriptions))
 
         val expectedSchema = """
             {
@@ -693,9 +680,7 @@ class JsonSchemaGeneratorTest {
             "OpenSubclass2.property2" to "Property 2 for subclass 2",
         )
 
-        val schema = json.encodeToString(
-            jsonSchemaGenerator.generate("TestOpenPolymorphism", serializer<TestOpenPolymorphism>(), descriptions)
-        )
+        val schema = json.encodeToString(jsonSchemaGenerator.generate("TestOpenPolymorphism", serializer<TestOpenPolymorphism>(), descriptions))
 
         val expectedSchema = """
             {
@@ -806,14 +791,8 @@ class JsonSchemaGeneratorTest {
 
             serializersModule = SerializersModule {
                 polymorphic(NonRecursiveOpenPolymorphism::class) {
-                    subclass(
-                        NonRecursiveOpenPolymorphism.SubClass1::class,
-                        NonRecursiveOpenPolymorphism.SubClass1.serializer()
-                    )
-                    subclass(
-                        NonRecursiveOpenPolymorphism.SubClass2::class,
-                        NonRecursiveOpenPolymorphism.SubClass2.serializer()
-                    )
+                    subclass(NonRecursiveOpenPolymorphism.SubClass1::class, NonRecursiveOpenPolymorphism.SubClass1.serializer())
+                    subclass(NonRecursiveOpenPolymorphism.SubClass2::class, NonRecursiveOpenPolymorphism.SubClass2.serializer())
                 }
             }
         }
@@ -828,13 +807,7 @@ class JsonSchemaGeneratorTest {
             "NonRecursiveOpenSubclass2.property2" to "Property 2 for subclass 2",
         )
 
-        val schema = json.encodeToString(
-            simpleSchemaGenerator.generate(
-                "NonRecursiveOpenPolymorphism",
-                serializer<NonRecursiveOpenPolymorphism>(),
-                descriptions
-            )
-        )
+        val schema = json.encodeToString(simpleSchemaGenerator.generate("NonRecursiveOpenPolymorphism", serializer<NonRecursiveOpenPolymorphism>(), descriptions))
 
         val expectedSchema = """
             {

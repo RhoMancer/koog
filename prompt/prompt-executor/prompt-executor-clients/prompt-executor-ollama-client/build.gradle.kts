@@ -15,7 +15,6 @@ kotlin {
                 api(project(":agents:agents-tools"))
                 api(project(":prompt:prompt-llm"))
                 api(project(":prompt:prompt-model"))
-                api(project(":prompt:prompt-tokenizer"))
                 api(project(":agents:agents-tools"))
                 api(project(":prompt:prompt-executor:prompt-executor-model"))
                 api(project(":prompt:prompt-executor:prompt-executor-clients"))
@@ -38,18 +37,19 @@ kotlin {
             }
         }
 
+
         commonTest {
             dependencies {
                 implementation(kotlin("test"))
                 implementation(project(":agents:agents-features:agents-features-event-handler"))
                 implementation(libs.kotlinx.coroutines.core)
                 implementation(libs.kotlinx.coroutines.test)
-                implementation(libs.ktor.client.mock)
             }
         }
 
         jvmTest {
             dependencies {
+                implementation(kotlin("test-junit5"))
                 implementation(kotlin("test-junit5"))
                 implementation(libs.kotlinx.coroutines.test)
                 implementation(project(":agents:agents-core"))

@@ -11,9 +11,6 @@ public class ExecuteNodeHandler {
 
     /** Handler called after node execution */
     public var afterNodeHandler: AfterNodeHandler = AfterNodeHandler { _ -> }
-
-    /** Handler called when an error occurs during node execution */
-    public var nodeExecutionErrorHandler: NodeExecutionErrorHandler = NodeExecutionErrorHandler { _ -> }
 }
 
 /**
@@ -34,14 +31,4 @@ public fun interface AfterNodeHandler {
      * Called after a node has been executed.
      */
     public suspend fun handle(eventContext: NodeAfterExecuteContext)
-}
-
-/**
- * Handler for intercepting node execution errors.
- */
-public fun interface NodeExecutionErrorHandler {
-    /**
-     * Called when an error occurs during node execution.
-     */
-    public suspend fun handle(eventContext: NodeExecutionErrorContext)
 }

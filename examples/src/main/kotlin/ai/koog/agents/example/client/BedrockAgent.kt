@@ -8,7 +8,6 @@ import ai.koog.agents.example.simpleapi.Switch
 import ai.koog.agents.example.simpleapi.SwitchTools
 import ai.koog.prompt.executor.clients.bedrock.BedrockClientSettings
 import ai.koog.prompt.executor.clients.bedrock.BedrockModels
-import ai.koog.prompt.executor.clients.bedrock.BedrockRegions
 import ai.koog.prompt.executor.llms.all.simpleBedrockExecutor
 import kotlinx.coroutines.runBlocking
 
@@ -21,7 +20,7 @@ fun main(): Unit = runBlocking {
 
     // Create Bedrock client settings
     val bedrockSettings = BedrockClientSettings(
-        region = BedrockRegions.US_WEST_2.regionCode, // Change this to your preferred region
+        region = "us-east-1", // Change this to your preferred region
         maxRetries = 3
     )
 

@@ -25,6 +25,7 @@ public class AIAgentStrategyBuilder<Input, Output>(
     public override val nodeFinish: FinishNode<Output> = FinishNode(type = outputType)
 
     override fun build(): AIAgentStrategy<Input, Output> {
+
         val strategy = AIAgentStrategy(
             name = name,
             nodeStart = nodeStart,
@@ -35,6 +36,7 @@ public class AIAgentStrategyBuilder<Input, Output>(
         return strategy
     }
 }
+
 
 /**
  * Builds a local AI agent that processes user input through a sequence of stages.

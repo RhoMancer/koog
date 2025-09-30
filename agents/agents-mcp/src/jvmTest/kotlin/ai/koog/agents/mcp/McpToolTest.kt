@@ -43,7 +43,7 @@ class McpToolTest {
         val toolRegistry = withContext(Dispatchers.Default.limitedParallelism(1)) {
             withTimeout(1.minutes) {
                 McpToolRegistryProvider.fromTransport(
-                    transport = McpToolRegistryProvider.defaultSseTransport("http://localhost:$testPort/sse"),
+                    transport = McpToolRegistryProvider.defaultSseTransport("http://localhost:$testPort"),
                     name = "test-client",
                     version = "0.1.0"
                 )
@@ -89,12 +89,10 @@ class McpToolTest {
         val content = result.promptMessageContents.first() as TextContent
         assertEquals("Hello, Test!", content.text)
 
-        val argsWithTitle = McpTool.Args(
-            buildJsonObject {
-                put("name", "Test")
-                put("title", "Mr.")
-            }
-        )
+        val argsWithTitle = McpTool.Args(buildJsonObject {
+            put("name", "Test")
+            put("title", "Mr.")
+        })
         val resultWithTitle = withContext(Dispatchers.Default.limitedParallelism(1)) {
             withTimeout(1.minutes) {
                 greetingTool.execute(argsWithTitle, TestToolEnabler)

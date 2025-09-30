@@ -43,12 +43,10 @@ internal class ResponseMatcher<TResponse>(
  *
  * It also supports tool calls and can be configured to return specific tool results.
  *
- * @property handleLastAssistantMessage If true, only the last `Message.Assistant`
- *           message in a prompt is processed; otherwise, the last message of any type is used.
- * @property responseMatcher Defines the rules for matching prompts to responses,
- *           including support for exact, partial, and conditional matches as well as default responses.
- * @property moderationResponseMatcher Defines the rules for evaluating moderation
- *           matches for prompt messages.
+ * @property partialMatches Map of patterns to responses for partial matching
+ * @property exactMatches Map of patterns to responses for exact matching
+ * @property conditional Map of conditions to responses for conditional matching
+ * @property defaultResponse Default response to return when no other matches are found
  * @property toolRegistry Optional tool registry for tool execution
  * @property logger Logger for debugging
  * @property toolActions List of tool conditions and their corresponding actions
@@ -116,11 +114,10 @@ internal class MockLLMExecutor(
     }
 
     private fun getLastMessage(prompt: Prompt): Message? {
-        return if (handleLastAssistantMessage && prompt.messages.any { it is Message.Assistant }) {
+        return if (handleLastAssistantMessage && prompt.messages.any { it is Message.Assistant })
             prompt.messages.lastOrNull { it is Message.Assistant }
-        } else {
+        else
             prompt.messages.lastOrNull()
-        }
     }
 
     /**
@@ -151,12 +148,8 @@ internal class MockLLMExecutor(
 
         // Check partial response match
         val partiallyMatchedResponse =
-            if (exactMatchedResponse == null) {
-                findPartialResponse(lastMessage, responseMatcher.partialMatches)
-                    ?: listOf()
-            } else {
-                listOf()
-            }
+            if (exactMatchedResponse == null) findPartialResponse(lastMessage, responseMatcher.partialMatches)
+                ?: listOf() else listOf()
         if (partiallyMatchedResponse.any()) {
             logger.debug { "Returning response for partial prompt match: $partiallyMatchedResponse" }
         }
@@ -181,13 +174,12 @@ internal class MockLLMExecutor(
             logger.debug { "Returning response for conditional match: $response" }
             response
         }
-    } else {
-        emptyList()
-    }
+    } else emptyList()
+
 
     /*
     Additional helper functions
-     */
+    */
 
     /**
      * Finds a response that matches the message content partially.
@@ -203,9 +195,7 @@ internal class MockLLMExecutor(
         return partialMatches?.entries?.firstNotNullOfOrNull { (pattern, response) ->
             if (message.content.contains(pattern)) {
                 response
-            } else {
-                null
-            }
+            } else null
         }
     }
 
@@ -223,9 +213,7 @@ internal class MockLLMExecutor(
         return exactMatches?.entries?.firstNotNullOfOrNull { (pattern, response) ->
             if (message.content == pattern) {
                 response
-            } else {
-                null
-            }
+            } else null
         }
     }
 }

@@ -24,8 +24,7 @@ public object OllamaEmbeddingModels {
     public val NOMIC_EMBED_TEXT: LLModel = LLModel(
         provider = LLMProvider.Ollama,
         id = "nomic-embed-text",
-        capabilities = listOf(LLMCapability.Embed),
-        contextLength = 2_048,
+        capabilities = listOf(LLMCapability.Embed)
     )
 
     /**
@@ -40,8 +39,7 @@ public object OllamaEmbeddingModels {
     public val ALL_MINI_LM: LLModel = LLModel(
         provider = LLMProvider.Ollama,
         id = "all-minilm",
-        capabilities = listOf(LLMCapability.Embed),
-        contextLength = 512,
+        capabilities = listOf(LLMCapability.Embed)
     )
 
     /**
@@ -56,8 +54,7 @@ public object OllamaEmbeddingModels {
     public val MULTILINGUAL_E5: LLModel = LLModel(
         provider = LLMProvider.Ollama,
         id = "zylonai/multilingual-e5-large",
-        capabilities = listOf(LLMCapability.Embed),
-        contextLength = 512,
+        capabilities = listOf(LLMCapability.Embed)
     )
 
     /**
@@ -72,8 +69,7 @@ public object OllamaEmbeddingModels {
     public val BGE_LARGE: LLModel = LLModel(
         provider = LLMProvider.Ollama,
         id = "bge-large",
-        capabilities = listOf(LLMCapability.Embed),
-        contextLength = 512,
+        capabilities = listOf(LLMCapability.Embed)
     )
 
     /**
@@ -89,7 +85,6 @@ public object OllamaEmbeddingModels {
     public val MXBAI_EMBED_LARGE: LLModel = LLModel(
         provider = LLMProvider.Ollama,
         id = "mxbai-embed-large",
-        capabilities = listOf(LLMCapability.Embed),
-        contextLength = 512,
+        capabilities = listOf(LLMCapability.Embed)
     )
 }

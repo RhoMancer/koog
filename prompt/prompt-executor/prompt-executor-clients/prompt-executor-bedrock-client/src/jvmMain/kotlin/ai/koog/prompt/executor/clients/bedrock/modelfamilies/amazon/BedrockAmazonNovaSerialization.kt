@@ -47,9 +47,7 @@ internal object BedrockAmazonNovaSerialization {
             maxTokens = 4096,
             temperature = if (model.capabilities.contains(LLMCapability.Temperature)) {
                 prompt.params.temperature
-            } else {
-                null
-            }
+            } else null
         )
 
         return NovaRequest(

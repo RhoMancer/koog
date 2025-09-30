@@ -73,20 +73,22 @@ class PromptTest {
 
         @JvmStatic
         fun toolChoiceSerializationProvider(): Stream<Array<Any>> = Stream.of(
-            arrayOf(LLMParams.ToolChoice.Auto),
-            arrayOf(LLMParams.ToolChoice.Required),
-            arrayOf(LLMParams.ToolChoice.Named(toolName)),
-            arrayOf(LLMParams.ToolChoice.None)
+            arrayOf("Auto", LLMParams.ToolChoice.Auto),
+            arrayOf("Required", LLMParams.ToolChoice.Required),
+            arrayOf("Named", LLMParams.ToolChoice.Named(toolName)),
+            arrayOf("None", LLMParams.ToolChoice.None)
         )
 
         @JvmStatic
         fun schemaSerializationProvider(): Stream<Array<Any>> = Stream.of(
             arrayOf(
+                "Simple JSON Schema",
                 LLMParams.Schema.JSON.Simple(simpleSchemaName, simpleSchema),
                 simpleSchemaName,
                 LLMParams.Schema.JSON.Simple::class.java
             ),
             arrayOf(
+                "Full JSON Schema",
                 LLMParams.Schema.JSON.Full(fullSchemaName, fullSchema),
                 fullSchemaName,
                 LLMParams.Schema.JSON.Full::class.java
@@ -168,20 +170,20 @@ class PromptTest {
             if (decodedMessage.role == Message.Role.Assistant) {
                 assertTrue(
                     (decodedMessage as Message.Assistant).finishReason ==
-                        (prompt.messages[index] as Message.Assistant).finishReason
+                            (prompt.messages[index] as Message.Assistant).finishReason
                 )
             }
 
             if (decodedMessage.role == Message.Role.Tool) {
                 if (decodedMessage is Message.Tool.Call) {
                     val originalToolMessage = prompt.messages[index] as Message.Tool.Call
-                    val decodedToolMessage = decodedMessage
+                    val decodedToolMessage = decodedMessage as Message.Tool.Call
                     assertTrue(decodedToolMessage.id == originalToolMessage.id)
                     assertTrue(decodedToolMessage.tool == originalToolMessage.tool)
                     assertTrue(decodedToolMessage.content == originalToolMessage.content)
                 } else if (decodedMessage is Message.Tool.Result) {
                     val originalToolMessage = prompt.messages[index] as Message.Tool.Result
-                    val decodedToolMessage = decodedMessage
+                    val decodedToolMessage = decodedMessage as Message.Tool.Result
                     assertTrue(decodedToolMessage.id == originalToolMessage.id)
                     assertTrue(decodedToolMessage.tool == originalToolMessage.tool)
                     assertTrue(decodedToolMessage.content == originalToolMessage.content)
@@ -192,7 +194,7 @@ class PromptTest {
 
     @ParameterizedTest
     @MethodSource("schemaSerializationProvider")
-    fun testSchemaSerialization(schema: LLMParams.Schema, schemaName: String, schemaClass: Class<*>) {
+    fun testSchemaSerialization(name: String, schema: LLMParams.Schema, schemaName: String, schemaClass: Class<*>) {
         val prompt = basicPrompt.withUpdatedParams {
             this.schema = schema
         }
@@ -213,7 +215,7 @@ class PromptTest {
 
     @ParameterizedTest
     @MethodSource("toolChoiceSerializationProvider")
-    fun testToolChoiceSerialization(toolChoiceOption: LLMParams.ToolChoice) {
+    fun testToolChoiceSerialization(name: String, toolChoiceOption: LLMParams.ToolChoice) {
         val prompt = basicPrompt.withUpdatedParams {
             toolChoice = toolChoiceOption
         }
@@ -458,6 +460,46 @@ class PromptTest {
     }
 
     @Test
+    fun testToolChoiceNamedWithEmptyName() {
+        val toolChoiceWithEmptyName = LLMParams.ToolChoice.Named(emptyName)
+        val prompt = basicPrompt.withUpdatedParams {
+            toolChoice = toolChoiceWithEmptyName
+        }
+
+        assertTrue(prompt.params.toolChoice is LLMParams.ToolChoice.Named)
+        assertEquals(emptyName, (prompt.params.toolChoice as LLMParams.ToolChoice.Named).name)
+
+        val json = Json.encodeToString(prompt)
+        val decoded = Json.decodeFromString<Prompt>(json)
+
+        assertEquals(prompt, decoded)
+        assertTrue(decoded.params.toolChoice is LLMParams.ToolChoice.Named)
+        assertEquals(emptyName, (decoded.params.toolChoice as LLMParams.ToolChoice.Named).name)
+    }
+
+    @Test
+    fun testSchemaWithEmptyName() {
+        val schemaWithEmptyName = LLMParams.Schema.JSON.Simple(
+            emptyName,
+            buildJsonObject { put("type", "string") }
+        )
+
+        val prompt = basicPrompt.withUpdatedParams {
+            schema = schemaWithEmptyName
+        }
+
+        assertTrue(prompt.params.schema is LLMParams.Schema.JSON.Simple)
+        assertEquals(emptyName, prompt.params.schema?.name)
+
+        val json = Json.encodeToString(prompt)
+        val decoded = Json.decodeFromString<Prompt>(json)
+
+        assertEquals(prompt, decoded)
+        assertTrue(decoded.params.schema is LLMParams.Schema.JSON.Simple)
+        assertEquals(emptyName, decoded.params.schema?.name)
+    }
+
+    @Test
     fun testToolMessagesWithEmptyToolName() {
         val toolCallWithEmptyName = Message.Tool.Call(toolCallId, emptyName, toolCallContent, testRespMetaInfo)
         val toolResultWithEmptyName = Message.Tool.Result(toolCallId, emptyName, toolCallContent, testReqMetaInfo)
@@ -490,27 +532,27 @@ class PromptTest {
     }
 
     @Test
-    fun testLLMParamsWithValidTemperatureValues() {
-        val lowTemp = 0.1
-        val highTemp = 1.9
+    fun testLLMParamsWithExtremeTemperatureValues() {
+        val lowTemp = -1.0
+        val highTemp = 100.0
 
-        val promptWithLowTemp = basicPrompt.withUpdatedParams {
+        val promptWithNegativeTemp = basicPrompt.withUpdatedParams {
             temperature = lowTemp
         }
         val promptWithHighTemp = basicPrompt.withUpdatedParams {
             temperature = highTemp
         }
 
-        assertEquals(lowTemp, promptWithLowTemp.params.temperature)
+        assertEquals(lowTemp, promptWithNegativeTemp.params.temperature)
         assertEquals(highTemp, promptWithHighTemp.params.temperature)
 
-        val jsonLow = Json.encodeToString(promptWithLowTemp)
+        val jsonNegative = Json.encodeToString(promptWithNegativeTemp)
         val jsonHigh = Json.encodeToString(promptWithHighTemp)
 
-        val decodedLow = Json.decodeFromString<Prompt>(jsonLow)
+        val decodedNegative = Json.decodeFromString<Prompt>(jsonNegative)
         val decodedHigh = Json.decodeFromString<Prompt>(jsonHigh)
 
-        assertEquals(promptWithLowTemp.params.temperature, decodedLow.params.temperature)
+        assertEquals(promptWithNegativeTemp.params.temperature, decodedNegative.params.temperature)
         assertEquals(promptWithHighTemp.params.temperature, decodedHigh.params.temperature)
     }
 

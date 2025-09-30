@@ -6,11 +6,7 @@ import ai.koog.agents.core.agent.context.agentInput
 import ai.koog.agents.core.agent.entity.AIAgentStrategy
 import ai.koog.agents.core.dsl.builder.forwardTo
 import ai.koog.agents.core.dsl.builder.strategy
-import ai.koog.agents.core.dsl.extension.nodeExecuteTool
-import ai.koog.agents.core.dsl.extension.nodeLLMRequest
-import ai.koog.agents.core.dsl.extension.nodeLLMSendToolResult
-import ai.koog.agents.core.dsl.extension.onAssistantMessage
-import ai.koog.agents.core.dsl.extension.onToolCall
+import ai.koog.agents.core.dsl.extension.*
 import ai.koog.agents.core.tools.ToolRegistry
 import ai.koog.agents.features.eventHandler.feature.EventHandler
 import ai.koog.integration.tests.tools.AnswerVerificationTool
@@ -62,7 +58,7 @@ class OllamaAgentIntegrationTest {
                                                 "tool":"geography_query_tool",
                                                 "content":{"query":"capital of France"}
                                             }
-                                """.trimIndent()
+                                            """.trimIndent()
                             )
                         }
                     }
@@ -102,8 +98,7 @@ class OllamaAgentIntegrationTest {
                                             "id":"ollama_tool_call_3743609160"
                                             "tool":"answer_verification_tool"
                                             "content":{"answer":"Paris"}
-                                        }.
-                                """.trimIndent()
+                                        }.""".trimIndent()
                             )
                         }
                     }
@@ -126,6 +121,7 @@ class OllamaAgentIntegrationTest {
         nodeStart then askCapitalSubgraph then askVerifyAnswer then nodeFinish
     }
 
+
     private fun createToolRegistry(): ToolRegistry {
         return ToolRegistry {
             tool(GeographyQueryTool)
@@ -135,9 +131,7 @@ class OllamaAgentIntegrationTest {
     }
 
     private fun createAgent(
-        executor: PromptExecutor,
-        strategy: AIAgentStrategy<String, String>,
-        toolRegistry: ToolRegistry
+        executor: PromptExecutor, strategy: AIAgentStrategy<String, String>, toolRegistry: ToolRegistry
     ): AIAgent<String, String> {
         val promptsAndResponses = mutableListOf<String>()
 

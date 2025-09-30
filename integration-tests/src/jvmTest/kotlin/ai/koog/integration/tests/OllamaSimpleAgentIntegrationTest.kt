@@ -26,9 +26,7 @@ class OllamaSimpleAgentIntegrationTest {
 
     val eventHandlerConfig: EventHandlerConfig.() -> Unit = {
         onBeforeAgentStarted { eventContext ->
-            println(
-                "Agent started: strategy=${eventContext.strategy.javaClass.simpleName}, agent=${eventContext.agent.javaClass.simpleName}"
-            )
+            println("Agent started: strategy=${eventContext.strategy.javaClass.simpleName}, agent=${eventContext.agent.javaClass.simpleName}")
         }
 
         onAgentFinished { eventContext ->
@@ -52,9 +50,7 @@ class OllamaSimpleAgentIntegrationTest {
         }
 
         onAfterNode { eventContext ->
-            println(
-                "After node: node=${eventContext.node.javaClass.simpleName}, input=${eventContext.input}, output=${eventContext.output}"
-            )
+            println("After node: node=${eventContext.node.javaClass.simpleName}, input=${eventContext.input}, output=${eventContext.output}")
         }
 
         onBeforeLLMCall { eventContext ->
@@ -72,21 +68,15 @@ class OllamaSimpleAgentIntegrationTest {
         }
 
         onToolValidationError { eventContext ->
-            println(
-                "Tool validation error: tool=${eventContext.tool.name}, args=${eventContext.toolArgs}, value=${eventContext.error}"
-            )
+            println("Tool validation error: tool=${eventContext.tool.name}, args=${eventContext.toolArgs}, value=${eventContext.error}")
         }
 
         onToolCallFailure { eventContext ->
-            println(
-                "Tool call failure: tool=${eventContext.tool.name}, args=${eventContext.toolArgs}, error=${eventContext.throwable.message}"
-            )
+            println("Tool call failure: tool=${eventContext.tool.name}, args=${eventContext.toolArgs}, error=${eventContext.throwable.message}")
         }
 
         onToolCallResult { eventContext ->
-            println(
-                "Tool call result: tool=${eventContext.tool.name}, args=${eventContext.toolArgs}, result=${eventContext.result}"
-            )
+            println("Tool call result: tool=${eventContext.tool.name}, args=${eventContext.toolArgs}, result=${eventContext.result}")
         }
     }
 
@@ -129,6 +119,7 @@ class OllamaSimpleAgentIntegrationTest {
             maxIterations = 10,
             installFeatures = { install(EventHandler.Feature, eventHandlerConfig) }
         )
+
 
         agent.run("Give me top 10 books of the all time.")
 

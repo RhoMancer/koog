@@ -42,10 +42,8 @@ internal data class OpenAIModerationResponse(
 internal data class OpenAIModerationResult(
     val flagged: Boolean,
     val categories: OpenAIModerationCategories,
-    @SerialName("category_scores")
-    val categoryScores: OpenAIModerationCategoryScores,
-    @SerialName("category_applied_input_types")
-    val categoryAppliedInputTypes: OpenAIModerationCategoryAppliedInputTypes? = null
+    @SerialName("category_scores") val categoryScores: OpenAIModerationCategoryScores,
+    @SerialName("category_applied_input_types") val categoryAppliedInputTypes: OpenAIModerationCategoryAppliedInputTypes? = null
 )
 
 /**

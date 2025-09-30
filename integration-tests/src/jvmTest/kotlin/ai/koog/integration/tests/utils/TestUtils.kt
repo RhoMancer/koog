@@ -1,10 +1,6 @@
 package ai.koog.integration.tests.utils
 
-import ai.koog.agents.core.tools.SimpleTool
-import ai.koog.agents.core.tools.ToolArgs
-import ai.koog.agents.core.tools.ToolDescriptor
-import ai.koog.agents.core.tools.ToolParameterDescriptor
-import ai.koog.agents.core.tools.ToolParameterType
+import ai.koog.agents.core.tools.*
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlinx.serialization.Serializable
@@ -36,36 +32,18 @@ object TestUtils {
     }
 
     fun readAwsSecretAccessKeyFromEnv(): String {
-        return System.getenv("AWS_SECRET_ACCESS_KEY")
-            ?: error("ERROR: environment variable `AWS_SECRET_ACCESS_KEY` is not set")
-    }
-
-    fun readAwsSessionTokenFromEnv(): String? {
-        return System.getenv("AWS_SESSION_TOKEN")
-            ?: null.also {
-                println("WARNING: environment variable `AWS_SESSION_TOKEN` is not set, using default session token")
-            }
+        return System.getenv("AWS_SECRET_KEY")
+            ?: error("ERROR: environment variable `AWS_SECRET_KEY` is not set")
     }
 
     @Serializable
     enum class CalculatorOperation {
-        ADD,
-        SUBTRACT,
-        MULTIPLY,
-        DIVIDE
+        ADD, SUBTRACT, MULTIPLY, DIVIDE
     }
 
     @Serializable
     enum class Colors {
-        WHITE,
-        BLACK,
-        RED,
-        ORANGE,
-        YELLOW,
-        GREEN,
-        BLUE,
-        INDIGO,
-        VIOLET
+        WHITE, BLACK, RED, ORANGE, YELLOW, GREEN, BLUE, INDIGO, VIOLET
     }
 
     @Serializable
@@ -244,6 +222,7 @@ object TestUtils {
                 }
                 buffer.clear()
             }
+
         }
     }
 

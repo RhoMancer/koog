@@ -142,6 +142,7 @@ internal sealed interface GoogleData {
         val fileUri: String,
     )
 
+
     /**
      * A predicted `FunctionCall` returned from the model that contains a string representing
      * the `FunctionDeclaration.name` with the arguments and their values.
@@ -378,6 +379,7 @@ internal class GoogleUsageMetadata(
     val thoughtsTokenCount: Int? = null,
     val totalTokenCount: Int,
 )
+
 
 internal object GooglePartSerializer : JsonContentPolymorphicSerializer<GooglePart>(GooglePart::class) {
     override fun selectDeserializer(element: JsonElement): DeserializationStrategy<GooglePart> {

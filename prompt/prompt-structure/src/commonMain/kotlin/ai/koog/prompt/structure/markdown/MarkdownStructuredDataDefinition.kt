@@ -2,8 +2,8 @@ package ai.koog.prompt.structure.markdown
 
 import ai.koog.prompt.markdown.markdown
 import ai.koog.prompt.structure.StructuredDataDefinition
-import ai.koog.prompt.text.TextContentBuilder
 import ai.koog.prompt.text.TextContentBuilderBase
+import ai.koog.prompt.text.TextContentBuilder
 
 /**
  * Represents a specific definition of structured data that uses Markdown for its schema
@@ -19,8 +19,7 @@ import ai.koog.prompt.text.TextContentBuilderBase
 public class MarkdownStructuredDataDefinition(
     private val id: String,
     private val schema: TextContentBuilder.() -> Unit,
-    private val examples: (TextContentBuilder.() -> Unit)? = null
-) : StructuredDataDefinition {
+    private val examples: (TextContentBuilder.() -> Unit)? = null): StructuredDataDefinition {
 
     override fun definition(builder: TextContentBuilderBase<*>): TextContentBuilderBase<*> {
         return builder.apply {

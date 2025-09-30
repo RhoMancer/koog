@@ -17,8 +17,7 @@ import kotlinx.serialization.encoding.Encoder
  * This serializer only supports serialization and does not allow for deserialization of data.
  */
 public open class ToolResultStringSerializer<T>(
-    final override val descriptor: SerialDescriptor =
-        PrimitiveSerialDescriptor("ToolResultString", PrimitiveKind.STRING),
+    final override val descriptor: SerialDescriptor = PrimitiveSerialDescriptor("ToolResultString", PrimitiveKind.STRING),
     private val toStringConverter: (T) -> String,
 ) : KSerializer<T> {
 
@@ -29,4 +28,5 @@ public open class ToolResultStringSerializer<T>(
     final override fun deserialize(decoder: Decoder): T {
         throw UnsupportedOperationException("Deserialization is not supported")
     }
+
 }

@@ -9,11 +9,7 @@ import ai.koog.prompt.message.Message
 import ai.koog.prompt.params.LLMParams
 import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
-import kotlin.test.Test
-import kotlin.test.assertContains
-import kotlin.test.assertEquals
-import kotlin.test.assertNotNull
-import kotlin.test.assertTrue
+import kotlin.test.*
 
 class BedrockMetaLlamaSerializationTest {
 
@@ -85,8 +81,7 @@ class BedrockMetaLlamaSerializationTest {
         val modelWithoutTemperature = LLModel(
             provider = LLMProvider.Bedrock,
             id = "test-model",
-            capabilities = listOf(LLMCapability.Completion), // No temperature capability
-            contextLength = 1_000L,
+            capabilities = listOf(LLMCapability.Completion) // No temperature capability
         )
 
         val requestWithoutTemp =

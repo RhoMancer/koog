@@ -28,9 +28,7 @@ import kotlinx.coroutines.flow.Flow
  * @param name Optional node name, defaults to delegate's property name.
  */
 @AIAgentBuilderDslMarker
-public inline fun <reified T> AIAgentSubgraphBuilderBase<*, *>.nodeDoNothing(
-    name: String? = null
-): AIAgentNodeDelegate<T, T> =
+public inline fun <reified T> AIAgentSubgraphBuilderBase<*, *>.nodeDoNothing(name: String? = null): AIAgentNodeDelegate<T, T> =
     node(name) { input -> input }
 
 // ================
@@ -65,9 +63,7 @@ public inline fun <reified T> AIAgentSubgraphBuilderBase<*, *>.nodeUpdatePrompt(
  * @param name Optional name for the node.
  */
 @AIAgentBuilderDslMarker
-public fun AIAgentSubgraphBuilderBase<*, *>.nodeLLMSendMessageOnlyCallingTools(
-    name: String? = null
-): AIAgentNodeDelegate<String, Message.Response> =
+public fun AIAgentSubgraphBuilderBase<*, *>.nodeLLMSendMessageOnlyCallingTools(name: String? = null): AIAgentNodeDelegate<String, Message.Response> =
     node(name) { message ->
         llm.writeSession {
             updatePrompt {
@@ -129,11 +125,8 @@ public fun AIAgentSubgraphBuilderBase<*, *>.nodeLLMRequest(
                 user(message)
             }
 
-            if (allowToolCalls) {
-                requestLLM()
-            } else {
-                requestLLMWithoutTools()
-            }
+            if (allowToolCalls) requestLLM()
+            else requestLLMWithoutTools()
         }
     }
 
@@ -163,7 +156,8 @@ public fun AIAgentSubgraphBuilderBase<*, *>.nodeLLMModerateMessage(
     node<Message, ModeratedMessage>(name) { message ->
         val moderationPrompt = if (includeCurrentPrompt) {
             prompt(llm.prompt) { message(message) }
-        } else {
+        }
+        else {
             prompt("single-message-moderation") { message(message) }
         }
 
@@ -244,9 +238,7 @@ public fun AIAgentSubgraphBuilderBase<*, *>.nodeLLMRequestStreaming(
  * @param name Optional node name.
  */
 @AIAgentBuilderDslMarker
-public fun AIAgentSubgraphBuilderBase<*, *>.nodeLLMRequestMultiple(
-    name: String? = null
-): AIAgentNodeDelegate<String, List<Message.Response>> =
+public fun AIAgentSubgraphBuilderBase<*, *>.nodeLLMRequestMultiple(name: String? = null): AIAgentNodeDelegate<String, List<Message.Response>> =
     node(name) { message ->
         llm.writeSession {
             updatePrompt {

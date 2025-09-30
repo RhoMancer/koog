@@ -1,7 +1,7 @@
 package ai.koog.prompt.markdown
 
-import ai.koog.prompt.text.TextContentBuilder
 import ai.koog.prompt.text.TextContentBuilderBase
+import ai.koog.prompt.text.TextContentBuilder
 
 /**
  * A dedicated builder for creating markdown content.
@@ -182,6 +182,7 @@ public class MarkdownContentBuilder : TextContentBuilder() {
             +text
         }
     }
+
 
     /**
      * Adds a table to the content.
@@ -386,6 +387,7 @@ public class MarkdownContentBuilder : TextContentBuilder() {
             )
         }
     }
+
 
     /**
      * Adds a bulleted list with a block structure.

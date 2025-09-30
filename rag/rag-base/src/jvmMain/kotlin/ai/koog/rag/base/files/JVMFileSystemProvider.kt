@@ -1,6 +1,6 @@
 package ai.koog.rag.base.files
 
-import ai.koog.rag.base.files.FileMetadata.FileContentType
+import ai.koog.rag.base.files.FileMetadata.FileContent
 import ai.koog.rag.base.files.FileMetadata.FileType
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -11,33 +11,10 @@ import kotlinx.io.files.SystemFileSystem
 import java.io.IOException
 import java.nio.ByteBuffer
 import java.nio.charset.Charset
-import java.nio.file.FileAlreadyExistsException
 import java.nio.file.FileSystems
 import java.nio.file.Files
-import java.nio.file.NoSuchFileException
 import java.nio.file.Path
-import kotlin.io.path.ExperimentalPathApi
-import kotlin.io.path.absolutePathString
-import kotlin.io.path.createDirectories
-import kotlin.io.path.createDirectory
-import kotlin.io.path.createFile
-import kotlin.io.path.createParentDirectories
-import kotlin.io.path.deleteExisting
-import kotlin.io.path.deleteRecursively
-import kotlin.io.path.exists
-import kotlin.io.path.extension
-import kotlin.io.path.fileSize
-import kotlin.io.path.inputStream
-import kotlin.io.path.isDirectory
-import kotlin.io.path.isHidden
-import kotlin.io.path.isRegularFile
-import kotlin.io.path.moveTo
-import kotlin.io.path.name
-import kotlin.io.path.notExists
-import kotlin.io.path.pathString
-import kotlin.io.path.readBytes
-import kotlin.io.path.relativeToOrNull
-import kotlin.io.path.writeBytes
+import kotlin.io.path.*
 import kotlin.use
 
 /**
@@ -46,11 +23,19 @@ import kotlin.use
  */
 public object JVMFileSystemProvider {
     /**
-     * Provides operations for path serialization, structure navigation, and content reading using [Path] objects
-     * in a read-only manner without modifying the filesystem.
+     * Provides functionality for serializing and deserializing file paths and handling metadata related to file paths.
+     * Implements the `FileSystemProvider.Serialization` interface for `Path` type.
      */
-    public object ReadOnly : FileSystemProvider.ReadOnly<Path> {
-
+    public object Serialization : FileSystemProvider.Serialization<Path> {
+        /**
+         * Converts the given [Path] to a normalized string representation.
+         * This function is deprecated and should be replaced by the `toAbsolutePathString` method.
+         *
+         * @param path the [Path] to be converted to a string
+         * @return the string representation of the normalized [Path]
+         */
+        @Deprecated("Use toAbsolutePathString instead", replaceWith = ReplaceWith("toAbsolutePathString(path)"))
+        override fun toPathString(path: Path): String = path.normalize().pathString
         /**
          * Converts the given [path] to its absolute path representation as a string.
          * The path is normalized before being converted.
@@ -59,20 +44,13 @@ public object JVMFileSystemProvider {
          * @return the absolute path string representation of the given [path]
          */
         override fun toAbsolutePathString(path: Path): String = path.normalize().absolutePathString()
-
         /**
          * Converts the given absolute file path string to a normalized Path object.
          *
          * @param path The absolute file path as a string.
          * @return The normalized Path representation of the given string.
-         * @throws IllegalArgumentException if the resolved path is not absolute.
          */
-        override fun fromAbsoluteString(path: String): Path {
-            val resolvedPath = Path.of(toSystemDependentName(path)).normalize()
-            require(resolvedPath.isAbsolute) { "Resolved path must be absolute" }
-            return resolvedPath
-        }
-
+        override fun fromAbsoluteString(path: String): Path = Path.of(toSystemDependentName(path)).normalize()
         /**
          * Converts a relative string representation of a path into a normalized Path object
          * based on the provided base Path.
@@ -80,13 +58,8 @@ public object JVMFileSystemProvider {
          * @param base The base path against which the relative path will be resolved.
          * @param path The relative path as a string to be resolved.
          * @return A normalized Path object representing the resolved path.
-         * @throws IllegalArgumentException if [path] is absolute.
          */
-        override fun fromRelativeString(base: Path, path: String): Path {
-            val resolvedPath = Path.of(path)
-            require(!resolvedPath.isAbsolute) { "Path must be relative, but was absolute: $path" }
-            return base.resolve(path).normalize()
-        }
+        override fun fromRelativeString(base: Path, path: String): Path = base.resolve(path).normalize()
 
         /**
          * Retrieves the name of the given file path.
@@ -94,15 +67,14 @@ public object JVMFileSystemProvider {
          * @param path the file path from which to extract the name
          * @return the name of the file or directory represented by the provided path
          */
-        override fun name(path: Path): String = path.name
-
+        override suspend fun name(path: Path): String = path.name
         /**
-         * Retrieves the extension of the specified path.
+         * Retrieves the file extension of the specified path.
          *
-         * @param path the path from which to extract the extension.
-         * @return the extension of [path] as a string.
+         * @param path the path from which to extract the file extension.
+         * @return the file extension as a string.
          */
-        override fun extension(path: Path): String = path.extension
+        override suspend fun extension(path: Path): String = path.extension
 
         /**
          * Converts a given file path to a system-dependent format by replacing universal separators
@@ -120,7 +92,15 @@ public object JVMFileSystemProvider {
             }
             return adjustedPath
         }
+    }
 
+    /**
+     * Object implementing file system operations and serialization for file paths.
+     * Provides functionality for retrieving metadata, listing directory contents,
+     * determining parent paths, checking the existence of paths, and computing relative paths.
+     * Delegates serialization-related functionality to the `Serialization` interface.
+     */
+    public object Select : FileSystemProvider.Select<Path>, FileSystemProvider.Serialization<Path> by Serialization {
         /**
          * Retrieves metadata for a given file or directory path.
          *
@@ -131,13 +111,12 @@ public object JVMFileSystemProvider {
          * @param path The path for which the metadata is to be retrieved.
          * @return A [FileMetadata] instance containing information about the file or directory,
          * or null if the path does not represent a valid file or directory.
-         * @throws IOException if an I/O error occurs while retrieving metadata.
          */
         override suspend fun metadata(path: Path): FileMetadata? {
             return if (path.isRegularFile()) {
-                FileMetadata(FileType.File, path.isHidden())
+                FileMetadata(FileType.File, path.isHidden(), path.contentType())
             } else if (path.isDirectory()) {
-                FileMetadata(FileType.Directory, path.isHidden())
+                FileMetadata(FileType.Directory, path.isHidden(), path.contentType())
             } else {
                 null
             }
@@ -145,22 +124,14 @@ public object JVMFileSystemProvider {
 
         /**
          * Retrieves a sorted list of paths within the specified directory.
-         * The listing is not recursive.
          *
-         * @param directory The directory path whose contents are to be listed.
+         * @param path The directory path whose contents are to be listed.
          * @return A list of paths within the specified directory, sorted by name.
          *         Returns an empty list if an error occurs or the directory is empty.
-         * @throws IllegalArgumentException if [directory] is not a directory or doesn't exist.
-         * @throws IOException if an I/O error occurs during listing.
          */
-        override suspend fun list(directory: Path): List<Path> {
-            require(directory.exists()) { "Path must exist" }
-            require(directory.isDirectory()) { "Path must be a directory" }
-
-            return Files.list(directory).use {
-                it.sorted { a, b -> a.name.compareTo(b.name) }.toList()
-            }
-        }
+        override suspend fun list(path: Path): List<Path> = runCatching { Files.list(path).use {
+            it.sorted { a, b -> a.name.compareTo(b.name) }.toList()
+        }}.getOrElse { emptyList() }
 
         /**
          * Retrieves the parent directory of the specified path, if it exists.
@@ -168,7 +139,18 @@ public object JVMFileSystemProvider {
          * @param path the path for which to retrieve the parent directory
          * @return the parent path if it exists, or null if the path does not have a parent
          */
-        override fun parent(path: Path): Path? = path.parent
+        override suspend fun parent(path: Path): Path? = path.parent
+
+        /**
+         * Computes the relative path from the specified root to the given path.
+         *
+         * @param root The root path to which the relative computation is performed.
+         * @param path The path for which the relative computation is performed.
+         * @return The relative path as a string, or null if the relative computation is not possible.
+         */
+        @Deprecated("Use relativize instead", replaceWith = ReplaceWith("relativize(root, path)"))
+        override suspend fun relative(root: Path, path: Path): String? =
+            path.relativeToOrNull(root)?.normalize()?.pathString
 
         /**
          * Computes the relative path from the given root to the specified path.
@@ -177,7 +159,7 @@ public object JVMFileSystemProvider {
          * @param path the path for which the relative path needs to be determined.
          * @return the relative path from the root to the given path as a normalized string, or null if the paths have no common prefix.
          */
-        override fun relativize(root: Path, path: Path): String? {
+        override suspend fun relativize(root: Path, path: Path): String? {
             return path.relativeToOrNull(root)?.normalize()?.pathString
         }
 
@@ -188,95 +170,178 @@ public object JVMFileSystemProvider {
          * @return `true` if the file or directory exists, `false` otherwise.
          */
         override suspend fun exists(path: Path): Boolean = path.exists()
+    }
 
-        /**
-         * Detects the type of content stored in a file using a [path].
-         *
-         * @param path The path to the file whose content type is to be detected.
-         * @return [FileContentType.Text] for text files, [FileContentType.Binary] for binary files.
-         * @throws IllegalArgumentException if the path doesn't exist or isn't a regular file.
-         * @throws IOException if an I/O error occurs while detecting the file content type.
-         */
-        override suspend fun getFileContentType(path: Path): FileContentType {
-            require(path.exists()) { "Path must exist" }
-            require(path.isRegularFile()) { "Path must be a regular file" }
-            return if (path.isFileHeadTextBased()) FileContentType.Text else FileContentType.Binary
-        }
-
-        /**
-         * Determines if the beginning of a file's content is text-based, as opposed to binary.
-         * This method reads a specified amount of data from the start of the file,
-         * attempts decoding with a list of provided character sets, and checks if any succeed.
-         *
-         * @param headMaxSize The maximum number of bytes to read from the start of the file. Defaults to 1024 bytes.
-         * @param charsetsToTry A list of character sets to attempt decoding the file's content. Defaults to a list containing UTF-8.
-         * @return True if the file's head data is successfully decoded with one of the given character sets, otherwise false.
-         */
-        private fun Path.isFileHeadTextBased(
-            headMaxSize: Int = 1024,
-            charsetsToTry: List<Charset> = listOf(
-                Charsets.UTF_8,
-            )
-        ): Boolean {
-            return runCatching {
-                val headData = inputStream().use { stream ->
-                    val buffer = ByteArray(headMaxSize)
-                    stream.read(buffer, 0, headMaxSize).let { ByteBuffer.wrap(buffer.copyOf(it)) }
-                }
-                charsetsToTry.any { runCatching { it.newDecoder().decode(headData) }.isSuccess }
-            }.getOrElse { false }
-        }
-
+    /**
+     * Provides utility methods for reading file data and retrieving file-related metadata.
+     * Implements the `FileSystemProvider.Read` and delegates file serialization operations to the `Serialization` interface.
+     */
+    public object Read : FileSystemProvider.Read<Path>, FileSystemProvider.Serialization<Path> by Serialization {
         /**
          * Reads the contents of the file located at the specified path.
          *
          * @param path the path of the file to read, which must be a regular file and must exist.
          * @return a ByteArray containing the contents of the file.
          * @throws IllegalArgumentException if the specified path is not a regular file or does not exist.
-         * @throws IOException if an I/O error occurs during reading.
          */
         override suspend fun read(path: Path): ByteArray {
-            require(path.exists()) { "Path must exist" }
             require(path.isRegularFile()) { "Path must be a regular file" }
+            require(path.exists()) { "Path must exist" }
 
             return withContext(Dispatchers.IO) { path.readBytes() }
         }
-
         /**
          * Opens a source to read from the specified file path.
          *
          * @param path The file path from which the source will be opened.
          * @return A buffered source for reading from the file.
-         * @throws IllegalArgumentException if [path] doesn't exist or isn't a regular file.
-         * @throws IOException if an I/O error occurs during source creation.
          */
-        override suspend fun source(path: Path): Source = withContext(Dispatchers.IO) {
-            require(path.exists()) { "Path must exist" }
-            require(path.isRegularFile()) { "Path must be a regular file" }
-            SystemFileSystem.source(path = kotlinx.io.files.Path(path.pathString)).buffered()
-        }
-
+        override suspend fun source(path: Path): Source = withContext(Dispatchers.IO) { SystemFileSystem.source(path = kotlinx.io.files.Path(path.pathString)).buffered() }
         /**
          * Returns the size of the regular file at the specified path.
          *
          * @param path the path to the file whose size is to be obtained.
          * Must be a regular file and exist.
          * @return the size of the file in bytes.
-         * @throws IllegalArgumentException if [path] doesn't exist or isn't a regular file.
-         * @throws IOException if an I/O error occurs while determining the file size.
+         * @throws IllegalArgumentException if the provided path is not a regular file.
+         * @throws IllegalArgumentException if the provided path does not exist.
          */
         override suspend fun size(path: Path): Long {
-            require(path.exists()) { "Path must exist" }
             require(path.isRegularFile()) { "Path must be a regular file" }
+            require(path.exists()) { "Path must exist" }
             return withContext(Dispatchers.IO) { path.fileSize() }
         }
     }
 
     /**
-     * This is the most comprehensive interface, offering complete filesystem operations using [Path] objects
-     * including reading, writing, and path manipulation.
+     * A read-only object implementing file system provider interfaces for handling file
+     * serialization, selection, and reading functionalities.
+     *
+     * This object combines the functionalities of `FileSystemProvider.ReadOnly`,
+     * `FileSystemProvider.Select`, and `FileSystemProvider.Read` using delegation.
+     * It provides operations for path serialization, structure navigation, and
+     * content reading in a read-only manner.
      */
-    public object ReadWrite : FileSystemProvider.ReadWrite<Path>, FileSystemProvider.ReadOnly<Path> by ReadOnly {
+    public object ReadOnly: FileSystemProvider.ReadOnly<Path>,
+        FileSystemProvider.Select<Path> by Select,
+        FileSystemProvider.Read<Path> by Read {
+
+        /**
+         * Converts the specified [path] to its string representation.
+         *
+         * @param path the file system path to convert to a string.
+         * @return the string representation of the specified path.
+         * @deprecated Use toAbsolutePathString instead.
+         */
+        @Deprecated("Use toAbsolutePathString instead", replaceWith = ReplaceWith("toAbsolutePathString(path)"))
+        override fun toPathString(path: Path): String = Serialization.toPathString(path)
+        /**
+         * Converts the given Path to its absolute path string representation.
+         *
+         * @param path the path to be converted to an absolute path string
+         * @return the absolute path string representation of the given path
+         */
+        override fun toAbsolutePathString(path: Path): String = Serialization.toAbsolutePathString(path)
+
+        /**
+         * Converts an absolute string representation of a file path into a normalized Path object.
+         *
+         * @param path The absolute string representation of the file path to convert.
+         * @return A normalized Path object corresponding to the given absolute string.
+         */
+        override fun fromAbsoluteString(path: String): Path = Serialization.fromAbsoluteString(path)
+        /**
+         * Resolves a given relative path string against a base path and returns the normalized path.
+         *
+         * @param base The base path to resolve the relative string against.
+         * @param path The relative path string to be resolved.
+         * @return The normalized absolute path obtained by resolving the relative path string against the base path.
+         */
+        override fun fromRelativeString(base: Path, path: String): Path = Serialization.fromRelativeString(base, path)
+
+        /**
+         * Retrieves the name of the given path.
+         *
+         * @param path the Path object from which the name will be extracted.
+         * @return the name of the provided path as a String.
+         */
+        override suspend fun name(path: Path): String = Serialization.name(path)
+        /**
+         * Retrieves the file extension from the specified path using the serialization logic.
+         *
+         * @param path The path from which to extract the file extension.
+         * @return The file extension as a string.
+         */
+        override suspend fun extension(path: Path): String = Serialization.extension(path)
+
+    }
+
+    /**
+     * Provides a combined object interface for performing both read and write file system operations.
+     *
+     * `ReadWrite` implements the `FileSystemProvider.ReadWrite` interface, extending both
+     * read-only and write capabilities. By delegating to `ReadOnly` and `Write` objects, it provides
+     * comprehensive file system operations including reading, writing, serialization, and path manipulation.
+     */
+    public object ReadWrite: FileSystemProvider.ReadWrite<Path>,
+        FileSystemProvider.ReadOnly<Path> by ReadOnly,
+        FileSystemProvider.Write<Path> by Write {
+
+        /**
+         * Converts the given [path] to its string representation.
+         * The method is deprecated and it is recommended to use `toAbsolutePathString` instead.
+         *
+         * @param path the path to be converted to a string.
+         * @return the string representation of the provided path.
+         */
+        @Deprecated("Use toAbsolutePathString instead", replaceWith = ReplaceWith("toAbsolutePathString(path)"))
+        override fun toPathString(path: Path): String = Serialization.toPathString(path)
+        /**
+         * Converts the specified [path] to its absolute path represented as a string.
+         *
+         * @param path the path to be converted into an absolute path string
+         * @return the absolute path as a string
+         */
+        override fun toAbsolutePathString(path: Path): String = Serialization.toAbsolutePathString(path)
+        /**
+         * Converts an absolute string path into a normalized Path object suitable for the current file system.
+         *
+         * @param path The absolute string path to be converted.
+         * @return A Path object representing the input absolute string, normalized for the current file system.
+         */
+        override fun fromAbsoluteString(path: String): Path = Serialization.fromAbsoluteString(path)
+        /**
+         * Resolves a relative path string against a given base path and normalizes the resulting path.
+         *
+         * @param base The base path against which the relative path string will be resolved.
+         * @param path The relative path string to be resolved.
+         * @return The resolved and normalized path as a `Path` object.
+         */
+        override fun fromRelativeString(base: Path, path: String): Path = Serialization.fromRelativeString(base, path)
+        /**
+         * Retrieves the name of the file or directory represented by the specified path.
+         *
+         * @param path the path from which the name should be extracted
+         * @return the name of the file or directory as a string
+         */
+        override suspend fun name(path: Path): String = Serialization.name(path)
+        /**
+         * Gets the extension of the file represented by the given path.
+         *
+         * @param path The path of the file whose extension is to be determined.
+         * @return The file extension as a string.
+         */
+        override suspend fun extension(path: Path): String = Serialization.extension(path)
+    }
+
+    /**
+     * Singleton object that provides implementations for creating, moving, writing, and deleting files or directories,
+     * while adhering to a serialization context. It also ensures compatibility with specific operating system constraints
+     * such as Windows reserved names.
+     * Implements the `FileSystemProvider.Write` interface with `Path` as the path type and delegates serialization functionalities
+     * to a `Serialization` implementation.
+     */
+    public object Write : FileSystemProvider.Write<Path>, FileSystemProvider.Serialization<Path> by Serialization {
 
         /**
          * Contains a set of reserved file names in Windows operating systems.
@@ -359,18 +424,10 @@ public object JVMFileSystemProvider {
          *
          * @param source The source path of the file or directory to be moved.
          * @param target The target path where the file or directory should be moved.
-         * @throws IOException or its inheritor if the [source] doesn't exist, isn't a file or directory,
-         *   [target] already exists, or any I/O error occurs.
+         * @throws IOException If the source path is neither a file nor a directory, or if any IO error occurs.
          */
         override suspend fun move(source: Path, target: Path) {
             withContext(Dispatchers.IO) {
-                if (target.exists()) {
-                    throw FileAlreadyExistsException("Target path already exists: $target")
-                }
-                if (source.notExists()) {
-                    throw IOException("Source path doesn't exist: $source")
-                }
-
                 if (source.isDirectory()) {
                     target.createDirectories()
                     Files.list(source).use { stream ->
@@ -381,7 +438,6 @@ public object JVMFileSystemProvider {
                     }
                     source.deleteExisting()
                 } else if (source.isRegularFile()) {
-                    target.createParentDirectories()
                     source.moveTo(target)
                 } else {
                     throw IOException("Source path is neither a file nor a directory: $source")
@@ -395,7 +451,6 @@ public object JVMFileSystemProvider {
          *
          * @param parent The parent path in which the file or directory resides.
          * @param name The name of the file or directory to be deleted.
-         * @throws NoSuchFileException if a file or directory doesn't exist.
          */
         @OptIn(ExperimentalPathApi::class)
         override suspend fun delete(parent: Path, name: String) {
@@ -408,5 +463,47 @@ public object JVMFileSystemProvider {
                 }
             }
         }
+
+    }
+
+    /**
+     * Determines the type of content for a file represented by the Path.
+     *
+     * This function evaluates the file at the given Path to classify its content type as
+     * either textual, binary, or inapplicable. It checks if the file's head data can be
+     * classified as text using specific character sets, identifies binary content for regular files,
+     * and returns inapplicable for all other cases.
+     *
+     * @return the file content type as one of the [FileContent] values: [FileContent.Text],
+     * [FileContent.Binary], or [FileContent.Inapplicable].
+     */
+    private fun Path.contentType(): FileContent = when {
+        isFileHeadTextBased() -> FileContent.Text
+        isRegularFile() -> FileContent.Binary
+        else -> FileContent.Inapplicable
+    }
+
+    /**
+     * Determines if the beginning of a file's content is text-based, as opposed to binary.
+     * This method reads a specified amount of data from the start of the file,
+     * attempts decoding with a list of provided character sets, and checks if any succeed.
+     *
+     * @param headMaxSize The maximum number of bytes to read from the start of the file. Defaults to 1024 bytes.
+     * @param charsetsToTry A list of character sets to attempt decoding the file's content. Defaults to a list containing UTF-8.
+     * @return True if the file's head data is successfully decoded with one of the given character sets, otherwise false.
+     */
+    private fun Path.isFileHeadTextBased(
+        headMaxSize: Int = 1024,
+        charsetsToTry: List<Charset> = listOf(
+            Charsets.UTF_8,
+        )
+    ): Boolean {
+        return runCatching {
+            val headData = inputStream().use { stream ->
+                val buffer = ByteArray(headMaxSize)
+                stream.read(buffer, 0, headMaxSize).let { ByteBuffer.wrap(buffer.copyOf(it)) }
+            }
+            charsetsToTry.any { runCatching { it.newDecoder().decode(headData) }.isSuccess }
+        }.getOrElse { false }
     }
 }

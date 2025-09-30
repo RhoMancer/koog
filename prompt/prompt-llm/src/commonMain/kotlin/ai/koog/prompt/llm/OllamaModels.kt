@@ -22,8 +22,6 @@ public object OllamaModels {
          *
          * LLAMA 3 is designed to support these specified features, enabling developers to utilize the model for tasks
          * that require dynamic behavior adjustments, schema adherence, and tool-based interactions.
-         *
-         * @see <a href="https://ollama.com/library/llama3-groq-tool-use">
          */
         public val LLAMA_3_GROK_TOOL_USE_8B: LLModel = LLModel(
             provider = LLMProvider.Ollama,
@@ -32,8 +30,7 @@ public object OllamaModels {
                 LLMCapability.Temperature,
                 LLMCapability.Schema.JSON.Full,
                 LLMCapability.Tools
-            ),
-            contextLength = 8_192,
+            )
         )
 
         /**
@@ -47,8 +44,6 @@ public object OllamaModels {
          *
          * LLAMA 3 is designed to support these specified features, enabling developers to utilize the model for tasks
          * that require dynamic behavior adjustments, schema adherence, and tool-based interactions.
-         *
-         * @see <a href="https://ollama.com/library/llama3-groq-tool-use">
          */
         public val LLAMA_3_GROK_TOOL_USE_70B: LLModel = LLModel(
             provider = LLMProvider.Ollama,
@@ -57,10 +52,10 @@ public object OllamaModels {
                 LLMCapability.Temperature,
                 LLMCapability.Schema.JSON.Full,
                 LLMCapability.Tools
-            ),
-            contextLength = 8_192,
+            )
         )
     }
+
 
     /**
      * The `Meta` object represents the configuration for the Meta large language models (LLMs).
@@ -79,8 +74,6 @@ public object OllamaModels {
          *
          * LLAMA 3.2.3b is designed to support these specified features, enabling developers to utilize the model for tasks
          * that require dynamic behavior adjustments, schema adherence, and tool-based interactions.
-         *
-         * @see <a href="https://ollama.com/library/llama3.2">
          */
         public val LLAMA_3_2_3B: LLModel = LLModel(
             provider = LLMProvider.Ollama,
@@ -89,12 +82,11 @@ public object OllamaModels {
                 LLMCapability.Temperature,
                 LLMCapability.Schema.JSON.Simple,
                 LLMCapability.Tools
-            ),
-            contextLength = 131_072,
+            )
         )
 
         /**
-         * Represents the latest LLAMA version 3.2 model provided by Meta.
+         * Represents the LLAMA version 3.2 model provided by Meta.
          *
          * This variable defines an instance of the `LLModel` class with the Ollama provider, a unique identifier "llama3.2",
          * and a set of capabilities. The supported capabilities include:
@@ -107,13 +99,12 @@ public object OllamaModels {
          */
         public val LLAMA_3_2: LLModel = LLModel(
             provider = LLMProvider.Ollama,
-            id = "llama3.2:latest",
+            id = "llama3.2",
             capabilities = listOf(
                 LLMCapability.Temperature,
                 LLMCapability.Schema.JSON.Simple,
                 LLMCapability.Tools
-            ),
-            contextLength = 131_072,
+            )
         )
 
         /**
@@ -122,28 +113,16 @@ public object OllamaModels {
          * The LLAMA 4 collection of models is natively multimodal AI models that enable text and multimodal experiences.
          * These two models leverage a mixture-of-experts (MoE) architecture and support native multimodality (image input).
          *
-         * @see <a href="https://ollama.com/library/llama4">
          */
-        public val LLAMA_4_SCOUT: LLModel = LLModel(
+        public val LLAMA_4: LLModel = LLModel(
             provider = LLMProvider.Ollama,
             id = "llama4:latest",
             capabilities = listOf(
                 LLMCapability.Temperature,
                 LLMCapability.Schema.JSON.Simple,
                 LLMCapability.Tools
-            ),
-            contextLength = 10_485_760,
+            )
         )
-
-        /**
-         * Represents the LLAMA version 4 model provided by Meta.
-         *
-         * The LLAMA 4 collection of models is natively multimodal AI models that enable text and multimodal experiences.
-         * These two models leverage a mixture-of-experts (MoE) architecture and support native multimodality (image input).
-         *
-         * @see <a href="https://ollama.com/library/llama4">
-         */
-        public val LLAMA_4: LLModel = LLAMA_4_SCOUT
 
         /**
          * Represents the llama-guard model version3 provided by Meta.
@@ -151,15 +130,13 @@ public object OllamaModels {
          * The llama-guard collection of models is natively multimodal AI models that enable text and multimodal experiences.
          * These two models leverage a mixture-of-experts (MoE) architecture and support native multimodality (image input).
          *
-         * @see <a href="https://ollama.com/library/llama-guard3">
          */
         public val LLAMA_GUARD_3: LLModel = LLModel(
             provider = LLMProvider.Ollama,
             id = "llama-guard3:latest",
             capabilities = listOf(
                 LLMCapability.Moderation
-            ),
-            contextLength = 131_072,
+            )
         )
     }
 
@@ -179,8 +156,6 @@ public object OllamaModels {
          * - `Tools`: Enables interaction with external tools or functionalities within the model's ecosystem.
          *
          * The model is identified by the unique ID "qwen2.5:0.5b" and categorized under the Ollama provider.
-         *
-         * @see <a href="https://ollama.com/library/qwen2.5">
          */
         public val QWEN_2_5_05B: LLModel = LLModel(
             provider = LLMProvider.Ollama,
@@ -189,8 +164,7 @@ public object OllamaModels {
                 LLMCapability.Temperature,
                 LLMCapability.Schema.JSON.Simple,
                 LLMCapability.Tools
-            ),
-            contextLength = 32_768,
+            )
         )
 
         /**
@@ -202,8 +176,6 @@ public object OllamaModels {
          * - `Tools`: Enables interaction with external tools or functionalities within the model's ecosystem.
          *
          * The model is identified by the unique ID "qwen3:0.6b" and categorized under the Ollama provider.
-         *
-         * @see <a href="https://ollama.com/library/qwen3">
          */
         public val QWEN_3_06B: LLModel = LLModel(
             provider = LLMProvider.Ollama,
@@ -212,8 +184,7 @@ public object OllamaModels {
                 LLMCapability.Temperature,
                 LLMCapability.Schema.JSON.Simple,
                 LLMCapability.Tools
-            ),
-            contextLength = 40_960,
+            )
         )
 
         /**
@@ -225,8 +196,6 @@ public object OllamaModels {
          * - `Tools`: Enables interaction with external tools or functionalities within the model's ecosystem.
          *
          * The model is identified by the unique ID "qwq:32b" and categorized under the Ollama provider.
-         *
-         * @see <a href="https://ollama.com/library/qwq">
          */
         public val QWQ_32B: LLModel = LLModel(
             provider = LLMProvider.Ollama,
@@ -235,8 +204,7 @@ public object OllamaModels {
                 LLMCapability.Temperature,
                 LLMCapability.Schema.JSON.Simple,
                 LLMCapability.Tools
-            ),
-            contextLength = 40_960,
+            )
         )
 
         /**
@@ -250,10 +218,16 @@ public object OllamaModels {
          *
          * Use this configuration to interact with the Alibaba `QWQ` model in applications that
          * require these capabilities for varied and advanced tasks.
-         *
-         * @see <a href="https://ollama.com/library/qwq">
          */
-        public val QWQ: LLModel = QWQ_32B
+        public val QWQ: LLModel = LLModel(
+            provider = LLMProvider.Ollama,
+            id = "qwq",
+            capabilities = listOf(
+                LLMCapability.Temperature,
+                LLMCapability.Schema.JSON.Simple,
+                LLMCapability.Tools
+            )
+        )
 
         /**
          * Represents the Alibaba Qwen-Coder model version 2.5 with 32 billion parameters.
@@ -264,8 +238,6 @@ public object OllamaModels {
          * - `Tools`: Enables interaction with external tools or functionalities within the model's ecosystem.
          *
          * The model is identified by the unique ID "qwen2.5-coder:32b" and categorized under the Ollama provider.
-         *
-         * <a href="https://ollama.com/library/qwen2.5-coder">
          */
         public val QWEN_CODER_2_5_32B: LLModel = LLModel(
             provider = LLMProvider.Ollama,
@@ -274,8 +246,7 @@ public object OllamaModels {
                 LLMCapability.Temperature,
                 LLMCapability.Schema.JSON.Simple,
                 LLMCapability.Tools
-            ),
-            contextLength = 32_768,
+            )
         )
     }
 
@@ -296,8 +267,6 @@ public object OllamaModels {
          *
          * The model is identified by the unique ID "granite3.2-vision" and categorized under the Ollama provider.
          * It is designed to handle both text and visual inputs for multimodal tasks.
-         *
-         * @see <a href="https://ollama.com/library/granite3.2-vision">
          */
         public val GRANITE_3_2_VISION: LLModel = LLModel(
             provider = LLMProvider.Ollama,
@@ -306,10 +275,9 @@ public object OllamaModels {
                 LLMCapability.Temperature,
                 LLMCapability.Schema.JSON.Simple,
                 LLMCapability.Tools,
-                LLMCapability.Vision.Image,
-                LLMCapability.Document
-            ),
-            contextLength = 16_384,
+                LLMCapability.Vision.Image
+            )
         )
     }
+
 }

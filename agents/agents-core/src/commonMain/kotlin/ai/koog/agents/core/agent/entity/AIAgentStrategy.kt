@@ -23,10 +23,7 @@ public class AIAgentStrategy<Input, Output>(
     toolSelectionStrategy: ToolSelectionStrategy,
     private val serializer: Json = Json { prettyPrint = true }
 ) : AIAgentSubgraph<Input, Output>(
-    name,
-    nodeStart,
-    nodeFinish,
-    toolSelectionStrategy
+    name, nodeStart, nodeFinish, toolSelectionStrategy
 ) {
     /**
      * Represents the metadata of the subgraph associated with the AI agent strategy.
@@ -62,9 +59,8 @@ public class AIAgentStrategy<Input, Output>(
         } ?: throw IllegalArgumentException("Node $nodeId not found")
 
         val segments = fullPath.split(":")
-        if (segments.isEmpty()) {
+        if (segments.isEmpty())
             throw IllegalArgumentException("Invalid node path: $fullPath")
-        }
 
         val strategyName = segments.firstOrNull() ?: return
 
@@ -75,8 +71,7 @@ public class AIAgentStrategy<Input, Output>(
         // restoring the current node for each subgraph including strategy
         val segmentsInbetween = segments.drop(1).dropLast(1)
         for (segment in segmentsInbetween) {
-            currentNode as? ExecutionPointNode
-                ?: throw IllegalStateException("Node ${currentNode?.name} does not have subnodes")
+            currentNode as? ExecutionPointNode ?: throw IllegalStateException("Node ${currentNode?.name} does not have subnodes")
 
             currentPath = "$currentPath:$segment"
             val nextNode = metadata.nodesMap[currentPath]
@@ -92,8 +87,7 @@ public class AIAgentStrategy<Input, Output>(
 
         val actualInput = serializer.decodeFromJsonElement(serializer.serializersModule.serializer(inputType), input)
         leaf.let {
-            currentNode as? ExecutionPointNode
-                ?: throw IllegalStateException("Node ${currentNode?.name} does not have subnodes")
+            currentNode as? ExecutionPointNode ?: throw IllegalStateException("Node ${currentNode?.name} does not have subnodes")
             currentNode.enforceExecutionPoint(it, actualInput)
         }
     }

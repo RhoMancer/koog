@@ -1,5 +1,6 @@
 package ai.koog.agents.example.subgraphwithtask
 
+
 import ai.koog.agents.core.agent.AIAgent
 import ai.koog.agents.core.agent.config.AIAgentConfig
 import ai.koog.agents.core.tools.ToolRegistry
@@ -64,12 +65,8 @@ fun main() {
          * Read user request from standard input.
          */
         println()
-        println(
-            "I am agent that can generate a project structure for you. Enter your project description and some details (if possible) like language, framework, etc.: "
-        )
-        println(
-            "       (possible example: Generate an online book store in Java/Gradle with Spring Framework and PostgreSQL database. Language: Java, Framework: Spring, Database)"
-        )
+        println("I am agent that can generate a project structure for you. Enter your project description and some details (if possible) like language, framework, etc.: ")
+        println("       (possible example: Generate an online book store in Java/Gradle with Spring Framework and PostgreSQL database. Language: Java, Framework: Spring, Database)")
         val userRequest = readln()
 
         val agent = AIAgent(

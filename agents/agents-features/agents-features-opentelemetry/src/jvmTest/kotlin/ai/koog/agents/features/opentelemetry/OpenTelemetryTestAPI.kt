@@ -28,11 +28,12 @@ internal object OpenTelemetryTestAPI {
         assistantPrompt: String? = null,
         installFeatures: AIAgent.FeatureContext.() -> Unit = { }
     ): AIAgent<String, String> {
+
         val agentConfig = AIAgentConfig(
             prompt = prompt(promptId ?: "Test prompt", clock = clock, params = LLMParams(temperature = temperature)) {
-                systemPrompt?.let { system(systemPrompt) }
-                userPrompt?.let { user(userPrompt) }
-                assistantPrompt?.let { assistant(assistantPrompt) }
+                system(systemPrompt ?: "Test system message")
+                user(userPrompt ?: "Test user message")
+                assistant(assistantPrompt ?: "Test assistant response")
             },
             model = model ?: OpenAIModels.Chat.GPT4o,
             maxAgentIterations = 10,

@@ -13,7 +13,6 @@ kotlin {
         commonMain {
             dependencies {
                 api(project(":prompt:prompt-llm"))
-                api(project(":prompt:prompt-model"))
                 api(libs.kotlinx.serialization.json)
                 api(libs.kotlinx.datetime)
             }

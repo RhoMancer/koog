@@ -1,10 +1,6 @@
 package ai.koog.agents.testing.feature
 
-import ai.koog.agents.core.tools.SimpleTool
-import ai.koog.agents.core.tools.ToolArgs
-import ai.koog.agents.core.tools.ToolDescriptor
-import ai.koog.agents.core.tools.ToolParameterDescriptor
-import ai.koog.agents.core.tools.ToolParameterType
+import ai.koog.agents.core.tools.*
 import kotlinx.serialization.Serializable
 
 object DummyTool : SimpleTool<ToolArgs.Empty>() {

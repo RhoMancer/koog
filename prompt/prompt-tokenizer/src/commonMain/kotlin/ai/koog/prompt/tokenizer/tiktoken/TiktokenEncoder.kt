@@ -93,11 +93,8 @@ public open class TiktokenEncoder(
             }
         }
         return parts.mapIndexedNotNull { i, part ->
-            if (i >= parts.size - 1) {
-                null
-            } else {
-                vocabulary[bytes.range(part.first, parts[i + 1].first)]
-            }
+            if (i >= parts.size - 1) null
+            else vocabulary[bytes.range(part.first, parts[i + 1].first)]
         }
     }
 

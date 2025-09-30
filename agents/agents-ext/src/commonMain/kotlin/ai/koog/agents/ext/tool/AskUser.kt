@@ -1,10 +1,6 @@
 package ai.koog.agents.ext.tool
 
-import ai.koog.agents.core.tools.SimpleTool
-import ai.koog.agents.core.tools.ToolArgs
-import ai.koog.agents.core.tools.ToolDescriptor
-import ai.koog.agents.core.tools.ToolParameterDescriptor
-import ai.koog.agents.core.tools.ToolParameterType
+import ai.koog.agents.core.tools.*
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.Serializable
 
@@ -28,9 +24,7 @@ public object AskUser : SimpleTool<AskUser.Args>() {
         description = "Service tool, used by the agent to talk with user",
         requiredParameters = listOf(
             ToolParameterDescriptor(
-                name = "message",
-                description = "Message from the agent",
-                type = ToolParameterType.String
+                name = "message", description = "Message from the agent", type = ToolParameterType.String
             )
         )
     )

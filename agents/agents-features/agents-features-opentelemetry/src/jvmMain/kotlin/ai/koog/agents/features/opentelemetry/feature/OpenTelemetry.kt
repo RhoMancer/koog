@@ -8,19 +8,8 @@ import ai.koog.agents.core.feature.AIAgentPipeline
 import ai.koog.agents.core.feature.InterceptContext
 import ai.koog.agents.features.opentelemetry.attribute.CommonAttributes
 import ai.koog.agents.features.opentelemetry.attribute.SpanAttributes
-import ai.koog.agents.features.opentelemetry.event.AssistantMessageEvent
-import ai.koog.agents.features.opentelemetry.event.ChoiceEvent
-import ai.koog.agents.features.opentelemetry.event.ModerationResponseEvent
-import ai.koog.agents.features.opentelemetry.event.SystemMessageEvent
-import ai.koog.agents.features.opentelemetry.event.ToolMessageEvent
-import ai.koog.agents.features.opentelemetry.event.UserMessageEvent
-import ai.koog.agents.features.opentelemetry.span.CreateAgentSpan
-import ai.koog.agents.features.opentelemetry.span.ExecuteToolSpan
-import ai.koog.agents.features.opentelemetry.span.InferenceSpan
-import ai.koog.agents.features.opentelemetry.span.InvokeAgentSpan
-import ai.koog.agents.features.opentelemetry.span.NodeExecuteSpan
-import ai.koog.agents.features.opentelemetry.span.SpanEndStatus
-import ai.koog.agents.features.opentelemetry.span.SpanProcessor
+import ai.koog.agents.features.opentelemetry.event.*
+import ai.koog.agents.features.opentelemetry.span.*
 import ai.koog.prompt.message.Message
 import io.github.oshai.kotlinlogging.KotlinLogging
 import io.opentelemetry.api.trace.StatusCode
@@ -66,18 +55,14 @@ public class OpenTelemetry {
             val spanProcessor = SpanProcessor(tracer)
 
             // Stop all unfinished spans on a process finish to report them
-            Runtime.getRuntime().addShutdownHook(
-                Thread {
-                    if (spanProcessor.spansCount > 1) {
-                        logger.warn { "Unfinished spans detected. Please check your code for unclosed spans." }
-                    }
-
-                    logger.debug {
-                        "Closing unended OpenTelemetry spans on process shutdown (size: ${spanProcessor.spansCount})"
-                    }
-                    spanProcessor.endUnfinishedSpans()
+            Runtime.getRuntime().addShutdownHook(Thread {
+                if (spanProcessor.spansCount > 1) {
+                    logger.warn { "Unfinished spans detected. Please check your code for unclosed spans." }
                 }
-            )
+
+                logger.debug { "Closing unended OpenTelemetry spans on process shutdown (size: ${spanProcessor.spansCount})" }
+                spanProcessor.endUnfinishedSpans()
+            })
 
             //region Agent
 
@@ -201,25 +186,6 @@ public class OpenTelemetry {
                 spanProcessor.endSpan(nodeExecuteSpanId)
             }
 
-            pipeline.interceptNodeExecutionError(interceptContext) { eventContext ->
-                logger.debug { "Execute OpenTelemetry node execution error handler" }
-
-                // Find current NodeExecuteSpan
-                val agentRunInfoElement = currentCoroutineContext().getAgentRunInfoElementOrThrow()
-
-                // Finish existing NodeExecuteSpan
-                val nodeExecuteSpanId = NodeExecuteSpan.createId(
-                    agentId = agentRunInfoElement.agentId,
-                    runId = agentRunInfoElement.runId,
-                    nodeName = eventContext.node.name
-                )
-
-                spanProcessor.endSpan(
-                    spanId = nodeExecuteSpanId,
-                    spanEndStatus = SpanEndStatus(code = StatusCode.ERROR, description = eventContext.throwable.message)
-                )
-            }
-
             //endregion Node
 
             //region LLM Call
@@ -260,24 +226,27 @@ public class OpenTelemetry {
                 spanProcessor.startSpan(inferenceSpan)
 
                 // Add events to the InferenceSpan after the span is created
-                val eventsFromMessages = eventContext.prompt.messages.mapNotNull { message ->
-                    when (message) {
-                        is Message.User -> UserMessageEvent(provider, message, verbose = config.isVerbose)
-                        is Message.System -> SystemMessageEvent(provider, message, verbose = config.isVerbose)
-                        is Message.Assistant -> AssistantMessageEvent(provider, message, verbose = config.isVerbose)
-                        is Message.Tool.Result -> {
-                            ToolMessageEvent(
-                                provider = provider,
-                                toolCallId = message.id,
-                                content = message.content,
-                                verbose = config.isVerbose
-                            )
-                        }
-                        else -> null
-                    }
-                }
+                val lastMessage = eventContext.prompt.messages.lastOrNull()
 
-                inferenceSpan.addEvents(eventsFromMessages)
+                val events: List<GenAIAgentEvent> = lastMessage?.let { message ->
+                    buildList {
+                        when (message) {
+                            is Message.User -> add(UserMessageEvent(provider, message, verbose = config.isVerbose))
+                            is Message.System -> add(SystemMessageEvent(provider, message, verbose = config.isVerbose))
+                            is Message.Assistant -> add(
+                                AssistantMessageEvent(
+                                    provider,
+                                    message,
+                                    verbose = config.isVerbose
+                                )
+                            )
+
+                            else -> {}
+                        }
+                    }
+                } ?: emptyList()
+
+                inferenceSpan.addEvents(events)
             }
 
             pipeline.interceptAfterLLMCall(interceptContext) { eventContext ->
@@ -301,20 +270,22 @@ public class OpenTelemetry {
                 val provider = eventContext.model.provider
 
                 // Add events to the InferenceSpan before finishing the span
-                val eventsToAdd = buildList {
-                    eventContext.responses.map { message ->
+                val lastMessage = eventContext.responses.lastOrNull()
+
+                val moderationResult = eventContext.moderationResponse
+
+                val events: List<GenAIAgentEvent> = lastMessage?.let { message ->
+                    buildList {
                         when (message) {
-                            is Message.Assistant -> add(AssistantMessageEvent(provider, message, verbose = config.isVerbose))
-                            is Message.Tool.Call -> add(ChoiceEvent(provider, message, verbose = config.isVerbose))
+                            is Message.Assistant -> add(ChoiceEvent(provider, message, config.isVerbose))
+                            else -> {}
                         }
                     }
+                } ?: moderationResult?.let {
+                    buildList { add(ModerationResponseEvent(provider, it, config.isVerbose)) }
+                } ?: emptyList()
 
-                    eventContext.moderationResponse?.let { response ->
-                        ModerationResponseEvent(provider, response, config.isVerbose)
-                    }
-                }
-
-                inferenceSpan.addEvents(eventsToAdd)
+                inferenceSpan.addEvents(events)
 
                 // Stop InferenceSpan
                 spanProcessor.endSpan(inferenceSpanId)
@@ -358,12 +329,37 @@ public class OpenTelemetry {
                 val nodeInfoElement = currentCoroutineContext().getNodeInfoElement()
                     ?: error("Unable to create tool call span due to missing node info in context")
 
+                val agentId = agentRunInfoElement.agentId
+                val runId = agentRunInfoElement.runId
+                val provider = agentRunInfoElement.agentConfig.model.provider
+                val nodeName = nodeInfoElement.nodeName
+                val toolName = eventContext.tool.name
+
                 val executeToolSpanId = ExecuteToolSpan.createId(
-                    agentId = agentRunInfoElement.agentId,
-                    runId = agentRunInfoElement.runId,
-                    nodeName = nodeInfoElement.nodeName,
-                    toolName = eventContext.tool.name
+                    agentId = agentId,
+                    runId = runId,
+                    nodeName = nodeName,
+                    toolName = toolName
                 )
+
+                // Add events to the ExecuteToolSpan before finishing the span
+                val events = buildList {
+                    val toolResult = eventContext.result
+                    logger.debug { "Last tool result message from prompt: $toolResult" }
+
+                    if (toolResult != null) {
+                        add(
+                            ToolMessageEvent(
+                                provider = provider,
+                                toolCallId = eventContext.toolCallId,
+                                toolResult = toolResult,
+                                verbose = config.isVerbose
+                            )
+                        )
+                    }
+                }
+
+                spanProcessor.addEventsToSpan(spanId = executeToolSpanId, events = events)
 
                 // End the ExecuteToolSpan span
                 spanProcessor.endSpan(executeToolSpanId)
@@ -378,11 +374,16 @@ public class OpenTelemetry {
                 val nodeInfoElement = currentCoroutineContext().getNodeInfoElement()
                     ?: error("Unable to create tool call span due to missing node info in context")
 
+                val agentId = agentRunInfoElement.agentId
+                val runId = agentRunInfoElement.runId
+                val nodeName = nodeInfoElement.nodeName
+                val toolName = eventContext.tool.name
+
                 val executeToolSpanId = ExecuteToolSpan.createId(
-                    agentId = agentRunInfoElement.agentId,
-                    runId = agentRunInfoElement.runId,
-                    nodeName = nodeInfoElement.nodeName,
-                    toolName = eventContext.tool.name
+                    agentId = agentId,
+                    runId = runId,
+                    nodeName = nodeName,
+                    toolName = toolName
                 )
 
                 // End the ExecuteToolSpan span

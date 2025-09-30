@@ -12,17 +12,12 @@ class PromptBuilderTest {
     @Test
     fun testUserMessageWithAttachments() {
         val prompt = Prompt.build("test") {
-            user(
-                "Check this image",
-                listOf(
-                    Attachment.Image(
-                        content = AttachmentContent.URL("https://example.com/test.png"),
-                        format = "png",
-                        mimeType = "image/png",
-                        fileName = "test.png"
-                    )
-                )
-            )
+            user("Check this image", listOf(Attachment.Image(
+                content = AttachmentContent.URL("https://example.com/test.png"),
+                format = "png",
+                mimeType = "image/png",
+                fileName = "test.png"
+            )))
         }
 
         assertEquals(1, prompt.messages.size, "Prompt should have one message")
@@ -119,10 +114,7 @@ class PromptBuilderTest {
                 attachments {
                     image("https://example.com/chart.png")
                     file("https://example.com/data.pdf", "application/pdf")
-                    file(
-                        "https://example.com/report.docx",
-                        "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-                    )
+                    file("https://example.com/report.docx", "application/vnd.openxmlformats-officedocument.wordprocessingml.document")
                 }
             }
         }

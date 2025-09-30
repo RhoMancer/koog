@@ -87,6 +87,7 @@ private fun Message.User.toOllamaChatMessage(model: LLModel): OllamaChatMessageD
     )
 }
 
+
 /**
  * Converts a ToolDescriptor to an Ollama Tool object.
  */
@@ -109,6 +110,14 @@ internal fun ToolDescriptor.toOllamaTool(): OllamaToolDTO {
 internal fun Prompt.extractOllamaJsonFormat(): JsonObject? {
     val schema = params.schema
     return if (schema is LLMParams.Schema.JSON) schema.schema else null
+}
+
+/**
+ * Extracts options from the prompt, if temperature is defined.
+ */
+internal fun Prompt.extractOllamaOptions(): OllamaChatRequestDTO.Options? {
+    val temperature = params.temperature
+    return temperature?.let { OllamaChatRequestDTO.Options(temperature = temperature) }
 }
 
 /**

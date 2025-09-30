@@ -116,8 +116,7 @@ class MultipleLLMPromptExecutorMockTest {
         assertEquals(
             "Anthropic response",
             response.content,
-            "Response should be from Anthropic client"
-        )
+            "Response should be from Anthropic client")
     }
 
     @Test
@@ -132,8 +131,7 @@ class MultipleLLMPromptExecutorMockTest {
         assertEquals(
             "Gemini response",
             response.content,
-            "Response should be from Google client"
-        )
+            "Response should be from Google client")
     }
 
     @Test

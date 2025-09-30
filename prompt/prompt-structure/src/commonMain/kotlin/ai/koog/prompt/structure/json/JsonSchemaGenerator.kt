@@ -2,22 +2,8 @@ package ai.koog.prompt.structure.json
 
 import ai.koog.agents.core.tools.annotations.LLMDescription
 import kotlinx.serialization.KSerializer
-import kotlinx.serialization.descriptors.PolymorphicKind
-import kotlinx.serialization.descriptors.PrimitiveKind
-import kotlinx.serialization.descriptors.SerialDescriptor
-import kotlinx.serialization.descriptors.SerialKind
-import kotlinx.serialization.descriptors.StructureKind
-import kotlinx.serialization.descriptors.elementDescriptors
-import kotlinx.serialization.descriptors.elementNames
-import kotlinx.serialization.descriptors.getPolymorphicDescriptors
-import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.JsonObject
-import kotlinx.serialization.json.JsonObjectBuilder
-import kotlinx.serialization.json.JsonPrimitive
-import kotlinx.serialization.json.add
-import kotlinx.serialization.json.buildJsonArray
-import kotlinx.serialization.json.buildJsonObject
-import kotlinx.serialization.json.put
+import kotlinx.serialization.descriptors.*
+import kotlinx.serialization.json.*
 
 /**
  * JSON schema generator from Kotlin serializable classes, to be used with LLM structured output functionality.
@@ -74,6 +60,7 @@ public class JsonSchemaGenerator(
         const val ONE_OF_KEY = "oneOf"
         const val REF_KEY = "\$ref"
         const val DEFS_KEY = "\$defs"
+
     }
 
     private fun createDefRef(defName: String): String = "#/${DEFS_KEY.trimStart('$')}/$defName"
@@ -104,7 +91,7 @@ public class JsonSchemaGenerator(
 
         return when (schemaFormat) {
             SchemaFormat.Simple -> {
-                rootSchema
+               rootSchema
             }
 
             SchemaFormat.JsonSchema -> {
@@ -157,12 +144,9 @@ public class JsonSchemaGenerator(
 
                 SerialKind.ENUM -> {
                     put(TYPE_KEY, "string")
-                    put(
-                        ENUM_KEY,
-                        buildJsonArray {
-                            descriptor.elementNames.forEach { add(it) }
-                        }
-                    )
+                    put(ENUM_KEY, buildJsonArray {
+                        descriptor.elementNames.forEach { add(it) }
+                    })
                 }
 
                 StructureKind.LIST -> {
@@ -213,14 +197,11 @@ public class JsonSchemaGenerator(
                             /*
                              Append serial name discriminator const if this type definition was retrieved as a subtype of a polymorphic type.
                              Needed for serialization disambiguation.
-                             */
+                            */
                             if (isPolymorphicSubtype) {
-                                put(
-                                    json.configuration.classDiscriminator,
-                                    buildJsonObject {
-                                        put(CONST_KEY, descriptor.serialName)
-                                    }
-                                )
+                                put(json.configuration.classDiscriminator, buildJsonObject {
+                                    put(CONST_KEY, descriptor.serialName)
+                                })
                             }
 
                             for (i in 0 until descriptor.elementsCount) {
@@ -294,6 +275,7 @@ public class JsonSchemaGenerator(
                             put(REQUIRED_KEY, required)
                         }
 
+
                         when (schemaFormat) {
                             // Simple - put in the current object
                             SchemaFormat.Simple -> typeDefinition.forEach { (key, value) -> put(key, value) }
@@ -328,9 +310,7 @@ public class JsonSchemaGenerator(
                     put(ONE_OF_KEY, subtypes)
                 }
 
-                else -> throw IllegalStateException(
-                    "Encountered unsupported type while generating JSON schema: ${descriptor.kind}"
-                )
+                else -> throw IllegalStateException("Encountered unsupported type while generating JSON schema: ${descriptor.kind}")
             }
 
             if (descriptor.isNullable) {

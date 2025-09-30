@@ -38,15 +38,13 @@ class MoneyTransferTools : ToolSet {
 
     @Tool
     @LLMDescription(
-        """
-            Transfers a specified amount (in the sender's default currency) to a recipient contact by their id.
-            Fails if the recipient is not a valid contact or if the user lacks sufficient funds.
-            When sending money to a contact, if there are multiple contacts with the same name:
-            1. First use getContacts to retrieve all contacts
-            2. Filter the contacts to find those with matching names
-            3. If multiple matches are found, use the chooseRecipient tool with the list of matching contacts to ask the user to pick the correct recipient
-            4. Use the selected recipient's ID when sending money
-        """
+        "Transfers a specified amount (in the sender's default currency) to a recipient contact by their id. " +
+                "Fails if the recipient is not a valid contact or if the user lacks sufficient funds." +
+                "When sending money to a contact, if there are multiple contacts with the same name:\n" +
+                "1. First use getContacts to retrieve all contacts\n" +
+                "2. Filter the contacts to find those with matching names\n" +
+                "3. If multiple matches are found, use the chooseRecipient tool with the list of matching contacts to ask the user to pick the correct recipient\n" +
+                "4. Use the selected recipient's ID when sending money\n"
     )
     fun sendMoney(
         @LLMDescription("The unique identifier of the user initiating the transfer.")
@@ -63,9 +61,7 @@ class MoneyTransferTools : ToolSet {
     ): String {
         val recipient = contactMap[recipientId] ?: return "Invalid recipient."
         println("=======")
-        println(
-            "Sending $amount EUR to ${recipient.name} ${recipient.surname} (${recipient.phoneNumber}) with the purpose: \"$purpose\"."
-        )
+        println("Sending $amount EUR to ${recipient.name} ${recipient.surname} (${recipient.phoneNumber}) with the purpose: \"$purpose\".")
         println("Please confirm the transaction by entering 'yes' or 'no'.")
         println("=======")
         val confirmation = readln()
@@ -73,11 +69,8 @@ class MoneyTransferTools : ToolSet {
                 "yes",
                 "y"
             )
-        ) {
-            "Money was sent."
-        } else {
-            "Money transfer wasn't confirmed by the user"
-        }
+        ) "Money was sent." else "Money transfer wasn't confirmed by the user"
+
     }
 
     @Tool
@@ -110,18 +103,12 @@ class MoneyTransferTools : ToolSet {
     }
 
     @Tool
-    @LLMDescription(
-        "Retrieves the exchange rate between two currencies, specified by their 3-letter ISO codes (e.g., \"USD\", \"EUR\")."
-    )
+    @LLMDescription("Retrieves the exchange rate between two currencies, specified by their 3-letter ISO codes (e.g., \"USD\", \"EUR\").")
     fun getExchangeRate(
-        @LLMDescription(
-            "The 3-letter ISO currency code representing the base currency you want to convert from (e.g., \"USD\" for US Dollar, \"EUR\" for Euro)."
-        )
+        @LLMDescription("The 3-letter ISO currency code representing the base currency you want to convert from (e.g., \"USD\" for US Dollar, \"EUR\" for Euro).")
         from: String,
 
-        @LLMDescription(
-            "The 3-letter ISO currency code representing the target currency you want to convert to (e.g., \"GBP\" for British Pound, \"JPY\" for Japanese Yen)."
-        )
+        @LLMDescription("The 3-letter ISO currency code representing the target currency you want to convert to (e.g., \"GBP\" for British Pound, \"JPY\" for Japanese Yen).")
         to: String
     ): String {
         val rate = when (from to to) {
@@ -145,16 +132,12 @@ class MoneyTransferTools : ToolSet {
         // Find contacts that might match the confusing name
         val possibleMatches = contactList.filter {
             it.name.contains(confusingRecipientName, ignoreCase = true) ||
-                (it.surname?.contains(confusingRecipientName, ignoreCase = true) ?: false)
+                    (it.surname?.contains(confusingRecipientName, ignoreCase = true) ?: false)
         }
         if (possibleMatches.isEmpty()) {
-            println(
-                "No contact named $confusingRecipientName was found. Here are all available contacts—please choose one:"
-            )
+            println("No contact named $confusingRecipientName was found. Here are all available contacts—please choose one:")
         } else {
-            println(
-                "I found several contacts named $confusingRecipientName. Please choose a recipient from the list below:"
-            )
+            println("I found several contacts named $confusingRecipientName. Please choose a recipient from the list below:")
         }
 
         val contactsToChooseFrom = possibleMatches.ifEmpty { contactList }
@@ -171,9 +154,7 @@ class MoneyTransferTools : ToolSet {
         val selectedContact = contactsToChooseFrom.getOrNull(contactIndex - 1)
             ?: throw IllegalArgumentException("Invalid input.")
 
-        println(
-            "You selected ${selectedContact.name} ${selectedContact.surname ?: ""} (${selectedContact.phoneNumber})."
-        )
+        println("You selected ${selectedContact.name} ${selectedContact.surname ?: ""} (${selectedContact.phoneNumber}).")
         return "Selected contact: ${selectedContact.id}: ${selectedContact.name} ${selectedContact.surname ?: ""} (${selectedContact.phoneNumber})."
     }
 }

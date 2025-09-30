@@ -136,7 +136,7 @@ public interface PromptCache {
      * @property toolJsons Json representations of the tools
      */
     @Serializable
-    public class Request private constructor(
+    public class Request private constructor (
         public val prompt: Prompt,
         public val toolJsons: List<JsonObject> = emptyList()
     ) {
@@ -157,8 +157,7 @@ public interface PromptCache {
                     }
                 }
 
-                val requestWithoutMetaInfo =
-                    Request(Prompt(messagesWithoutMetaInfo, prompt.id, prompt.params), toolJsons)
+                val requestWithoutMetaInfo = Request(Prompt(messagesWithoutMetaInfo, prompt.id, prompt.params), toolJsons)
 
                 return defaultJson.encodeToString(requestWithoutMetaInfo).hashCode().absoluteValue.toString(36)
             }
@@ -212,11 +211,7 @@ public interface PromptCache {
  * @param tools The tools used with the prompt
  * @return The cached response, or null if not cached
  */
-public suspend fun PromptCache.get(
-    prompt: Prompt,
-    tools: List<ToolDescriptor>,
-    clock: Clock = Clock.System
-): List<Message.Response>? {
+public suspend fun PromptCache.get(prompt: Prompt, tools: List<ToolDescriptor>, clock: Clock = Clock.System): List<Message.Response>? {
     return get(PromptCache.Request.create(prompt, tools))?.let { messages ->
         val metaInfo = prompt
             .messages
@@ -226,7 +221,7 @@ public suspend fun PromptCache.get(
             ?.copy(timestamp = clock.now())
             ?: ResponseMetaInfo.create(clock)
 
-        messages.map { message -> message.copy(metaInfo) }
+        messages.map{ message -> message.copy(metaInfo) }
     }
 }
 

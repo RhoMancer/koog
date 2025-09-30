@@ -18,6 +18,5 @@ public interface ToolSet {
      * or entities for integration with large language models (LLMs).
      */
     public val name: String
-        get() = this.javaClass.getAnnotationsByType(LLMDescription::class.java).firstOrNull()?.description
-            ?: this::class.jvmName
+        get() = this.javaClass.getAnnotationsByType(LLMDescription::class.java).firstOrNull()?.description ?: this::class.jvmName
 }

@@ -12,11 +12,7 @@ import ai.koog.prompt.params.LLMParams
 import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
 import kotlinx.serialization.json.jsonObject
-import kotlin.test.Test
-import kotlin.test.assertContains
-import kotlin.test.assertEquals
-import kotlin.test.assertNotNull
-import kotlin.test.assertTrue
+import kotlin.test.*
 
 class BedrockAnthropicClaudeSerializationTest {
 

@@ -53,9 +53,7 @@ class ToneAgentTest {
             }
 
             onAgentRunError { eventContext ->
-                println(
-                    "[DEBUG_LOG] An error occurred: ${eventContext.throwable.message}\n${eventContext.throwable.stackTraceToString()}"
-                )
+                println("[DEBUG_LOG] An error occurred: ${eventContext.throwable.message}\n${eventContext.throwable.stackTraceToString()}")
             }
 
             onAgentFinished { eventContext ->
@@ -84,6 +82,7 @@ class ToneAgentTest {
             mockLLMAnswer(neutralResponse) onRequestContains neutralResponse
 
             mockLLMAnswer(defaultText).asDefaultResponse
+
 
             // Tool mocks:
             mockTool(PositiveToneTool) alwaysTells {
@@ -116,7 +115,7 @@ class ToneAgentTest {
                     Be as concise as possible in your answers.
                     DO NOT ANSWER ANY QUESTIONS THAT ARE BESIDES PERFORMING TONE ANALYSIS!
                     DO NOT HALLUCINATE!
-                    """.trimIndent()
+                """.trimIndent()
                 )
             },
             model = mockk<LLModel>(relaxed = true),
@@ -144,9 +143,10 @@ class ToneAgentTest {
         assertEquals("The text has a negative tone.", result, "Negative tone result should match")
         assertEquals(2, toolCalls.size, "Two tools are expected to be called")
 
-        // Test neutral text
+        //Test neutral text
         agent.run(defaultText)
         assertEquals("The text has a neutral tone.", result, "Neutral tone result should match")
         assertEquals(3, toolCalls.size, "Three tools are expected to be called")
+
     }
 }

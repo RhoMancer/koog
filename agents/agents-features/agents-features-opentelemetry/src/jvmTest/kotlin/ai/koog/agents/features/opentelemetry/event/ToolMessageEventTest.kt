@@ -20,7 +20,7 @@ class ToolMessageEventTest {
         val toolMessageEvent = ToolMessageEvent(
             provider = llmProvider,
             toolCallId = toolCallId,
-            content = toolResult.toStringDefault(),
+            toolResult = toolResult,
             verbose = false,
         )
 
@@ -41,7 +41,7 @@ class ToolMessageEventTest {
         val toolMessageEvent = ToolMessageEvent(
             provider = llmProvider,
             toolCallId = toolCallId,
-            content = toolResult.toStringDefault(),
+            toolResult = toolResult,
             verbose = true,
         )
 
@@ -65,7 +65,7 @@ class ToolMessageEventTest {
         val toolMessageEvent = ToolMessageEvent(
             provider = MockLLMProvider(),
             toolCallId = toolCallId,
-            content = toolResult.toStringDefault(),
+            toolResult = toolResult,
             verbose = false,
         )
 
@@ -85,7 +85,7 @@ class ToolMessageEventTest {
         val toolMessageEvent = ToolMessageEvent(
             provider = MockLLMProvider(),
             toolCallId = toolCallId,
-            content = toolResult.toStringDefault(),
+            toolResult = toolResult,
             verbose = false,
         )
 
@@ -103,7 +103,7 @@ class ToolMessageEventTest {
         val toolMessageEvent = ToolMessageEvent(
             provider = MockLLMProvider(),
             toolCallId = toolCallId,
-            content = toolResult.toStringDefault(),
+            toolResult = toolResult,
             verbose = true,
         )
 
@@ -124,7 +124,7 @@ class ToolMessageEventTest {
         val toolMessageEvent = ToolMessageEvent(
             provider = MockLLMProvider(),
             toolCallId = toolCallId,
-            content = toolResult.toStringDefault(),
+            toolResult = toolResult,
             verbose = true,
         )
 

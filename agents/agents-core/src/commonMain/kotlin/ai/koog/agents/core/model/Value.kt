@@ -15,9 +15,10 @@ private object Precondition {
  * @property value Temperature.
  * @throws IllegalArgumentException value is outside the permitted range.
  */
+// TODO: unused
 @JvmInline
 @Serializable
-internal value class Temperature(val value: Double) { // TODO: unused
+internal value class Temperature(val value: Double) {
 
     init {
         require(value in MIN_VALUE..MAX_VALUE) { Precondition.TEMPERATURE }

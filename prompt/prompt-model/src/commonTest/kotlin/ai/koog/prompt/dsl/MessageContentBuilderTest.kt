@@ -129,10 +129,7 @@ class MessageContentBuilderTest {
             attachments {
                 image("https://example.com/chart.png")
                 file("https://example.com/report.pdf", "application/pdf")
-                file(
-                    "https://example.com/data.xlsx",
-                    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-                )
+                file("https://example.com/data.xlsx", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
             }
         }
         val result = builder.build()

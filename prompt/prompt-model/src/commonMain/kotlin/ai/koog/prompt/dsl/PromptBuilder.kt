@@ -44,6 +44,7 @@ public class PromptBuilder internal constructor(
         }
     }
 
+
     /**
      * Adds a system message to the prompt.
      *
@@ -124,8 +125,8 @@ public class PromptBuilder internal constructor(
      * Example:
      * ```kotlin
      * user {
-     *          text("I have a question about programming.")
-     *          text("How do I implement a binary search in Kotlin?")
+ *          text("I have a question about programming.")
+ *          text("How do I implement a binary search in Kotlin?")
      *
      *      attachments {
      *          image("screenshot.png")

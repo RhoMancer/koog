@@ -2,11 +2,7 @@ package ai.koog.prompt.executor.cached
 
 import ai.koog.agents.core.tools.ToolDescriptor
 import ai.koog.agents.core.tools.ToolParameterType
-import kotlinx.serialization.json.JsonArray
-import kotlinx.serialization.json.JsonObject
-import kotlinx.serialization.json.JsonPrimitive
-import kotlinx.serialization.json.buildJsonObject
-import kotlinx.serialization.json.put
+import kotlinx.serialization.json.*
 
 /**
  * Convert a ToolDescriptor to a JsonObject representation.
@@ -43,20 +39,15 @@ private fun ToolDescriptor.toJSONSchema(): JsonObject {
 
             is ToolParameterType.Object -> {
                 put("type", "object")
-                put(
-                    "properties",
-                    buildJsonObject {
-                        type.properties.forEach { property ->
-                            put(
-                                property.name,
-                                buildJsonObject {
-                                    toolParameterToSchema(property.type)
-                                    put("description", property.description)
-                                }
-                            )
-                        }
+                put("properties", buildJsonObject {
+                    type.properties.forEach { property ->
+                        put(property.name, buildJsonObject {
+                            toolParameterToSchema(property.type)
+                            put("description", property.description)
+                        })
                     }
-                )
+                })
+
             }
         }
 

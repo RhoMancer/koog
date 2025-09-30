@@ -68,6 +68,7 @@ public sealed class AIAgentLLMSession(
      */
     public open val tools: List<ToolDescriptor> by ActiveProperty(tools) { isActive }
 
+
     /**
      * Represents the active language model used within the session.
      *
@@ -114,6 +115,7 @@ public sealed class AIAgentLLMSession(
 
     protected suspend fun executeSingle(prompt: Prompt, tools: List<ToolDescriptor>): Message.Response =
         executeMultiple(prompt, tools).first()
+
 
     /**
      * Sends a request to the language model without utilizing any tools and returns the response.
