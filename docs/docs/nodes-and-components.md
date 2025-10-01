@@ -1,4 +1,4 @@
-_# Predefined nodes and components
+# Predefined nodes and components
 
 Nodes are the fundamental building blocks of agent workflows in the Koog framework.
 Each node represents a specific operation or transformation in the workflow, and they can be connected using edges to define the flow of execution.
