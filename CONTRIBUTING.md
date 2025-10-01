@@ -41,7 +41,8 @@ so do familiarize yourself with the following guidelines.
 
 ## Documentation
 
-The documentation is published on https://docs.koog.ai/. To propose changes or improvements to the documentation, go to the https://github.com/JetBrains/koog-docs repository.
+The documentation is published on https://docs.koog.ai/, and its sources are in the
+[docs](https://github.com/JetBrains/koog/tree/develop/docs) folder in this repository.
 
 ## Building
 
