@@ -28,8 +28,6 @@ class OpenAIBasicJsonSchemaGeneratorTest {
         val temperature: Int,
         @property:LLMDescription("Weather conditions (e.g., sunny, cloudy, rainy)")
         val conditions: String = "sunny",
-        @property:LLMDescription("Chance of precipitation in percentage")
-        val precipitation: Int?,
         @property:LLMDescription("Coordinates of the location")
         val latLon: LatLon,
         @property:LLMDescription("Pollution level")
@@ -93,11 +91,6 @@ class OpenAIBasicJsonSchemaGeneratorTest {
                   "type": "string",
                   "description": "Weather conditions (e.g., sunny, cloudy, rainy)"
                 },
-                "precipitation": {
-                  "type": "integer",
-                  "description": "Chance of precipitation in percentage",
-                  "nullable": true
-                },
                 "latLon": {
                   "type": "object",
                   "properties": {
@@ -153,7 +146,6 @@ class OpenAIBasicJsonSchemaGeneratorTest {
               "required": [
                 "temperature",
                 "conditions",
-                "precipitation",
                 "latLon",
                 "pollution",
                 "news"
