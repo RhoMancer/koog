@@ -70,6 +70,14 @@ public open class OpenAIStandardJsonSchemaGenerator : StandardJsonSchemaGenerato
         return param.copy(schema = JsonObject(schema))
     }
 
+    override fun process(context: GenerationContext): JsonObject {
+        if (context.descriptor.isNullable) {
+            throw IllegalArgumentException("OpenAI JSON schema doesn't support nullable types")
+        }
+
+        return super.process(context)
+    }
+
     override fun processMap(context: GenerationContext): JsonObject {
         throw UnsupportedOperationException("OpenAI JSON schema doesn't support maps")
     }

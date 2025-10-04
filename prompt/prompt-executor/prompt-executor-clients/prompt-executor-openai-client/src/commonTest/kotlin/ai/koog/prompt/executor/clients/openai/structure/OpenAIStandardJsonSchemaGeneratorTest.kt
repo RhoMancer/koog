@@ -8,6 +8,7 @@ import kotlinx.serialization.json.Json
 import kotlinx.serialization.serializer
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
 
 class OpenAIStandardJsonSchemaGeneratorTest {
     private val json = Json {
@@ -115,6 +116,9 @@ class OpenAIStandardJsonSchemaGeneratorTest {
             ) : WeatherAlert()
         }
     }
+
+    @Serializable
+    data class NullableTest(val nullableProperty: String?)
 
     @Test
     fun testGenerateOpenAIStandardJsonSchemaWeatherForecast() {
@@ -407,5 +411,12 @@ class OpenAIStandardJsonSchemaGeneratorTest {
         """.trimIndent()
 
         assertEquals(expectedSchema, schema)
+    }
+
+    @Test
+    fun testOpenAIBasicJsonSchemaFailsWithNullable() {
+        assertFailsWith<IllegalArgumentException> {
+            fullGenerator.generate(json, "NullableTest", serializer<NullableTest>(), emptyMap())
+        }
     }
 }
