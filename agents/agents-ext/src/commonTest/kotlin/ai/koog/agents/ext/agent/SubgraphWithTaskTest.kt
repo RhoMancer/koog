@@ -47,7 +47,7 @@ class SubgraphWithTaskTest {
 
         val mockExecutor = getMockExecutor {
             mockLLMToolCall(blankTool, MockTools.BlankTool.Args(blankToolResult)) onRequestEquals inputRequest
-            mockLLMToolCall(finishTool, MockTools.FinishTool.Args()) onRequestContains blankToolResult
+            mockLLMToolCall(finishTool, "Finish") onRequestContains blankToolResult
         }
 
         val actualToolCalls = mutableListOf<String>()
@@ -123,7 +123,7 @@ class SubgraphWithTaskTest {
 
         val mockExecutor = getMockExecutor {
             mockLLMToolCall(blankTool, MockTools.BlankTool.Args(blankToolResult)) onRequestEquals inputRequest
-            mockLLMToolCall(finishTool, MockTools.FinishTool.Args()) onRequestContains blankToolResult
+            mockLLMToolCall(finishTool, "Finish") onRequestContains blankToolResult
         }
 
         val actualLLMCalls = mutableListOf<String>()
@@ -189,7 +189,7 @@ class SubgraphWithTaskTest {
                 input.contains(inputRequest) && assistantResponded++ < SubgraphWithTaskUtils.ASSISTANT_RESPONSE_REPEAT_MAX
             }
 
-            mockLLMToolCall(finishTool, MockTools.FinishTool.Args()) onCondition { input ->
+            mockLLMToolCall(finishTool, "Finish") onCondition { input ->
                 input.contains("CALL TOOLS") && assistantResponded++ >= SubgraphWithTaskUtils.ASSISTANT_RESPONSE_REPEAT_MAX
             }
         }
@@ -322,7 +322,7 @@ class SubgraphWithTaskTest {
     fun createAgent(
         model: LLModel,
         toolRegistry: ToolRegistry? = null,
-        finishTool: Tool<MockTools.FinishTool.Args, String>? = null,
+        finishTool: Tool<String, String>? = null,
         executor: PromptExecutor? = null,
         installFeatures: FeatureContext.() -> Unit = {},
     ): AIAgent<String, String> {
@@ -331,7 +331,7 @@ class SubgraphWithTaskTest {
         val llmParams = LLMParams()
 
         val strategy = strategy("test-strategy") {
-            val testSubgraphWithTask by subgraphWithTask<String, MockTools.FinishTool.Args, String>(
+            val testSubgraphWithTask by subgraphWithTask<String, String, String>(
                 tools = toolRegistry.tools,
                 finishTool = finishTool,
                 llmModel = model,
