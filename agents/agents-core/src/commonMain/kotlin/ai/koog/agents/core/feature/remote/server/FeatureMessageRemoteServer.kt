@@ -3,9 +3,10 @@ package ai.koog.agents.core.feature.remote.server
 import ai.koog.agents.core.feature.message.FeatureMessage
 import ai.koog.agents.core.feature.remote.server.config.ServerConnectionConfig
 import ai.koog.agents.core.utils.ExceptionExtractor.rootCause
+import ai.koog.agents.core.utils.RWLock
+import ai.koog.agents.utils.SuitableForIO
 import io.github.oshai.kotlinlogging.KotlinLogging
 import io.ktor.http.HttpStatusCode
-import io.ktor.server.application.ApplicationCallPipeline
 import io.ktor.server.application.ApplicationStopped
 import io.ktor.server.application.ServerReady
 import io.ktor.server.application.install
@@ -23,13 +24,23 @@ import io.ktor.server.routing.routing
 import io.ktor.server.sse.SSE
 import io.ktor.server.sse.sse
 import io.ktor.sse.ServerSentEvent
+import io.ktor.util.cio.ChannelWriteException
 import io.ktor.utils.io.CancellationException
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.consumeAsFlow
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.isActive
+import kotlinx.coroutines.launch
 import kotlinx.serialization.serializer
+import kotlin.concurrent.atomics.AtomicInt
+import kotlin.concurrent.atomics.ExperimentalAtomicApi
+import kotlin.concurrent.atomics.decrementAndFetch
+import kotlin.concurrent.atomics.incrementAndFetch
 import kotlin.properties.Delegates
 
 /**
@@ -54,12 +65,32 @@ public class FeatureMessageRemoteServer(
 
     private val _isStarted: MutableStateFlow<Boolean> = MutableStateFlow(false)
 
+    private val _isClientConnected: MutableStateFlow<Boolean> = MutableStateFlow(false)
+
+    @OptIn(ExperimentalAtomicApi::class)
+    private val activeClientsCount = AtomicInt(0)
+
+    private val rwLock = RWLock()
+
+    /**
+     * A StateFlow property indicating whether a certain process or operation has started.
+     *
+     * This value reflects the current state of the underlying operation or lifecycle.
+     * Emits `true` if the process has started, and `false` otherwise.
+     *
+     * The state is updated dynamically and observed to reflect real-time changes.
+     */
     override val isStarted: StateFlow<Boolean>
         get() = _isStarted
 
-    private val _isClientConnected: MutableStateFlow<Boolean> = MutableStateFlow(false)
-
-    internal val isClientConnected: StateFlow<Boolean>
+    /**
+     * Represents the current connection state of the client.
+     *
+     * This StateFlow emits a Boolean value indicating whether the client is connected (true)
+     * or disconnected (false). Observers can collect this flow to react to changes in the
+     * client's connection status in real time.
+     */
+    public val isClientConnected: StateFlow<Boolean>
         get() = _isClientConnected
 
     /**
@@ -202,18 +233,13 @@ public class FeatureMessageRemoteServer(
     @Suppress("UNCHECKED_CAST")
     private fun createServer(
         host: String,
-        port: Int
+        port: Int,
     ): EmbeddedServer<ApplicationEngine, ApplicationEngine.Configuration> {
         logger.debug { "Feature Message Remote Server. Start creating server on port: $port" }
 
         val factory = CIO as ApplicationEngineFactory<ApplicationEngine, ApplicationEngine.Configuration>
         server = embeddedServer(factory = factory, host = host, port = port) {
             install(SSE)
-
-            // Intercept first connection to server
-            intercept(ApplicationCallPipeline.Call) {
-                _isClientConnected.value = true
-            }
 
             routing {
                 routingSse()
@@ -248,31 +274,68 @@ public class FeatureMessageRemoteServer(
 
     //region Routing
 
+    @OptIn(ExperimentalAtomicApi::class)
     private fun Route.routingSse() {
         sse("/sse") {
-            toSendMessages.consumeAsFlow().collect { message: FeatureMessage ->
-                logger.debug { "Feature Message Remote Server. Process server event: $message" }
+            rwLock.withWriteLock {
+                val currentCount = activeClientsCount.incrementAndFetch()
 
-                try {
-                    val serverEventData: String = message.toServerEventData()
-                    logger.debug { "Feature Message Remote Server. Send encoded message: $serverEventData" }
+                logger.info { "Feature Message Remote Server. Client connected. Active clients: $currentCount" }
+                _isClientConnected.value = true
+            }
 
-                    val serverEvent = ServerSentEvent(
-                        event = message.messageType.value,
-                        data = serverEventData,
-                    )
-
-                    logger.debug { "Feature Message Remote Server. Sending SSE server event: $serverEvent" }
-                    send(serverEvent)
-                } catch (t: CancellationException) {
-                    logger.info {
-                        "Feature Message Remote Server. Sending SSE message (message: $message) has been canceled: ${t.message}"
+            try {
+                // Heartbeat job
+                val pingConnectionJob = launch(Dispatchers.SuitableForIO) {
+                    while (isActive) {
+                        delay(connectionConfig.heartbeatDelay)
+                        try {
+                            send(ServerSentEvent(event = "ping", data = "ping"))
+                        } catch (t: ChannelWriteException) {
+                            logger.debug(t) { "Feature Message Remote Server. Heartbeat job received client disconnect error. Cancelling SSE session. Error: ${t.message}" }
+                            cancel()
+                        } catch (t: Throwable) {
+                            logger.error(t) { "Feature Message Remote Server. Heartbeat job failed with error. Rethrow the exception. Error: ${t.message}" }
+                            throw t
+                        }
                     }
-                    throw t
-                } catch (t: Throwable) {
-                    logger.error(t) {
-                        "Feature Message Remote Server. Error while sending SSE event: ${t.message}"
+                }
+
+                // Send messages job
+                launch(Dispatchers.SuitableForIO) {
+                    toSendMessages.consumeAsFlow().collect { message: FeatureMessage ->
+                        logger.debug { "Feature Message Remote Server. Process server event: $message" }
+
+                        try {
+                            val serverEventData: String = message.toServerEventData()
+                            logger.debug { "Feature Message Remote Server. Send encoded message: $serverEventData" }
+
+                            val serverEvent = ServerSentEvent(
+                                event = message.messageType.value,
+                                data = serverEventData,
+                            )
+
+                            logger.debug { "Feature Message Remote Server. Sending SSE server event: $serverEvent" }
+                            send(serverEvent)
+                        } catch (t: CancellationException) {
+                            logger.info {
+                                "Feature Message Remote Server. Sending SSE message (message: $message) has been canceled: ${t.message}"
+                            }
+                            throw t
+                        } catch (t: Throwable) {
+                            logger.error(t) {
+                                "Feature Message Remote Server. Error while sending SSE event: ${t.message}"
+                            }
+                        }
                     }
+                }
+
+                pingConnectionJob.join()
+            } finally {
+                rwLock.withWriteLock {
+                    val currentCountAfter = activeClientsCount.decrementAndFetch()
+                    logger.info { "Feature Message Remote Server. Client disconnected. Active clients left: $currentCountAfter" }
+                    _isClientConnected.value = currentCountAfter > 0
                 }
             }
         }

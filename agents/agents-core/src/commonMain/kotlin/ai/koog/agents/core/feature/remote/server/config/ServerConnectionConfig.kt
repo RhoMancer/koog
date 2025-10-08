@@ -1,6 +1,7 @@
 package ai.koog.agents.core.feature.remote.server.config
 
 import ai.koog.agents.core.feature.remote.ConnectionConfig
+import kotlin.time.Duration
 
 /**
  * Configuration class for setting up a server connection.
@@ -13,4 +14,5 @@ public abstract class ServerConnectionConfig(
     public val host: String,
     public val port: Int,
     public val waitConnection: Boolean,
+    public val heartbeatDelay: Duration
 ) : ConnectionConfig()

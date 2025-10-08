@@ -1,5 +1,8 @@
 package ai.koog.agents.core.feature.remote.server.config
 
+import kotlin.time.Duration
+import kotlin.time.Duration.Companion.seconds
+
 /**
  * Default implementation of the server connection configuration.
  *
@@ -16,10 +19,12 @@ public class DefaultServerConnectionConfig(
     host: String? = null,
     port: Int? = null,
     waitConnection: Boolean? = null,
+    heartbeatDelay: Duration? = null,
 ) : ServerConnectionConfig(
     host = host ?: DEFAULT_HOST,
     port = port ?: DEFAULT_PORT,
     waitConnection = waitConnection ?: DEFAULT_WAIT_CONNECTION,
+    heartbeatDelay = heartbeatDelay ?: defaultHeartbeatDelay
 ) {
 
     /**
@@ -56,5 +61,16 @@ public class DefaultServerConnectionConfig(
          * for the `waitConnection` parameter in the `DefaultServerConnectionConfig` class.
          */
         public const val DEFAULT_WAIT_CONNECTION: Boolean = false
+
+        /**
+         * Specifies the time interval for sending heartbeat signals in the server connection configuration.
+         *
+         * The `heartbeatDelay` determines how frequently the server sends heartbeat messages to maintain
+         * the connection or detect disconnects. This parameter is crucial for ensuring the reliability
+         * of long-lived connections and promptly identifying issues such as network failures.
+         *
+         * The default value is set to 1 second.
+         */
+        public val defaultHeartbeatDelay: Duration = 1.seconds
     }
 }

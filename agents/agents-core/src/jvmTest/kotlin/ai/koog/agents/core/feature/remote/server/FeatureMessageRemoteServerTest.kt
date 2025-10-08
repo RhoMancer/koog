@@ -33,6 +33,7 @@ import kotlin.test.assertFailsWith
 import kotlin.test.assertFalse
 import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
+import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.seconds
 
 class FeatureMessageRemoteServerTest {
@@ -163,7 +164,7 @@ class FeatureMessageRemoteServerTest {
                 logger.info { "Server is finished successfully" }
             }
 
-            val clientConnectedTimeout = 5.seconds
+            val clientConnectedTimeout = 2.seconds
             val isServerConnected = withTimeoutOrNull(clientConnectedTimeout) {
                 isClientConnected.first { it }
             } != null
@@ -266,13 +267,13 @@ class FeatureMessageRemoteServerTest {
                 logger.info { "Client await server messages." }
                 clientReceiveMessagesJob.join()
 
-                isClientFinished.complete(true)
-
                 assertEquals(expectedClientMessages.size, actualClientMessages.size)
                 assertContentEquals(expectedClientMessages, actualClientMessages)
 
                 logger.info { "Client is finished successfully" }
             }
+
+            isClientFinished.complete(true)
         }
 
         val isFinishedOrNull = withTimeoutOrNull(defaultClientServerTimeout) {
@@ -295,13 +296,16 @@ class FeatureMessageRemoteServerTest {
         val serverConfig = DefaultServerConnectionConfig(port = port).apply {
             appendSerializersModule(customSerializersModule)
         }
+
         val clientConfig = DefaultClientConnectionConfig(host = "127.0.0.1", port = port, protocol = URLProtocol.HTTP)
 
         val testServerMessage = TestFeatureEventMessage("test server message")
 
-        val isClientFinished = CompletableDeferred<Boolean>()
         val isServerStarted = CompletableDeferred<Boolean>()
         val isServerSentMessage = CompletableDeferred<Boolean>()
+        val isClientDisconnected = CompletableDeferred<Boolean>()
+
+        val clientReceivedMessages = mutableListOf<FeatureMessage>()
 
         val serverJob = launch {
             FeatureMessageRemoteServer(connectionConfig = serverConfig).use { server ->
@@ -309,28 +313,41 @@ class FeatureMessageRemoteServerTest {
                 isServerStarted.complete(true)
                 logger.info { "Server is started on port: ${server.connectionConfig.port}" }
 
+                logger.info { "Server is waiting for a client connection..." }
+                server.isClientConnected.first { it }
+
                 logger.info { "Server send message to a client" }
                 server.sendMessage(message = testServerMessage)
                 isServerSentMessage.complete(true)
 
-                isClientFinished.await()
+                // Wait for all clients disconnected
+                logger.info { "Server is waiting for all clients disconnected..." }
+                isClientDisconnected.await()
+
                 logger.info { "Server is finished successfully" }
             }
         }
 
         val clientJob = launch {
-            FeatureMessageRemoteClient(connectionConfig = clientConfig, scope = this).use { client ->
-
-                val actualClientMessages = mutableListOf<FeatureMessage>()
+            FeatureMessageRemoteClient(
+                connectionConfig = clientConfig,
+                scope = this
+            ).use { client ->
 
                 val serverSentMessageJob = launch {
-                    isServerSentMessage.await()
-                    delay(100)
+                    withTimeoutOrNull(defaultClientServerTimeout) {
+                        isServerSentMessage.await()
+                        // Small delay until a client can receive messages.
+                        // Message will not be received because of the serialization error, but we need to make sure
+                        // all messages are processed, just in case.
+                        delay(200)
+                    }
+                    cancel()
                 }
 
                 val clientReceiveMessagesJob = launch {
                     client.receivedMessages.consumeAsFlow().collect { message ->
-                        actualClientMessages.add(message)
+                        clientReceivedMessages.add(message)
                     }
                 }
 
@@ -341,14 +358,76 @@ class FeatureMessageRemoteServerTest {
                 client.connect()
 
                 logger.info { "Client await server messages." }
-                serverSentMessageJob.join()
-                clientReceiveMessagesJob.cancelAndJoin()
+                val clientReceiveMessageTimeout = 1.seconds
+                val isClientReceivedMessage = withTimeoutOrNull(clientReceiveMessageTimeout) {
+                    serverSentMessageJob.join()
+                    clientReceiveMessagesJob.join()
+                } != null
 
-                isClientFinished.complete(true)
-
-                assertEquals(0, actualClientMessages.size)
+                // Cancel jobs
+                logger.info { "Cancel all client jobs" }
+                listOf(serverSentMessageJob, clientReceiveMessagesJob).forEach { it.cancel() }
+                assertFalse(isClientReceivedMessage)
 
                 logger.info { "Client is finished successfully" }
+            }
+
+            isClientDisconnected.complete(true)
+        }
+
+        val clientServerJobs = listOf(clientJob, serverJob)
+
+        val isFinished = withTimeoutOrNull(defaultClientServerTimeout) {
+            clientServerJobs.joinAll()
+        } != null
+
+        println("Client job: ${clientJob.isCompleted}, server job: ${serverJob.isCompleted}")
+        clientServerJobs.forEach { it.cancel() }
+
+        assertTrue(isFinished, "Client or server did not finish in time")
+        assertEquals(0, clientReceivedMessages.size)
+    }
+
+    //endregion SSE
+
+    //region IsClientConnected
+
+    @Test
+    fun `test isClientConnected set on first client connection`() = runBlocking {
+        val port = findAvailablePort()
+        val serverConfig = DefaultServerConnectionConfig(port = port, heartbeatDelay = 100.milliseconds)
+        val clientConfig = DefaultClientConnectionConfig(host = "127.0.0.1", port = port, protocol = URLProtocol.HTTP)
+
+        val isServerStarted = CompletableDeferred<Boolean>()
+
+        val serverJob = launch {
+            FeatureMessageRemoteServer(connectionConfig = serverConfig).use { server ->
+                server.start()
+                isServerStarted.complete(true)
+                logger.info { "Server is started on port: ${server.connectionConfig.port}" }
+
+                logger.info { "Server is waiting for a client connection..." }
+                server.isClientConnected.first { it }
+                assertTrue(server.isClientConnected.value)
+
+                logger.info { "Server is waiting for all clients disconnected..." }
+                server.isClientConnected.first { !it }
+                assertFalse(server.isClientConnected.value)
+
+                logger.info { "Server is finished successfully" }
+            }
+        }
+
+        val clientJob = launch {
+            FeatureMessageRemoteClient(connectionConfig = clientConfig, scope = this).use { client ->
+                logger.info { "Client connecting to remote server: ${client.connectionConfig.url}" }
+                isServerStarted.await()
+
+                logger.info { "Server is started. Connecting client..." }
+                client.connect()
+
+                logger.info { "Client is connected successfully" }
+                logger.info { "Client is closing connection..." }
             }
         }
 
@@ -359,5 +438,54 @@ class FeatureMessageRemoteServerTest {
         assertNotNull(isFinishedOrNull, "Client or server did not finish in time")
     }
 
-    //endregion SSE
+    @Test
+    fun `test isClientConnected reset on client disconnects`() = runBlocking {
+        val port = findAvailablePort()
+        val serverConfig = DefaultServerConnectionConfig(port = port, heartbeatDelay = 100.milliseconds)
+        val clientConfig = DefaultClientConnectionConfig(host = "127.0.0.1", port = port, protocol = URLProtocol.HTTP)
+
+        val isServerStarted = CompletableDeferred<Boolean>()
+        val isClientConnected = CompletableDeferred<Boolean>()
+
+        val serverJob = launch {
+            FeatureMessageRemoteServer(connectionConfig = serverConfig).use { server ->
+                server.start()
+                isServerStarted.complete(true)
+                logger.info { "Server is started on port: ${server.connectionConfig.port}" }
+
+                logger.info { "Server is waiting for a client connection..." }
+                isClientConnected.await()
+                assertTrue(server.isClientConnected.value)
+
+                logger.info { "Server is waiting for a client to disconnect..." }
+                server.isClientConnected.first { !it }
+                assertFalse(server.isClientConnected.value)
+
+                logger.info { "Server is finished successfully" }
+            }
+        }
+
+        val clientJob = launch {
+            FeatureMessageRemoteClient(connectionConfig = clientConfig, scope = this).use { client ->
+                logger.info { "Client connecting to remote server: ${client.connectionConfig.url}" }
+                isServerStarted.await()
+
+                logger.info { "Server is started. Connecting client 1..." }
+                client.connect()
+
+                logger.info { "Client is connected successfully" }
+                isClientConnected.complete(true)
+
+                logger.info { "Client is closing connection..." }
+            }
+        }
+
+        val isFinishedOrNull = withTimeoutOrNull(defaultClientServerTimeout) {
+            listOf(clientJob, serverJob).joinAll()
+        }
+
+        assertNotNull(isFinishedOrNull, "Client or server did not finish in time")
+    }
+
+    //endregion IsClientConnected
 }
