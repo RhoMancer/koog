@@ -21,8 +21,10 @@ import ai.koog.agents.core.tools.ToolDescriptor
 import ai.koog.agents.core.tools.annotations.InternalAgentToolsApi
 import ai.koog.agents.core.tools.asToolDescriptor
 import ai.koog.agents.core.tools.asToolDescriptorDeserializer
+import ai.koog.agents.ext.agent.SubgraphWithTaskUtils.getCustomUserPromptOnAssistantResponse
 import ai.koog.prompt.llm.LLMCapability
 import ai.koog.prompt.llm.LLModel
+import ai.koog.prompt.markdown.MarkdownContentBuilder
 import ai.koog.prompt.markdown.markdown
 import ai.koog.prompt.message.Message
 import ai.koog.prompt.params.LLMParams
@@ -115,6 +117,17 @@ public object SubgraphWithTaskUtils {
      * to prevent redundancy in responses and ensure conciseness in communication.
      */
     public const val ASSISTANT_RESPONSE_REPEAT_MAX: Int = 3
+
+    /**
+     * Generates a custom Markdown content builder function to guide the user in interacting with the assistant.
+     *
+     * @param finishToolDescriptor A descriptor of the tool to be called when the task is finished, including its name and details.
+     * @return A lambda function for a MarkdownContentBuilder that adds instructions on interacting with the assistant.
+     */
+    public fun MarkdownContentBuilder.getCustomUserPromptOnAssistantResponse(finishToolDescriptor: ToolDescriptor) {
+        h1("DO NOT CHAT WITH ME DIRECTLY! CALL TOOLS, INSTEAD.")
+        h2("IF YOU HAVE FINISHED, CALL `${finishToolDescriptor.name}` TOOL!")
+    }
 }
 
 /**
@@ -137,6 +150,8 @@ public inline fun <reified Input, reified Output> AIAgentSubgraphBuilderBase<*, 
     toolSelectionStrategy: ToolSelectionStrategy,
     llmModel: LLModel? = null,
     llmParams: LLMParams? = null,
+    assistantResponseRepeatMax: Int? = null,
+    customUserPromptOnAssistantResponse: String? = null,
     noinline defineTask: suspend AIAgentGraphContextBase.(input: Input) -> String
 ): AIAgentSubgraphDelegate<Input, Output> = subgraph(
     toolSelectionStrategy = toolSelectionStrategy,
@@ -146,7 +161,12 @@ public inline fun <reified Input, reified Output> AIAgentSubgraphBuilderBase<*, 
     val finishToolDescriptor =
         serializer<Output>().descriptor.asToolDescriptor(toolName = SubgraphWithTaskUtils.FINALIZE_SUBGRAPH_TOOL_NAME)
 
-    setupSubgraphWithTask<Input, Output, Output>(finishToolDescriptor, defineTask)
+    setupSubgraphWithTask<Input, Output, Output>(
+        finishToolDescriptor = finishToolDescriptor,
+        assistantResponseRepeatMax = assistantResponseRepeatMax,
+        customUserPromptOnAssistantResponse = customUserPromptOnAssistantResponse,
+        defineTask = defineTask
+    )
 }
 
 /**
@@ -193,6 +213,8 @@ public inline fun <reified Input, reified Output, reified OutputTransformed> AIA
     finishTool: Tool<Output, OutputTransformed>,
     llmModel: LLModel? = null,
     llmParams: LLMParams? = null,
+    assistantResponseRepeatMax: Int? = null,
+    customUserPromptOnAssistantResponse: String? = null,
     noinline defineTask: suspend AIAgentGraphContextBase.(input: Input) -> String
 ): AIAgentSubgraphDelegate<Input, OutputTransformed> = subgraph(
     toolSelectionStrategy = toolSelectionStrategy,
@@ -200,7 +222,12 @@ public inline fun <reified Input, reified Output, reified OutputTransformed> AIA
     llmParams = llmParams,
 ) {
     val finishToolDescriptor = finishTool.descriptor
-    setupSubgraphWithTask<Input, Output, OutputTransformed>(finishToolDescriptor, defineTask)
+    setupSubgraphWithTask<Input, Output, OutputTransformed>(
+        finishToolDescriptor = finishToolDescriptor,
+        assistantResponseRepeatMax = assistantResponseRepeatMax,
+        customUserPromptOnAssistantResponse = customUserPromptOnAssistantResponse,
+        defineTask = defineTask
+    )
 }
 
 /**
@@ -223,6 +250,8 @@ public inline fun <reified Input, reified Output, reified OutputTransformed> AIA
     finishTool: Tool<Output, OutputTransformed>,
     llmModel: LLModel? = null,
     llmParams: LLMParams? = null,
+    assistantResponseRepeatMax: Int? = null,
+    customUserPromptOnAssistantResponse: String? = null,
     noinline defineTask: suspend AIAgentGraphContextBase.(input: Input) -> String
 ): AIAgentSubgraphDelegate<Input, OutputTransformed> = subgraph(
     toolSelectionStrategy = ToolSelectionStrategy.Tools(tools.map { it.descriptor }),
@@ -230,7 +259,12 @@ public inline fun <reified Input, reified Output, reified OutputTransformed> AIA
     llmParams = llmParams,
 ) {
     val finishToolDescriptor = finishTool.descriptor
-    setupSubgraphWithTask<Input, Output, OutputTransformed>(finishToolDescriptor, defineTask)
+    setupSubgraphWithTask<Input, Output, OutputTransformed>(
+        finishToolDescriptor = finishToolDescriptor,
+        assistantResponseRepeatMax = assistantResponseRepeatMax,
+        customUserPromptOnAssistantResponse = customUserPromptOnAssistantResponse,
+        defineTask = defineTask
+    )
 }
 
 /**
@@ -314,12 +348,12 @@ public inline fun <reified Input : Any> AIAgentSubgraphBuilderBase<*, *>.subgrap
 @OptIn(InternalAgentToolsApi::class)
 public inline fun <reified Input, reified Output, reified OutputTransformed> AIAgentSubgraphBuilderBase<Input, OutputTransformed>.setupSubgraphWithTask(
     finishToolDescriptor: ToolDescriptor,
+    assistantResponseRepeatMax: Int? = null,
+    customUserPromptOnAssistantResponse: String? = null,
     noinline defineTask: suspend AIAgentGraphContextBase.(Input) -> String
 ) {
-    val askAssistantToFinishMaximum = SubgraphWithTaskUtils.ASSISTANT_RESPONSE_REPEAT_MAX
-    var askAssistantToFinishCounter = 1
-
     val originalToolsKey = createStorageKey<List<ToolDescriptor>>("all-available-tools")
+    val askAssistantToFinishCounterKey = createStorageKey<Int>("ask-assistant-to-finish-counter")
 
     val setupTask by node<Input, String> { input ->
         llm.writeSession {
@@ -396,20 +430,26 @@ public inline fun <reified Input, reified Output, reified OutputTransformed> AIA
             )
         }
 
-        if (askAssistantToFinishMaximum < askAssistantToFinishCounter++) {
+        val currentAskAssistantToFinishCounter = storage.get(askAssistantToFinishCounterKey) ?: 1
+        storage.set(askAssistantToFinishCounterKey, currentAskAssistantToFinishCounter + 1)
+
+        val maxAssistantResponses = assistantResponseRepeatMax ?: SubgraphWithTaskUtils.ASSISTANT_RESPONSE_REPEAT_MAX
+
+        if (currentAskAssistantToFinishCounter > maxAssistantResponses) {
             error(
                 "Unable to finish subgraph with task. Reason: the model '${llm.model.id}' does not support tool choice, " +
-                    "and was not able to call `${finishToolDescriptor.name}` tool after <$askAssistantToFinishMaximum> attempts."
+                    "and was not able to call `${finishToolDescriptor.name}` tool after " +
+                    "<$maxAssistantResponses> attempts."
             )
         }
 
         llm.writeSession {
-            // append a new message to the history with feedback:
+            // Append a new message to the history with feedback.
             updatePrompt {
                 user {
                     markdown {
-                        h1("DO NOT CHAT WITH ME DIRECTLY! CALL TOOLS, INSTEAD.")
-                        h2("IF YOU HAVE FINISHED, CALL `${finishToolDescriptor.name}` TOOL!")
+                        customUserPromptOnAssistantResponse
+                            ?: getCustomUserPromptOnAssistantResponse(finishToolDescriptor)
                     }
                 }
             }
