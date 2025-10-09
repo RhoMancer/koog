@@ -3,7 +3,6 @@ package ai.koog.agents.ext.agent
 import ai.koog.agents.core.agent.AIAgent
 import ai.koog.agents.core.agent.GraphAIAgent.FeatureContext
 import ai.koog.agents.core.agent.config.AIAgentConfig
-import ai.koog.agents.core.agent.entity.ToolSelectionStrategy
 import ai.koog.agents.core.dsl.builder.strategy
 import ai.koog.agents.core.tools.Tool
 import ai.koog.agents.core.tools.ToolRegistry
@@ -21,10 +20,6 @@ import ai.koog.prompt.message.Message
 import ai.koog.prompt.params.LLMParams
 import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.JsonObject
-import kotlinx.serialization.json.JsonObjectBuilder
-import kotlinx.serialization.json.buildJsonObject
-import kotlinx.serialization.json.put
 import kotlin.js.JsName
 import kotlin.test.Test
 import kotlin.test.assertContentEquals
@@ -52,11 +47,7 @@ class SubgraphWithTaskTest {
 
         val mockExecutor = getMockExecutor {
             mockLLMToolCall(blankTool, MockTools.BlankTool.Args(blankToolResult)) onRequestEquals inputRequest
-            mockLLMToolCall(finishTool,
-                buildJsonObject {
-                    put("value", "A")
-                }
-            ) onRequestContains blankToolResult
+            mockLLMToolCall(finishTool, MockTools.FinishTool.Args()) onRequestContains blankToolResult
         }
 
         val actualToolCalls = mutableListOf<String>()
@@ -78,7 +69,8 @@ class SubgraphWithTaskTest {
                 }
             }
         ).use { agent ->
-            agent.run(inputRequest)
+            @Suppress("UnusedVariable")
+            val output = agent.run(inputRequest)
 
             assertEquals(expectedToolCalls.size, actualToolCalls.size)
             assertContentEquals(expectedToolCalls, actualToolCalls)
@@ -132,10 +124,7 @@ class SubgraphWithTaskTest {
 
         val mockExecutor = getMockExecutor {
             mockLLMToolCall(blankTool, MockTools.BlankTool.Args(blankToolResult)) onRequestEquals inputRequest
-            mockLLMToolCall(finishTool,
-                //language=json
-                """{"value":"A"}"""
-            ) onRequestContains blankToolResult
+            mockLLMToolCall(finishTool, MockTools.FinishTool.Args()) onRequestContains blankToolResult
         }
 
         val actualLLMCalls = mutableListOf<String>()
@@ -201,11 +190,7 @@ class SubgraphWithTaskTest {
                 input.contains(inputRequest) && assistantResponded++ < SubgraphWithTaskUtils.ASSISTANT_RESPONSE_REPEAT_MAX
             }
 
-
-            mockLLMToolCall(
-                finishTool,
-                //language=json
-                """{"value":"A"}""") onCondition { input ->
+            mockLLMToolCall(finishTool, MockTools.FinishTool.Args()) onCondition { input ->
                 input.contains("CALL TOOLS") && assistantResponded++ >= SubgraphWithTaskUtils.ASSISTANT_RESPONSE_REPEAT_MAX
             }
         }
@@ -338,7 +323,7 @@ class SubgraphWithTaskTest {
     fun createAgent(
         model: LLModel,
         toolRegistry: ToolRegistry? = null,
-        finishTool: Tool<String, String>? = null,
+        finishTool: Tool<MockTools.FinishTool.Args, String>? = null,
         executor: PromptExecutor? = null,
         installFeatures: FeatureContext.() -> Unit = {},
     ): AIAgent<String, String> {
@@ -347,8 +332,7 @@ class SubgraphWithTaskTest {
         val llmParams = LLMParams()
 
         val strategy = strategy("test-strategy") {
-
-            val testSubgraphWithTask by subgraphWithTask<String, String, String>(
+            val testSubgraphWithTask by subgraphWithTask<String, MockTools.FinishTool.Args, String>(
                 tools = toolRegistry.tools,
                 finishTool = finishTool,
                 llmModel = model,
