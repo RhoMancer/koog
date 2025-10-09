@@ -13,7 +13,7 @@ import kotlinx.serialization.encoding.Decoder
 import kotlinx.serialization.encoding.Encoder
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonDecoder
-import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.jsonObject
 
 private fun SerialDescriptor.description(): String =
     annotations.filterIsInstance<LLMDescription>().firstOrNull()?.description ?: ""
@@ -179,17 +179,9 @@ public fun <T> KSerializer<T>.asToolDescriptorDeserializer(json: Json = Json): K
                 val jsonDecoder = decoder as? JsonDecoder
                     ?: throw IllegalStateException("`asToolDescriptorDeserializer` for primitive types should be json decoder")
 
-                val jsonElement = jsonDecoder.decodeJsonElement()
-
-                val valueElement = if (jsonElement is JsonObject && "value" in jsonElement) {
-                    jsonElement.getValue("value")
-                } else {
-                    jsonElement
-                }
-
                 return json.decodeFromJsonElement(
                     this@asToolDescriptorDeserializer,
-                    valueElement
+                    jsonDecoder.decodeJsonElement().jsonObject.getValue("value")
                 )
             }
         }
