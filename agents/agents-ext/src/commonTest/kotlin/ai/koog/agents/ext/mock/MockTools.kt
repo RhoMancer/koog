@@ -8,21 +8,16 @@ import kotlinx.serialization.serializer
 
 object MockTools {
 
-    object FinishTool : Tool<FinishTool.Args, String>() {
+    object FinishTool : Tool<String, String>() {
 
-        @Serializable
-        data class Args(
-            @property:LLMDescription("Finish output") val output: String = ""
-        )
-
-        override val argsSerializer: KSerializer<Args> = serializer<Args>()
+        override val argsSerializer: KSerializer<String> = serializer<String>()
 
         override val resultSerializer: KSerializer<String> = serializer<String>()
 
         override val description: String = "test-finish-tool"
 
-        override suspend fun execute(args: Args): String {
-            return args.output
+        override suspend fun execute(args: String): String {
+            return args
         }
     }
 

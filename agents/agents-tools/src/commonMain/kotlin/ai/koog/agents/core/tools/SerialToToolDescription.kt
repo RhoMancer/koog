@@ -179,9 +179,11 @@ public fun <T> KSerializer<T>.asToolDescriptorDeserializer(json: Json = Json): K
                 val jsonDecoder = decoder as? JsonDecoder
                     ?: throw IllegalStateException("`asToolDescriptorDeserializer` for primitive types should be json decoder")
 
+                val jsonElement = jsonDecoder.decodeJsonElement()
+
                 return json.decodeFromJsonElement(
                     this@asToolDescriptorDeserializer,
-                    jsonDecoder.decodeJsonElement().jsonObject.getValue("value")
+                    jsonElement.jsonObject.getValue("value")
                 )
             }
         }

@@ -380,7 +380,11 @@ public inline fun <reified Input, reified Output, reified OutputTransformed> AIA
             tools = storage.get(originalToolsKey)!!
         }
 
-        toolResult.toSafeResult<OutputTransformed>().asSuccessful().result
+        println("SD -- finalizeTask. toolResult: $toolResult")
+        val result = toolResult.toSafeResult<OutputTransformed>().asSuccessful().result
+        println("SD -- finalizeTask. result: $result")
+
+        result as OutputTransformed
     }
 
     // Helper node to overcome problems of the current api and repeat less code when writing routing conditions
@@ -399,6 +403,8 @@ public inline fun <reified Input, reified Output, reified OutputTransformed> AIA
                 string = toolCall.content
             )
 
+            println("SD -- callToolHacked. toolResult: $toolResult")
+
             // Append a final tool call result to the prompt for further LLM calls to see it (otherwise they would fail)
             llm.writeSession {
                 updatePrompt {
@@ -408,12 +414,14 @@ public inline fun <reified Input, reified Output, reified OutputTransformed> AIA
                 }
             }
 
-            ReceivedToolResult(
+            val receivedToolResult = ReceivedToolResult(
                 id = toolCall.id,
                 tool = finishToolDescriptor.name,
                 content = toolCall.content,
                 result = toolResult
             )
+            println("SD -- callToolHacked. receivedToolResult: $receivedToolResult")
+            receivedToolResult
         } else {
             environment.executeTool(toolCall)
         }
