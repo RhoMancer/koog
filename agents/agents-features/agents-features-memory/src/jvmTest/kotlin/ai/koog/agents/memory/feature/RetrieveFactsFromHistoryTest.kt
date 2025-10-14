@@ -11,7 +11,6 @@ import ai.koog.agents.memory.model.MultipleFacts
 import ai.koog.agents.memory.model.SingleFact
 import ai.koog.agents.testing.tools.MockEnvironment
 import ai.koog.agents.testing.tools.getMockExecutor
-import ai.koog.agents.testing.tools.mockLLMAnswer
 import ai.koog.prompt.dsl.Prompt
 import ai.koog.prompt.dsl.prompt
 import ai.koog.prompt.llm.LLMProvider

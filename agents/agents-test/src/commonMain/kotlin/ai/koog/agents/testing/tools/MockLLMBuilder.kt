@@ -2,14 +2,12 @@ package ai.koog.agents.testing.tools
 
 import ai.koog.agents.core.tools.Tool
 import ai.koog.agents.core.tools.ToolRegistry
-import ai.koog.agents.core.tools.ToolResult
 import ai.koog.prompt.dsl.ModerationResult
 import ai.koog.prompt.executor.model.PromptExecutor
 import ai.koog.prompt.message.Message
 import ai.koog.prompt.message.ResponseMetaInfo
 import ai.koog.prompt.tokenizer.Tokenizer
 import kotlinx.datetime.Clock
-import kotlin.jvm.JvmName
 
 /**
  * Represents a condition for a tool call and its corresponding result.
@@ -89,6 +87,7 @@ public class ToolCondition<Args, Result>(
  * @property clock: A clock that is used for mock message timestamps
  * @property tokenizer: Tokenizer that will be used to estimate token counts in mock messages
  */
+@Suppress("TooManyFunctions")
 public class MockLLMBuilder(private val clock: Clock, private val tokenizer: Tokenizer? = null) {
     private val toolCallExactMatches = mutableMapOf<String, List<Message.Tool.Call>>()
     private val toolCallPartialMatches = mutableMapOf<String, List<Message.Tool.Call>>()
@@ -279,7 +278,8 @@ public class MockLLMBuilder(private val clock: Clock, private val tokenizer: Tok
      * This method associates a condition with a tool and its arguments, allowing conditional execution
      * of the tool when the specified condition matches.
      *
-     * @param condition A predicate function that takes a string input and returns a Boolean, indicating whether the condition is met.
+     * @param condition A predicate function that takes a string input and returns a Boolean,
+     * indicating whether the condition is met.
      * @param tool The tool object to be called if the condition is satisfied.
      * @param args The arguments to be passed to the tool, which will be encoded to a string for the tool call.
      */
@@ -634,7 +634,8 @@ public class MockLLMBuilder(private val clock: Clock, private val tokenizer: Tok
             }
 
             /**
-             * Configures the tool to return the specified result when it receives arguments that satisfy the specified condition.
+             * Configures the tool to return the specified result when it receives arguments,
+             * that satisfy the specified condition.
              *
              * @param condition A function that evaluates the arguments and returns true if they match
              */
@@ -686,8 +687,8 @@ public class MockLLMBuilder(private val clock: Clock, private val tokenizer: Tok
      * @param response The string to return
      * @return The result of the alwaysReturns call
      */
-    public infix fun <Args> MockToolReceiver<Args, ToolResult.Text>.alwaysReturns(response: String): Unit =
-        alwaysReturns(ToolResult.Text(response))
+    public infix fun <Args> MockToolReceiver<Args, String>.alwaysReturns(response: String): Unit =
+        alwaysReturns(response)
 
     /**
      * Convenience extension function for configuring a text tool to always execute the specified action
@@ -702,29 +703,16 @@ public class MockLLMBuilder(private val clock: Clock, private val tokenizer: Tok
         alwaysDoes { action() }
 
     /**
-     * Convenience extension function for configuring a text tool to always execute the specified action
-     * and return its string result.
-     *
-     * @param action A function that produces the string result
-     * @return The result of the alwaysDoes call
-     */
-    @JvmName("alwaysTellsText")
-    public infix fun <Args> MockToolReceiver<Args, ToolResult.Text>.alwaysTells(
-        action: suspend () -> String
-    ): Unit =
-        alwaysDoes { ToolResult.Text(action()) }
-
-    /**
      * Convenience extension function for configuring a text tool to execute the specified action
      * and return its string result when it receives matching arguments.
      *
      * @param action A function that produces the string result
      * @return The result of the does call
      */
-    public infix fun <Args> MockToolReceiver<Args, ToolResult.Text>.doesStr(
+    public infix fun <Args> MockToolReceiver<Args, String>.doesStr(
         action: suspend () -> String
-    ): MockToolReceiver.MockToolResponseBuilder<Args, ToolResult.Text> =
-        does { ToolResult.Text(action()) }
+    ): MockToolReceiver.MockToolResponseBuilder<Args, String> =
+        does { action() }
 
     /**
      * Builds and returns a PromptExecutor configured with the mock responses and tool actions.
@@ -746,11 +734,12 @@ public class MockLLMBuilder(private val clock: Clock, private val tokenizer: Tok
             }
         }
 
-        val combinedExactMatches = (processedAssistantExactMatches.keys + toolCallExactMatches.keys).associateWith { key ->
-            val assistantList = processedAssistantExactMatches[key] ?: emptyList()
-            val toolCallList = toolCallExactMatches[key] ?: emptyList()
-            assistantList + toolCallList
-        }
+        val combinedExactMatches =
+            (processedAssistantExactMatches.keys + toolCallExactMatches.keys).associateWith { key ->
+                val assistantList = processedAssistantExactMatches[key] ?: emptyList()
+                val toolCallList = toolCallExactMatches[key] ?: emptyList()
+                assistantList + toolCallList
+            }
 
         // Partial Matches
         val processedAssistantPartialMatches = assistantPartialMatches.mapValues { (_, value) ->
@@ -781,11 +770,12 @@ public class MockLLMBuilder(private val clock: Clock, private val tokenizer: Tok
                 )
             } ?: emptyMap()
 
-        val combinedConditionalMatches = (processedAssistantConditionalMatches.keys + toolCallConditionalMatches.keys).associateWith { key ->
-            val assistantList = processedAssistantConditionalMatches[key] ?: emptyList()
-            val toolCallList = toolCallConditionalMatches[key] ?: emptyList()
-            assistantList + toolCallList
-        }
+        val combinedConditionalMatches =
+            (processedAssistantConditionalMatches.keys + toolCallConditionalMatches.keys).associateWith { key ->
+                val assistantList = processedAssistantConditionalMatches[key] ?: emptyList()
+                val toolCallList = toolCallConditionalMatches[key] ?: emptyList()
+                assistantList + toolCallList
+            }
 
         val responseMatcher = ResponseMatcher(
             partialMatches = combinedPartialMatches.takeIf { it.isNotEmpty() },
@@ -811,27 +801,27 @@ public class MockLLMBuilder(private val clock: Clock, private val tokenizer: Tok
             tokenizer = tokenizer
         )
     }
-}
 
-/**
- * Creates a mock LLM text response.
- *
- * This function is the entry point for configuring how the LLM should respond with text
- * when it receives specific inputs.
- *
- * @param response The text response to return
- * @return A [DefaultResponseReceiver] for further configuration
- *
- * Example usage:
- * ```kotlin
- * // Mock a simple text response
- * mockLLMAnswer("Hello!") onRequestContains "Hello"
- *
- * // Mock a default response
- * mockLLMAnswer("I don't know how to answer that.").asDefaultResponse
- * ```
- */
-public fun mockLLMAnswer(response: String): DefaultResponseReceiver = DefaultResponseReceiver(response)
+    /**
+     * Creates a mock LLM text response.
+     *
+     * This function is the entry point for configuring how the LLM should respond with text
+     * when it receives specific inputs.
+     *
+     * @param response The text response to return
+     * @return A [DefaultResponseReceiver] for further configuration
+     *
+     * Example usage:
+     * ```kotlin
+     * // Mock a simple text response
+     * mockLLMAnswer("Hello!") onRequestContains "Hello"
+     *
+     * // Mock a default response
+     * mockLLMAnswer("I don't know how to answer that.").asDefaultResponse
+     * ```
+     */
+    public fun mockLLMAnswer(response: String): DefaultResponseReceiver = DefaultResponseReceiver(response)
+}
 
 /**
  * Receiver class for configuring text responses from the LLM.
@@ -986,7 +976,8 @@ public fun getMockExecutor(
     // Clear previous matches
     DefaultResponseReceiver.clearMatches()
 
-    // Call MockLLMBuilder and apply toolRegistry, eventHandler and set currentBuilder to this (to add mocked tool calls)
+    // Call MockLLMBuilder and apply toolRegistry, eventHandler
+    // and set currentBuilder to this (to add mocked tool calls)
     val builder = MockLLMBuilder(clock, tokenizer).apply {
         this.handleLastAssistantMessage = handleLastAssistantMessage
         toolRegistry?.let { setToolRegistry(it) }
