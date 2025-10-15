@@ -6,6 +6,8 @@ on:
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    env:
+      BRANCH_KOOG_IS_RELEASING_FROM: ${{ github.ref_name }}
     steps:
       - name: Checkout project
         uses: actions/checkout@v5
