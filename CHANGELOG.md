@@ -1,3 +1,24 @@
+# 0.5.1
+> Published 15 Oct 2025
+
+## Improvements
+- **Add error handling in LocalFileMemoryProvider** (#905)
+- **Add GPT-5 Codex** model support (#888)
+- **Added support for filters** in PersistenceProvider (#936)
+- **Added** **DashScope (Qwen)** LLM client support (#687)
+- Excluded **Ktor** engine dependencies ([KG-315](https://youtrack.jetbrains.com/issue/KG-315))
+- Support additional **Bedrock auth options** (#923)
+- `requestLLMStreaming` now respect `AgentConfig.missingToolsConversionStrategy` (#944)
+
+## Bug Fixes
+- Make subgraphWithTask work with models without ToolChoice support ([KG-440](https://youtrack.jetbrains.com/issue/KG-440))
+- Fix for [KTOR-8881](https://youtrack.jetbrains.com/issue/KTOR-8881) - Ktor/Koog configuration in `application.yaml` gives error
+- Fixed the ordering issue for **Persistence** checkpoints (#964)
+- Fixed issue with the tool name in `@Tool` annotation - now we take it into account (#930)
+
+## Examples
+- Supported Multi-LLM Prompt Executor Spring Bean by adding llmProvider method to LLM clients (#842)
+
 # 0.5.0
 
 > Published 2 Oct 2025
