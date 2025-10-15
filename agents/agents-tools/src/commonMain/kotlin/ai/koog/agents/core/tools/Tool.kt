@@ -180,6 +180,15 @@ public abstract class Tool<TArgs, TResult> {
     public fun encodeArgs(args: TArgs): JsonObject = ToolJson.encodeToJsonElement(argsSerializer, args).jsonObject
 
     /**
+     * Encodes the given result into a JSON representation using the configured result serializer.
+     *
+     * @param result The result object of type TResult to be encoded.
+     * @return A JsonObject representing the encoded result.
+     */
+    public fun encodeResult(result: TResult): JsonObject =
+        ToolJson.encodeToJsonElement(resultSerializer, result).jsonObject
+
+    /**
      * Encodes the provided arguments into a JSON string representation using the configured serializer.
      *
      * @param args the arguments to be encoded into a JSON string

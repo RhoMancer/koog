@@ -65,6 +65,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.io.IOException
+import kotlinx.serialization.json.Json
 import org.junit.jupiter.api.Disabled
 import kotlin.test.Test
 import kotlin.test.assertContentEquals
@@ -142,7 +143,7 @@ class DebuggerTest {
             messages = expectedPrompt.messages + listOf(
                 userMessage(content = userPrompt),
                 toolCallMessage(dummyTool.name, content = """{"dummy":"test"}"""),
-                toolResult("0", dummyTool.name, dummyTool.result, dummyTool.result).toMessage(clock = testClock)
+                toolResult("0", dummyTool.name, dummyTool.result, dummyTool.encodeResult(dummyTool.result)).toMessage(clock = testClock)
             )
         )
 
@@ -339,13 +340,13 @@ class DebuggerTest {
                         runId = clientEventsCollector.runId,
                         nodeName = "test-tool-call",
                         input = toolCallMessage(dummyTool.name, content = """{"dummy":"test"}""").toString(),
-                        output = toolResult("0", dummyTool.name, dummyTool.result, dummyTool.result).toString(),
+                        output = toolResult("0", dummyTool.name, dummyTool.result, dummyTool.encodeResult(dummyTool.result)).toString(),
                         timestamp = testClock.now().toEpochMilliseconds()
                     ),
                     NodeExecutionStartingEvent(
                         runId = clientEventsCollector.runId,
                         nodeName = "test-node-llm-send-tool-result",
-                        input = toolResult("0", dummyTool.name, dummyTool.result, dummyTool.result).toString(),
+                        input = toolResult("0", dummyTool.name, dummyTool.result, dummyTool.encodeResult(dummyTool.result)).toString(),
                         timestamp = testClock.now().toEpochMilliseconds()
                     ),
                     LLMCallStartingEvent(
@@ -365,7 +366,7 @@ class DebuggerTest {
                     NodeExecutionCompletedEvent(
                         runId = clientEventsCollector.runId,
                         nodeName = "test-node-llm-send-tool-result",
-                        input = toolResult("0", dummyTool.name, dummyTool.result, dummyTool.result).toString(),
+                        input = toolResult("0", dummyTool.name, dummyTool.result, dummyTool.encodeResult(dummyTool.result)).toString(),
                         output = assistantMessage(mockResponse).toString(),
                         timestamp = testClock.now().toEpochMilliseconds()
                     ),

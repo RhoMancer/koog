@@ -420,7 +420,7 @@ public inline fun <reified Input, reified Output, reified OutputTransformed> AIA
                 id = toolCall.id,
                 tool = finishTool.name,
                 content = toolCall.content,
-                result = toolResult
+                result = finishTool.encodeResult(toolResult)
             )
         } else {
             environment.executeTool(toolCall)

@@ -19,6 +19,7 @@ import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.supervisorScope
+import kotlinx.serialization.json.JsonObject
 
 @OptIn(InternalAgentToolsApi::class)
 private class DirectToolCallsEnablerImpl : DirectToolCallsEnabler
@@ -88,7 +89,7 @@ internal class GenericAgentEnvironment(
         toolName: String,
         agentId: String,
         message: String,
-        result: Any?
+        result: JsonObject?
     ): EnvironmentToolResultToAgentContent = AIAgentEnvironmentToolResultToAgentContent(
         toolCallId = toolCallId,
         toolName = toolName,
@@ -155,7 +156,7 @@ internal class GenericAgentEnvironment(
                 toolName = content.toolName,
                 agentId = strategyId,
                 message = tool.encodeResultToStringUnsafe(toolResult),
-                result = toolResult
+                result = tool.encodeResult(toolResult)
             )
         }
 

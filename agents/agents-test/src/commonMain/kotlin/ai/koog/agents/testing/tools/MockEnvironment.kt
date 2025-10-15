@@ -7,6 +7,9 @@ import ai.koog.agents.core.tools.ToolRegistry
 import ai.koog.agents.core.tools.annotations.InternalAgentToolsApi
 import ai.koog.prompt.executor.model.PromptExecutor
 import ai.koog.prompt.message.Message
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.encodeToJsonElement
+import kotlinx.serialization.json.jsonObject
 
 /**
  * A mock implementation of [DirectToolCallsEnabler] used for testing purposes.
@@ -91,7 +94,7 @@ public class MockEnvironment(
                         id = functionCall.id,
                         tool = functionCall.tool,
                         content = content,
-                        result = result
+                        result = Json.encodeToJsonElement(result).jsonObject
                     )
                 }
         }
@@ -104,7 +107,7 @@ public class MockEnvironment(
             id = functionCall.id,
             tool = functionCall.tool,
             content = tool.encodeResultToStringUnsafe(result),
-            result = result
+            result = Json.encodeToJsonElement(result).jsonObject
         )
     }
 
