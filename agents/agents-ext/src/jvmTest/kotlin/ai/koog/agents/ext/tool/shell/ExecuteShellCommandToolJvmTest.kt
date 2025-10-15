@@ -328,25 +328,29 @@ class ExecuteShellCommandToolJvmTest {
 
     @Test
     @EnabledOnOs(OS.LINUX, OS.MAC)
-    fun `long running command times out`() = runBlocking {
-        val result = executeShellCommand("sleep 1.1", timeoutSeconds = 1)
+    fun `long running command times out`() {
+        val command = "sleep 2"
+        runBlocking {
+            val result = executeShellCommand(command, timeoutSeconds = 1)
 
-        val expected = """
-            Command: sleep 1.1
-            Command timed out after 1 seconds
-        """.trimIndent()
+            val expected = """
+                Command: $command
+                Command timed out after 1 seconds
+            """.trimIndent()
 
-        assertEquals(expected, result.textForLLM())
-        assertNull(result.exitCode)
+            assertEquals(expected, result.textForLLM())
+            assertNull(result.exitCode)
+        }
     }
 
     @Test
     @EnabledOnOs(OS.WINDOWS)
     fun `long running command times out on Windows`() = runBlocking {
-        val result = executeShellCommand("powershell -Command \"Start-Sleep -Milliseconds 1100\"", timeoutSeconds = 1)
+        val command = "powershell -Command \"Start-Sleep -Seconds 2\""
+        val result = executeShellCommand(command, timeoutSeconds = 1)
 
         val expected = """
-            Command: powershell -Command "Start-Sleep -Milliseconds 1100"
+            Command: $command
             Command timed out after 1 seconds
         """.trimIndent()
 
@@ -356,28 +360,35 @@ class ExecuteShellCommandToolJvmTest {
 
     @Test
     @EnabledOnOs(OS.LINUX, OS.MAC)
-    fun `command with partial output times out`() = runBlocking {
-        val result = executeShellCommand("for i in {1..3}; do echo \$i; sleep 0.5; done", timeoutSeconds = 1)
+    fun `command with partial output times out`() {
+        val command = "for i in {1..3}; do echo \$i; sleep 1; done"
+        runBlocking {
+            val result = executeShellCommand(command, timeoutSeconds = 2)
 
-        assertTrue(result.textForLLM().contains("Command timed out after 1 seconds"))
-        assertTrue(result.textForLLM().startsWith("Command: for i in {1..3}; do echo \$i; sleep 0.5; done"))
-        assertNull(result.exitCode)
+            assertTrue(result.textForLLM().contains("Command timed out after 2 seconds"))
+            assertTrue(result.textForLLM().startsWith("Command: $command"))
+            assertNull(result.exitCode)
+        }
     }
 
     @Test
     @EnabledOnOs(OS.WINDOWS)
-    fun `command with partial output times out on Windows`() = runBlocking {
-        val result = executeShellCommand(
-            "powershell -Command \"1..3 | ForEach-Object { Write-Output \$_; Start-Sleep -Milliseconds 500 }\"",
-            timeoutSeconds = 1
-        )
+    fun `command with partial output times out on Windows`() {
+        val command = "powershell -Command \"1..3 | ForEach-Object { Write-Output \$_; Start-Sleep -Seconds 1 }\""
+        runBlocking {
+            val result = executeShellCommand(
+                command,
+                timeoutSeconds = 2
+            )
 
-        assertTrue(result.textForLLM().contains("Command timed out after 1 seconds"))
-        assertTrue(
-            result.textForLLM()
-                .startsWith("Command: powershell -Command \"1..3 | ForEach-Object { Write-Output \$_; Start-Sleep -Milliseconds 500 }\"")
-        )
-        assertNull(result.exitCode)
+            assertTrue(result.textForLLM().contains("Command timed out after 2 seconds"))
+            assertTrue(
+                result.textForLLM().startsWith(
+                    "Command: $command"
+                )
+            )
+            assertNull(result.exitCode)
+        }
     }
 
     // CANCELLATION TESTS
