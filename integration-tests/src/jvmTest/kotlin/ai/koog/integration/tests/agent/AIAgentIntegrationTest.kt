@@ -94,6 +94,7 @@ class AIAgentIntegrationTest {
                 AnthropicModels.Opus_4_1,
                 AnthropicModels.Sonnet_4,
                 AnthropicModels.Sonnet_4_5,
+                AnthropicModels.Haiku_4_5,
             ).stream()
         }
 

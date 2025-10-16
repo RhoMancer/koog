@@ -68,7 +68,7 @@ public class MistralAIParams(
     schema,
     toolChoice,
     user,
-    additionalProperties,
+    additionalProperties = additionalProperties,
 ) {
     init {
         require(topP == null || topP in 0.0..1.0) {

@@ -511,7 +511,6 @@ public open class AnthropicLLMClient(
             ToolParameterType.Float -> JsonObject(mapOf("type" to JsonPrimitive("number")))
             ToolParameterType.Integer -> JsonObject(mapOf("type" to JsonPrimitive("integer")))
             ToolParameterType.String -> JsonObject(mapOf("type" to JsonPrimitive("string")))
-            ToolParameterType.Null -> JsonObject(mapOf("type" to JsonPrimitive("null")))
             is ToolParameterType.Enum -> JsonObject(
                 mapOf(
                     "type" to JsonPrimitive("string"),
@@ -560,8 +559,6 @@ public open class AnthropicLLMClient(
 
                 JsonObject(objectMap)
             }
-
-            is ToolParameterType.AnyOf -> throw IllegalArgumentException("AnyOf type is not supported")
         }
     }
 
@@ -577,9 +574,5 @@ public open class AnthropicLLMClient(
     public override suspend fun moderate(prompt: Prompt, model: LLModel): ModerationResult {
         logger.warn { "Moderation is not supported by Anthropic API" }
         throw UnsupportedOperationException("Moderation is not supported by Anthropic API.")
-    }
-
-    override fun close() {
-        httpClient.close()
     }
 }
