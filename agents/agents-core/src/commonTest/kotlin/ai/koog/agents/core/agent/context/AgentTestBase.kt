@@ -1,8 +1,6 @@
 package ai.koog.agents.core.agent.context
 
 import ai.koog.agents.core.CalculatorChatExecutor.testClock
-import ai.koog.agents.core.agent.AIAgent
-import ai.koog.agents.core.agent.GraphAIAgent
 import ai.koog.agents.core.agent.config.AIAgentConfig
 import ai.koog.agents.core.agent.config.MissingToolsConversionStrategy
 import ai.koog.agents.core.agent.config.ToolCallDescriber
@@ -10,7 +8,7 @@ import ai.koog.agents.core.agent.entity.AIAgentStateManager
 import ai.koog.agents.core.agent.entity.AIAgentStorage
 import ai.koog.agents.core.environment.AIAgentEnvironment
 import ai.koog.agents.core.environment.ReceivedToolResult
-import ai.koog.agents.core.feature.AIAgentGraphPipeline
+import ai.koog.agents.core.feature.pipeline.AIAgentGraphPipeline
 import ai.koog.agents.testing.tools.getMockExecutor
 import ai.koog.prompt.dsl.Prompt
 import ai.koog.prompt.dsl.prompt
@@ -87,6 +85,7 @@ open class AgentTestBase {
     ): AIAgentGraphContext {
         return AIAgentGraphContext(
             environment = environment,
+            agentId = testAgentId,
             agentInputType = typeOf<String>(),
             agentInput = agentInput,
             config = config,
@@ -96,11 +95,6 @@ open class AgentTestBase {
             runId = runId,
             strategyName = strategyName,
             pipeline = pipeline,
-            agent = AIAgent(
-                promptExecutor = getMockExecutor { },
-                llmModel = OllamaModels.Meta.LLAMA_3_2,
-                id = "test-agent"
-            ) as GraphAIAgent<String, String>
         )
     }
 }
