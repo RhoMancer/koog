@@ -26,6 +26,7 @@ import ai.koog.agents.memory.providers.LocalMemoryConfig
 import ai.koog.agents.memory.storage.SimpleStorage
 import ai.koog.agents.testing.tools.DummyTool
 import ai.koog.agents.testing.tools.getMockExecutor
+import ai.koog.prompt.dsl.Prompt
 import ai.koog.prompt.dsl.prompt
 import ai.koog.prompt.executor.clients.anthropic.AnthropicModels
 import ai.koog.prompt.executor.clients.openai.OpenAIModels
@@ -104,6 +105,7 @@ class MemoryNodesTest {
         ) onRequestContains
             "Summarize all the main achievements"
         mockLLMAnswer(
+            // language=json
             """
             [
                 {
@@ -116,6 +118,7 @@ class MemoryNodesTest {
         """
         ) onRequestContains "test-concept"
         mockLLMAnswer(
+            // language=json
             """
             [
                 {
@@ -365,6 +368,7 @@ class MemoryNodesTest {
 
         val testExecutor = getMockExecutor {
             mockLLMAnswer(
+                // language=json
                 """
                 [
                     {
