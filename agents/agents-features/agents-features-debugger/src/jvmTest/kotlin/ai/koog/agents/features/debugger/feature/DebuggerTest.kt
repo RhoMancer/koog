@@ -1,6 +1,5 @@
 package ai.koog.agents.features.debugger.feature
 
-import ai.koog.agents.core.annotation.InternalAgentsApi
 import ai.koog.agents.core.dsl.builder.forwardTo
 import ai.koog.agents.core.dsl.builder.strategy
 import ai.koog.agents.core.dsl.extension.nodeExecuteTool
@@ -32,7 +31,6 @@ import ai.koog.agents.core.feature.remote.client.config.DefaultClientConnectionC
 import ai.koog.agents.core.feature.remote.server.config.DefaultServerConnectionConfig
 import ai.koog.agents.core.feature.writer.FeatureMessageRemoteWriter
 import ai.koog.agents.core.tools.ToolRegistry
-import ai.koog.agents.core.utils.SerializationUtils
 import ai.koog.agents.features.debugger.SystemVariablesReader
 import ai.koog.agents.features.debugger.mock.ClientEventsCollector
 import ai.koog.agents.features.debugger.mock.MockLLMProvider
@@ -41,7 +39,7 @@ import ai.koog.agents.features.debugger.mock.createAgent
 import ai.koog.agents.features.debugger.mock.systemMessage
 import ai.koog.agents.features.debugger.mock.testClock
 import ai.koog.agents.features.debugger.mock.toolCallMessage
-import ai.koog.agents.features.debugger.mock.toolResultMessage
+import ai.koog.agents.features.debugger.mock.toolResult
 import ai.koog.agents.features.debugger.mock.userMessage
 import ai.koog.agents.testing.network.NetUtil
 import ai.koog.agents.testing.network.NetUtil.findAvailablePort
@@ -52,7 +50,6 @@ import ai.koog.prompt.executor.model.PromptExecutor
 import ai.koog.prompt.llm.LLModel
 import ai.koog.prompt.llm.toModelInfo
 import ai.koog.prompt.message.Message
-import ai.koog.prompt.message.RequestMetaInfo
 import ai.koog.prompt.streaming.StreamFrame
 import ai.koog.utils.io.use
 import io.ktor.client.HttpClient
@@ -72,12 +69,10 @@ import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeout
 import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.io.IOException
-import kotlinx.serialization.json.JsonPrimitive
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Disabled
 import org.junit.jupiter.api.parallel.Execution
 import org.junit.jupiter.api.parallel.ExecutionMode
-import kotlin.reflect.typeOf
 import kotlin.test.Test
 import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
@@ -140,30 +135,29 @@ class DebuggerTest {
         val nodeExecuteToolName = "test-tool-call"
         val nodeSendToolResultName = "test-node-llm-send-tool-result"
 
-        val dummyTool = DummyTool()
-        val requestedDummyToolArgs = "test"
-
-        val userPrompt = "Call the dummy tool with argument: $requestedDummyToolArgs"
+        val userPrompt = "Call the dummy tool with argument: test"
         val systemPrompt = "Test system prompt"
         val assistantPrompt = "Test assistant prompt"
+        val promptId = "Test prompt id"
 
         val mockResponse = "Return test result"
+
+        // Tools
+        val dummyTool = DummyTool()
 
         val toolRegistry = ToolRegistry {
             tool(dummyTool)
         }
 
         // Model
-        val modelId = "test-llm-id"
         val testModel = LLModel(
             provider = MockLLMProvider(),
-            id = modelId,
+            id = "test-llm-id",
             capabilities = emptyList(),
             contextLength = 1_000,
         )
 
         // Prompt
-        val promptId = "Test prompt id"
         val expectedPrompt = Prompt(
             messages = listOf(
                 systemMessage(systemPrompt),
@@ -182,16 +176,8 @@ class DebuggerTest {
         val expectedLLMCallWithToolsPrompt = expectedPrompt.copy(
             messages = expectedPrompt.messages + listOf(
                 userMessage(content = userPrompt),
-                toolCallMessage(
-                    toolName = dummyTool.name,
-                    content = """{"dummy":"$requestedDummyToolArgs"}"""
-                ),
-                toolResultMessage(
-                    toolCallId = "0",
-                    toolName = dummyTool.name,
-                    content = dummyTool.encodeResultToString(dummyTool.result),
-                    metaInfo = RequestMetaInfo.create(testClock)
-                )
+                toolCallMessage(dummyTool.name, content = """{"dummy":"test"}"""),
+                toolResult("0", dummyTool.name, dummyTool.result, dummyTool.result).toMessage(clock = testClock)
             )
         )
 
@@ -219,7 +205,7 @@ class DebuggerTest {
             val mockExecutor = getMockExecutor(clock = testClock) {
                 mockLLMToolCall(
                     tool = dummyTool,
-                    args = DummyTool.Args(requestedDummyToolArgs),
+                    args = DummyTool.Args("test"),
                     toolCallId = "0"
                 ) onRequestEquals userPrompt
                 mockLLMAnswer(mockResponse) onRequestContains dummyTool.result
@@ -323,36 +309,20 @@ class DebuggerTest {
                     NodeExecutionStartingEvent(
                         runId = clientEventsCollector.runId,
                         nodeName = "__start__",
-                        input = @OptIn(InternalAgentsApi::class)
-                        SerializationUtils.encodeDataToJsonElementOrNull(
-                            data = userPrompt,
-                            dataType = typeOf<String>()
-                        ),
+                        input = userPrompt,
                         timestamp = testClock.now().toEpochMilliseconds()
                     ),
                     NodeExecutionCompletedEvent(
                         runId = clientEventsCollector.runId,
                         nodeName = "__start__",
-                        input = @OptIn(InternalAgentsApi::class)
-                        SerializationUtils.encodeDataToJsonElementOrNull(
-                            data = userPrompt,
-                            dataType = typeOf<String>()
-                        ),
-                        output = @OptIn(InternalAgentsApi::class)
-                        SerializationUtils.encodeDataToJsonElementOrNull(
-                            data = userPrompt,
-                            dataType = typeOf<String>()
-                        ),
+                        input = userPrompt,
+                        output = userPrompt,
                         timestamp = testClock.now().toEpochMilliseconds()
                     ),
                     NodeExecutionStartingEvent(
                         runId = clientEventsCollector.runId,
                         nodeName = "test-llm-call",
-                        input = @OptIn(InternalAgentsApi::class)
-                        SerializationUtils.encodeDataToJsonElementOrNull(
-                            data = userPrompt,
-                            dataType = typeOf<String>()
-                        ),
+                        input = userPrompt,
                         timestamp = testClock.now().toEpochMilliseconds()
                     ),
                     LLMCallStartingEvent(
@@ -366,32 +336,20 @@ class DebuggerTest {
                         runId = clientEventsCollector.runId,
                         prompt = expectedLLMCallPrompt,
                         model = testModel.toModelInfo(),
-                        responses = listOf(toolCallMessage(dummyTool.name, content = """{"dummy":"$requestedDummyToolArgs"}""")),
+                        responses = listOf(toolCallMessage(dummyTool.name, content = """{"dummy":"test"}""")),
                         timestamp = testClock.now().toEpochMilliseconds()
                     ),
                     NodeExecutionCompletedEvent(
                         runId = clientEventsCollector.runId,
                         nodeName = "test-llm-call",
-                        input = @OptIn(InternalAgentsApi::class)
-                        SerializationUtils.encodeDataToJsonElementOrNull(
-                            data = userPrompt,
-                            dataType = typeOf<String>()
-                        ),
-                        output = @OptIn(InternalAgentsApi::class)
-                        SerializationUtils.encodeDataToJsonElementOrNull(
-                            data = toolCallMessage(dummyTool.name, content = """{"dummy":"$requestedDummyToolArgs"}"""),
-                            dataType = typeOf<Message>()
-                        ),
+                        input = userPrompt,
+                        output = toolCallMessage(dummyTool.name, content = """{"dummy":"test"}""").toString(),
                         timestamp = testClock.now().toEpochMilliseconds()
                     ),
                     NodeExecutionStartingEvent(
                         runId = clientEventsCollector.runId,
                         nodeName = "test-tool-call",
-                        input = @OptIn(InternalAgentsApi::class)
-                        SerializationUtils.encodeDataToJsonElementOrNull(
-                            data = toolCallMessage(dummyTool.name, content = """{"dummy":"$requestedDummyToolArgs"}"""),
-                            dataType = typeOf<Message.Tool.Call>()
-                        ),
+                        input = toolCallMessage(dummyTool.name, content = """{"dummy":"test"}""").toString(),
                         timestamp = testClock.now().toEpochMilliseconds()
                     ),
                     ToolCallStartingEvent(
@@ -412,20 +370,14 @@ class DebuggerTest {
                     NodeExecutionCompletedEvent(
                         runId = clientEventsCollector.runId,
                         nodeName = "test-tool-call",
-                        input = @OptIn(InternalAgentsApi::class)
-                        SerializationUtils.encodeDataToJsonElementOrNull(
-                            data = toolCallMessage(toolName = dummyTool.name, content = """{"dummy":"$requestedDummyToolArgs"}"""),
-                            dataType = typeOf<Message.Tool.Call>()
-                        ),
-                        // TODO: KG-485. Update to include serialized [ReceivedToolResult] when it became a serializable type.
-                        output = JsonPrimitive(dummyTool.result),
+                        input = toolCallMessage(dummyTool.name, content = """{"dummy":"test"}""").toString(),
+                        output = toolResult("0", dummyTool.name, dummyTool.result, dummyTool.result).toString(),
                         timestamp = testClock.now().toEpochMilliseconds()
                     ),
                     NodeExecutionStartingEvent(
                         runId = clientEventsCollector.runId,
                         nodeName = "test-node-llm-send-tool-result",
-                        // TODO: KG-485. Update to include serialized [ReceivedToolResult] when it became a serializable type.
-                        input = JsonPrimitive(dummyTool.result),
+                        input = toolResult("0", dummyTool.name, dummyTool.result, dummyTool.result).toString(),
                         timestamp = testClock.now().toEpochMilliseconds()
                     ),
                     LLMCallStartingEvent(
@@ -445,38 +397,21 @@ class DebuggerTest {
                     NodeExecutionCompletedEvent(
                         runId = clientEventsCollector.runId,
                         nodeName = "test-node-llm-send-tool-result",
-                        // TODO: KG-485. Update to include serialized [ReceivedToolResult] when it became a serializable type.
-                        input = JsonPrimitive(dummyTool.result),
-                        output = @OptIn(InternalAgentsApi::class)
-                        SerializationUtils.encodeDataToJsonElementOrNull(
-                            data = assistantMessage(mockResponse),
-                            dataType = typeOf<Message>()
-                        ),
+                        input = toolResult("0", dummyTool.name, dummyTool.result, dummyTool.result).toString(),
+                        output = assistantMessage(mockResponse).toString(),
                         timestamp = testClock.now().toEpochMilliseconds()
                     ),
                     NodeExecutionStartingEvent(
                         runId = clientEventsCollector.runId,
                         nodeName = "__finish__",
-                        input = @OptIn(InternalAgentsApi::class)
-                        SerializationUtils.encodeDataToJsonElementOrNull(
-                            data = mockResponse,
-                            dataType = typeOf<String>()
-                        ),
+                        input = mockResponse,
                         timestamp = testClock.now().toEpochMilliseconds()
                     ),
                     NodeExecutionCompletedEvent(
                         runId = clientEventsCollector.runId,
                         nodeName = "__finish__",
-                        input = @OptIn(InternalAgentsApi::class)
-                        SerializationUtils.encodeDataToJsonElementOrNull(
-                            data = mockResponse,
-                            dataType = typeOf<String>()
-                        ),
-                        output = @OptIn(InternalAgentsApi::class)
-                        SerializationUtils.encodeDataToJsonElementOrNull(
-                            data = mockResponse,
-                            dataType = typeOf<String>()
-                        ),
+                        input = mockResponse,
+                        output = mockResponse,
                         timestamp = testClock.now().toEpochMilliseconds()
                     ),
                     StrategyCompletedEvent(
@@ -732,8 +667,6 @@ class DebuggerTest {
             ): ai.koog.prompt.dsl.ModerationResult {
                 throw UnsupportedOperationException("Not used in test")
             }
-
-            override fun close() {}
         }
 
         // Test Data
@@ -1094,51 +1027,27 @@ class DebuggerTest {
                     NodeExecutionStartingEvent(
                         runId = clientEventsCollector.runId,
                         nodeName = "__start__",
-                        input = @OptIn(InternalAgentsApi::class)
-                        SerializationUtils.encodeDataToJsonElementOrNull(
-                            data = userPrompt,
-                            dataType = typeOf<String>()
-                        ),
+                        input = userPrompt,
                         timestamp = testClock.now().toEpochMilliseconds()
                     ),
                     NodeExecutionCompletedEvent(
                         runId = clientEventsCollector.runId,
                         nodeName = "__start__",
-                        input = @OptIn(InternalAgentsApi::class)
-                        SerializationUtils.encodeDataToJsonElementOrNull(
-                            data = userPrompt,
-                            dataType = typeOf<String>()
-                        ),
-                        output = @OptIn(InternalAgentsApi::class)
-                        SerializationUtils.encodeDataToJsonElementOrNull(
-                            data = userPrompt,
-                            dataType = typeOf<String>()
-                        ),
+                        input = userPrompt,
+                        output = userPrompt,
                         timestamp = testClock.now().toEpochMilliseconds()
                     ),
                     NodeExecutionStartingEvent(
                         runId = clientEventsCollector.runId,
                         nodeName = "__finish__",
-                        input = @OptIn(InternalAgentsApi::class)
-                        SerializationUtils.encodeDataToJsonElementOrNull(
-                            data = userPrompt,
-                            dataType = typeOf<String>()
-                        ),
+                        input = userPrompt,
                         timestamp = testClock.now().toEpochMilliseconds()
                     ),
                     NodeExecutionCompletedEvent(
                         runId = clientEventsCollector.runId,
                         nodeName = "__finish__",
-                        input = @OptIn(InternalAgentsApi::class)
-                        SerializationUtils.encodeDataToJsonElementOrNull(
-                            data = userPrompt,
-                            dataType = typeOf<String>()
-                        ),
-                        output = @OptIn(InternalAgentsApi::class)
-                        SerializationUtils.encodeDataToJsonElementOrNull(
-                            data = userPrompt,
-                            dataType = typeOf<String>()
-                        ),
+                        input = userPrompt,
+                        output = userPrompt,
                         timestamp = testClock.now().toEpochMilliseconds()
                     ),
                     StrategyCompletedEvent(

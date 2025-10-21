@@ -1,6 +1,5 @@
 package ai.koog.agents.features.opentelemetry.feature
 
-import ai.koog.agents.core.annotation.InternalAgentsApi
 import ai.koog.agents.core.dsl.builder.forwardTo
 import ai.koog.agents.core.dsl.builder.strategy
 import ai.koog.agents.core.dsl.extension.nodeExecuteTool
@@ -9,7 +8,6 @@ import ai.koog.agents.core.dsl.extension.nodeLLMSendToolResult
 import ai.koog.agents.core.dsl.extension.onAssistantMessage
 import ai.koog.agents.core.dsl.extension.onToolCall
 import ai.koog.agents.core.tools.ToolRegistry
-import ai.koog.agents.core.utils.SerializationUtils
 import ai.koog.agents.features.opentelemetry.OpenTelemetryTestAPI.assertMapsEqual
 import ai.koog.agents.features.opentelemetry.OpenTelemetryTestAPI.createAgent
 import ai.koog.agents.features.opentelemetry.OpenTelemetryTestAPI.createAgentService
@@ -24,7 +22,6 @@ import ai.koog.agents.testing.tools.getMockExecutor
 import ai.koog.agents.utils.HiddenString
 import ai.koog.prompt.executor.clients.openai.OpenAIModels
 import ai.koog.prompt.message.Message
-import ai.koog.prompt.message.ResponseMetaInfo
 import ai.koog.prompt.tokenizer.SimpleRegexBasedTokenizer
 import ai.koog.utils.io.use
 import io.github.oshai.kotlinlogging.KotlinLogging
@@ -35,9 +32,7 @@ import io.opentelemetry.sdk.trace.export.SimpleSpanProcessor
 import io.opentelemetry.sdk.trace.export.SpanExporter
 import kotlinx.coroutines.test.runTest
 import kotlinx.datetime.Clock
-import kotlinx.datetime.Instant
 import java.util.Properties
-import kotlin.reflect.typeOf
 import kotlin.test.Test
 import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
@@ -55,14 +50,12 @@ class OpenTelemetryTest {
 
     companion object {
         private val logger = KotlinLogging.logger { }
-
-        private val testClock: Clock = object : Clock {
-            override fun now(): Instant = Instant.parse("2023-01-01T00:00:00Z")
-        }
     }
 
     @Test
     fun `test Open Telemetry feature default configuration`() = runTest {
+        val testClock = Clock.System
+
         val strategy = strategy("test-strategy") {
             val nodeSendInput by nodeLLMRequest("test-llm-call")
 
@@ -95,6 +88,8 @@ class OpenTelemetryTest {
 
     @Test
     fun `test Open Telemetry feature custom configuration`() = runTest {
+        val testClock = Clock.System
+
         val strategy = strategy("test-strategy") {
             val nodeSendInput by nodeLLMRequest("test-llm-call")
 
@@ -138,6 +133,7 @@ class OpenTelemetryTest {
 
             val agentId = "test-agent-id"
             val promptId = "test-prompt-id"
+            val testClock = Clock.System
             val model = OpenAIModels.Chat.GPT4o
             val temperature = 0.4
 
@@ -208,9 +204,7 @@ class OpenTelemetryTest {
                     "node.__finish__" to mapOf(
                         "attributes" to mapOf(
                             "gen_ai.conversation.id" to mockExporter.lastRunId,
-                            "koog.node.name" to "__finish__",
-                            "koog.node.output" to "\"$mockResponse\"",
-                            "koog.node.input" to "\"$mockResponse\"",
+                            "koog.node.name" to "__finish__"
                         ),
                         "events" to emptyMap()
                     )
@@ -221,17 +215,6 @@ class OpenTelemetryTest {
                         "attributes" to mapOf(
                             "gen_ai.conversation.id" to mockExporter.lastRunId,
                             "koog.node.name" to "test-llm-call",
-                            "koog.node.input" to "\"$userPrompt\"",
-                            "koog.node.output" to @OptIn(InternalAgentsApi::class)
-                            SerializationUtils.encodeDataToStringOrDefault(
-                                data = Message.Assistant(
-                                    content = mockResponse,
-                                    metaInfo = ResponseMetaInfo(
-                                        timestamp = testClock.now()
-                                    )
-                                ),
-                                dataType = typeOf<Message>()
-                            ),
                         ),
                         "events" to emptyMap()
                     )
@@ -279,9 +262,7 @@ class OpenTelemetryTest {
                     "node.__start__" to mapOf(
                         "attributes" to mapOf(
                             "gen_ai.conversation.id" to mockExporter.lastRunId,
-                            "koog.node.name" to "__start__",
-                            "koog.node.input" to "\"$userPrompt\"",
-                            "koog.node.output" to "\"$userPrompt\"",
+                            "koog.node.name" to "__start__"
                         ),
                         "events" to emptyMap()
                     )
@@ -306,6 +287,7 @@ class OpenTelemetryTest {
 
             val agentId = "test-agent-id"
             val promptId = "test-prompt-id"
+            val testClock = Clock.System
             val model = OpenAIModels.Chat.GPT4o
             val temperature = 0.4
 
@@ -376,9 +358,7 @@ class OpenTelemetryTest {
                     "node.__finish__" to mapOf(
                         "attributes" to mapOf(
                             "gen_ai.conversation.id" to mockExporter.runIds[1],
-                            "koog.node.name" to "__finish__",
-                            "koog.node.input" to "\"$mockResponse1\"",
-                            "koog.node.output" to "\"$mockResponse1\"",
+                            "koog.node.name" to "__finish__"
                         ),
                         "events" to emptyMap()
                     )
@@ -389,17 +369,6 @@ class OpenTelemetryTest {
                         "attributes" to mapOf(
                             "gen_ai.conversation.id" to mockExporter.runIds[1],
                             "koog.node.name" to "test-llm-call",
-                            "koog.node.input" to "\"$userPrompt1\"",
-                            "koog.node.output" to @OptIn(InternalAgentsApi::class)
-                            SerializationUtils.encodeDataToStringOrDefault(
-                                data = Message.Assistant(
-                                    content = mockResponse1,
-                                    metaInfo = ResponseMetaInfo(
-                                        timestamp = testClock.now()
-                                    )
-                                ),
-                                dataType = typeOf<Message>()
-                            ),
                         ),
                         "events" to emptyMap()
                     )
@@ -439,9 +408,7 @@ class OpenTelemetryTest {
                     "node.__start__" to mapOf(
                         "attributes" to mapOf(
                             "gen_ai.conversation.id" to mockExporter.runIds[1],
-                            "koog.node.name" to "__start__",
-                            "koog.node.input" to "\"$userPrompt1\"",
-                            "koog.node.output" to "\"$userPrompt1\"",
+                            "koog.node.name" to "__start__"
                         ),
                         "events" to emptyMap()
                     )
@@ -464,9 +431,7 @@ class OpenTelemetryTest {
                     "node.__finish__" to mapOf(
                         "attributes" to mapOf(
                             "gen_ai.conversation.id" to mockExporter.runIds[0],
-                            "koog.node.name" to "__finish__",
-                            "koog.node.input" to "\"$mockResponse0\"",
-                            "koog.node.output" to "\"$mockResponse0\"",
+                            "koog.node.name" to "__finish__"
                         ),
                         "events" to emptyMap()
                     )
@@ -477,17 +442,6 @@ class OpenTelemetryTest {
                         "attributes" to mapOf(
                             "gen_ai.conversation.id" to mockExporter.runIds[0],
                             "koog.node.name" to "test-llm-call",
-                            "koog.node.input" to "\"$userPrompt0\"",
-                            "koog.node.output" to @OptIn(InternalAgentsApi::class)
-                            SerializationUtils.encodeDataToStringOrDefault(
-                                data = Message.Assistant(
-                                    content = mockResponse0,
-                                    metaInfo = ResponseMetaInfo(
-                                        timestamp = testClock.now()
-                                    )
-                                ),
-                                dataType = typeOf<Message>()
-                            ),
                         ),
                         "events" to emptyMap()
                     )
@@ -527,9 +481,7 @@ class OpenTelemetryTest {
                     "node.__start__" to mapOf(
                         "attributes" to mapOf(
                             "gen_ai.conversation.id" to mockExporter.runIds[0],
-                            "koog.node.name" to "__start__",
-                            "koog.node.input" to "\"$userPrompt0\"",
-                            "koog.node.output" to "\"$userPrompt0\"",
+                            "koog.node.name" to "__start__"
                         ),
                         "events" to emptyMap()
                     )
@@ -550,6 +502,7 @@ class OpenTelemetryTest {
 
             val agentId = "test-agent-id"
             val promptId = "test-prompt-id"
+            val testClock = Clock.System
             val model = OpenAIModels.Chat.GPT4o
             val temperature = 0.4
 
@@ -577,7 +530,7 @@ class OpenTelemetryTest {
                 mockLLMAnswer(mockResponse) onRequestContains TestGetWeatherTool.DEFAULT_PARIS_RESULT
             }
 
-            createAgent(
+            val agent = createAgent(
                 agentId = agentId,
                 strategy = strategy,
                 promptId = promptId,
@@ -592,12 +545,14 @@ class OpenTelemetryTest {
                     addSpanExporter(mockExporter)
                     setVerbose(true)
                 }
-            }.use { agent ->
-                agent.run(userPrompt)
             }
+
+            agent.run(userPrompt)
 
             val collectedSpans = mockExporter.collectedSpans
             assertTrue(collectedSpans.isNotEmpty(), "Spans should be created during agent execution")
+
+            agent.close()
 
             // Check Spans
 
@@ -629,8 +584,6 @@ class OpenTelemetryTest {
                         "attributes" to mapOf(
                             "gen_ai.conversation.id" to mockExporter.lastRunId,
                             "koog.node.name" to "__finish__",
-                            "koog.node.input" to "\"$mockResponse\"",
-                            "koog.node.output" to "\"$mockResponse\"",
                         ),
                         "events" to emptyMap()
                     )
@@ -640,17 +593,6 @@ class OpenTelemetryTest {
                         "attributes" to mapOf(
                             "gen_ai.conversation.id" to mockExporter.lastRunId,
                             "koog.node.name" to "test-node-llm-send-tool-result",
-                            "koog.node.input" to TestGetWeatherTool.DEFAULT_PARIS_RESULT,
-                            "koog.node.output" to @OptIn(InternalAgentsApi::class)
-                            SerializationUtils.encodeDataToStringOrDefault(
-                                data = Message.Assistant(
-                                    content = mockResponse,
-                                    metaInfo = ResponseMetaInfo(
-                                        timestamp = testClock.now()
-                                    )
-                                ),
-                                dataType = typeOf<Message>()
-                            ),
                         ),
                         "events" to emptyMap()
                     )
@@ -701,19 +643,6 @@ class OpenTelemetryTest {
                         "attributes" to mapOf(
                             "gen_ai.conversation.id" to mockExporter.lastRunId,
                             "koog.node.name" to "test-tool-call",
-                            "koog.node.input" to @OptIn(InternalAgentsApi::class)
-                            SerializationUtils.encodeDataToStringOrDefault(
-                                data = Message.Tool.Call(
-                                    id = toolCallId,
-                                    tool = TestGetWeatherTool.name,
-                                    content = "{\"location\":\"Paris\"}",
-                                    metaInfo = ResponseMetaInfo(
-                                        timestamp = testClock.now()
-                                    )
-                                ),
-                                dataType = typeOf<Message.Tool.Call>()
-                            ),
-                            "koog.node.output" to TestGetWeatherTool.DEFAULT_PARIS_RESULT
                         ),
                         "events" to emptyMap()
                     )
@@ -735,19 +664,6 @@ class OpenTelemetryTest {
                         "attributes" to mapOf(
                             "gen_ai.conversation.id" to mockExporter.lastRunId,
                             "koog.node.name" to "test-llm-call",
-                            "koog.node.input" to "\"$userPrompt\"",
-                            "koog.node.output" to @OptIn(InternalAgentsApi::class)
-                            SerializationUtils.encodeDataToStringOrDefault(
-                                data = Message.Tool.Call(
-                                    id = toolCallId,
-                                    tool = TestGetWeatherTool.name,
-                                    content = "{\"location\":\"Paris\"}",
-                                    metaInfo = ResponseMetaInfo(
-                                        timestamp = testClock.now()
-                                    )
-                                ),
-                                dataType = typeOf<Message>()
-                            ),
                         ),
                         "events" to emptyMap()
                     )
@@ -788,8 +704,6 @@ class OpenTelemetryTest {
                         "attributes" to mapOf(
                             "gen_ai.conversation.id" to mockExporter.lastRunId,
                             "koog.node.name" to "__start__",
-                            "koog.node.input" to "\"$userPrompt\"",
-                            "koog.node.output" to "\"${userPrompt}\""
                         ),
                         "events" to emptyMap()
                     )
@@ -810,6 +724,7 @@ class OpenTelemetryTest {
 
             val agentId = "test-agent-id"
             val promptId = "test-prompt-id"
+            val testClock = Clock.System
             val model = OpenAIModels.Chat.GPT4o
             val temperature = 0.4
 
@@ -891,8 +806,6 @@ class OpenTelemetryTest {
                         "attributes" to mapOf(
                             "gen_ai.conversation.id" to mockExporter.lastRunId,
                             "koog.node.name" to "__finish__",
-                            "koog.node.input" to HiddenString.HIDDEN_STRING_PLACEHOLDER,
-                            "koog.node.output" to HiddenString.HIDDEN_STRING_PLACEHOLDER,
                         ),
                         "events" to emptyMap()
                     )
@@ -902,8 +815,6 @@ class OpenTelemetryTest {
                         "attributes" to mapOf(
                             "gen_ai.conversation.id" to mockExporter.lastRunId,
                             "koog.node.name" to "test-node-llm-send-tool-result",
-                            "koog.node.input" to HiddenString.HIDDEN_STRING_PLACEHOLDER,
-                            "koog.node.output" to HiddenString.HIDDEN_STRING_PLACEHOLDER,
                         ),
                         "events" to emptyMap()
                     )
@@ -954,8 +865,6 @@ class OpenTelemetryTest {
                         "attributes" to mapOf(
                             "gen_ai.conversation.id" to mockExporter.lastRunId,
                             "koog.node.name" to "test-tool-call",
-                            "koog.node.input" to HiddenString.HIDDEN_STRING_PLACEHOLDER,
-                            "koog.node.output" to HiddenString.HIDDEN_STRING_PLACEHOLDER,
                         ),
                         "events" to emptyMap()
                     )
@@ -977,8 +886,6 @@ class OpenTelemetryTest {
                         "attributes" to mapOf(
                             "gen_ai.conversation.id" to mockExporter.lastRunId,
                             "koog.node.name" to "test-llm-call",
-                            "koog.node.input" to HiddenString.HIDDEN_STRING_PLACEHOLDER,
-                            "koog.node.output" to HiddenString.HIDDEN_STRING_PLACEHOLDER,
                         ),
                         "events" to emptyMap()
                     )
@@ -1019,8 +926,6 @@ class OpenTelemetryTest {
                         "attributes" to mapOf(
                             "gen_ai.conversation.id" to mockExporter.lastRunId,
                             "koog.node.name" to "__start__",
-                            "koog.node.input" to HiddenString.HIDDEN_STRING_PLACEHOLDER,
-                            "koog.node.output" to HiddenString.HIDDEN_STRING_PLACEHOLDER,
                         ),
                         "events" to emptyMap()
                     )
@@ -1038,6 +943,7 @@ class OpenTelemetryTest {
             val userPrompt = "What's the best joke about programming?"
             val agentId = "test-agent-id"
             val promptId = "test-prompt-id"
+            val testClock = Clock.System
             val model = OpenAIModels.Chat.GPT4o
             val temperature = 0.4
 
@@ -1221,6 +1127,7 @@ class OpenTelemetryTest {
             val userPrompt = "What's the weather in Paris?"
             val agentId = "test-agent-id"
             val promptId = "test-prompt-id"
+            val testClock = Clock.System
             val model = OpenAIModels.Chat.GPT4o
             val temperature = 0.4
 
@@ -1245,7 +1152,6 @@ class OpenTelemetryTest {
                 temperature = temperature
             ) {
                 install(OpenTelemetry) {
-                    setVerbose(true)
                     addSpanExporter(mockExporter)
                 }
             }.use { agent ->
@@ -1290,7 +1196,6 @@ class OpenTelemetryTest {
                         "attributes" to mapOf(
                             "gen_ai.conversation.id" to mockExporter.lastRunId,
                             "koog.node.name" to "node-with-error",
-                            "koog.node.input" to "\"$userPrompt\"",
                         ),
                         "events" to emptyMap()
                     )
@@ -1300,9 +1205,7 @@ class OpenTelemetryTest {
                     "node.__start__" to mapOf(
                         "attributes" to mapOf(
                             "gen_ai.conversation.id" to mockExporter.lastRunId,
-                            "koog.node.name" to "__start__",
-                            "koog.node.input" to "\"$userPrompt\"",
-                            "koog.node.output" to "\"$userPrompt\"",
+                            "koog.node.name" to "__start__"
                         ),
                         "events" to emptyMap()
                     )
@@ -1320,6 +1223,7 @@ class OpenTelemetryTest {
             val userPrompt = "What's the weather in Paris?"
             val agentId = "test-agent-id"
             val promptId = "test-prompt-id"
+            val testClock = Clock.System
             val model = OpenAIModels.Chat.GPT4o
 
             val strategyName = "test-strategy"
@@ -1404,6 +1308,7 @@ class OpenTelemetryTest {
 
             val agentId = "test-agent-id"
             val promptId = "test-prompt-id"
+            val testClock = Clock.System
             val model = OpenAIModels.Chat.GPT4o
             val temperature = 0.4
             val maxTokens = 123
