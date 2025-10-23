@@ -16,7 +16,7 @@ import ai.koog.agents.core.feature.AIAgentGraphFeature
 import ai.koog.agents.core.feature.pipeline.AIAgentGraphPipeline
 import ai.koog.agents.core.tools.DirectToolCallsEnabler
 import ai.koog.agents.core.tools.annotations.InternalAgentToolsApi
-import ai.koog.agents.core.utils.SerializationUtil
+import ai.koog.agents.core.utils.SerializationUtils
 import ai.koog.agents.snapshot.providers.PersistenceStorageProvider
 import ai.koog.prompt.message.Message
 import io.github.oshai.kotlinlogging.KotlinLogging
@@ -189,7 +189,7 @@ public class Persistence(
         version: Long,
         checkpointId: String? = null,
     ): AgentCheckpointData? {
-        val inputJson = SerializationUtil.trySerializeDataToJsonElement(lastInput, lastInputType)
+        val inputJson = SerializationUtils.encodeDataToJsonElementOrNull(lastInput, lastInputType)
 
         if (inputJson == null) {
             logger.warn {
