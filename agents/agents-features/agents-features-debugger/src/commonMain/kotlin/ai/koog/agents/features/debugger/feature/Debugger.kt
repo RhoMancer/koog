@@ -3,6 +3,7 @@ package ai.koog.agents.features.debugger.feature
 import ai.koog.agents.core.agent.entity.AIAgentGraphStrategy
 import ai.koog.agents.core.agent.entity.AIAgentStorageKey
 import ai.koog.agents.core.annotation.InternalAgentsApi
+import ai.koog.agents.core.environment.ReceivedToolResult
 import ai.koog.agents.core.feature.AIAgentGraphFeature
 import ai.koog.agents.core.feature.model.events.AgentClosingEvent
 import ai.koog.agents.core.feature.model.events.AgentCompletedEvent
@@ -16,6 +17,7 @@ import ai.koog.agents.core.feature.model.events.LLMStreamingFailedEvent
 import ai.koog.agents.core.feature.model.events.LLMStreamingFrameReceivedEvent
 import ai.koog.agents.core.feature.model.events.LLMStreamingStartingEvent
 import ai.koog.agents.core.feature.model.events.NodeExecutionCompletedEvent
+import ai.koog.agents.core.feature.model.events.NodeExecutionFailedEvent
 import ai.koog.agents.core.feature.model.events.NodeExecutionStartingEvent
 import ai.koog.agents.core.feature.model.events.StrategyCompletedEvent
 import ai.koog.agents.core.feature.model.events.ToolCallCompletedEvent
@@ -27,10 +29,18 @@ import ai.koog.agents.core.feature.model.toAgentError
 import ai.koog.agents.core.feature.pipeline.AIAgentGraphPipeline
 import ai.koog.agents.core.feature.remote.server.config.DefaultServerConnectionConfig
 import ai.koog.agents.core.tools.Tool
-import ai.koog.agents.features.debugger.EnvironmentVariablesReader
-import ai.koog.agents.features.debugger.eventString
+import ai.koog.agents.core.utils.SerializationUtils
 import ai.koog.agents.features.debugger.feature.writer.DebuggerFeatureMessageRemoteWriter
+import ai.koog.agents.features.debugger.readEnvironmentVariable
+import ai.koog.agents.features.debugger.readVMOption
+import ai.koog.prompt.llm.toModelInfo
 import io.github.oshai.kotlinlogging.KotlinLogging
+import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonPrimitive
+import kotlin.reflect.KType
+import kotlin.time.Duration
+import kotlin.time.DurationUnit
+import kotlin.time.toDuration
 
 /**
  * Debugger feature provides the functionality of monitoring and recording events during
@@ -51,7 +61,27 @@ public class Debugger {
 
         private val logger = KotlinLogging.logger { }
 
-        private const val KOOG_DEBUGGER_PORT_ENV_VAR: String = "KOOG_DEBUGGER_PORT"
+        /**
+         * The name of the environment variable used to specify the port number for the Koog debugger.
+         */
+        public const val KOOG_DEBUGGER_PORT_ENV_VAR: String = "KOOG_DEBUGGER_PORT"
+
+        /**
+         * Name of the environment variable used to specify the timeout duration (in milliseconds)
+         * for the debugger to wait for a connection.
+         */
+        public const val KOOG_DEBUGGER_WAIT_CONNECTION_MS_ENV_VAR: String = "KOOG_DEBUGGER_WAIT_CONNECTION_MS"
+
+        /**
+         * The name of the VM option used to specify the port number for the Koog debugger.
+         */
+        public const val KOOG_DEBUGGER_PORT_VM_OPTION: String = "koog.debugger.port"
+
+        /**
+         * The name of the JVM option used to configure the timeout duration (in milliseconds)
+         * for the Koog debugger to wait for a connection.
+         */
+        public const val KOOG_DEBUGGER_WAIT_CONNECTION_TIMEOUT_MS_VM_OPTION: String = "koog.debugger.wait.connection.ms"
 
         override val key: AIAgentStorageKey<Debugger> =
             AIAgentStorageKey("agents-features-debugger")
@@ -67,12 +97,16 @@ public class Debugger {
             // Config that will be used to connect to the debugger server where
             // port is taken from environment variables if not set explicitly
 
-            val port = config.port ?: readPortFromEnvironmentVariables()
+            val port = config.port ?: readPortValue()
             logger.debug { "Debugger Feature. Use debugger port: $port" }
+
+            val awaitInitialConnectionTimeout = config.awaitInitialConnectionTimeout ?: readWaitConnectionTimeout()
+            logger.debug { "Debugger Feature. Use debugger server wait connection timeout: $awaitInitialConnectionTimeout" }
 
             val debuggerServerConfig = DefaultServerConnectionConfig(
                 port = port,
-                waitConnection = true
+                awaitInitialConnection = true,
+                awaitInitialConnectionTimeout = awaitInitialConnectionTimeout,
             )
 
             val writer = DebuggerFeatureMessageRemoteWriter(connectionConfig = debuggerServerConfig)
@@ -155,18 +189,30 @@ public class Debugger {
                 val event = NodeExecutionStartingEvent(
                     runId = eventContext.context.runId,
                     nodeName = eventContext.node.name,
-                    input = eventContext.input?.toString() ?: "",
+                    input = getNodeData(eventContext.input, eventContext.inputType),
                     timestamp = pipeline.clock.now().toEpochMilliseconds()
                 )
                 writer.onMessage(event)
             }
 
             pipeline.interceptNodeExecutionCompleted(this) intercept@{ eventContext ->
+
                 val event = NodeExecutionCompletedEvent(
                     runId = eventContext.context.runId,
                     nodeName = eventContext.node.name,
-                    input = eventContext.input?.toString() ?: "",
-                    output = eventContext.output?.toString() ?: "",
+                    input = getNodeData(eventContext.input, eventContext.inputType),
+                    output = getNodeData(eventContext.output, eventContext.outputType),
+                    timestamp = pipeline.clock.now().toEpochMilliseconds()
+                )
+                writer.onMessage(event)
+            }
+
+            pipeline.interceptNodeExecutionFailed(this) intercept@{ eventContext ->
+                val event = NodeExecutionFailedEvent(
+                    runId = eventContext.context.runId,
+                    nodeName = eventContext.node.name,
+                    input = getNodeData(eventContext.input, eventContext.inputType),
+                    error = eventContext.throwable.toAgentError(),
                     timestamp = pipeline.clock.now().toEpochMilliseconds()
                 )
                 writer.onMessage(event)
@@ -180,7 +226,7 @@ public class Debugger {
                 val event = LLMCallStartingEvent(
                     runId = eventContext.runId,
                     prompt = eventContext.prompt,
-                    model = eventContext.model.eventString,
+                    model = eventContext.model.toModelInfo(),
                     tools = eventContext.tools.map { it.name },
                     timestamp = pipeline.clock.now().toEpochMilliseconds()
                 )
@@ -191,7 +237,7 @@ public class Debugger {
                 val event = LLMCallCompletedEvent(
                     runId = eventContext.runId,
                     prompt = eventContext.prompt,
-                    model = eventContext.model.eventString,
+                    model = eventContext.model.toModelInfo(),
                     responses = eventContext.responses,
                     moderationResponse = eventContext.moderationResponse,
                     timestamp = pipeline.clock.now().toEpochMilliseconds()
@@ -207,7 +253,7 @@ public class Debugger {
                 val event = LLMStreamingStartingEvent(
                     runId = eventContext.runId,
                     prompt = eventContext.prompt,
-                    model = eventContext.model.eventString,
+                    model = eventContext.model.toModelInfo().modelIdentifierName,
                     tools = eventContext.tools.map { it.name },
                     timestamp = pipeline.clock.now().toEpochMilliseconds()
                 )
@@ -236,7 +282,7 @@ public class Debugger {
                 val event = LLMStreamingCompletedEvent(
                     runId = eventContext.runId,
                     prompt = eventContext.prompt,
-                    model = eventContext.model.eventString,
+                    model = eventContext.model.toModelInfo().modelIdentifierName,
                     tools = eventContext.tools.map { it.name },
                     timestamp = pipeline.clock.now().toEpochMilliseconds()
                 )
@@ -313,12 +359,40 @@ public class Debugger {
 
         //region Private Methods
 
-        private fun readPortFromEnvironmentVariables(): Int? {
-            val debuggerPortVariable =
-                EnvironmentVariablesReader.getEnvironmentVariable(name = KOOG_DEBUGGER_PORT_ENV_VAR)
+        private fun readPortValue(): Int? {
+            val debuggerPortValue =
+                readEnvironmentVariable(name = KOOG_DEBUGGER_PORT_ENV_VAR)
+                    ?: readVMOption(name = KOOG_DEBUGGER_PORT_VM_OPTION)
 
-            logger.debug { "Debugger Feature. Reading port from environment variable: KOOG_DEBUGGER_PORT_ENV_VAR=$debuggerPortVariable" }
-            return debuggerPortVariable?.toIntOrNull()
+            logger.debug { "Debugger Feature. Reading Koog debugger port value from system variables: $debuggerPortValue" }
+            return debuggerPortValue?.toIntOrNull()
+        }
+
+        private fun readWaitConnectionTimeout(): Duration? {
+            val debuggerWaitConnectionTimeoutValue =
+                readEnvironmentVariable(name = KOOG_DEBUGGER_WAIT_CONNECTION_MS_ENV_VAR)
+                    ?: readVMOption(name = KOOG_DEBUGGER_WAIT_CONNECTION_TIMEOUT_MS_VM_OPTION)
+
+            logger.debug { "Debugger Feature. Reading Koog debugger wait connection timeout value from system variables: $debuggerWaitConnectionTimeoutValue" }
+            return debuggerWaitConnectionTimeoutValue?.toLongOrNull()?.toDuration(DurationUnit.MILLISECONDS)
+        }
+
+        /**
+         * Retrieves the JSON representation of the given data based on its type.
+         *
+         * Note: See [KG-485](https://youtrack.jetbrains.com/issue/KG-485)
+         *       Workaround for processing non-serializable [ReceivedToolResult] type in the node input/output.
+         */
+        private fun getNodeData(data: Any?, dataType: KType): JsonElement? {
+            data ?: return null
+
+            @OptIn(InternalAgentsApi::class)
+            return SerializationUtils.encodeDataToJsonElementOrDefault(data, dataType) {
+                when (data) {
+                    is ReceivedToolResult -> SerializationUtils.parseDataToJsonElementOrDefault(data.content)
+                    else -> JsonPrimitive(data.toString())
+                }
+            }
         }
 
         //endregion Private Methods
