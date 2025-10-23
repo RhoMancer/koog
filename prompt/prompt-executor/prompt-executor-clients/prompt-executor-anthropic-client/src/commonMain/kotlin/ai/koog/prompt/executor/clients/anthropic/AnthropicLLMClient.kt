@@ -9,8 +9,8 @@ import ai.koog.prompt.executor.clients.LLMClient
 import ai.koog.prompt.llm.LLMCapability
 import ai.koog.prompt.llm.LLMProvider
 import ai.koog.prompt.llm.LLModel
-import ai.koog.prompt.message.Attachment
 import ai.koog.prompt.message.AttachmentContent
+import ai.koog.prompt.message.ContentPart
 import ai.koog.prompt.message.Message
 import ai.koog.prompt.message.ResponseMetaInfo
 import ai.koog.prompt.params.LLMParams
@@ -395,20 +395,18 @@ public open class AnthropicLLMClient(
 
     private fun Message.User.toAnthropicUserMessage(model: LLModel): AnthropicMessage {
         val listOfContent = buildList {
-            if (content.isNotEmpty() || attachments.isEmpty()) {
-                add(AnthropicContent.Text(content))
-            }
+            parts.forEach { part ->
+                when (part) {
+                    is ContentPart.Text -> add(AnthropicContent.Text(part.text))
 
-            attachments.forEach { attachment ->
-                when (attachment) {
-                    is Attachment.Image -> {
+                    is ContentPart.Image -> {
                         require(model.capabilities.contains(LLMCapability.Vision.Image)) {
                             "Model ${model.id} does not support images"
                         }
 
-                        val imageSource: ImageSource = when (val content = attachment.content) {
+                        val imageSource: ImageSource = when (val content = part.content) {
                             is AttachmentContent.URL -> ImageSource.Url(content.url)
-                            is AttachmentContent.Binary -> ImageSource.Base64(content.asBase64(), attachment.mimeType)
+                            is AttachmentContent.Binary -> ImageSource.Base64(content.asBase64(), part.mimeType)
                             else -> throw IllegalArgumentException(
                                 "Unsupported image attachment content: ${content::class}"
                             )
@@ -417,24 +415,28 @@ public open class AnthropicLLMClient(
                         add(AnthropicContent.Image(imageSource))
                     }
 
-                    is Attachment.File -> {
+                    is ContentPart.File -> {
                         require(model.capabilities.contains(LLMCapability.Document)) {
                             "Model ${model.id} does not support files"
                         }
 
-                        val documentSource: DocumentSource = when (val content = attachment.content) {
+                        val documentSource: DocumentSource = when (val content = part.content) {
                             is AttachmentContent.URL -> DocumentSource.Url(content.url)
-                            is AttachmentContent.Binary -> DocumentSource.Base64(content.asBase64(), attachment.mimeType)
+                            is AttachmentContent.Binary -> DocumentSource.Base64(
+                                content.asBase64(),
+                                part.mimeType
+                            )
+
                             is AttachmentContent.PlainText -> DocumentSource.PlainText(
                                 content.text,
-                                attachment.mimeType
+                                part.mimeType
                             )
                         }
 
                         add(AnthropicContent.Document(documentSource))
                     }
 
-                    else -> throw IllegalArgumentException("Unsupported attachment type: $attachment")
+                    else -> throw IllegalArgumentException("Unsupported attachment type: $part")
                 }
             }
         }
@@ -509,6 +511,7 @@ public open class AnthropicLLMClient(
             ToolParameterType.Float -> JsonObject(mapOf("type" to JsonPrimitive("number")))
             ToolParameterType.Integer -> JsonObject(mapOf("type" to JsonPrimitive("integer")))
             ToolParameterType.String -> JsonObject(mapOf("type" to JsonPrimitive("string")))
+            ToolParameterType.Null -> JsonObject(mapOf("type" to JsonPrimitive("null")))
             is ToolParameterType.Enum -> JsonObject(
                 mapOf(
                     "type" to JsonPrimitive("string"),
@@ -557,6 +560,8 @@ public open class AnthropicLLMClient(
 
                 JsonObject(objectMap)
             }
+
+            is ToolParameterType.AnyOf -> throw IllegalArgumentException("AnyOf type is not supported")
         }
     }
 
@@ -572,5 +577,9 @@ public open class AnthropicLLMClient(
     public override suspend fun moderate(prompt: Prompt, model: LLModel): ModerationResult {
         logger.warn { "Moderation is not supported by Anthropic API" }
         throw UnsupportedOperationException("Moderation is not supported by Anthropic API.")
+    }
+
+    override fun close() {
+        httpClient.close()
     }
 }

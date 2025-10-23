@@ -28,6 +28,7 @@ import ai.koog.prompt.structure.json.generator.StandardJsonSchemaGenerator
 import ai.koog.prompt.text.text
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.Json
+import kotlin.io.println
 
 private val json = Json {
     prettyPrint = true
