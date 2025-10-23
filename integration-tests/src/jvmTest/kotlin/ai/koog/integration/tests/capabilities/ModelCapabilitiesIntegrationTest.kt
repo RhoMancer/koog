@@ -26,8 +26,8 @@ import ai.koog.prompt.llm.LLMCapability
 import ai.koog.prompt.llm.LLMProvider
 import ai.koog.prompt.llm.LLModel
 import ai.koog.prompt.markdown.markdown
-import ai.koog.prompt.message.Attachment
 import ai.koog.prompt.message.AttachmentContent
+import ai.koog.prompt.message.ContentPart
 import ai.koog.prompt.message.Message
 import ai.koog.prompt.params.LLMParams
 import ai.koog.prompt.params.LLMParams.ToolChoice
@@ -159,15 +159,13 @@ class ModelCapabilitiesIntegrationTest {
                         system("You are a helpful assistant that can describe images.")
                         user {
                             markdown { +"Describe the image in 5-10 words." }
-                            attachments {
-                                image(
-                                    Attachment.Image(
-                                        content = AttachmentContent.Binary.Base64(base64),
-                                        format = "png",
-                                        mimeType = "image/png"
-                                    )
+                            image(
+                                ContentPart.Image(
+                                    content = AttachmentContent.Binary.Base64(base64),
+                                    format = "png",
+                                    mimeType = "image/png"
                                 )
-                            }
+                            )
                         }
                     }
                     withRetry {
@@ -185,14 +183,12 @@ class ModelCapabilitiesIntegrationTest {
                         system("You are a helpful assistant that can transcribe audio.")
                         user {
                             markdown { +"Transcribe the attached audio in 5-10 words." }
-                            attachments {
-                                audio(
-                                    Attachment.Audio(
-                                        AttachmentContent.Binary.Base64(base64),
-                                        format = "mp3"
-                                    )
+                            audio(
+                                ContentPart.Audio(
+                                    AttachmentContent.Binary.Base64(base64),
+                                    format = "mp3"
                                 )
-                            }
+                            )
                         }
                     }
                     withRetry {
@@ -209,7 +205,7 @@ class ModelCapabilitiesIntegrationTest {
                         system("You are a helpful assistant that can read attached documents.")
                         user {
                             markdown { +"Summarize the attached text file in 5-10 words." }
-                            attachments { textFile(KtPath(file.pathString), "text/plain") }
+                            textFile(KtPath(file.pathString), "text/plain")
                         }
                     }
                     withRetry {
@@ -255,15 +251,13 @@ class ModelCapabilitiesIntegrationTest {
                         system("You are a helpful assistant that can analyze short videos.")
                         user {
                             markdown { +"Describe in 5-10 words what you can infer from the attached video." }
-                            attachments {
-                                video(
-                                    Attachment.Video(
-                                        content = AttachmentContent.Binary.Base64(base64),
-                                        format = "mp4",
-                                        mimeType = "video/mp4",
-                                    )
+                            video(
+                                ContentPart.Video(
+                                    content = AttachmentContent.Binary.Base64(base64),
+                                    format = "mp4",
+                                    mimeType = "video/mp4",
                                 )
-                            }
+                            )
                         }
                     }
                     withRetry {
@@ -402,15 +396,13 @@ class ModelCapabilitiesIntegrationTest {
                         system("You are a helpful assistant that can describe images.")
                         user {
                             markdown { +"Describe the image in 5-10 words." }
-                            attachments {
-                                image(
-                                    Attachment.Image(
-                                        content = AttachmentContent.Binary.Base64(base64),
-                                        format = "png",
-                                        mimeType = "image/png"
-                                    )
+                            image(
+                                ContentPart.Image(
+                                    content = AttachmentContent.Binary.Base64(base64),
+                                    format = "png",
+                                    mimeType = "image/png"
                                 )
-                            }
+                            )
                         }
                     }
                     withRetry {
@@ -433,14 +425,12 @@ class ModelCapabilitiesIntegrationTest {
                         system("You are a helpful assistant that can transcribe audio.")
                         user {
                             markdown { +"Transcribe the attached audio in 5-10 words." }
-                            attachments {
-                                audio(
-                                    Attachment.Audio(
-                                        AttachmentContent.Binary.Base64(base64),
-                                        format = "mp3"
-                                    )
+                            audio(
+                                ContentPart.Audio(
+                                    AttachmentContent.Binary.Base64(base64),
+                                    format = "mp3"
                                 )
-                            }
+                            )
                         }
                     }
                     withRetry {
@@ -462,7 +452,7 @@ class ModelCapabilitiesIntegrationTest {
                         system("You are a helpful assistant that can read attached documents.")
                         user {
                             markdown { +"Summarize the attached text file in 5-10 words." }
-                            attachments { textFile(KtPath(file.pathString), "text/plain") }
+                            textFile(KtPath(file.pathString), "text/plain")
                         }
                     }
                     withRetry {
@@ -519,15 +509,13 @@ class ModelCapabilitiesIntegrationTest {
                         system("You are a helpful assistant that can analyze short videos.")
                         user {
                             markdown { +"Describe in 5-10 words what you can infer from the attached video." }
-                            attachments {
-                                video(
-                                    Attachment.Video(
-                                        content = AttachmentContent.Binary.Base64(base64),
-                                        format = "mp4",
-                                        mimeType = "video/mp4",
-                                    )
+                            video(
+                                ContentPart.Video(
+                                    content = AttachmentContent.Binary.Base64(base64),
+                                    format = "mp4",
+                                    mimeType = "video/mp4",
                                 )
-                            }
+                            )
                         }
                     }
                     withRetry {
