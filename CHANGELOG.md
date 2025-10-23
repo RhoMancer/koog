@@ -1,3 +1,16 @@
+# 0.5.2
+> Published 29 Oct 2025
+
+## New Features
+- Add `subtask` extension for non-graph agents similar to `subgraphWithTask` (#982)
+- Add MistralAI LLM Client (#622)
+
+## Improvements
+- Replace string content and attachments list in messages with a unified content parts list to make the API more flexible and preserve text/attachment parts order (#1004)
+- Add input and output attributes to the NodeExecuteSpan span in OpenTelemetry to improve observability [(KG-501)](https://youtrack.jetbrains.com/issue/KG-501/NodeExecuteSpan-span-should-include-input-output-attributes)
+- Set the JVM target to 11 to support older JVM versions and explicitly specify the JVM target. (#1015)
+- Support multi-responses from LLM in the subgraphWithTask API [(KG-507)](https://youtrack.jetbrains.com/issue/KG-507/Support-multi-response-from-LLM-in-subgraphWithTask-API)
+
 # 0.5.1
 > Published 15 Oct 2025
 
@@ -43,8 +56,8 @@
 - **`AIAgentService` Introduced**: Make `AIAgent` state-manageable and single-run explicitly, introduce `AIAgentService`
   to manage multiple uniform running agents.
 - **New components**:
-  - Add LLM as a Judge component (#866)
-  - Tool Calling loop with Structured Output strategy (#829)
+    - Add LLM as a Judge component (#866)
+    - Tool Calling loop with Structured Output strategy (#829)
 
 ## Improvements
 
