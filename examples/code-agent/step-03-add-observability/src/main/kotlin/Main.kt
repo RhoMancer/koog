@@ -6,39 +6,40 @@ import ai.koog.agents.core.tools.ToolRegistry
 import ai.koog.agents.ext.tool.file.EditFileTool
 import ai.koog.agents.ext.tool.file.ListDirectoryTool
 import ai.koog.agents.ext.tool.file.ReadFileTool
-import ai.koog.agents.ext.tool.file.WriteFileTool
 import ai.koog.agents.ext.tool.shell.ExecuteShellCommandTool
 import ai.koog.agents.ext.tool.shell.JvmShellCommandExecutor
 import ai.koog.agents.ext.tool.shell.PrintShellCommandConfirmationHandler
 import ai.koog.agents.ext.tool.shell.ShellCommandConfirmation
-import ai.koog.agents.features.eventHandler.feature.handleEvents
 import ai.koog.agents.features.opentelemetry.attribute.CustomAttribute
 import ai.koog.agents.features.opentelemetry.feature.OpenTelemetry
 import ai.koog.agents.features.opentelemetry.integration.langfuse.addLangfuseExporter
-import ai.koog.prompt.executor.clients.anthropic.AnthropicModels
-import ai.koog.prompt.executor.llms.all.simpleAnthropicExecutor
+import ai.koog.agents.features.eventHandler.feature.handleEvents
+import ai.koog.prompt.executor.clients.openai.OpenAIModels
 import ai.koog.prompt.executor.llms.all.simpleOpenAIExecutor
 import ai.koog.rag.base.files.JVMFileSystemProvider
 import kotlinx.coroutines.runBlocking
 
 val agent = AIAgent(
-    promptExecutor = simpleAnthropicExecutor(System.getenv("ANTHROPIC_API_KEY")),
+    promptExecutor = simpleOpenAIExecutor(System.getenv("OPENAI_API_KEY")),
     strategy = singleRunStrategy(),
     systemPrompt = """
         You are a highly skilled programmer tasked with updating the provided codebase according to the given task.
-        Your goal is to deliver production-ready code changes that integrate seamlessly with the existing codebase and solve the given task Production-ready means verified to work—your changes must be proven correct and not introduce regressions.
-
-        You have shell access to execute commands and run tests. Use this to work with executable feedback instead of assumptions. Establish what correct behavior looks like through tests, then iterate your implementation until tests pass. Validate that existing functionality remains intact. Production-ready means proven through green tests—that's your definition of done.
-    """.trimIndent(),
-    llmModel = AnthropicModels.Sonnet_4_5,
+        Your goal is to deliver production-ready code changes that integrate seamlessly with the existing codebase and solve given task.
+        Ensure minimal possible changes done - that guarantees minimal impact on existing functionality.
+        
+        You have shell access to execute commands and run tests.
+        After investigation, define expected behavior with test scripts, then iterate on your implementation until the tests pass.
+        Verify your changes don't break existing functionality through regression testing, but prefer running targeted tests over full test suites.
+        Note: the codebase may be fully configured or freshly cloned with no dependencies installed - handle any necessary setup steps.
+        """.trimIndent(),
+    llmModel = OpenAIModels.Chat.GPT5Codex,
     toolRegistry = ToolRegistry {
         tool(ListDirectoryTool(JVMFileSystemProvider.ReadOnly))
         tool(ReadFileTool(JVMFileSystemProvider.ReadOnly))
-        tool(WriteFileTool(JVMFileSystemProvider.ReadWrite))
         tool(EditFileTool(JVMFileSystemProvider.ReadWrite))
         tool(createExecuteShellCommandToolFromEnv())
     },
-    maxIterations = 300
+    maxIterations = 400
 ) {
     install(OpenTelemetry) {
         setVerbose(true) // Enable verbose mode to send full strings instead of HIDDEN placeholders
@@ -74,7 +75,7 @@ fun main(args: Array<String>) = runBlocking {
     }
 
     val (path, task) = args
-    val input = "Project path: $path\n\n$task"
+    val input = "Project absolute path: $path\n\n## Task\n$task"
     val result = agent.run(input)
     println(result)
 }
