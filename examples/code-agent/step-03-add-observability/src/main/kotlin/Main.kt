@@ -44,7 +44,7 @@ val agent = AIAgent(
     install(OpenTelemetry) {
         setVerbose(true) // Enable verbose mode to send full strings instead of HIDDEN placeholders
         addLangfuseExporter(
-            langfuseUrl = "https://cloud.langfuse.com",
+            langfuseUrl = System.getenv("LANGFUSE_HOST") ?: "https://cloud.langfuse.com",
             langfusePublicKey = System.getenv("LANGFUSE_PUBLIC_KEY"),
             langfuseSecretKey = System.getenv("LANGFUSE_SECRET_KEY"),
             traceAttributes = listOf(
