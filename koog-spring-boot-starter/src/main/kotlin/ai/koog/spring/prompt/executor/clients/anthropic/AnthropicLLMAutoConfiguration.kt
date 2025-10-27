@@ -67,18 +67,4 @@ public class AnthropicLLMAutoConfiguration(
             settings = AnthropicClientSettings(baseUrl = properties.baseUrl)
         )
     }
-
-    /**
-     * Creates and initializes a [SingleLLMPromptExecutor] instance using an [AnthropicLLMClient].
-     * The executor is configured with a retrying client derived from the provided AnthropicLLMClient.
-     *
-     * @param client An instance of [AnthropicLLMClient] used to communicate with the Anthropic LLM API.
-     * @return An instance of [SingleLLMPromptExecutor] for sending prompts to the Anthropic LLM API.
-     */
-    @Bean
-    @ConditionalOnBean(AnthropicLLMClient::class)
-    public fun anthropicExecutor(client: AnthropicLLMClient): SingleLLMPromptExecutor {
-        logger.info("Creating SingleLLMPromptExecutor (anthropicExecutor) for AnthropicLLMClient")
-        return SingleLLMPromptExecutor(client.toRetryingClient(properties.retry))
-    }
 }

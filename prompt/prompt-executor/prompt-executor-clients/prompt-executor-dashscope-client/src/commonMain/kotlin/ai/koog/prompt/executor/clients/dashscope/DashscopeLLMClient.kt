@@ -60,11 +60,6 @@ public class DashscopeLLMClient(
 
     private companion object {
         private val staticLogger = KotlinLogging.logger { }
-
-        init {
-            // On class load register custom OpenAI JSON schema generators for structured output.
-            registerOpenAIJsonSchemaGenerators(LLMProvider.Alibaba)
-        }
     }
 
     override fun llmProvider(): LLMProvider = LLMProvider.Alibaba

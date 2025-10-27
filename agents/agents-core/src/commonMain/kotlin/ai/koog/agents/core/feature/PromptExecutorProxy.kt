@@ -4,6 +4,7 @@ import ai.koog.agents.core.feature.pipeline.AIAgentPipeline
 import ai.koog.agents.core.tools.ToolDescriptor
 import ai.koog.prompt.dsl.ModerationResult
 import ai.koog.prompt.dsl.Prompt
+import ai.koog.prompt.executor.clients.LLMClient
 import ai.koog.prompt.executor.model.LLMChoice
 import ai.koog.prompt.executor.model.PromptExecutor
 import ai.koog.prompt.llm.LLModel
@@ -123,6 +124,8 @@ public class PromptExecutorProxy(
         pipeline.onLLMCallCompleted(runId, prompt, model, emptyList(), responses = emptyList(), moderationResponse = result)
         return result
     }
+
+    override fun clientFor(model: LLModel): LLMClient? = executor.clientFor(model)
 
     override fun close() {
         executor.close()

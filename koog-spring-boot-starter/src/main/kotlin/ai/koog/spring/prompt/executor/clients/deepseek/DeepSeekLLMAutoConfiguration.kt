@@ -73,20 +73,4 @@ public class DeepSeekLLMAutoConfiguration(
             settings = DeepSeekClientSettings(baseUrl = properties.baseUrl)
         )
     }
-
-    /**
-     * Creates a [SingleLLMPromptExecutor] bean configured to use the DeepSeek LLM client.
-     *
-     * This method is only executed if the `deepseek.api-key` property is defined in the application's configuration.
-     * It initializes the DeepSeek client using the provided API key and base URL from the application's properties.
-     *
-     * @param properties The configuration properties for the application, including the DeepSeek client settings.
-     * @return A [SingleLLMPromptExecutor] initialized with an DeepSeek LLM client.
-     */
-    @Bean
-    @ConditionalOnBean(DeepSeekLLMClient::class)
-    public fun deepSeekExecutor(client: DeepSeekLLMClient): SingleLLMPromptExecutor {
-        logger.info("Creating SingleLLMPromptExecutor (deepSeekExecutor) for DeepSeekLLMClient")
-        return SingleLLMPromptExecutor(client.toRetryingClient(properties.retry))
-    }
 }

@@ -6,6 +6,7 @@ import ai.koog.prompt.cache.model.get
 import ai.koog.prompt.cache.model.put
 import ai.koog.prompt.dsl.ModerationResult
 import ai.koog.prompt.dsl.Prompt
+import ai.koog.prompt.executor.clients.LLMClient
 import ai.koog.prompt.executor.model.PromptExecutor
 import ai.koog.prompt.llm.LLModel
 import ai.koog.prompt.message.Message
@@ -61,6 +62,8 @@ public class CachedPromptExecutor(
     }
 
     override suspend fun moderate(prompt: Prompt, model: LLModel): ModerationResult = nested.moderate(prompt, model)
+
+    override fun clientFor(model: LLModel): LLMClient? = nested.clientFor(model)
 
     override fun close() {
         nested.close()

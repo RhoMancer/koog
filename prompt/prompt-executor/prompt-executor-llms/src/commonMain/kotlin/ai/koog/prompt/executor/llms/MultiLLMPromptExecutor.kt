@@ -132,9 +132,10 @@ public open class MultiLLMPromptExecutor(
         logger.debug { "Executing prompt: $prompt with tools: $tools and model: $model" }
 
         val provider = model.provider
+        val client = clientFor(model)
 
         val response = when {
-            provider in llmClients -> llmClients[provider]!!.execute(prompt, model, tools)
+            client != null -> client.execute(prompt, model, tools)
             fallback != null -> fallbackClient!!.execute(
                 prompt,
                 fallback.fallbackModel,
@@ -219,6 +220,8 @@ public open class MultiLLMPromptExecutor(
 
         return client.moderate(prompt, model)
     }
+
+    override fun clientFor(model: LLModel): LLMClient? = llmClients[model.provider]
 
     override fun close() {
         llmClients.forEach { (_, client) -> client.close() }

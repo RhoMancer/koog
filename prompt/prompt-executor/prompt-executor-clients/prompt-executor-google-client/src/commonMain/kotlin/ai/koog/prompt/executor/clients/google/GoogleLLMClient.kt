@@ -36,9 +36,9 @@ import ai.koog.prompt.streaming.emitAppend
 import ai.koog.prompt.streaming.emitEnd
 import ai.koog.prompt.streaming.emitToolCall
 import ai.koog.prompt.streaming.streamFrameFlow
-import ai.koog.prompt.structure.RegisteredBasicJsonSchemaGenerators
-import ai.koog.prompt.structure.RegisteredStandardJsonSchemaGenerators
 import ai.koog.prompt.structure.annotations.InternalStructuredOutputApi
+import ai.koog.prompt.structure.json.generator.BasicJsonSchemaGenerator
+import ai.koog.prompt.structure.json.generator.StandardJsonSchemaGenerator
 import ai.koog.utils.io.SuitableForIO
 import io.github.oshai.kotlinlogging.KotlinLogging
 import io.ktor.client.HttpClient
@@ -113,12 +113,6 @@ public open class GoogleLLMClient(
         private const val DEFAULT_PATH = "v1beta/models"
         private const val DEFAULT_METHOD_GENERATE_CONTENT = "generateContent"
         private const val DEFAULT_METHOD_STREAM_GENERATE_CONTENT = "streamGenerateContent"
-
-        init {
-            // On class load register custom Google JSON schema generators for structured output.
-            RegisteredBasicJsonSchemaGenerators[LLMProvider.Google] = GoogleBasicJsonSchemaGenerator
-            RegisteredStandardJsonSchemaGenerators[LLMProvider.Google] = GoogleStandardJsonSchemaGenerator
-        }
     }
 
     private val json = Json {
@@ -664,6 +658,12 @@ public open class GoogleLLMClient(
         logger.warn { "Moderation is not supported by Google API" }
         throw UnsupportedOperationException("Moderation is not supported by Google API.")
     }
+
+    public override fun basicJsonSchemaGeneratorFor(model: LLModel): BasicJsonSchemaGenerator? =
+        GoogleBasicJsonSchemaGenerator
+
+    public override fun standardJsonSchemaGeneratorFor(model: LLModel): StandardJsonSchemaGenerator? =
+        GoogleStandardJsonSchemaGenerator
 
     override fun close() {
         httpClient.close()

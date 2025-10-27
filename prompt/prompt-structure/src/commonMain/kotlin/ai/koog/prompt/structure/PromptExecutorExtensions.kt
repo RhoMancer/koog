@@ -175,26 +175,6 @@ public suspend fun <T> PromptExecutor.executeStructured(
 }
 
 /**
- * Registered mapping of providers to their respective known simple JSON schema format generators.
- * The registration is supposed to be done by the LLM clients when they are loaded, to communicate their custom formats.
- *
- * Used to attempt to get a proper generator implicitly in the simple version of [executeStructured] (that does not accept [StructuredOutput] explicitly)
- * to attempt to generate an appropriate schema for the passed [KType].
- */
-@InternalStructuredOutputApi
-public val RegisteredBasicJsonSchemaGenerators: MutableMap<LLMProvider, BasicJsonSchemaGenerator> = mutableMapOf()
-
-/**
- * Registered mapping of providers to their respective known full JSON schema format generators.
- * The registration is supposed to be done by the LLM clients on their initialization, to communicate their custom formats.
- *
- * Used to attempt to get a proper generator implicitly in the simple version of [executeStructured] (that does not accept [StructuredOutput] explicitly)
- * to attempt to generate an appropriate schema for the passed [KType].
- */
-@InternalStructuredOutputApi
-public val RegisteredStandardJsonSchemaGenerators: MutableMap<LLMProvider, StandardJsonSchemaGenerator> = mutableMapOf()
-
-/**
  * Executes a prompt with structured output, enhancing it with schema instructions or native structured output
  * parameter, and parses the response into the defined structure.
  *
@@ -226,12 +206,19 @@ public suspend fun <T> PromptExecutor.executeStructured(
     @Suppress("UNCHECKED_CAST")
     val id = serializer.descriptor.serialName.substringAfterLast(".")
 
+    // Model has a provider
+    // Client can handle multiple models for multiple providers
+    // Some providers have schema generators (hence => clients)
+    // LLMClient.schemaGeneratorFor(model) -- the most generic option
+    // PromptExecutor has multiple clients for multiple models (and multiple providers)
+    // PromptExecutor.clientFor(model)
+
     val structuredOutput = when {
         LLMCapability.Schema.JSON.Standard in model.capabilities -> StructuredOutput.Native(
             JsonStructuredData.createJsonStructure(
                 id = id,
                 serializer = serializer,
-                schemaGenerator = RegisteredStandardJsonSchemaGenerators[model.provider] ?: StandardJsonSchemaGenerator
+                schemaGenerator = clientFor(model)?.standardJsonSchemaGeneratorFor(model) ?: StandardJsonSchemaGenerator
             )
         )
 
@@ -239,7 +226,7 @@ public suspend fun <T> PromptExecutor.executeStructured(
             JsonStructuredData.createJsonStructure(
                 id = id,
                 serializer = serializer,
-                schemaGenerator = RegisteredBasicJsonSchemaGenerators[model.provider] ?: BasicJsonSchemaGenerator
+                schemaGenerator = clientFor(model)?.basicJsonSchemaGeneratorFor(model) ?: BasicJsonSchemaGenerator
             )
         )
 

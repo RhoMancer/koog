@@ -3,6 +3,7 @@ package ai.koog.prompt.executor.model
 import ai.koog.agents.core.tools.ToolDescriptor
 import ai.koog.prompt.dsl.ModerationResult
 import ai.koog.prompt.dsl.Prompt
+import ai.koog.prompt.executor.clients.LLMClient
 import ai.koog.prompt.llm.LLModel
 import ai.koog.prompt.message.Message
 import ai.koog.prompt.streaming.StreamFrame
@@ -78,4 +79,12 @@ public interface PromptExecutor : AutoCloseable {
      *         as harmful.
      */
     public suspend fun moderate(prompt: Prompt, model: LLModel): ModerationResult
+
+    /**
+     * Retrieves an [LLMClient] for the specified model.
+     *
+     * @param model The LLM instance for which a client is to be retrieved.
+     * @return An instance of [LLMClient] associated with the specified model, or `null` if no client is available.
+     */
+    public fun clientFor(model: LLModel): LLMClient? = null
 }

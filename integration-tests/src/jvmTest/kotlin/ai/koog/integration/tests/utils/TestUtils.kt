@@ -2,12 +2,12 @@ package ai.koog.integration.tests.utils
 
 import ai.koog.agents.core.tools.SimpleTool
 import ai.koog.agents.core.tools.annotations.LLMDescription
+import ai.koog.integration.tests.agent.AIAgentIntegrationTest.Companion.getExecutor
 import ai.koog.prompt.dsl.Prompt
 import ai.koog.prompt.llm.LLMProvider
 import ai.koog.prompt.llm.LLModel
 import ai.koog.prompt.streaming.StreamFrame
 import ai.koog.prompt.streaming.filterTextOnly
-import ai.koog.prompt.structure.RegisteredStandardJsonSchemaGenerators
 import ai.koog.prompt.structure.StructureFixingParser
 import ai.koog.prompt.structure.StructuredOutput
 import ai.koog.prompt.structure.StructuredOutputConfig
@@ -304,7 +304,7 @@ object TestUtils {
         @OptIn(InternalStructuredOutputApi::class)
         fun getStructure(model: LLModel) = JsonStructuredData.createJsonStructure<WeatherReport>(
             json = Json,
-            schemaGenerator = RegisteredStandardJsonSchemaGenerators[model.provider] ?: StandardJsonSchemaGenerator,
+            schemaGenerator = getExecutor(model).clientFor(model)?.standardJsonSchemaGeneratorFor(model) ?: StandardJsonSchemaGenerator,
             descriptionOverrides = mapOf(
                 "WeatherReport.city" to "Name of the city or location",
                 "WeatherReport.temperature" to "Current temperature in Celsius degrees"

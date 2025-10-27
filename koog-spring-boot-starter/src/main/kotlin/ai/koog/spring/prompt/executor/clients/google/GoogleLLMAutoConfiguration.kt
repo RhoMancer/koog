@@ -69,20 +69,4 @@ public class GoogleLLMAutoConfiguration(
             settings = GoogleClientSettings(baseUrl = properties.baseUrl)
         )
     }
-
-    /**
-     * Creates and configures a [SingleLLMPromptExecutor] instance using [GoogleLLMClient] properties.
-     *
-     * The method initializes an [GoogleLLMClient] with the base URL derived from the provided [OllamaKoogProperties]
-     * and uses it to construct the [SingleLLMPromptExecutor].
-     *
-     * @param properties the configuration properties containing Ollama client settings such as the base URL.
-     * @return a [SingleLLMPromptExecutor] configured to use the Ollama client.
-     */
-    @Bean
-    @ConditionalOnBean(GoogleLLMClient::class)
-    public fun googleExecutor(client: GoogleLLMClient): SingleLLMPromptExecutor {
-        logger.info("Creating SingleLLMPromptExecutor (googleExecutor) for GoogleLLMClient")
-        return SingleLLMPromptExecutor(client.toRetryingClient(properties.retry))
-    }
 }

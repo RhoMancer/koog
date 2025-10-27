@@ -8,6 +8,8 @@ import ai.koog.prompt.llm.LLMProvider
 import ai.koog.prompt.llm.LLModel
 import ai.koog.prompt.message.Message
 import ai.koog.prompt.streaming.StreamFrame
+import ai.koog.prompt.structure.json.generator.BasicJsonSchemaGenerator
+import ai.koog.prompt.structure.json.generator.StandardJsonSchemaGenerator
 import kotlinx.coroutines.flow.Flow
 
 /**
@@ -64,7 +66,7 @@ public interface LLMClient : AutoCloseable {
      * Analyzes the provided prompt for violations of content policies or other moderation criteria.
      *
      * @param prompt The input prompt to be analyzed for moderation.
-     * @param model The language model to be used for conducting the moderation analysis.
+     * @param model The LLM to be used for conducting the moderation analysis.
      * @return The result of the moderation analysis, encapsulated in a ModerationResult object.
      */
     public suspend fun moderate(prompt: Prompt, model: LLModel): ModerationResult
@@ -75,6 +77,24 @@ public interface LLMClient : AutoCloseable {
      * @return The LLMProvider instance used for executing prompts and managing LLM operations.
      */
     public fun llmProvider(): LLMProvider
+
+    /**
+     * Retutns a basic JSON schema generator (see [BasicJsonSchemaGenerator]) for the specified LLM.
+     * Needed to determine the native structured output (if supported by the model and it's correspionding [LLMProvider]).
+     *
+     * @param model The LLM for which the basic JSON schema generator is to be created.
+     * @return An instance of BasicJsonSchemaGenerator if creation is successful, otherwise null.
+     */
+    public fun basicJsonSchemaGeneratorFor(model: LLModel): BasicJsonSchemaGenerator? = null
+
+    /**
+     * Retutns a standard JSON schema generator ([StandardJsonSchemaGenerator]) for the specified LLM.
+     * Needed to determine the native structured output (if supported by the model and it's correspionding [LLMProvider]).
+     *
+     * @param model The LLM for which the standard JSON schema generator is to be created.
+     * @return The generated StandardJsonSchemaGenerator if creation is successful, otherwise null.
+     */
+    public fun standardJsonSchemaGeneratorFor(model: LLModel): StandardJsonSchemaGenerator? = null
 }
 
 /**
