@@ -18,6 +18,7 @@ import ai.koog.agents.core.dsl.extension.setToolChoiceRequired
 import ai.koog.agents.core.environment.ReceivedToolResult
 import ai.koog.agents.core.environment.executeTool
 import ai.koog.agents.core.environment.toSafeResult
+import ai.koog.agents.core.tools.DirectToolCallsEnabler
 import ai.koog.agents.core.tools.Tool
 import ai.koog.agents.core.tools.ToolDescriptor
 import ai.koog.agents.core.tools.annotations.InternalAgentToolsApi
@@ -566,13 +567,14 @@ public inline fun <reified Input, reified Output, reified OutputTransformed> AIA
 
 @PublishedApi
 @InternalAgentsApi
+@OptIn(InternalAgentToolsApi::class)
 internal suspend inline fun <reified Output, reified OutputTransformed> AIAgentContext.executeFinishTool(
     toolCall: Message.Tool.Call,
     finishTool: Tool<Output, OutputTransformed>,
 ): ReceivedToolResult {
     // Execute Finish tool directly and get a result
     val args = finishTool.decodeArgs(toolCall.contentJson)
-    val toolResult = finishTool.execute(args = args)
+    val toolResult = finishTool.execute(args = args, object : DirectToolCallsEnabler {})
 
     // Append a final tool call result to the prompt for further LLM calls
     // to see it (otherwise they would fail)
