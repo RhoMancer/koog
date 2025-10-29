@@ -15,9 +15,8 @@ kotlin {
                 api(project(":agents:agents-tools"))
                 api(project(":agents:agents-utils"))
                 api(project(":utils"))
-                api(project(":prompt:prompt-executor:prompt-executor-model"))
                 api(project(":prompt:prompt-llm"))
-                api(project(":prompt:prompt-structure"))
+                api(project(":prompt:prompt-executor:prompt-executor-clients"))
 
                 api(project(":prompt:prompt-executor:prompt-executor-clients:prompt-executor-openai-client"))
                 api(project(":prompt:prompt-markdown"))

@@ -13,7 +13,7 @@ kotlin {
         commonMain {
             dependencies {
                 api(project(":prompt:prompt-cache:prompt-cache-model"))
-                api(project(":prompt:prompt-executor:prompt-executor-model"))
+                api(project(":prompt:prompt-executor:prompt-executor-clients"))
                 api(libs.kotlinx.coroutines.core)
                 api(libs.kotlinx.serialization.json)
             }

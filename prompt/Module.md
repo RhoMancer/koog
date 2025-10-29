@@ -32,7 +32,6 @@ dependencies {
     // Optional modules based on your needs
     implementation("ai.koog.prompt:prompt-cache-model:$version")
     implementation("ai.koog.prompt:prompt-markdown:$version")
-    implementation("ai.koog.prompt:prompt-structure:$version")
 }
 ```
 

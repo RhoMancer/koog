@@ -38,7 +38,7 @@ public class JavaPromptExecutor(
         tools: List<ToolDescriptor> = emptyList(),
         coroutineContext: CoroutineContext = Dispatchers.IO
     ): CompletableFuture<List<Message.Response>> = CoroutineScope(coroutineContext).future {
-        execute(prompt, model, tools)
+        delegate.execute(prompt, model, tools)
     }
 }
 

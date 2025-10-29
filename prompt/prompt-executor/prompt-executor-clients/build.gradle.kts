@@ -13,8 +13,9 @@ kotlin {
             dependencies {
                 api(project(":prompt:prompt-model"))
                 api(project(":agents:agents-tools"))
-                api(project(":prompt:prompt-executor:prompt-executor-model"))
-                api(project(":prompt:prompt-structure"))
+                api(project(":prompt:prompt-markdown"))
+                api(libs.kotlinx.serialization.json)
+                api(libs.oshai.kotlin.logging)
                 api(libs.kotlinx.coroutines.core)
             }
         }
@@ -31,10 +32,17 @@ kotlin {
         commonTest {
             dependencies {
                 implementation(project(":test-utils"))
+                implementation(libs.kotlinx.coroutines.test)
             }
         }
         jvmTest {
             dependencies {
+                implementation(kotlin("test-junit5"))
+            }
+        }
+        jsTest {
+            dependencies {
+                implementation(kotlin("test-js"))
             }
         }
     }

@@ -53,12 +53,10 @@ include(":prompt:prompt-executor:prompt-executor-clients:prompt-executor-dashsco
 
 include(":prompt:prompt-executor:prompt-executor-llms")
 include(":prompt:prompt-executor:prompt-executor-llms-all")
-include(":prompt:prompt-executor:prompt-executor-model")
 
 include(":prompt:prompt-llm")
 include(":prompt:prompt-markdown")
 include(":prompt:prompt-model")
-include(":prompt:prompt-structure")
 include(":prompt:prompt-tokenizer")
 include(":prompt:prompt-xml")
 

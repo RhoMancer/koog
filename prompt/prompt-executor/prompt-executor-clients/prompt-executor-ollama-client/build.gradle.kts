@@ -17,7 +17,6 @@ kotlin {
                 api(project(":prompt:prompt-model"))
                 api(project(":prompt:prompt-tokenizer"))
                 api(project(":agents:agents-tools"))
-                api(project(":prompt:prompt-executor:prompt-executor-model"))
                 api(project(":prompt:prompt-executor:prompt-executor-clients"))
                 api(project(":prompt:prompt-executor:prompt-executor-llms"))
                 api(project(":embeddings:embeddings-base"))

@@ -61,9 +61,11 @@ public open class SingleLLMPromptExecutor(
     override suspend fun moderate(prompt: Prompt, model: LLModel): ModerationResult = llmClient.moderate(prompt, model)
 
     override fun clientFor(model: LLModel): LLMClient? =
-        if (model.provider == llmClient.llmProvider())
+        if (model.provider == llmClient.llmProvider()) {
             llmClient
-        else null
+        } else {
+            null
+        }
 
     override fun close() {
         llmClient.close()

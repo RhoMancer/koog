@@ -15,7 +15,6 @@ import ai.koog.prompt.structure.json.generator.JsonSchemaGenerator
 import ai.koog.prompt.structure.json.generator.StandardJsonSchemaGenerator
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.serializer
-import kotlin.reflect.KType
 
 /**
  * Represents a container for structured data parsed from response message.

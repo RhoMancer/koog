@@ -27,6 +27,11 @@ The module consists of:
 Each client handles authentication, request formatting, response parsing, and media content encoding specific to its
 respective API requirements.
 
+Additionally, this module defines the fundamental interface for executing prompts against language models. It provides the `PromptExecutor` interface which serves as the foundation for all prompt execution implementations, supporting both synchronous and streaming execution modes, with or without tool assistance.
+
+On top of that, the module provides a mechanism for handling structured data with specific schemas. It includes abstract classes and interfaces for defining structured data entities, parsing text into structured formats, and formatting structured data into human-readable representations. The module supports different structure languages including JSON and Markdown, allowing for flexible data representation and manipulation.
+
+
 ### Using in your project
 
 Add the dependency for the specific client you want to use:
@@ -75,6 +80,14 @@ val mockOpenAIClient = MockOpenAIClient(
 val mockOpenRouterClient = MockOpenRouterClient(
     responses = listOf("Mocked response 1", "Mocked response 2")
 )
+```
+
+When implementing a custom prompt executor or working with existing implementations, you'll need to use the interfaces defined in this module:
+
+```kotlin
+// Using the PromptExecutor interface
+val executor: PromptExecutor = getPromptExecutorImplementation() // obtain an implementation
+val result = executor.execute(prompt, model)
 ```
 
 ### Example of usage
@@ -190,6 +203,96 @@ val response = client.execute(
     },
     model = multimodalModel
 )
+```
+
+### Example of usage with `PromptExecutor`
+
+```kotlin
+// Creating a prompt executor implementation
+class MyPromptExecutor : PromptExecutor {
+    override suspend fun execute(prompt: Prompt, model: LLModel, tools: List<ToolDescriptor>): List<Message.Response> {
+        // Implementation details
+    }
+
+    override suspend fun executeStreaming(prompt: Prompt, model: LLModel): Flow<String> {
+        // Implementation details
+    }
+}
+
+// Using a prompt executor
+suspend fun processPrompt(executor: PromptExecutor, prompt: Prompt, model: LLModel) {
+    val response = executor.execute(prompt, model)
+    println("Response: $response")
+
+    // With streaming
+    executor.executeStreaming(prompt, model).collect { chunk ->
+        print(chunk)
+    }
+}
+```
+
+### Example of usage of `StructuredData`
+
+```kotlin
+// Define a structured data type for a person
+class PersonData(
+    id: String,
+    examples: List<Person>,
+    schema: LLMParams.Schema
+) : StructuredData<Person>(id, examples, schema) {
+    override fun parse(text: String): Person {
+        // Parse JSON text into a Person object
+        val json = Json.parseToJsonElement(text).jsonObject
+        return Person(
+            name = json["name"]?.jsonPrimitive?.content ?: "",
+            age = json["age"]?.jsonPrimitive?.int ?: 0,
+            skills = json["skills"]?.jsonArray?.map { it.jsonPrimitive.content } ?: emptyList()
+        )
+    }
+
+    override fun pretty(value: Person): String {
+        // Format Person object as a pretty JSON string
+        return Json.encodeToString(
+            buildJsonObject {
+                put("name", value.name)
+                put("age", value.age)
+                putJsonArray("skills") {
+                    value.skills.forEach { add(it) }
+                }
+            }
+        )
+    }
+}
+
+// Create an instance with examples
+val personData = PersonData(
+    id = "person",
+    examples = listOf(
+        Person("John Doe", 30, listOf("Programming", "Design")),
+        Person("Jane Smith", 28, listOf("Management", "Communication"))
+    ),
+    schema = LLMParams.Schema.JSON.Simple(
+        name = "Person",
+        schema = JsonObject(mapOf(
+            "type" to JsonPrimitive("object"),
+            "properties" to JsonObject(mapOf(
+                "name" to JsonObject(mapOf("type" to JsonPrimitive("string"))),
+                "age" to JsonObject(mapOf("type" to JsonPrimitive("number"))),
+                "skills" to JsonObject(mapOf(
+                    "type" to JsonPrimitive("array"),
+                    "items" to JsonObject(mapOf("type" to JsonPrimitive("string")))
+                ))
+            ))
+        ))
+    )
+)
+
+// Parse text into a Person object
+val personText = """{"name":"Alice","age":25,"skills":["Writing","Research"]}"""
+val person = personData.parse(personText)
+
+// Format a Person object as a pretty string
+val prettyOutput = personData.pretty(person)
 ```
 
 ### Supported Media Types by Provider
