@@ -30,7 +30,8 @@ import kotlin.reflect.KType
  *
  * @property clock The clock used for time-based operations within the pipeline
  */
-public class AIAgentGraphPipeline(clock: Clock = Clock.System) : AIAgentPipeline(clock) {
+// TODO: JAVA
+public expect class AIAgentGraphPipeline(clock: Clock = Clock.System) : AIAgentPipeline(clock) {
 
     /**
      * Map of node execution handlers registered for features.

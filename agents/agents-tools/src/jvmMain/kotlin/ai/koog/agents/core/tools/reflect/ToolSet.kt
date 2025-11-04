@@ -1,7 +1,9 @@
 package ai.koog.agents.core.tools.reflect
 
 import ai.koog.agents.core.tools.annotations.LLMDescription
+import kotlinx.serialization.json.Json
 import kotlin.reflect.jvm.jvmName
+import ai.koog.agents.core.tools.Tool as ToolType
 
 /**
  * A marker interface for a set of tools that can be converted to a list of [ai.koog.agents.core.tools.Tool]s via reflection using [asTools].
@@ -20,4 +22,40 @@ public interface ToolSet {
     public val name: String
         get() = this.javaClass.getAnnotationsByType(LLMDescription::class.java).firstOrNull()?.description
             ?: this::class.jvmName
+
+    /**
+     * Converts all instance methods of [this] class marked as [Tool] to a list of tools.
+     *
+     * See [asTool] for detailed description.
+     *
+     * @param json The Json instance to use for serialization.
+     *
+     * ```
+     * interface MyToolsetInterface : ToolSet {
+     *     @Tool
+     *     @LLMDescription("My best tool")
+     *     fun my_best_tool(arg1: String, arg2: Int)
+     * }
+     *
+     * class MyToolset : MyToolsetInterface {
+     *     @Tool
+     *     @LLMDescription("My best tool overridden description")
+     *     fun my_best_tool(arg1: String, arg2: Int) {
+     *         // ...
+     *     }
+     *
+     *     @Tool
+     *     @LLMDescription("My best tool 2")
+     *     fun my_best_tool_2(arg1: String, arg2: Int) {
+     *          // ...
+     *     }
+     * }
+     *
+     * val myToolset = MyToolset()
+     * val tools = myToolset.asTools()
+     * ```
+     */
+    public fun asTools(json: Json = Json): List<ToolType<ToolFromCallable.VarArgs, *>> {
+        return this::class.asTools(json = json, thisRef = this)
+    }
 }

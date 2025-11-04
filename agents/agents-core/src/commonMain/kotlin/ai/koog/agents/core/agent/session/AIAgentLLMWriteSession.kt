@@ -140,49 +140,40 @@ public class AIAgentLLMWriteSession internal constructor(
     }
 
     /**
-     * Finds and retrieves a tool of the specified type from the tool registry.
-     *
-     * @param TArgs The type of arguments the tool accepts.
-     * @param TResult The type of result the tool produces, extending from ToolResult.
-     * @param toolClass The KClass reference that specifies the type of tool to find.
-     * @return A SafeTool instance wrapping the found tool and its environment.
-     * @throws IllegalArgumentException if the specified tool is not found in the tool registry.
-     */
-    public inline fun <reified TArgs, reified TResult> findTool(
-        toolClass: KClass<out Tool<TArgs, TResult>>
-    ): SafeTool<TArgs, TResult> {
-        @Suppress("UNCHECKED_CAST")
-        val tool = (
-            toolRegistry.tools.find(toolClass::isInstance) as? Tool<TArgs, TResult>
-                ?: throw IllegalArgumentException("Tool with type ${toolClass.simpleName} is not defined")
-            )
-
-        return SafeTool(tool, environment, clock)
-    }
-
-    /**
      * Invokes a tool of the specified type with the provided arguments.
      *
      * @param args The input arguments required for the tool execution.
      * @return A `SafeTool.Result` containing the outcome of the tool's execution, which may be of any type that extends `ToolResult`.
      */
-    public suspend inline fun <reified ToolT : Tool<*, *>> callTool(
+    public suspend inline fun <reified ToolT : Tool<Any?, Any?>> callTool(
         args: Any?
     ): SafeTool.Result<out Any?> {
-        val tool = findTool<ToolT>()
+        val tool = findTool(ToolT::class)
         return tool.executeUnsafe(args)
     }
 
     /**
-     * Finds and retrieves a tool of the specified type from the current stage of the tool registry.
-     * If no tool of the given type is found, an exception is thrown.
+     * Finds a specific tool instance from the tool registry based on the provided tool type.
      *
-     * @return An instance of SafeTool wrapping the tool of the specified type and the current environment.
-     * @throws IllegalArgumentException if a tool of the given type is not defined in the tool registry.
+     * @param tool the tool instance whose type is used to search for a corresponding tool in the registry
+     * @return a SafeTool instance corresponding to the found tool in the registry
+     * @throws IllegalArgumentException if a tool of the provided type is not found in the registry
      */
-    public inline fun <reified ToolT : Tool<*, *>> findTool(): SafeTool<*, *> {
-        val tool = toolRegistry.tools.find(ToolT::class::isInstance) as? ToolT
-            ?: throw IllegalArgumentException("Tool with type ${ToolT::class.simpleName} is not defined")
+    public fun <TArgs, TResult> findTool(tool: Tool<TArgs, TResult>): SafeTool<TArgs, TResult> {
+        return findTool(tool::class)
+    }
+
+    /**
+     * Finds a tool of the specified class from the tool registry and wraps it in a SafeTool instance.
+     *
+     * @param toolClass the class of the tool to search for in the tool registry
+     * @return a SafeTool instance wrapping the found tool
+     * @throws IllegalArgumentException if no tool of the specified class is found in the registry
+     */
+    @Suppress("UNCHECKED_CAST")
+    public fun <TArgs, TResult> findTool(toolClass: KClass<out Tool<TArgs, TResult>>): SafeTool<TArgs, TResult> {
+        val tool = toolRegistry.tools.find(toolClass::isInstance) as? Tool<TArgs, TResult>
+            ?: throw IllegalArgumentException("Tool with type ${toolClass.simpleName} is not defined")
 
         return SafeTool(tool, environment, clock)
     }

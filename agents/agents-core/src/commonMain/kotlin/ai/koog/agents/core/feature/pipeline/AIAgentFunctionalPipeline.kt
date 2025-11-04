@@ -1,5 +1,6 @@
 package ai.koog.agents.core.feature.pipeline
 
+import ai.koog.agents.core.agent.entity.AIAgentStorageKey
 import ai.koog.agents.core.feature.AIAgentFunctionalFeature
 import ai.koog.agents.core.feature.config.FeatureConfig
 import kotlinx.datetime.Clock
@@ -14,6 +15,7 @@ import kotlinx.datetime.Clock
  * @property clock The clock used for time-based operations within the pipeline
  */
 public class AIAgentFunctionalPipeline(clock: Clock = Clock.System) : AIAgentPipeline(clock) {
+    private val registeredFeatures: MutableMap<AIAgentStorageKey<*>, RegisteredFeature> = mutableMapOf()
 
     /**
      * Installs a non-graph feature into the pipeline with the provided configuration.

@@ -88,7 +88,8 @@ import kotlin.reflect.safeCast
  *
  * @property clock Clock instance for time-related operations
  */
-public abstract class AIAgentPipeline(public val clock: Clock) {
+// TODO: JAVA
+public expect abstract class AIAgentPipeline(public val clock: Clock) {
 
     // Notes on suppressed warnings used in this class:
     // - Some members are annotated with @Suppress to satisfy explicit API requirements

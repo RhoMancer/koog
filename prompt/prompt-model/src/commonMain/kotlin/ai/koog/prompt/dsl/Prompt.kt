@@ -1,5 +1,6 @@
 package ai.koog.prompt.dsl
 
+import ai.koog.agents.annotations.JavaAPI
 import ai.koog.prompt.message.Message
 import ai.koog.prompt.params.LLMParams
 import ai.koog.prompt.params.LLMParams.Schema
@@ -7,6 +8,7 @@ import ai.koog.prompt.params.LLMParams.ToolChoice
 import kotlinx.datetime.Clock
 import kotlinx.serialization.Serializable
 import kotlin.jvm.JvmOverloads
+import kotlin.jvm.JvmStatic
 import kotlin.time.Duration
 
 /**
@@ -29,6 +31,18 @@ public data class Prompt @JvmOverloads constructor(
      * Companion object for the `Prompt` class, providing utilities and constants for creating instances of `Prompt`.
      */
     public companion object {
+        /**
+         * Constructs a new `PromptBuilder` instance for creating and configuring a `Prompt`.
+         *
+         * @param id The unique identifier for the prompt.
+         * @param clock The clock used for timestamping or time-related operations. Defaults to `Clock.System` if not provided.
+         * @return A new instance of `PromptBuilder` with the specified ID and clock.
+         */
+        @JvmStatic
+        @JvmOverloads
+        @JavaAPI
+        public fun builder(id: String, clock: Clock = Clock.System): PromptBuilder = PromptBuilder(id, clock = clock)
+
         /**
          * Represents an empty state for a [Prompt] object. This variable is initialized
          * with an empty list for the prompt's options and an empty string as the prompt's message.
