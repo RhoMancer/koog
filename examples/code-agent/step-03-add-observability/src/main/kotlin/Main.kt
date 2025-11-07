@@ -42,7 +42,7 @@ val agent = AIAgent(
     maxIterations = 400
 ) {
     install(OpenTelemetry) {
-        setVerbose(true) // Enable verbose mode to send full strings instead of HIDDEN placeholders
+        setVerbose(true) // Send full strings instead of HIDDEN placeholders
         addLangfuseExporter(
             traceAttributes = listOf(
                 CustomAttribute("langfuse.session.id", System.getenv("LANGFUSE_SESSION_ID") ?: ""),
