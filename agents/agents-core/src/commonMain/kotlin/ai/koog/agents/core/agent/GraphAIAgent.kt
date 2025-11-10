@@ -4,6 +4,7 @@ import ai.koog.agents.core.agent.config.AIAgentConfig
 import ai.koog.agents.core.agent.context.AIAgentGraphContext
 import ai.koog.agents.core.agent.context.AIAgentGraphContextBase
 import ai.koog.agents.core.agent.context.AIAgentLLMContext
+import ai.koog.agents.core.agent.context.element.getAgentRunInfoElementOrThrow
 import ai.koog.agents.core.agent.entity.AIAgentGraphStrategy
 import ai.koog.agents.core.agent.entity.AIAgentStateManager
 import ai.koog.agents.core.agent.entity.AIAgentStorage
@@ -104,10 +105,14 @@ public open class GraphAIAgent<Input, Output>(
         val stateManager = AIAgentStateManager()
         val storage = AIAgentStorage()
 
+        val agentRunInfoContext = getAgentRunInfoElementOrThrow()
+
         // Environment (initially equal to the current agent), transformed by some features
         //   (ex: testing feature transforms it into a MockEnvironment with mocked tools)
         val preparedEnvironment =
             pipeline.onAgentEnvironmentTransforming(
+                id = agentRunInfoContext.id,
+                parentId = agentRunInfoContext.parentId,
                 strategy = strategy,
                 agent = this,
                 baseEnvironment = environment

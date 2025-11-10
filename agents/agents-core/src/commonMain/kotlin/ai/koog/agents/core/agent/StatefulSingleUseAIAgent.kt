@@ -85,63 +85,56 @@ public abstract class StatefulSingleUseAIAgent<Input, Output, TContext : AIAgent
             state = State.Starting()
         }
 
+        val id = Uuid.random().toString()
         val runId = Uuid.random().toString()
         val context = prepareContext(agentInput, runId)
 
         return withContext(
             AgentRunInfoContextElement(
+                id = id,
+                parentId = null,
                 agentId = id,
                 runId = runId,
-                agentConfig = agentConfig,
-                strategyName = strategy.name
+                agentConfig = agentConfig
             )
         ) {
-            pipeline.withPreparedPipeline {
-                agentStateMutex.withLock {
-                    state = State.Running(context)
-                }
+            val context = prepareContext(agentInput, runId)
 
-                logger.debug {
-                    formatLog(
-                        agentId = id,
-                        runId = runId,
-                        message = "Starting agent execution"
-                    )
-                }
+            agentStateMutex.withLock {
+                state = State.Running(context)
+            }
 
-                pipeline.onAgentStarting<Input, Output>(
-                    runId = runId,
-                    agent = this@StatefulSingleUseAIAgent,
-                    context = context
-                )
-
-                val result = try {
-                    strategy.execute(context = context, input = agentInput)
-                } catch (e: Throwable) {
-                    logger.error(e) { "Execution exception reported by server!" }
-                    pipeline.onAgentExecutionFailed(
-                        agentId = id,
-                        runId = runId,
-                        throwable = e
-                    )
-                    agentStateMutex.withLock { state = State.Failed(e) }
-                    throw e
-                }
-
-                logger.debug {
-                    formatLog(
-                        agentId = id,
-                        runId = runId,
-                        message = "Finished agent execution"
-                    )
-                }
-                pipeline.onAgentCompleted(
+            logger.debug {
+                formatLog(
                     agentId = id,
                     runId = runId,
-                    result = result
+                    message = "Starting agent execution"
                 )
+            }
 
-                agentStateMutex.withLock {
+            pipeline.onAgentStarting<Input, Output>(id, null, runId, this@StatefulSingleUseAIAgent, context)
+
+            val result = try {
+                strategy.execute(context = context, input = agentInput)
+            } catch (e: Throwable) {
+                logger.error(e) { "Execution exception reported by server!" }
+                pipeline.onAgentExecutionFailed(id, null, this@StatefulSingleUseAIAgent.id, runId, e)
+
+                agentStateMutex.withLock { state = State.Failed(e) }
+                throw e
+            }
+
+            logger.debug {
+                formatLog(
+                    agentId = id,
+                    runId = runId,
+                    message = "Finished agent execution"
+                )
+            }
+
+            pipeline.onAgentCompleted(id, null, this@StatefulSingleUseAIAgent.id, runId, result)
+
+            agentStateMutex.withLock {
                     state = if (result != null) {
                         State.Finished(result)
                     } else {

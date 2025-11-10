@@ -16,7 +16,7 @@ import kotlinx.coroutines.flow.Flow
 /**
  * MultiLLMPromptExecutor is a class responsible for executing prompts
  * across multiple Large Language Models (LLMs). This implementation supports direct execution
- * with specific LLM clients or utilizes a fallback strategy if no primary LLM client is available
+ * with specific LLM clients or uses a fallback strategy if no primary LLM client is available
  * for the requested provider.
  *
  * @constructor Constructs an executor instance with a map of LLM providers associated with their respective clients.
@@ -30,7 +30,7 @@ public open class MultiLLMPromptExecutor(
     /**
      * Represents configuration for a fallback large language model (LLM) execution strategy.
      *
-     * This class is used to specify a fallback LLM provider and model that can be utilized
+     * This class is used to specify a fallback LLM provider and model that can be used
      * when the primary LLM execution fails. It ensures that the fallback model is associated
      * with the specified fallback provider.
      *
@@ -90,7 +90,7 @@ public open class MultiLLMPromptExecutor(
         /**
          * Logger instance used for logging messages within the LLMPromptExecutor and MultiLLMPromptExecutor classes.
          *
-         * This logger is utilized to provide debug logs during the execution of prompts and handling of streaming responses.
+         * This logger is used to provide debug logs during the execution of prompts and handling of streaming responses.
          * It primarily tracks operations such as prompt execution initiation, tool usage, and responses received from the
          * respective LLM clients.
          *
@@ -101,9 +101,9 @@ public open class MultiLLMPromptExecutor(
     }
 
     /**
-     * Lazily initialized fallback client for interacting with a fallback LLM provider.
+     * Lazily initialized a fallback client for interacting with a fallback LLM provider.
      *
-     * Utilizes the fallback provider specified in the `fallbackSettings` to retrieve a corresponding
+     * Uses the fallback provider specified in the `fallbackSettings` to retrieve a corresponding
      * `LLMClient` from the `llmClients` collection, if available. This client is intended to
      * handle cases where no specific provider is matched during prompt execution.
      *
@@ -120,7 +120,7 @@ public open class MultiLLMPromptExecutor(
     }
 
     /**
-     * Executes a given prompt using the specified tools and model, and returns a list of response messages.
+     * Executes a given prompt using the specified tools and model and returns a list of response messages.
      *
      * @param prompt The `Prompt` to be executed, containing the input messages and parameters.
      * @param tools A list of `ToolDescriptor` objects representing external tools available for use during execution.
@@ -156,7 +156,7 @@ public open class MultiLLMPromptExecutor(
      * @param model The LLM model to use for execution.
      * @param tools A list of `ToolDescriptor` objects representing external tools available for use during execution.
      **/
-    override fun executeStreaming(
+    override suspend fun executeStreaming(
         prompt: Prompt,
         model: LLModel,
         tools: List<ToolDescriptor>

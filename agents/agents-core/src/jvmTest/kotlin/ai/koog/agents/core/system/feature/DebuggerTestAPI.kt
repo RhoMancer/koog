@@ -4,11 +4,14 @@ import ai.koog.agents.core.annotation.ExperimentalAgentsApi
 import ai.koog.agents.core.annotation.InternalAgentsApi
 import ai.koog.agents.core.dsl.builder.forwardTo
 import ai.koog.agents.core.dsl.builder.strategy
+import ai.koog.agents.core.feature.AIAgentFeatureTestAPI.testClock
 import ai.koog.agents.core.feature.debugger.Debugger
 import ai.koog.agents.core.feature.message.FeatureMessage
+import ai.koog.agents.core.feature.mock.MockLLMProvider
 import ai.koog.agents.core.feature.model.events.AgentClosingEvent
 import ai.koog.agents.core.feature.model.events.AgentCompletedEvent
 import ai.koog.agents.core.feature.model.events.AgentStartingEvent
+import ai.koog.agents.core.feature.model.events.DefinedFeatureEvent
 import ai.koog.agents.core.feature.model.events.GraphStrategyStartingEvent
 import ai.koog.agents.core.feature.model.events.NodeExecutionCompletedEvent
 import ai.koog.agents.core.feature.model.events.NodeExecutionStartingEvent
@@ -19,10 +22,10 @@ import ai.koog.agents.core.feature.model.events.StrategyEventGraphNode
 import ai.koog.agents.core.feature.remote.client.FeatureMessageRemoteClient
 import ai.koog.agents.core.feature.remote.client.config.DefaultClientConnectionConfig
 import ai.koog.agents.core.system.mock.ClientEventsCollector
-import ai.koog.agents.core.system.mock.MockLLMProvider
 import ai.koog.agents.core.system.mock.createAgent
-import ai.koog.agents.core.system.mock.testClock
 import ai.koog.agents.core.utils.SerializationUtils
+import ai.koog.agents.testing.feature.message.singleEvent
+import ai.koog.agents.testing.feature.message.singleNodeEvent
 import ai.koog.agents.testing.network.NetUtil.findAvailablePort
 import ai.koog.prompt.llm.LLModel
 import ai.koog.utils.io.use
@@ -78,8 +81,8 @@ internal object DebuggerTestAPI {
             protocol = URLProtocol.HTTP
         )
 
-        var expectedClientEvents = emptyList<FeatureMessage>()
-        var actualClientEvents = emptyList<FeatureMessage>()
+        val expectedFilteredEvents = mutableListOf<FeatureMessage>()
+        val actualFilteredEvents = mutableListOf<FeatureMessage>()
 
         // Server
         // The server will read the env variable or VM option to get a port value.
@@ -120,95 +123,123 @@ internal object DebuggerTestAPI {
                 val startGraphNode = StrategyEventGraphNode(id = "__start__", name = "__start__")
                 val finishGraphNode = StrategyEventGraphNode(id = "__finish__", name = "__finish__")
 
-                actualClientEvents = clientEventsCollector.collectedEvents
+                // Expected events
+                actualFilteredEvents.addAll(clientEventsCollector.collectedEvents)
+
+                val actualAgentClosingEvent = actualFilteredEvents.singleEvent<AgentClosingEvent>()
+                val actualAgentStartingEvent = actualFilteredEvents.singleEvent<AgentStartingEvent>()
+                val actualStrategyStartingEvent = actualFilteredEvents.singleEvent<GraphStrategyStartingEvent>()
+
+                val actualNodeStartEvent = actualFilteredEvents.singleNodeEvent("__start__")
+                val actualNodeFinishEvent = actualFilteredEvents.singleNodeEvent("__finish__")
 
                 // Correct run id will be set after the 'collect events job' is finished.
-                expectedClientEvents = listOf(
-                    AgentStartingEvent(
-                        agentId = agentId,
-                        runId = clientEventsCollector.runId,
-                        timestamp = testClock.now().toEpochMilliseconds()
-                    ),
-                    GraphStrategyStartingEvent(
-                        runId = clientEventsCollector.runId,
-                        strategyName = strategyName,
-                        graph = StrategyEventGraph(
-                            nodes = listOf(
-                                startGraphNode,
-                                finishGraphNode
+                expectedFilteredEvents.addAll(
+                    listOf(
+                        AgentStartingEvent(
+                            id = actualAgentStartingEvent.id,
+                            parentId = null,
+                            agentId = agentId,
+                            runId = clientEventsCollector.runId,
+                            timestamp = testClock.now().toEpochMilliseconds()
+                        ),
+                        GraphStrategyStartingEvent(
+                            id = actualStrategyStartingEvent.id,
+                            parentId = actualAgentStartingEvent.id,
+                            runId = clientEventsCollector.runId,
+                            strategyName = strategyName,
+                            graph = StrategyEventGraph(
+                                nodes = listOf(
+                                    startGraphNode,
+                                    finishGraphNode
+                                ),
+                                edges = listOf(
+                                    StrategyEventGraphEdge(startGraphNode, finishGraphNode)
+                                )
                             ),
-                            edges = listOf(
-                                StrategyEventGraphEdge(startGraphNode, finishGraphNode)
-                            )
+                            timestamp = testClock.now().toEpochMilliseconds()
                         ),
-                        timestamp = testClock.now().toEpochMilliseconds()
-                    ),
-                    NodeExecutionStartingEvent(
-                        runId = clientEventsCollector.runId,
-                        nodeName = "__start__",
-                        input = @OptIn(InternalAgentsApi::class)
-                        SerializationUtils.encodeDataToJsonElementOrNull(
-                            data = userPrompt,
-                            dataType = typeOf<String>()
+                        NodeExecutionStartingEvent(
+                            id = actualNodeStartEvent.id,
+                            parentId = actualStrategyStartingEvent.id,
+                            runId = clientEventsCollector.runId,
+                            nodeName = "__start__",
+                            input = @OptIn(InternalAgentsApi::class)
+                            SerializationUtils.encodeDataToJsonElementOrNull(
+                                data = userPrompt,
+                                dataType = typeOf<String>()
+                            ),
+                            timestamp = testClock.now().toEpochMilliseconds()
                         ),
-                        timestamp = testClock.now().toEpochMilliseconds()
-                    ),
-                    NodeExecutionCompletedEvent(
-                        runId = clientEventsCollector.runId,
-                        nodeName = "__start__",
-                        input = @OptIn(InternalAgentsApi::class)
-                        SerializationUtils.encodeDataToJsonElementOrNull(
-                            data = userPrompt,
-                            dataType = typeOf<String>()
+                        NodeExecutionCompletedEvent(
+                            id = actualNodeStartEvent.id,
+                            parentId = actualStrategyStartingEvent.id,
+                            runId = clientEventsCollector.runId,
+                            nodeName = "__start__",
+                            input = @OptIn(InternalAgentsApi::class)
+                            SerializationUtils.encodeDataToJsonElementOrNull(
+                                data = userPrompt,
+                                dataType = typeOf<String>()
+                            ),
+                            output = @OptIn(InternalAgentsApi::class)
+                            SerializationUtils.encodeDataToJsonElementOrNull(
+                                data = userPrompt,
+                                dataType = typeOf<String>()
+                            ),
+                            timestamp = testClock.now().toEpochMilliseconds()
                         ),
-                        output = @OptIn(InternalAgentsApi::class)
-                        SerializationUtils.encodeDataToJsonElementOrNull(
-                            data = userPrompt,
-                            dataType = typeOf<String>()
+                        NodeExecutionStartingEvent(
+                            id = actualNodeFinishEvent.id,
+                            parentId = actualStrategyStartingEvent.id,
+                            runId = clientEventsCollector.runId,
+                            nodeName = "__finish__",
+                            input = @OptIn(InternalAgentsApi::class)
+                            SerializationUtils.encodeDataToJsonElementOrNull(
+                                data = userPrompt,
+                                dataType = typeOf<String>()
+                            ),
+                            timestamp = testClock.now().toEpochMilliseconds()
                         ),
-                        timestamp = testClock.now().toEpochMilliseconds()
-                    ),
-                    NodeExecutionStartingEvent(
-                        runId = clientEventsCollector.runId,
-                        nodeName = "__finish__",
-                        input = @OptIn(InternalAgentsApi::class)
-                        SerializationUtils.encodeDataToJsonElementOrNull(
-                            data = userPrompt,
-                            dataType = typeOf<String>()
+                        NodeExecutionCompletedEvent(
+                            id = actualNodeFinishEvent.id,
+                            parentId = actualStrategyStartingEvent.id,
+                            runId = clientEventsCollector.runId,
+                            nodeName = "__finish__",
+                            input = @OptIn(InternalAgentsApi::class)
+                            SerializationUtils.encodeDataToJsonElementOrNull(
+                                data = userPrompt,
+                                dataType = typeOf<String>()
+                            ),
+                            output = @OptIn(InternalAgentsApi::class)
+                            SerializationUtils.encodeDataToJsonElementOrNull(
+                                data = userPrompt,
+                                dataType = typeOf<String>()
+                            ),
+                            timestamp = testClock.now().toEpochMilliseconds()
                         ),
-                        timestamp = testClock.now().toEpochMilliseconds()
-                    ),
-                    NodeExecutionCompletedEvent(
-                        runId = clientEventsCollector.runId,
-                        nodeName = "__finish__",
-                        input = @OptIn(InternalAgentsApi::class)
-                        SerializationUtils.encodeDataToJsonElementOrNull(
-                            data = userPrompt,
-                            dataType = typeOf<String>()
+                        StrategyCompletedEvent(
+                            id = actualStrategyStartingEvent.id,
+                            parentId = actualAgentStartingEvent.id,
+                            runId = clientEventsCollector.runId,
+                            strategyName = strategyName,
+                            result = userPrompt,
+                            timestamp = testClock.now().toEpochMilliseconds()
                         ),
-                        output = @OptIn(InternalAgentsApi::class)
-                        SerializationUtils.encodeDataToJsonElementOrNull(
-                            data = userPrompt,
-                            dataType = typeOf<String>()
+                        AgentCompletedEvent(
+                            id = actualAgentStartingEvent.id,
+                            parentId = null,
+                            agentId = agentId,
+                            runId = clientEventsCollector.runId,
+                            result = userPrompt,
+                            timestamp = testClock.now().toEpochMilliseconds()
                         ),
-                        timestamp = testClock.now().toEpochMilliseconds()
-                    ),
-                    StrategyCompletedEvent(
-                        runId = clientEventsCollector.runId,
-                        strategyName = strategyName,
-                        result = userPrompt,
-                        timestamp = testClock.now().toEpochMilliseconds()
-                    ),
-                    AgentCompletedEvent(
-                        agentId = agentId,
-                        runId = clientEventsCollector.runId,
-                        result = userPrompt,
-                        timestamp = testClock.now().toEpochMilliseconds()
-                    ),
-                    AgentClosingEvent(
-                        agentId = agentId,
-                        timestamp = testClock.now().toEpochMilliseconds()
-                    ),
+                        AgentClosingEvent(
+                            id = actualAgentClosingEvent.id,
+                            parentId = null,
+                            agentId = agentId,
+                            timestamp = testClock.now().toEpochMilliseconds()
+                        ),
+                    )
                 )
             }
         }
@@ -220,12 +251,24 @@ internal object DebuggerTestAPI {
         assertNotNull(isFinishedOrNull, "Client or server did not finish in time")
 
         assertEquals(
-            expectedClientEvents.size,
-            actualClientEvents.size,
+            expectedFilteredEvents.size,
+            actualFilteredEvents.size,
             "expectedEventsCount variable in the test need to be updated"
         )
 
-        assertContentEquals(expectedClientEvents, actualClientEvents)
+        assertContentEquals(
+            expectedFilteredEvents,
+            actualFilteredEvents,
+            "Mismatch between collected events.\n" +
+                "Expected:\n${expectedFilteredEvents.joinToString("\n") { event ->
+                    event as DefinedFeatureEvent
+                    " - ${event::class.simpleName} (id: ${event.id}, parent id: ${event.parentId})"
+                }}\n" +
+                "Actual:\n${actualFilteredEvents.joinToString("\n") { event ->
+                    event as DefinedFeatureEvent
+                    " - ${event::class.simpleName} (id: ${event.id}, parent id: ${event.parentId})"
+                }}"
+        )
     }
 
     internal suspend fun runAgentConnectionWaitConfigThroughSystemVariablesTest(timeout: Duration) = withContext(Dispatchers.Default) {

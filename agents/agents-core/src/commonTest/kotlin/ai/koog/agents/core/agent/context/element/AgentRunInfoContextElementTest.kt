@@ -16,16 +16,18 @@ class AgentRunInfoContextElementTest : AgentTestBase() {
         val config = createTestConfig()
 
         val element = AgentRunInfoContextElement(
+            id = testId,
+            parentId = testParentId,
             agentId = testAgentId,
             runId = testRunId,
             agentConfig = config,
-            strategyName = strategyName
         )
 
+        assertEquals(testId, element.id)
+        assertEquals(testParentId, element.parentId)
         assertEquals(testAgentId, element.agentId)
         assertEquals(testRunId, element.runId)
         assertEquals(config, element.agentConfig)
-        assertEquals(strategyName, element.strategyName)
         assertEquals(AgentRunInfoContextElement.Key, element.key)
     }
 
@@ -34,24 +36,27 @@ class AgentRunInfoContextElementTest : AgentTestBase() {
         val sharedConfig = createTestConfig()
 
         val element1 = AgentRunInfoContextElement(
+            id = "id1",
+            parentId = "parentId1",
             agentId = "agent1",
             runId = "run1",
             agentConfig = sharedConfig,
-            strategyName = "strategy1"
         )
 
         val element2 = AgentRunInfoContextElement(
+            id = "id1",
+            parentId = "parentId1",
             agentId = "agent1",
             runId = "run1",
             agentConfig = sharedConfig,
-            strategyName = "strategy1"
         )
 
         val element3 = AgentRunInfoContextElement(
+            id = "id2",
+            parentId = "parentId2",
             agentId = "agent2",
             runId = "run2",
             agentConfig = createTestConfig(),
-            strategyName = "strategy2"
         )
 
         assertEquals(element1, element2)
@@ -62,10 +67,11 @@ class AgentRunInfoContextElementTest : AgentTestBase() {
     @Test
     fun testGetElementFromContext() = runTest {
         val element = AgentRunInfoContextElement(
+            id = testId,
+            parentId = testParentId,
             agentId = testAgentId,
             runId = testRunId,
             agentConfig = createTestConfig(),
-            strategyName = strategyName
         )
 
         val context = withContext(element) {
@@ -86,10 +92,11 @@ class AgentRunInfoContextElementTest : AgentTestBase() {
     @Test
     fun testGetElementOrThrow() = runTest {
         val element = AgentRunInfoContextElement(
+            id = testId,
+            parentId = testParentId,
             agentId = testAgentId,
             runId = testRunId,
             agentConfig = createTestConfig(),
-            strategyName = strategyName,
         )
 
         withContext(element) {

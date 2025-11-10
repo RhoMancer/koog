@@ -3,6 +3,8 @@ package ai.koog.agents.core.agent.entity
 import ai.koog.agents.core.agent.context.AIAgentGraphContextBase
 import ai.koog.agents.core.agent.context.element.NodeInfoContextElement
 import ai.koog.agents.core.agent.context.element.getNodeInfoElement
+import ai.koog.agents.core.agent.context.element.getStrategyInfoElement
+import ai.koog.agents.core.agent.context.element.getSubgraphInfoElement
 import ai.koog.agents.core.annotation.InternalAgentsApi
 import io.github.oshai.kotlinlogging.KotlinLogging
 import kotlinx.coroutines.CancellationException
@@ -155,10 +157,13 @@ public open class AIAgentNode<TInput, TOutput> internal constructor(
 
     @InternalAgentsApi
     @OptIn(ExperimentalUuidApi::class)
-    override suspend fun execute(context: AIAgentGraphContextBase, input: TInput): TOutput =
-        withContext(NodeInfoContextElement(Uuid.random().toString(), getNodeInfoElement()?.id, name, input, inputType)) {
+    override suspend fun execute(context: AIAgentGraphContextBase, input: TInput): TOutput {
+        val id = Uuid.random().toString()
+        val parentId = getStrategyInfoElement()?.id ?: getSubgraphInfoElement()?.id ?: getNodeInfoElement()?.id
+
+        return withContext(NodeInfoContextElement(id, parentId, name, input, inputType)) {
             logger.debug { "Start executing node (name: $name)" }
-            context.pipeline.onNodeExecutionStarting(this@AIAgentNode, context, input, inputType)
+            context.pipeline.onNodeExecutionStarting(id, parentId, this@AIAgentNode, context, input, inputType)
 
             val output =
                 try {
@@ -169,13 +174,14 @@ public open class AIAgentNode<TInput, TOutput> internal constructor(
                     throw e
                 } catch (e: Exception) {
                     logger.error(e) { "Error executing node (name: $name): ${e.message}" }
-                    context.pipeline.onNodeExecutionFailed(this@AIAgentNode, context, input, inputType, e)
+                    context.pipeline.onNodeExecutionFailed(id, parentId, this@AIAgentNode, context, input, inputType, e)
                     throw e
                 }
 
-            context.pipeline.onNodeExecutionCompleted(this@AIAgentNode, context, input, inputType, output, outputType)
+            context.pipeline.onNodeExecutionCompleted(id, parentId, this@AIAgentNode, context, input, inputType, output, outputType)
             output
         }
+    }
 }
 
 /**

@@ -8,6 +8,8 @@ import kotlinx.serialization.Serializable
 @Serializable
 data class TestFeatureEventMessage(
     val testMessage: String,
+    override val id: String = "test-id",
+    override val parentId: String? = null,
     override val timestamp: Long = Clock.System.now().toEpochMilliseconds(),
 ) : FeatureEvent {
 

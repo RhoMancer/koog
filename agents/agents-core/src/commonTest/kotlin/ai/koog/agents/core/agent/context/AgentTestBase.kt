@@ -17,6 +17,8 @@ import ai.koog.prompt.message.Message
 import kotlin.reflect.typeOf
 
 open class AgentTestBase {
+    protected val testId = "test-id"
+    protected val testParentId = "test-parent-id"
     protected val testAgentId = "test-agent"
     protected val testRunId = "test-run"
     protected val strategyName = "test-strategy"

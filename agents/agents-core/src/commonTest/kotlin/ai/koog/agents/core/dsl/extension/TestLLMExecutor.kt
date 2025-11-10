@@ -37,7 +37,7 @@ class TestLLMExecutor : PromptExecutor {
         return listOf(handlePrompt(prompt))
     }
 
-    override fun executeStreaming(
+    override suspend fun executeStreaming(
         prompt: Prompt,
         model: LLModel,
         tools: List<ToolDescriptor>

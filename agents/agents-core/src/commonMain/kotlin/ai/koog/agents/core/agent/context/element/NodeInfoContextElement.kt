@@ -1,6 +1,5 @@
 package ai.koog.agents.core.agent.context.element
 
-import kotlinx.coroutines.currentCoroutineContext
 import kotlin.coroutines.CoroutineContext
 import kotlin.reflect.KType
 
@@ -16,12 +15,12 @@ import kotlin.reflect.KType
  * @property inputType The type of the input data provided to the node during execution.
  */
 public data class NodeInfoContextElement(
-    val id: String,
-    val parentId: String?,
+    override val id: String,
+    override val parentId: String?,
     val name: String,
     val input: Any?,
     val inputType: KType
-) : CoroutineContext.Element {
+) : AIAgentContextElementBase {
 
     /**
      * A companion object that serves as the key for the `NodeInfoContextElement` in a `CoroutineContext`.
@@ -33,11 +32,3 @@ public data class NodeInfoContextElement(
 
     override val key: CoroutineContext.Key<*> = Key
 }
-
-/**
- * Retrieves the `NodeInfoContextElement` from the current coroutine context, if present.
- *
- * @return The `NodeInfoContextElement` if it exists in the current coroutine context, or `null` if not found.
- */
-public suspend fun getNodeInfoElement(): NodeInfoContextElement? =
-    currentCoroutineContext()[NodeInfoContextElement.Key]

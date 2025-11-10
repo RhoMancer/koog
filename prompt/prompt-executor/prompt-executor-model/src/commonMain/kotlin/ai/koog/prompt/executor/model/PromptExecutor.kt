@@ -42,7 +42,7 @@ public interface PromptExecutor : AutoCloseable {
      * @param tools A list of `ToolDescriptor` objects that define the tools available for the execution.
      * @return A flow emitting `StreamFrame` objects that represent the streaming output of the language model.
      */
-    public fun executeStreaming(
+    public suspend fun executeStreaming(
         prompt: Prompt,
         model: LLModel,
         tools: List<ToolDescriptor> = emptyList()
@@ -50,7 +50,7 @@ public interface PromptExecutor : AutoCloseable {
 
     /**
      * Receives multiple independent choices from the LLM.
-     * The method is implemented only for some specific providers which support multiple LLM choices.
+     * The method is implemented only for some specific providers that support multiple LLM choices.
      *
      * @param prompt The prompt containing input messages and parameters to guide the language model execution.
      * @param model The language model to be used for processing the prompt.

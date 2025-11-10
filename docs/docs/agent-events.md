@@ -30,38 +30,46 @@ classified into several categories, depending on the entity they relate to:
 
 Represents the start of an agent run. Includes the following fields:
 
-| Name       | Data type | Required | Default | Description                                             |
-|------------|-----------|----------|---------|---------------------------------------------------------|
-| `agentId`  | String    | Yes      |         | The unique identifier of the AI agent.                  |
-| `runId`    | String    | Yes      |         | The unique identifier of the AI agent run.              |
+| Name       | Data type | Required | Default | Description                                                        |
+|------------|-----------|----------|---------|--------------------------------------------------------------------|
+| `id`       | String    | Yes      |         | A unique identifier for the group of events associated with the agent execution. |
+| `parentId` | String    | No       | null    | The unique identifier of the parent event, if applicable.          |
+| `agentId`  | String    | Yes      |         | The unique identifier of the AI agent.                             |
+| `runId`    | String    | Yes      |         | The unique identifier of the AI agent run.                         |
 
 #### AgentCompletedEvent
 
 Represents the end of an agent run. Includes the following fields:
 
-| Name       | Data type | Required | Default | Description                                                         |
-|------------|-----------|----------|---------|---------------------------------------------------------------------|
-| `agentId`  | String    | Yes      |         | The unique identifier of the AI agent.                              |
-| `runId`    | String    | Yes      |         | The unique identifier of the AI agent run.                          |
-| `result`   | String    | Yes      |         | The result of the agent run. Can be `null` if there is no result.   |
+| Name       | Data type | Required | Default | Description                                                              |
+|------------|-----------|----------|---------|--------------------------------------------------------------------------|
+| `id`       | String    | Yes      |         | A unique identifier for the group of events associated with the agent execution. |
+| `parentId` | String    | No       | null    | The unique identifier of the parent event, if applicable.                |
+| `agentId`  | String    | Yes      |         | The unique identifier of the AI agent.                                   |
+| `runId`    | String    | Yes      |         | The unique identifier of the AI agent run.                               |
+| `result`   | String    | Yes      |         | The result of the agent run. Can be `null` if there is no result.        |
 
 #### AgentExecutionFailedEvent
 
 Represents the occurrence of an error during an agent run. Includes the following fields:
 
-| Name      | Data type     | Required | Default | Description                                                                                                     |
-|-----------|---------------|----------|---------|-----------------------------------------------------------------------------------------------------------------|
-| `agentId` | String        | Yes      |         | The unique identifier of the AI agent.                                                                          |
-| `runId`   | String        | Yes      |         | The unique identifier of the AI agent run.                                                                      |
-| `error`   | AIAgentError  | Yes      |         | The specific error that occurred during the agent run. For more information, see [AIAgentError](#aiagenterror). |
+| Name       | Data type     | Required | Default | Description                                                                                                     |
+|------------|---------------|----------|---------|-----------------------------------------------------------------------------------------------------------------|
+| `id`       | String        | Yes      |         | A unique identifier for the group of events associated with the agent execution.                                |
+| `parentId` | String        | No       | null    | The unique identifier of the parent event, if applicable.                                                       |
+| `agentId`  | String        | Yes      |         | The unique identifier of the AI agent.                                                                          |
+| `runId`    | String        | Yes      |         | The unique identifier of the AI agent run.                                                                      |
+| `error`    | AIAgentError  | Yes      |         | The specific error that occurred during the agent run. For more information, see [AIAgentError](#aiagenterror). |
 
 #### AgentClosingEvent
 
 Represents the closure or termination of an agent. Includes the following fields:
 
-| Name      | Data type | Required | Default | Description                                             |
-|-----------|-----------|----------|---------|---------------------------------------------------------|
-| `agentId` | String    | Yes      |         | The unique identifier of the AI agent.                  |
+| Name       | Data type | Required | Default | Description                                                              |
+|------------|-----------|----------|---------|--------------------------------------------------------------------------|
+| `id`       | String    | Yes      |         | A unique identifier for the group of events associated with the agent execution. |
+| `parentId` | String    | No       | null    | The unique identifier of the parent event, if applicable.                |
+| `agentId`  | String    | Yes      |         | The unique identifier of the AI agent.                                   |
 
 <a id="aiagenterror"></a>
 The `AIAgentError` class provides more details about an error that occurred during an agent run. Includes the following fields:
@@ -78,30 +86,36 @@ The `AIAgentError` class provides more details about an error that occurred duri
 
 Represents the start of a graph-based strategy run. Includes the following fields:
 
-| Name            | Data type              | Required | Default | Description                                              |
-|-----------------|------------------------|----------|---------|----------------------------------------------------------|
-| `runId`         | String                 | Yes      |         | The unique identifier of the strategy run.               |
-| `strategyName`  | String                 | Yes      |         | The name of the strategy.                                |
-| `graph`         | StrategyEventGraph     | Yes      |         | The graph structure representing the strategy workflow.  |
+| Name            | Data type              | Required | Default | Description                                                          |
+|-----------------|------------------------|----------|---------|----------------------------------------------------------------------|
+| `id`            | String                 | Yes      |         | A unique identifier for the group of events associated with the strategy events. |
+| `parentId`      | String                 | No       | null    | The unique identifier of the parent event, if applicable.            |
+| `runId`         | String                 | Yes      |         | The unique identifier of the strategy run.                           |
+| `strategyName`  | String                 | Yes      |         | The name of the strategy.                                            |
+| `graph`         | StrategyEventGraph     | Yes      |         | The graph structure representing the strategy workflow.              |
 
 #### FunctionalStrategyStartingEvent
 
 Represents the start of a functional strategy run. Includes the following fields:
 
-| Name            | Data type | Required | Default | Description                                |
-|-----------------|-----------|----------|---------|--------------------------------------------|
-| `runId`         | String    | Yes      |         | The unique identifier of the strategy run. |
-| `strategyName`  | String    | Yes      |         | The name of the strategy.                  |
+| Name            | Data type | Required | Default | Description                                                          |
+|-----------------|-----------|----------|---------|----------------------------------------------------------------------|
+| `id`            | String    | Yes      |         | A unique identifier for the group of events associated with the strategy events. |
+| `parentId`      | String    | No       | null    | The unique identifier of the parent event, if applicable.            |
+| `runId`         | String    | Yes      |         | The unique identifier of the strategy run.                           |
+| `strategyName`  | String    | Yes      |         | The name of the strategy.                                            |
 
 #### StrategyCompletedEvent
 
 Represents the end of a strategy run. Includes the following fields:
 
-| Name           | Data type | Required | Default | Description                                                                    |
-|----------------|-----------|----------|---------|--------------------------------------------------------------------------------|
-| `runId`        | String    | Yes      |         | The unique identifier of the strategy run.                                     |
-| `strategyName` | String    | Yes      |         | The name of the strategy.                                                      |
-| `result`       | String    | Yes      |         | The result of the run. Can be `null` if there is no result.                    |
+| Name           | Data type | Required | Default | Description                                                          |
+|----------------|-----------|----------|---------|----------------------------------------------------------------------|
+| `id`           | String    | Yes      |         | A unique identifier for the group of events associated with the strategy events. |
+| `parentId`     | String    | No       | null    | The unique identifier of the parent event, if applicable.            |
+| `runId`        | String    | Yes      |         | The unique identifier of the strategy run.                           |
+| `strategyName` | String    | Yes      |         | The name of the strategy.                                            |
+| `result`       | String    | Yes      |         | The result of the run. Can be `null` if there is no result.          |
 
 ### Node events
 
@@ -109,22 +123,26 @@ Represents the end of a strategy run. Includes the following fields:
 
 Represents the start of a node run. Includes the following fields:
 
-| Name       | Data type   | Required | Default | Description                                      |
-|------------|-------------|----------|---------|--------------------------------------------------|
-| `runId`    | String      | Yes      |         | The unique identifier of the strategy run.       |
-| `nodeName` | String      | Yes      |         | The name of the node whose run started.          |
-| `input`    | JsonElement | No       | null    | The input value for the node.                    |
+| Name       | Data type   | Required | Default | Description                                                            |
+|------------|-------------|----------|---------|------------------------------------------------------------------------|
+| `id`       | String      | Yes      |         | A unique identifier for the group of events associated with the node execution. |
+| `parentId` | String      | No       | null    | The unique identifier of the parent event, if applicable.              |
+| `runId`    | String      | Yes      |         | The unique identifier of the strategy run.                             |
+| `nodeName` | String      | Yes      |         | The name of the node whose run started.                                |
+| `input`    | JsonElement | No       | null    | The input value for the node.                                          |
 
 #### NodeExecutionCompletedEvent
 
 Represents the end of a node run. Includes the following fields:
 
-| Name       | Data type   | Required | Default | Description                                      |
-|------------|-------------|----------|---------|--------------------------------------------------|
-| `runId`    | String      | Yes      |         | The unique identifier of the strategy run.       |
-| `nodeName` | String      | Yes      |         | The name of the node whose run ended.            |
-| `input`    | JsonElement | No       | null    | The input value for the node.                    |
-| `output`   | JsonElement | No       | null    | The output value produced by the node.           |
+| Name       | Data type   | Required | Default | Description                                                            |
+|------------|-------------|----------|---------|------------------------------------------------------------------------|
+| `id`       | String      | Yes      |         | A unique identifier for the group of events associated with the node execution. |
+| `parentId` | String      | No       | null    | The unique identifier of the parent event, if applicable.              |
+| `runId`    | String      | Yes      |         | The unique identifier of the strategy run.                             |
+| `nodeName` | String      | Yes      |         | The name of the node whose run ended.                                  |
+| `input`    | JsonElement | No       | null    | The input value for the node.                                          |
+| `output`   | JsonElement | No       | null    | The output value produced by the node.                                 |
 
 #### NodeExecutionFailedEvent
 
@@ -132,6 +150,8 @@ Represents an error that occurred during a node run. Includes the following fiel
 
 | Name       | Data type    | Required | Default | Description                                                                                                     |
 |------------|--------------|----------|---------|-----------------------------------------------------------------------------------------------------------------|
+| `id`       | String       | Yes      |         | A unique identifier for the group of events associated with the node execution.                                 |
+| `parentId` | String       | No       | null    | The unique identifier of the parent event, if applicable.                                                       |
 | `runId`    | String       | Yes      |         | The unique identifier of the strategy run.                                                                      |
 | `nodeName` | String       | Yes      |         | The name of the node where the error occurred.                                                                  |
 | `input`    | JsonElement  | No       | null    | The input data provided to the node.                                                                            |
@@ -143,32 +163,38 @@ Represents an error that occurred during a node run. Includes the following fiel
 
 Represents the start of a subgraph run. Includes the following fields:
 
-| Name            | Data type   | Required | Default | Description                                         |
-|-----------------|-------------|----------|---------|-----------------------------------------------------|
-| `runId`         | String      | Yes      |         | The unique identifier of the strategy run.          |
-| `subgraphName`  | String      | Yes      |         | The name of the subgraph whose run started.         |
-| `input`         | JsonElement | No       | null    | The input value for the subgraph.                   |
+| Name            | Data type   | Required | Default | Description                                                            |
+|-----------------|-------------|----------|---------|------------------------------------------------------------------------|
+| `id`            | String      | Yes      |         | A unique identifier for the group of events associated with the subgraph execution. |
+| `parentId`      | String      | No       | null    | The unique identifier of the parent event, if applicable.              |
+| `runId`         | String      | Yes      |         | The unique identifier of the strategy run.                             |
+| `subgraphName`  | String      | Yes      |         | The name of the subgraph whose run started.                            |
+| `input`         | JsonElement | No       | null    | The input value for the subgraph.                                      |
 
 #### SubgraphExecutionCompletedEvent
 
 Represents the end of a subgraph run. Includes the following fields:
 
-| Name            | Data type   | Required | Default | Description                                         |
-|-----------------|-------------|----------|---------|-----------------------------------------------------|
-| `runId`         | String      | Yes      |         | The unique identifier of the strategy run.          |
-| `subgraphName`  | String      | Yes      |         | The name of the subgraph whose run ended.           |
-| `input`         | JsonElement | No       | null    | The input value for the subgraph.                   |
-| `output`        | JsonElement | No       | null    | The output value produced by the subgraph.          |
+| Name            | Data type   | Required | Default | Description                                                            |
+|-----------------|-------------|----------|---------|------------------------------------------------------------------------|
+| `id`            | String      | Yes      |         | A unique identifier for the group of events associated with the subgraph execution. |
+| `parentId`      | String      | No       | null    | The unique identifier of the parent event, if applicable.              |
+| `runId`         | String      | Yes      |         | The unique identifier of the strategy run.                             |
+| `subgraphName`  | String      | Yes      |         | The name of the subgraph whose run ended.                              |
+| `input`         | JsonElement | No       | null    | The input value for the subgraph.                                      |
+| `output`        | JsonElement | No       | null    | The output value produced by the subgraph.                             |
 
 #### SubgraphExecutionFailedEvent
 
 Represents an error that occurred during a subgraph run. Includes the following fields:
 
-| Name            | Data type    | Required | Default | Description                                                                                                     |
-|-----------------|--------------|----------|---------|-----------------------------------------------------------------------------------------------------------------|
-| `runId`         | String       | Yes      |         | The unique identifier of the strategy run.                                                                      |
-| `subgraphName`  | String       | Yes      |         | The name of the subgraph where the error occurred.                                                              |
-| `input`         | JsonElement  | No       | null    | The input data provided to the subgraph.                                                                        |
+| Name            | Data type    | Required | Default | Description                                                                                                        |
+|-----------------|--------------|----------|---------|--------------------------------------------------------------------------------------------------------------------|
+| `id`            | String       | Yes      |         | A unique identifier for the group of events associated with the subgraph execution.                                |
+| `parentId`      | String       | No       | null    | The unique identifier of the parent event, if applicable.                                                          |
+| `runId`         | String       | Yes      |         | The unique identifier of the strategy run.                                                                         |
+| `subgraphName`  | String       | Yes      |         | The name of the subgraph where the error occurred.                                                                 |
+| `input`         | JsonElement  | No       | null    | The input data provided to the subgraph.                                                                           |
 | `error`         | AIAgentError | Yes      |         | The specific error that occurred during the subgraph run. For more information, see [AIAgentError](#aiagenterror). |
 
 ### LLM call events
@@ -177,13 +203,14 @@ Represents an error that occurred during a subgraph run. Includes the following 
 
 Represents the start of an LLM call. Includes the following fields:
 
-| Name     | Data type    | Required | Default | Description                                                                        |
-|----------|--------------|----------|---------|------------------------------------------------------------------------------------|
-| `runId`  | String       | Yes      |         | The unique identifier of the LLM run.                                              |
-| `callId` | String       | Yes      |         | The unique identifier of the LLM Call, correlating the related events.             |
-| `prompt` | Prompt       | Yes      |         | The prompt that is sent to the model. For more information, see [Prompt](#prompt). |
-| `model`  | ModelInfo    | Yes      |         | The model information. See [ModelInfo](#modelinfo).                    |
-| `tools`  | List<String> | Yes      |         | The list of tools that the model can call.                                         |
+| Name       | Data type    | Required | Default | Description                                                                        |
+|------------|--------------|----------|---------|------------------------------------------------------------------------------------|
+| `id`       | String       | Yes      |         | A unique identifier for the group of events associated with the LLM call.          |
+| `parentId` | String       | No       | null    | The unique identifier of the parent event, if applicable.                          |
+| `runId`    | String       | Yes      |         | The unique identifier of the LLM run.                                              |
+| `prompt`   | Prompt       | Yes      |         | The prompt that is sent to the model. For more information, see [Prompt](#prompt). |
+| `model`    | ModelInfo    | Yes      |         | The model information. See [ModelInfo](#modelinfo).                                |
+| `tools`    | List<String> | Yes      |         | The list of tools that the model can call.                                         |
 
 <a id="prompt"></a>
 The `Prompt` class represents a data structure for a prompt, consisting of a list of messages, a unique identifier, and
@@ -210,14 +237,15 @@ The `ModelInfo` class represents information about a language model, including i
 
 Represents the end of an LLM call. Includes the following fields:
 
-| Name                 | Data type              | Required | Default | Description                                                            |
-|----------------------|------------------------|----------|---------|------------------------------------------------------------------------|
-| `runId`              | String                 | Yes      |         | The unique identifier of the LLM run.                                  |
-| `callId`             | String                 | Yes      |         | The unique identifier of the LLM Call, correlating the related events. |
-| `prompt`             | Prompt                 | Yes      |         | The prompt used in the call.                                           |
-| `model`              | ModelInfo              | Yes      |         | The model information. See [ModelInfo](#modelinfo).                    |
-| `responses`          | List<Message.Response> | Yes      |         | One or more responses returned by the model.                           |
-| `moderationResponse` | ModerationResult       | No       | null    | The moderation response, if any.                                       |
+| Name                 | Data type              | Required | Default | Description                                                   |
+|----------------------|------------------------|----------|---------|---------------------------------------------------------------|
+| `id`                 | String                 | Yes      |         | A unique identifier for the group of events associated with the LLM call. |
+| `parentId`           | String                 | No       | null    | The unique identifier of the parent event, if applicable.     |
+| `runId`              | String                 | Yes      |         | The unique identifier of the LLM run.                         |
+| `prompt`             | Prompt                 | Yes      |         | The prompt used in the call.                                  |
+| `model`              | ModelInfo              | Yes      |         | The model information. See [ModelInfo](#modelinfo).           |
+| `responses`          | List<Message.Response> | Yes      |         | One or more responses returned by the model.                  |
+| `moderationResponse` | ModerationResult       | No       | null    | The moderation response, if any.                              |
 
 ### LLM streaming events
 
@@ -225,45 +253,49 @@ Represents the end of an LLM call. Includes the following fields:
 
 Represents the start of an LLM streaming call. Includes the following fields:
 
-| Name     | Data type    | Required | Default | Description                                                            |
-|----------|--------------|----------|---------|------------------------------------------------------------------------|
-| `runId`  | String       | Yes      |         | The unique identifier of the LLM run.                                  |
-| `callId` | String       | Yes      |         | The unique identifier of the LLM Call, correlating the related events. |
-| `prompt` | Prompt       | Yes      |         | The prompt that is sent to the model.                                  |
-| `model`  | ModelInfo    | Yes      |         | The model information. See [ModelInfo](#modelinfo).                    |
-| `tools`  | List<String> | Yes      |         | The list of tools that the model can call.                             |
+| Name       | Data type    | Required | Default | Description                                                            |
+|------------|--------------|----------|---------|------------------------------------------------------------------------|
+| `id`       | String       | Yes      |         | A unique identifier for the group of events associated with the streaming LLM event. |
+| `parentId` | String       | No       | null    | The unique identifier of the parent event, if applicable.              |
+| `runId`    | String       | Yes      |         | The unique identifier of the LLM run.                                  |
+| `prompt`   | Prompt       | Yes      |         | The prompt that is sent to the model.                                  |
+| `model`    | ModelInfo    | Yes      |         | The model information. See [ModelInfo](#modelinfo).                    |
+| `tools`    | List<String> | Yes      |         | The list of tools that the model can call.                             |
 
 #### LLMStreamingFrameReceivedEvent
 
 Represents a streaming frame received from the LLM. Includes the following fields:
 
-| Name    | Data type   | Required | Default | Description                                                             |
-|---------|-------------|----------|---------|-------------------------------------------------------------------------|
-| `runId` | String      | Yes      |         | The unique identifier of the LLM run.                                   |
-| `callId`| String      | Yes      |         | The unique identifier of the LLM Call, correlating the related events.  |
-| `frame` | StreamFrame | Yes      |         | The frame received from the stream.                                     |
+| Name       | Data type   | Required | Default | Description                                                             |
+|------------|-------------|----------|---------|-------------------------------------------------------------------------|
+| `id`       | String      | Yes      |         | A unique identifier for the group of events associated with the streaming LLM event. |
+| `parentId` | String      | No       | null    | The unique identifier of the parent event, if applicable.               |
+| `runId`    | String      | Yes      |         | The unique identifier of the LLM run.                                   |
+| `frame`    | StreamFrame | Yes      |         | The frame received from the stream.                                     |
 
 #### LLMStreamingFailedEvent
 
 Represents the occurrence of an error during an LLM streaming call. Includes the following fields:
 
-| Name    | Data type    | Required | Default | Description                                                                                                 |
-|---------|--------------|----------|---------|-------------------------------------------------------------------------------------------------------------|
-| `runId` | String       | Yes      |         | The unique identifier of the LLM run.                                                                       |
-| `callId`| String       | Yes      |         | The unique identifier of the LLM Call, correlating the related events.                                      |
-| `error` | AIAgentError | Yes      |         | The specific error that occurred during streaming. For more information, see [AIAgentError](#aiagenterror). |
+| Name       | Data type    | Required | Default | Description                                                                                                 |
+|------------|--------------|----------|---------|-------------------------------------------------------------------------------------------------------------|
+| `id`       | String       | Yes      |         | A unique identifier for the group of events associated with the streaming LLM event.                        |
+| `parentId` | String       | No       | null    | The unique identifier of the parent event, if applicable.                                                   |
+| `runId`    | String       | Yes      |         | The unique identifier of the LLM run.                                                                       |
+| `error`    | AIAgentError | Yes      |         | The specific error that occurred during streaming. For more information, see [AIAgentError](#aiagenterror). |
 
 #### LLMStreamingCompletedEvent
 
 Represents the end of an LLM streaming call. Includes the following fields:
 
-| Name     | Data type    | Required | Default | Description                                                             |
-|----------|--------------|----------|---------|-------------------------------------------------------------------------|
-| `runId`  | String       | Yes      |         | The unique identifier of the LLM run.                                   |
-| `callId` | String       | Yes      |         | The unique identifier of the LLM Call, correlating the related events.  |
-| `prompt` | Prompt       | Yes      |         | The prompt that is sent to the model.                                   |
-| `model`  | ModelInfo    | Yes      |         | The model information. See [ModelInfo](#modelinfo).                     |
-| `tools`  | List<String> | Yes      |         | The list of tools that the model can call.                              |
+| Name       | Data type    | Required | Default | Description                                                             |
+|------------|--------------|----------|---------|-------------------------------------------------------------------------|
+| `id`       | String       | Yes      |         | A unique identifier for the group of events associated with the streaming LLM event. |
+| `parentId` | String       | No       | null    | The unique identifier of the parent event, if applicable.               |
+| `runId`    | String       | Yes      |         | The unique identifier of the LLM run.                                   |
+| `prompt`   | Prompt       | Yes      |         | The prompt that is sent to the model.                                   |
+| `model`    | ModelInfo    | Yes      |         | The model information. See [ModelInfo](#modelinfo).                     |
+| `tools`    | List<String> | Yes      |         | The list of tools that the model can call.                              |
 
 ### Tool execution events
 
@@ -271,24 +303,28 @@ Represents the end of an LLM streaming call. Includes the following fields:
 
 Represents the event of a model calling a tool. Includes the following fields:
 
-| Name          | Data type   | Required | Default | Description                                             |
-|---------------|-------------|----------|---------|---------------------------------------------------------|
-| `runId`       | String      | Yes      |         | The unique identifier of the strategy/agent run.        |
-| `toolCallId`  | String      | No       | null    | The identifier of the tool call, if available.          |
-| `toolName`    | String      | Yes      |         | The name of the tool.                                   |
-| `toolArgs`    | JsonObject  | Yes      |         | The arguments that are provided to the tool.            |
+| Name          | Data type   | Required | Default | Description                                                          |
+|---------------|-------------|----------|---------|----------------------------------------------------------------------|
+| `id`          | String      | Yes      |         | A unique identifier for the group of events associated with the tool call events. |
+| `parentId`    | String      | No       | null    | The unique identifier of the parent event, if applicable.            |
+| `runId`       | String      | Yes      |         | The unique identifier of the strategy/agent run.                     |
+| `toolCallId`  | String      | No       | null    | The identifier of the tool call, if available.                       |
+| `toolName`    | String      | Yes      |         | The name of the tool.                                                |
+| `toolArgs`    | JsonObject  | Yes      |         | The arguments that are provided to the tool.                         |
 
 #### ToolValidationFailedEvent
 
 Represents the occurrence of a validation error during a tool call. Includes the following fields:
 
-| Name          | Data type   | Required | Default | Description                                             |
-|---------------|-------------|----------|---------|---------------------------------------------------------|
-| `runId`       | String      | Yes      |         | The unique identifier of the strategy/agent run.        |
-| `toolCallId`  | String      | No       | null    | The identifier of the tool call, if available.          |
-| `toolName`    | String      | Yes      |         | The name of the tool for which validation failed.       |
-| `toolArgs`    | JsonObject  | Yes      |         | The arguments that are provided to the tool.            |
-| `error`       | String      | Yes      |         | The validation error message.                           |
+| Name          | Data type   | Required | Default | Description                                                          |
+|---------------|-------------|----------|---------|----------------------------------------------------------------------|
+| `id`          | String      | Yes      |         | A unique identifier for the group of events associated with the tool call events. |
+| `parentId`    | String      | No       | null    | The unique identifier of the parent event, if applicable.            |
+| `runId`       | String      | Yes      |         | The unique identifier of the strategy/agent run.                     |
+| `toolCallId`  | String      | No       | null    | The identifier of the tool call, if available.                       |
+| `toolName`    | String      | Yes      |         | The name of the tool for which validation failed.                    |
+| `toolArgs`    | JsonObject  | Yes      |         | The arguments that are provided to the tool.                         |
+| `error`       | String      | Yes      |         | The validation error message.                                        |
 
 #### ToolExecutionFailedEvent
 
@@ -296,6 +332,8 @@ Represents a failure to execute a tool. Includes the following fields:
 
 | Name          | Data type    | Required | Default | Description                                                                                                             |
 |---------------|--------------|----------|---------|-------------------------------------------------------------------------------------------------------------------------|
+| `id`          | String       | Yes      |         | A unique identifier for the group of events associated with the tool call events.                                       |
+| `parentId`    | String       | No       | null    | The unique identifier of the parent event, if applicable.                                                               |
 | `runId`       | String       | Yes      |         | The unique identifier of the strategy/agent run.                                                                        |
 | `toolCallId`  | String       | No       | null    | The identifier of the tool call, if available.                                                                          |
 | `toolName`    | String       | Yes      |         | The name of the tool.                                                                                                   |
@@ -306,13 +344,15 @@ Represents a failure to execute a tool. Includes the following fields:
 
 Represents a successful tool call with the return of a result. Includes the following fields:
 
-| Name          | Data type  | Required | Default | Description                              |
-|---------------|------------|----------|---------|------------------------------------------|
-| `runId`       | String     | Yes      |         | The unique identifier of the run.        |
-| `toolCallId`  | String     | No       | null    | The identifier of the tool call.         |
-| `toolName`    | String     | Yes      |         | The name of the tool.                    |
-| `toolArgs`    | JsonObject | Yes      |         | The arguments provided to the tool.      |
-| `result`      | String     | Yes      |         | The result of the tool call (nullable).  |
+| Name          | Data type  | Required | Default | Description                                                          |
+|---------------|------------|----------|---------|----------------------------------------------------------------------|
+| `id`          | String     | Yes      |         | A unique identifier for the group of events associated with the tool call events. |
+| `parentId`    | String     | No       | null    | The unique identifier of the parent event, if applicable.            |
+| `runId`       | String     | Yes      |         | The unique identifier of the run.                                    |
+| `toolCallId`  | String     | No       | null    | The identifier of the tool call.                                     |
+| `toolName`    | String     | Yes      |         | The name of the tool.                                                |
+| `toolArgs`    | JsonObject | Yes      |         | The arguments provided to the tool.                                  |
+| `result`      | String     | Yes      |         | The result of the tool call (nullable).                              |
 
 ## FAQ and troubleshooting
 

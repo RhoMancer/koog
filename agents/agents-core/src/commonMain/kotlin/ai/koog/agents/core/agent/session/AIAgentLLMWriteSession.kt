@@ -99,7 +99,7 @@ public class AIAgentLLMWriteSession internal constructor(
      *
      * @param toolName The name of the tool to be executed.
      * @param args The arguments required to execute the tool.
-     * @return A [SafeTool.Result] containing the result of the tool execution, which is a subtype of [ToolResult].
+     * @return A [SafeTool.Result] containing the result of the tool execution, which is a subtype of [ai.koog.agents.core.tools.ToolResult].
      */
     public suspend inline fun <reified TArgs> callTool(
         toolName: String,
@@ -489,7 +489,7 @@ public class AIAgentLLMWriteSession internal constructor(
      * in constructing the prompt for the language model request.
      * @return a flow of `StreamingFrame` objects that streams the responses from the language model.
      */
-    public fun requestLLMStreaming(definition: StructureDefinition? = null): Flow<StreamFrame> {
+    public suspend fun requestLLMStreaming(definition: StructureDefinition? = null): Flow<StreamFrame> {
         if (definition != null) {
             val prompt = prompt(prompt, clock) {
                 user {
