@@ -45,6 +45,7 @@ val agent = AIAgent(
         setVerbose(true) // Send full strings instead of HIDDEN placeholders
         addLangfuseExporter(
             traceAttributes = listOf(
+                CustomAttribute("custom.trace_id", System.getenv("LANGFUSE_TRACE_ID") ?: ""),
                 CustomAttribute("langfuse.session.id", System.getenv("LANGFUSE_SESSION_ID") ?: ""),
             )
         )
