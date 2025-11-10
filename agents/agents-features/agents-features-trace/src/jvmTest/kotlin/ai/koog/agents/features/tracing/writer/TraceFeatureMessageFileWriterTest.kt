@@ -1,5 +1,6 @@
 package ai.koog.agents.features.tracing.writer
 
+import ai.koog.agents.core.agent.context.AgentExecutionInfo
 import ai.koog.agents.core.annotation.InternalAgentsApi
 import ai.koog.agents.core.dsl.builder.forwardTo
 import ai.koog.agents.core.dsl.builder.strategy
@@ -235,10 +236,12 @@ class TraceFeatureMessageFileWriterTest {
                             userMessage(content = userPrompt),
                             toolCallMessage(dummyTool.name, content = """{"dummy":"test"}"""),
                             receivedToolResult(
-                                "0",
-                                dummyTool.name,
-                                dummyTool.result,
-                                dummyTool.encodeResult(dummyTool.result)
+                                toolCallId = "0",
+                                toolName = dummyTool.name,
+                                toolArgs = dummyTool.encodeArgs(DummyTool.Args("test")),
+                                toolDescription = dummyTool.description,
+                                content = dummyTool.result,
+                                result = dummyTool.encodeResult(dummyTool.result)
                             ).toMessage(clock = testClock)
                         )
                     ).traceString
@@ -249,10 +252,12 @@ class TraceFeatureMessageFileWriterTest {
                             userMessage(content = userPrompt),
                             toolCallMessage(dummyTool.name, content = """{"dummy":"test"}"""),
                             receivedToolResult(
-                                "0",
-                                dummyTool.name,
-                                dummyTool.result,
-                                dummyTool.encodeResult(dummyTool.result)
+                                toolCallId = "0",
+                                toolName = dummyTool.name,
+                                toolArgs = dummyTool.encodeArgs(DummyTool.Args("test")),
+                                toolDescription = dummyTool.description,
+                                content = dummyTool.result,
+                                result = dummyTool.encodeResult(dummyTool.result)
                             ).toMessage(clock = testClock)
                         )
                     ).traceString
@@ -292,12 +297,17 @@ class TraceFeatureMessageFileWriterTest {
             }
         }
 
+        val id = "test-event-id"
         val agentId = "test-agent-id"
         val runId = "test-run-id"
 
         val messagesToProcess = listOf(
             FeatureStringMessage("Test string message"),
-            AgentStartingEvent(agentId = agentId, runId = runId)
+            AgentStartingEvent(
+                executionInfo = AgentExecutionInfo(id),
+                agentId = agentId,
+                runId = runId
+            )
         )
 
         val expectedMessages = listOf(
@@ -520,10 +530,12 @@ class TraceFeatureMessageFileWriterTest {
                             userMessage(content = userPrompt),
                             toolCallMessage(dummyTool.name, content = """{"dummy":"test"}"""),
                             receivedToolResult(
-                                "0",
-                                dummyTool.name,
-                                dummyTool.result,
-                                dummyTool.encodeResult(dummyTool.result)
+                                toolCallId = "0",
+                                toolName = dummyTool.name,
+                                toolArgs = dummyTool.encodeArgs(DummyTool.Args("test")),
+                                toolDescription = dummyTool.description,
+                                content = dummyTool.result,
+                                result = dummyTool.encodeResult(dummyTool.result)
                             ).toMessage(clock = testClock)
                         )
                     ).traceString
@@ -534,10 +546,12 @@ class TraceFeatureMessageFileWriterTest {
                             userMessage(content = userPrompt),
                             toolCallMessage(dummyTool.name, content = """{"dummy":"test"}"""),
                             receivedToolResult(
-                                "0",
-                                dummyTool.name,
-                                dummyTool.result,
-                                dummyTool.encodeResult(dummyTool.result)
+                                toolCallId = "0",
+                                toolName = dummyTool.name,
+                                toolArgs = dummyTool.encodeArgs(DummyTool.Args("test")),
+                                toolDescription = dummyTool.description,
+                                content = dummyTool.result,
+                                result = dummyTool.encodeResult(dummyTool.result)
                             ).toMessage(clock = testClock)
                         )
                     ).traceString

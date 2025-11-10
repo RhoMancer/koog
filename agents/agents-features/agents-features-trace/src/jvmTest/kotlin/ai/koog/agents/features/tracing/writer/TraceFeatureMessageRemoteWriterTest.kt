@@ -1,5 +1,6 @@
 package ai.koog.agents.features.tracing.writer
 
+import ai.koog.agents.core.agent.context.AgentExecutionInfo
 import ai.koog.agents.core.annotation.InternalAgentsApi
 import ai.koog.agents.core.dsl.builder.forwardTo
 import ai.koog.agents.core.dsl.builder.strategy
@@ -22,6 +23,7 @@ import ai.koog.agents.core.feature.model.events.StrategyCompletedEvent
 import ai.koog.agents.core.feature.model.events.StrategyEventGraph
 import ai.koog.agents.core.feature.model.events.StrategyEventGraphEdge
 import ai.koog.agents.core.feature.model.events.StrategyEventGraphNode
+import ai.koog.agents.core.feature.model.events.StrategyStartingEvent
 import ai.koog.agents.core.feature.model.events.ToolCallCompletedEvent
 import ai.koog.agents.core.feature.model.events.ToolCallStartingEvent
 import ai.koog.agents.core.feature.remote.client.FeatureMessageRemoteClient
@@ -39,6 +41,9 @@ import ai.koog.agents.features.tracing.mock.systemMessage
 import ai.koog.agents.features.tracing.mock.testClock
 import ai.koog.agents.features.tracing.mock.toolCallMessage
 import ai.koog.agents.features.tracing.mock.userMessage
+import ai.koog.agents.testing.feature.message.findEvents
+import ai.koog.agents.testing.feature.message.singleEvent
+import ai.koog.agents.testing.feature.message.singleNodeEvent
 import ai.koog.agents.testing.network.NetUtil.findAvailablePort
 import ai.koog.agents.testing.tools.DummyTool
 import ai.koog.agents.testing.tools.getMockExecutor
@@ -197,7 +202,14 @@ class TraceFeatureMessageRemoteWriterTest {
             messages = expectedPrompt.messages + listOf(
                 userMessage(content = userPrompt),
                 toolCallMessage(dummyTool.name, content = """{"dummy":"test"}"""),
-                receivedToolResult("0", dummyTool.name, dummyTool.result, dummyTool.encodeResult(dummyTool.result)).toMessage(clock = testClock)
+                receivedToolResult(
+                    toolCallId = "0",
+                    toolName = dummyTool.name,
+                    toolArgs = dummyTool.encodeArgs(DummyTool.Args("test")),
+                    toolDescription = dummyTool.description,
+                    content = dummyTool.encodeResultToString(dummyTool.result),
+                    result = dummyTool.encodeResult(dummyTool.result)
+                ).toMessage(clock = testClock)
             )
         )
 
@@ -206,7 +218,8 @@ class TraceFeatureMessageRemoteWriterTest {
         val serverConfig = DefaultServerConnectionConfig(host = HOST, port = port, awaitInitialConnection = true, awaitInitialConnectionTimeout = defaultClientServerTimeout)
         val clientConfig = DefaultClientConnectionConfig(host = HOST, port = port, protocol = URLProtocol.HTTP)
 
-        val actualEvents = mutableListOf<DefinedFeatureEvent>()
+        val expectedClientEvents = mutableListOf<FeatureMessage>()
+        val actualClientEvents = mutableListOf<FeatureMessage>()
 
         // Server
         val serverJob = launch {
@@ -260,7 +273,6 @@ class TraceFeatureMessageRemoteWriterTest {
                 scope = this,
                 baseClient = testBaseClient
             ).use { client ->
-
                 var runId = ""
                 val expectedEventsCount = 21
 
@@ -270,10 +282,10 @@ class TraceFeatureMessageRemoteWriterTest {
                             runId = event.runId
                         }
 
-                        actualEvents.add(event as DefinedFeatureEvent)
-                        logger.info { "[${actualEvents.size}/$expectedEventsCount] Received event: $event" }
+                        actualClientEvents.add(event as DefinedFeatureEvent)
+                        logger.info { "[${actualClientEvents.size}] Received event: $event" }
 
-                        if (actualEvents.size >= expectedEventsCount) {
+                        if (event is AgentClosingEvent) {
                             cancel()
                         }
                     }
@@ -284,263 +296,286 @@ class TraceFeatureMessageRemoteWriterTest {
 
                 val llmCallGraphNode = StrategyEventGraphNode(id = nodeSendLLMCallName, name = nodeSendLLMCallName)
                 val executeToolGraphNode = StrategyEventGraphNode(id = nodeExecuteToolName, name = nodeExecuteToolName)
-                val sendToolResultGraphNode = StrategyEventGraphNode(id = nodeSendToolResultName, name = nodeSendToolResultName)
+                val sendToolResultGraphNode =
+                    StrategyEventGraphNode(id = nodeSendToolResultName, name = nodeSendToolResultName)
 
                 val startGraphNode = StrategyEventGraphNode(id = "__start__", name = "__start__")
                 val finishGraphNode = StrategyEventGraphNode(id = "__finish__", name = "__finish__")
 
-                val callIds = actualEvents.filterIsInstance<LLMCallStartingEvent>().map { it.callId }
-                assertEquals(
-                    2,
-                    callIds.size,
-                    "Expected 2 LLMCallStartingEvent, got ${callIds.size}"
-                )
+                // Expected events
+                val actualAgentClosingEvent = actualClientEvents.singleEvent<AgentClosingEvent>()
+                val actualAgentStartingEvent = actualClientEvents.singleEvent<AgentStartingEvent>()
+                val actualStrategyStartingEvent = actualClientEvents.singleEvent<StrategyStartingEvent>()
+
+                val actualNodeStartEvent = actualClientEvents.singleNodeEvent("__start__")
+                val actualNodeLLMCallEvent = actualClientEvents.singleNodeEvent("test-llm-call")
+                val actualNodeToolCallEvent = actualClientEvents.singleNodeEvent("test-tool-call")
+                val actualNodeSendToolResultEvent = actualClientEvents.singleNodeEvent("test-node-llm-send-tool-result")
+                val actualNodeFinishEvent = actualClientEvents.singleNodeEvent("__finish__")
+
+                val actualLLMCallStartingEvents = actualClientEvents.findEvents<LLMCallStartingEvent>()
+                val actualLLMCallEvent = actualLLMCallStartingEvents[0]
+                val actualLLMSendToolResultEvent = actualLLMCallStartingEvents[1]
+
+                val actualToolCallStartingEvent = actualClientEvents.singleEvent<ToolCallStartingEvent>()
 
                 // Correct run id will be set after the 'collect events job' is finished.
-                val expectedEvents = listOf(
-                    AgentStartingEvent(
-                        agentId = agentId,
-                        runId = runId,
-                        timestamp = testClock.now().toEpochMilliseconds()
-                    ),
-                    GraphStrategyStartingEvent(
-                        runId = runId,
-                        strategyName = strategyName,
-                        graph = StrategyEventGraph(
-                            nodes = listOf(
-                                startGraphNode,
-                                llmCallGraphNode,
-                                executeToolGraphNode,
-                                sendToolResultGraphNode,
-                                finishGraphNode,
+                expectedClientEvents.addAll(
+                    listOf(
+                        AgentStartingEvent(
+                            executionInfo = actualAgentStartingEvent.executionInfo,
+                            agentId = agentId,
+                            runId = runId,
+                            timestamp = testClock.now().toEpochMilliseconds()
+                        ),
+                        GraphStrategyStartingEvent(
+                            executionInfo = actualAgentStartingEvent.executionInfo,
+                            runId = runId,
+                            strategyName = strategyName,
+                            graph = StrategyEventGraph(
+                                nodes = listOf(
+                                    startGraphNode,
+                                    llmCallGraphNode,
+                                    executeToolGraphNode,
+                                    sendToolResultGraphNode,
+                                    finishGraphNode,
+                                ),
+                                edges = listOf(
+                                    StrategyEventGraphEdge(sourceNode = startGraphNode, targetNode = llmCallGraphNode),
+                                    StrategyEventGraphEdge(
+                                        sourceNode = llmCallGraphNode,
+                                        targetNode = executeToolGraphNode
+                                    ),
+                                    StrategyEventGraphEdge(sourceNode = llmCallGraphNode, targetNode = finishGraphNode),
+                                    StrategyEventGraphEdge(
+                                        sourceNode = executeToolGraphNode,
+                                        targetNode = sendToolResultGraphNode
+                                    ),
+                                    StrategyEventGraphEdge(
+                                        sourceNode = sendToolResultGraphNode,
+                                        targetNode = finishGraphNode
+                                    ),
+                                    StrategyEventGraphEdge(
+                                        sourceNode = sendToolResultGraphNode,
+                                        targetNode = executeToolGraphNode
+                                    )
+                                )
                             ),
-                            edges = listOf(
-                                StrategyEventGraphEdge(sourceNode = startGraphNode, targetNode = llmCallGraphNode),
-                                StrategyEventGraphEdge(sourceNode = llmCallGraphNode, targetNode = executeToolGraphNode),
-                                StrategyEventGraphEdge(sourceNode = llmCallGraphNode, targetNode = finishGraphNode),
-                                StrategyEventGraphEdge(
-                                    sourceNode = executeToolGraphNode,
-                                    targetNode = sendToolResultGraphNode
-                                ),
-                                StrategyEventGraphEdge(
-                                    sourceNode = sendToolResultGraphNode,
-                                    targetNode = finishGraphNode
-                                ),
-                                StrategyEventGraphEdge(
-                                    sourceNode = sendToolResultGraphNode,
-                                    targetNode = executeToolGraphNode
+                            timestamp = testClock.now().toEpochMilliseconds()
+                        ),
+                        NodeExecutionStartingEvent(
+                            executionInfo = actualAgentStartingEvent.executionInfo,
+                            runId = runId,
+                            nodeName = "__start__",
+                            input = @OptIn(InternalAgentsApi::class)
+                            SerializationUtils.encodeDataToJsonElementOrNull(
+                                data = userPrompt,
+                                dataType = typeOf<String>()
+                            ),
+                            timestamp = testClock.now().toEpochMilliseconds()
+                        ),
+                        NodeExecutionCompletedEvent(
+                            executionInfo = actualAgentStartingEvent.executionInfo,
+                            runId = runId,
+                            nodeName = "__start__",
+                            input = @OptIn(InternalAgentsApi::class)
+                            SerializationUtils.encodeDataToJsonElementOrNull(
+                                data = userPrompt,
+                                dataType = typeOf<String>()
+                            ),
+                            output = @OptIn(InternalAgentsApi::class)
+                            SerializationUtils.encodeDataToJsonElementOrNull(
+                                data = userPrompt,
+                                dataType = typeOf<String>()
+                            ),
+                            timestamp = testClock.now().toEpochMilliseconds()
+                        ),
+                        NodeExecutionStartingEvent(
+                            executionInfo = actualAgentStartingEvent.executionInfo,
+                            runId = runId,
+                            nodeName = "test-llm-call",
+                            input = @OptIn(InternalAgentsApi::class)
+                            SerializationUtils.encodeDataToJsonElementOrNull(
+                                data = userPrompt,
+                                dataType = typeOf<String>()
+                            ),
+                            timestamp = testClock.now().toEpochMilliseconds()
+                        ),
+                        LLMCallStartingEvent(
+                            executionInfo = actualAgentStartingEvent.executionInfo,
+                            runId = runId,
+                            prompt = expectedLLMCallPrompt,
+                            model = testModel.toModelInfo(),
+                            tools = listOf(dummyTool.name),
+                            timestamp = testClock.now().toEpochMilliseconds()
+                        ),
+                        LLMCallCompletedEvent(
+                            executionInfo = actualAgentStartingEvent.executionInfo,
+                            runId = runId,
+                            prompt = expectedLLMCallPrompt,
+                            model = testModel.toModelInfo(),
+                            responses = listOf(toolCallMessage(dummyTool.name, content = """{"dummy":"test"}""")),
+                            timestamp = testClock.now().toEpochMilliseconds()
+                        ),
+                        NodeExecutionCompletedEvent(
+                            executionInfo = actualAgentStartingEvent.executionInfo,
+                            runId = runId,
+                            nodeName = "test-llm-call",
+                            // TODO: KG-485. Update to include serialized [ReceivedToolResult] when it became a serializable type.
+                            input = JsonPrimitive(userPrompt),
+                            output = @OptIn(InternalAgentsApi::class)
+                            SerializationUtils.encodeDataToJsonElementOrNull(
+                                data = toolCallMessage(dummyTool.name, content = """{"dummy":"test"}"""),
+                                dataType = typeOf<Message>()
+                            ),
+                            timestamp = testClock.now().toEpochMilliseconds()
+                        ),
+                        NodeExecutionStartingEvent(
+                            executionInfo = actualAgentStartingEvent.executionInfo,
+                            runId = runId,
+                            nodeName = "test-tool-call",
+                            input = @OptIn(InternalAgentsApi::class)
+                            SerializationUtils.encodeDataToJsonElementOrNull(
+                                data = toolCallMessage(dummyTool.name, content = """{"dummy":"test"}"""),
+                                dataType = typeOf<Message.Tool.Call>()
+                            ),
+                            timestamp = testClock.now().toEpochMilliseconds()
+                        ),
+                        ToolCallStartingEvent(
+                            executionInfo = actualAgentStartingEvent.executionInfo,
+                            runId = runId,
+                            toolCallId = "0",
+                            toolName = dummyTool.name,
+                            toolArgs = dummyTool.encodeArgs(DummyTool.Args("test")),
+                            timestamp = testClock.now().toEpochMilliseconds()
+                        ),
+                        ToolCallCompletedEvent(
+                            executionInfo = actualAgentStartingEvent.executionInfo,
+                            runId = runId,
+                            toolCallId = "0",
+                            toolName = dummyTool.name,
+                            toolArgs = dummyTool.encodeArgs(DummyTool.Args("test")),
+                            toolDescription = dummyTool.description,
+                            result = dummyTool.encodeResult(dummyTool.result),
+                            timestamp = testClock.now().toEpochMilliseconds()
+                        ),
+                        NodeExecutionCompletedEvent(
+                            executionInfo = actualAgentStartingEvent.executionInfo,
+                            runId = runId,
+                            nodeName = "test-tool-call",
+                            input = @OptIn(InternalAgentsApi::class)
+                            SerializationUtils.encodeDataToJsonElementOrNull(
+                                data = toolCallMessage(dummyTool.name, content = """{"dummy":"test"}"""),
+                                dataType = typeOf<Message.Tool.Call>()
+                            ),
+                            timestamp = testClock.now().toEpochMilliseconds(),
+                            // Tool result is wrapped into an object with id, tool, content, and result fields
+                            output = kotlinx.serialization.json.JsonObject(
+                                mapOf(
+                                    "id" to JsonPrimitive("0"),
+                                    "tool" to JsonPrimitive(dummyTool.name),
+                                    "content" to JsonPrimitive(dummyTool.result),
+                                    "result" to dummyTool.encodeResult(dummyTool.result)
                                 )
                             )
                         ),
-                        timestamp = testClock.now().toEpochMilliseconds()
-                    ),
-                    NodeExecutionStartingEvent(
-                        runId = runId,
-                        nodeName = "__start__",
-                        input = @OptIn(InternalAgentsApi::class)
-                        SerializationUtils.encodeDataToJsonElementOrNull(
-                            data = userPrompt,
-                            dataType = typeOf<String>()
+                        NodeExecutionStartingEvent(
+                            executionInfo = actualAgentStartingEvent.executionInfo,
+                            runId = runId,
+                            nodeName = "test-node-llm-send-tool-result",
+                            input = kotlinx.serialization.json.JsonObject(
+                                mapOf(
+                                    "id" to JsonPrimitive("0"),
+                                    "tool" to JsonPrimitive(dummyTool.name),
+                                    "content" to JsonPrimitive(dummyTool.result),
+                                    "result" to dummyTool.encodeResult(dummyTool.result)
+                                )
+                            ),
+                            timestamp = testClock.now().toEpochMilliseconds()
                         ),
-                        timestamp = testClock.now().toEpochMilliseconds()
-                    ),
-                    NodeExecutionCompletedEvent(
-                        runId = runId,
-                        nodeName = "__start__",
-                        input = @OptIn(InternalAgentsApi::class)
-                        SerializationUtils.encodeDataToJsonElementOrNull(
-                            data = userPrompt,
-                            dataType = typeOf<String>()
+                        LLMCallStartingEvent(
+                            executionInfo = actualAgentStartingEvent.executionInfo,
+                            runId = runId,
+                            prompt = expectedLLMCallWithToolsPrompt,
+                            model = testModel.toModelInfo(),
+                            tools = listOf(dummyTool.name),
+                            timestamp = testClock.now().toEpochMilliseconds()
                         ),
-                        output = @OptIn(InternalAgentsApi::class)
-                        SerializationUtils.encodeDataToJsonElementOrNull(
-                            data = userPrompt,
-                            dataType = typeOf<String>()
+                        LLMCallCompletedEvent(
+                            executionInfo = actualAgentStartingEvent.executionInfo,
+                            runId = runId,
+                            prompt = expectedLLMCallWithToolsPrompt,
+                            model = testModel.toModelInfo(),
+                            responses = listOf(assistantMessage(mockResponse)),
+                            timestamp = testClock.now().toEpochMilliseconds()
                         ),
-                        timestamp = testClock.now().toEpochMilliseconds()
-                    ),
-                    NodeExecutionStartingEvent(
-                        runId = runId,
-                        nodeName = "test-llm-call",
-                        input = @OptIn(InternalAgentsApi::class)
-                        SerializationUtils.encodeDataToJsonElementOrNull(
-                            data = userPrompt,
-                            dataType = typeOf<String>()
+                        NodeExecutionCompletedEvent(
+                            executionInfo = actualAgentStartingEvent.executionInfo,
+                            runId = runId,
+                            nodeName = "test-node-llm-send-tool-result",
+                            input = kotlinx.serialization.json.JsonObject(
+                                mapOf(
+                                    "id" to JsonPrimitive("0"),
+                                    "tool" to JsonPrimitive(dummyTool.name),
+                                    "content" to JsonPrimitive(dummyTool.result),
+                                    "result" to dummyTool.encodeResult(dummyTool.result)
+                                )
+                            ),
+                            output = @OptIn(InternalAgentsApi::class)
+                            SerializationUtils.encodeDataToJsonElementOrNull(
+                                data = assistantMessage(mockResponse),
+                                dataType = typeOf<Message>()
+                            ),
+                            timestamp = testClock.now().toEpochMilliseconds()
                         ),
-                        timestamp = testClock.now().toEpochMilliseconds()
-                    ),
-                    LLMCallStartingEvent(
-                        runId = runId,
-                        callId = callIds[0],
-                        prompt = expectedLLMCallPrompt,
-                        model = testModel.toModelInfo(),
-                        tools = listOf(dummyTool.name),
-                        timestamp = testClock.now().toEpochMilliseconds()
-                    ),
-                    LLMCallCompletedEvent(
-                        runId = runId,
-                        callId = callIds[0],
-                        prompt = expectedLLMCallPrompt,
-                        model = testModel.toModelInfo(),
-                        responses = listOf(toolCallMessage(dummyTool.name, content = """{"dummy":"test"}""")),
-                        timestamp = testClock.now().toEpochMilliseconds()
-                    ),
-                    NodeExecutionCompletedEvent(
-                        runId = runId,
-                        nodeName = "test-llm-call",
-                        // TODO: KG-485. Update to include serialized [ReceivedToolResult] when it became a serializable type.
-                        input = JsonPrimitive(userPrompt),
-                        output = @OptIn(InternalAgentsApi::class)
-                        SerializationUtils.encodeDataToJsonElementOrNull(
-                            data = toolCallMessage(dummyTool.name, content = """{"dummy":"test"}"""),
-                            dataType = typeOf<Message>()
+                        NodeExecutionStartingEvent(
+                            executionInfo = actualAgentStartingEvent.executionInfo,
+                            runId = runId,
+                            nodeName = "__finish__",
+                            input = @OptIn(InternalAgentsApi::class)
+                            SerializationUtils.encodeDataToJsonElementOrNull(
+                                data = mockResponse,
+                                dataType = typeOf<String>()
+                            ),
+                            timestamp = testClock.now().toEpochMilliseconds()
                         ),
-                        timestamp = testClock.now().toEpochMilliseconds()
-                    ),
-                    NodeExecutionStartingEvent(
-                        runId = runId,
-                        nodeName = "test-tool-call",
-                        input = @OptIn(InternalAgentsApi::class)
-                        SerializationUtils.encodeDataToJsonElementOrNull(
-                            data = toolCallMessage(dummyTool.name, content = """{"dummy":"test"}"""),
-                            dataType = typeOf<Message.Tool.Call>()
+                        NodeExecutionCompletedEvent(
+                            executionInfo = actualAgentStartingEvent.executionInfo,
+                            runId = runId,
+                            nodeName = "__finish__",
+                            input = @OptIn(InternalAgentsApi::class)
+                            SerializationUtils.encodeDataToJsonElementOrNull(
+                                data = mockResponse,
+                                dataType = typeOf<String>()
+                            ),
+                            output = @OptIn(InternalAgentsApi::class)
+                            SerializationUtils.encodeDataToJsonElementOrNull(
+                                data = mockResponse,
+                                dataType = typeOf<String>()
+                            ),
+                            timestamp = testClock.now().toEpochMilliseconds()
                         ),
-                        timestamp = testClock.now().toEpochMilliseconds()
-                    ),
-                    ToolCallStartingEvent(
-                        runId = runId,
-                        toolCallId = "0",
-                        toolName = dummyTool.name,
-                        toolArgs = dummyTool.encodeArgs(DummyTool.Args("test")),
-                        timestamp = testClock.now().toEpochMilliseconds()
-                    ),
-                    ToolCallCompletedEvent(
-                        runId = runId,
-                        toolCallId = "0",
-                        toolName = dummyTool.name,
-                        toolArgs = dummyTool.encodeArgs(DummyTool.Args("test")),
-                        result = dummyTool.result,
-                        timestamp = testClock.now().toEpochMilliseconds()
-                    ),
-                    NodeExecutionCompletedEvent(
-                        runId = runId,
-                        nodeName = "test-tool-call",
-                        input = @OptIn(InternalAgentsApi::class)
-                        SerializationUtils.encodeDataToJsonElementOrNull(
-                            data = toolCallMessage(dummyTool.name, content = """{"dummy":"test"}"""),
-                            dataType = typeOf<Message.Tool.Call>()
+                        StrategyCompletedEvent(
+                            executionInfo = actualAgentStartingEvent.executionInfo,
+                            runId = runId,
+                            strategyName = strategyName,
+                            result = mockResponse,
+                            timestamp = testClock.now().toEpochMilliseconds()
                         ),
-                        timestamp = testClock.now().toEpochMilliseconds(),
-                        // Tool result is wrapped into an object with id, tool, content, and result fields
-                        output = kotlinx.serialization.json.JsonObject(
-                            mapOf(
-                                "id" to JsonPrimitive("0"),
-                                "tool" to JsonPrimitive(dummyTool.name),
-                                "content" to JsonPrimitive(dummyTool.result),
-                                "result" to dummyTool.encodeResult(dummyTool.result)
-                            )
+                        AgentCompletedEvent(
+                            executionInfo = actualAgentStartingEvent.executionInfo,
+                            agentId = agentId,
+                            runId = runId,
+                            result = mockResponse,
+                            timestamp = testClock.now().toEpochMilliseconds()
+                        ),
+                        AgentClosingEvent(
+                            executionInfo = actualAgentStartingEvent.executionInfo,
+                            agentId = agentId,
+                            timestamp = testClock.now().toEpochMilliseconds()
                         )
-                    ),
-                    NodeExecutionStartingEvent(
-                        runId = runId,
-                        nodeName = "test-node-llm-send-tool-result",
-                        input = kotlinx.serialization.json.JsonObject(
-                            mapOf(
-                                "id" to JsonPrimitive("0"),
-                                "tool" to JsonPrimitive(dummyTool.name),
-                                "content" to JsonPrimitive(dummyTool.result),
-                                "result" to dummyTool.encodeResult(dummyTool.result)
-                            )
-                        ),
-                        timestamp = testClock.now().toEpochMilliseconds()
-                    ),
-                    LLMCallStartingEvent(
-                        runId = runId,
-                        callId = callIds[1],
-                        prompt = expectedLLMCallWithToolsPrompt,
-                        model = testModel.toModelInfo(),
-                        tools = listOf(dummyTool.name),
-                        timestamp = testClock.now().toEpochMilliseconds()
-                    ),
-                    LLMCallCompletedEvent(
-                        runId = runId,
-                        callId = callIds[1],
-                        prompt = expectedLLMCallWithToolsPrompt,
-                        model = testModel.toModelInfo(),
-                        responses = listOf(assistantMessage(mockResponse)),
-                        timestamp = testClock.now().toEpochMilliseconds()
-                    ),
-                    NodeExecutionCompletedEvent(
-                        runId = runId,
-                        nodeName = "test-node-llm-send-tool-result",
-                        input = kotlinx.serialization.json.JsonObject(
-                            mapOf(
-                                "id" to JsonPrimitive("0"),
-                                "tool" to JsonPrimitive(dummyTool.name),
-                                "content" to JsonPrimitive(dummyTool.result),
-                                "result" to dummyTool.encodeResult(dummyTool.result)
-                            )
-                        ),
-                        output = @OptIn(InternalAgentsApi::class)
-                        SerializationUtils.encodeDataToJsonElementOrNull(
-                            data = assistantMessage(mockResponse),
-                            dataType = typeOf<Message>()
-                        ),
-                        timestamp = testClock.now().toEpochMilliseconds()
-                    ),
-                    NodeExecutionStartingEvent(
-                        runId = runId,
-                        nodeName = "__finish__",
-                        input = @OptIn(InternalAgentsApi::class)
-                        SerializationUtils.encodeDataToJsonElementOrNull(
-                            data = mockResponse,
-                            dataType = typeOf<String>()
-                        ),
-                        timestamp = testClock.now().toEpochMilliseconds()
-                    ),
-                    NodeExecutionCompletedEvent(
-                        runId = runId,
-                        nodeName = "__finish__",
-                        input = @OptIn(InternalAgentsApi::class)
-                        SerializationUtils.encodeDataToJsonElementOrNull(
-                            data = mockResponse,
-                            dataType = typeOf<String>()
-                        ),
-                        output = @OptIn(InternalAgentsApi::class)
-                        SerializationUtils.encodeDataToJsonElementOrNull(
-                            data = mockResponse,
-                            dataType = typeOf<String>()
-                        ),
-                        timestamp = testClock.now().toEpochMilliseconds()
-                    ),
-                    StrategyCompletedEvent(
-                        runId = runId,
-                        strategyName = strategyName,
-                        result = mockResponse,
-                        timestamp = testClock.now().toEpochMilliseconds()
-                    ),
-                    AgentCompletedEvent(
-                        agentId = agentId,
-                        runId = runId,
-                        result = mockResponse,
-                        timestamp = testClock.now().toEpochMilliseconds()
-                    ),
-                    AgentClosingEvent(
-                        agentId = agentId,
-                        timestamp = testClock.now().toEpochMilliseconds()
-                    ),
+                    )
                 )
-
-                // The 'runId' is updated when the agent is finished.
-                // We cannot simplify that and move the expected events list before the job is finished
-                // and relay on the number of elements in the list.
-                assertEquals(
-                    expectedEventsCount,
-                    expectedEvents.size,
-                    "expectedEventsCount variable in the test need to be updated"
-                )
-
-                assertContentEquals(expectedEvents, actualEvents)
             }
         }
 
@@ -549,6 +584,16 @@ class TraceFeatureMessageRemoteWriterTest {
         }
 
         assertNotNull(isFinishedOrNull, "Client or server did not finish in time")
+
+        // The 'runId' is updated when the agent is finished.
+        // We cannot simplify that and move the expected events list before the job is finished
+        // and relay on the number of elements in the list.
+        assertEquals(
+            expectedClientEvents.size,
+            actualClientEvents.size,
+            "expectedEventsCount variable in the test need to be updated"
+        )
+        assertContentEquals(expectedClientEvents, actualClientEvents)
     }
 
     @Test
@@ -699,7 +744,14 @@ class TraceFeatureMessageRemoteWriterTest {
             messages = expectedPrompt.messages + listOf(
                 userMessage(content = userPrompt),
                 toolCallMessage(dummyTool.name, content = """{"dummy":"test"}"""),
-                receivedToolResult("0", dummyTool.name, dummyTool.result, dummyTool.encodeResult(dummyTool.result)).toMessage(clock = testClock)
+                receivedToolResult(
+                    toolCallId = "0",
+                    toolName = dummyTool.name,
+                    toolArgs = dummyTool.encodeArgs(DummyTool.Args("test")),
+                    toolDescription = dummyTool.description,
+                    content = dummyTool.encodeResultToString(dummyTool.result),
+                    result = dummyTool.encodeResult(dummyTool.result)
+                ).toMessage(clock = testClock)
             )
         )
 
@@ -708,7 +760,8 @@ class TraceFeatureMessageRemoteWriterTest {
         val serverConfig = DefaultServerConnectionConfig(host = HOST, port = port, awaitInitialConnectionTimeout = defaultClientServerTimeout)
         val clientConfig = DefaultClientConnectionConfig(host = HOST, port = port, protocol = URLProtocol.HTTP)
 
-        val actualEvents = mutableListOf<DefinedFeatureEvent>()
+        val actualClientEvents = mutableListOf<FeatureMessage>()
+        val expectedClientEvents = mutableListOf<FeatureMessage>()
 
         // Server
         val serverJob = launch {
@@ -762,9 +815,7 @@ class TraceFeatureMessageRemoteWriterTest {
                 scope = this,
                 baseClient = testBaseClient
             ).use { client ->
-
                 var runId = ""
-                val expectedEventsCount = 4
 
                 val collectEventsJob = launch {
                     client.receivedMessages.consumeAsFlow().collect { event ->
@@ -772,10 +823,10 @@ class TraceFeatureMessageRemoteWriterTest {
                             runId = event.runId
                         }
 
-                        actualEvents.add(event as DefinedFeatureEvent)
-                        logger.info { "[${actualEvents.size}/$expectedEventsCount] Received event: $event" }
+                        actualClientEvents.add(event as DefinedFeatureEvent)
+                        logger.info { "[${actualClientEvents.size}] Received event: $event" }
 
-                        if (actualEvents.size >= expectedEventsCount) {
+                        if (actualClientEvents.size == 4) {
                             cancel()
                         }
                     }
@@ -784,61 +835,48 @@ class TraceFeatureMessageRemoteWriterTest {
                 client.connect()
                 collectEventsJob.join()
 
-                val callIds = actualEvents.filterIsInstance<LLMCallStartingEvent>().map { it.callId }
-                assertEquals(
-                    2,
-                    callIds.size,
-                    "Expected 2 LLMCallStartingEvent, got ${callIds.size}"
-                )
+                // Expected events
+                val actualLLMCallStartingEvents = actualClientEvents.findEvents<LLMCallStartingEvent>()
+                val actualLLMCallEvent = actualLLMCallStartingEvents[0]
+                val actualLLMSendToolResultEvent = actualLLMCallStartingEvents[1]
 
                 // Correct run id will be set after the 'collect events job' is finished.
-                val expectedEvents = listOf(
-                    LLMCallStartingEvent(
-                        runId = runId,
-                        callId = callIds[0],
-                        prompt = expectedLLMCallPrompt,
-                        model = testModel.toModelInfo(),
-                        tools = listOf(dummyTool.name),
-                        timestamp = testClock.now().toEpochMilliseconds()
-                    ),
-                    LLMCallCompletedEvent(
-                        runId = runId,
-                        callId = callIds[0],
-                        prompt = expectedLLMCallPrompt,
-                        model = testModel.toModelInfo(),
-                        responses = listOf(toolCallMessage(dummyTool.name, content = """{"dummy":"test"}""")),
-                        timestamp = testClock.now().toEpochMilliseconds()
-                    ),
-                    LLMCallStartingEvent(
-                        runId = runId,
-                        callId = callIds[1],
-                        prompt = expectedLLMCallWithToolsPrompt,
-                        model = testModel.toModelInfo(),
-                        tools = listOf(dummyTool.name),
-                        timestamp = testClock.now().toEpochMilliseconds()
-                    ),
-                    LLMCallCompletedEvent(
-                        runId = runId,
-                        callId = callIds[1],
-                        prompt = expectedLLMCallWithToolsPrompt,
-                        model = testModel.toModelInfo(),
-                        responses = listOf(assistantMessage(mockResponse)),
-                        timestamp = testClock.now().toEpochMilliseconds()
-                    ),
+                expectedClientEvents.addAll(
+                    listOf(
+                        LLMCallStartingEvent(
+                            executionInfo = actualLLMCallEvent.executionInfo,
+                            runId = runId,
+                            prompt = expectedLLMCallPrompt,
+                            model = testModel.toModelInfo(),
+                            tools = listOf(dummyTool.name),
+                            timestamp = testClock.now().toEpochMilliseconds()
+                        ),
+                        LLMCallCompletedEvent(
+                            executionInfo = actualLLMCallEvent.executionInfo,
+                            runId = runId,
+                            prompt = expectedLLMCallPrompt,
+                            model = testModel.toModelInfo(),
+                            responses = listOf(toolCallMessage(dummyTool.name, content = """{"dummy":"test"}""")),
+                            timestamp = testClock.now().toEpochMilliseconds()
+                        ),
+                        LLMCallStartingEvent(
+                            executionInfo = actualLLMCallEvent.executionInfo,
+                            runId = runId,
+                            prompt = expectedLLMCallWithToolsPrompt,
+                            model = testModel.toModelInfo(),
+                            tools = listOf(dummyTool.name),
+                            timestamp = testClock.now().toEpochMilliseconds()
+                        ),
+                        LLMCallCompletedEvent(
+                            executionInfo = actualLLMCallEvent.executionInfo,
+                            runId = runId,
+                            prompt = expectedLLMCallWithToolsPrompt,
+                            model = testModel.toModelInfo(),
+                            responses = listOf(assistantMessage(mockResponse)),
+                            timestamp = testClock.now().toEpochMilliseconds()
+                        ),
+                    )
                 )
-
-                // The 'runId' is updated when the agent is finished.
-                // We cannot simplify that and move the expected events list before the job is finished
-                // and relay on the number of elements in the list.
-                assertEquals(
-                    expectedEventsCount,
-                    expectedEvents.size,
-                    "expectedEventsCount variable in the test need to be updated"
-                )
-                assertContentEquals(expectedEvents, actualEvents)
-
-                assertEquals(expectedEvents.size, actualEvents.size)
-                assertContentEquals(expectedEvents, actualEvents)
             }
         }
 
@@ -847,5 +885,12 @@ class TraceFeatureMessageRemoteWriterTest {
         }
 
         assertNotNull(isFinishedOrNull, "Client or server did not finish in time")
+
+        assertEquals(
+            expectedClientEvents.size,
+            actualClientEvents.size,
+            "expectedEventsCount variable in the test need to be updated"
+        )
+        assertContentEquals(expectedClientEvents, actualClientEvents)
     }
 }

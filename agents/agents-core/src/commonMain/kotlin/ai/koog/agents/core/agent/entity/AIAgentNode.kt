@@ -1,15 +1,12 @@
 package ai.koog.agents.core.agent.entity
 
 import ai.koog.agents.core.agent.context.AIAgentGraphContextBase
-import ai.koog.agents.core.agent.context.element.NodeInfoContextElement
-import ai.koog.agents.core.agent.context.element.getNodeInfoElement
+import ai.koog.agents.core.agent.context.withParent
 import ai.koog.agents.core.annotation.InternalAgentsApi
 import io.github.oshai.kotlinlogging.KotlinLogging
 import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.withContext
 import kotlin.reflect.KType
 import kotlin.uuid.ExperimentalUuidApi
-import kotlin.uuid.Uuid
 
 /**
  * Represents an abstract node in an AI agent strategy graph, responsible for executing a specific
@@ -20,6 +17,7 @@ import kotlin.uuid.Uuid
  */
 @OptIn(ExperimentalUuidApi::class)
 public abstract class AIAgentNodeBase<TInput, TOutput> internal constructor() {
+
     /**
      * The name of the AI agent node.
      * This property serves as a unique identifier for the node within the strategy graph
@@ -155,28 +153,28 @@ public open class AIAgentNode<TInput, TOutput> internal constructor(
 
     @InternalAgentsApi
     @OptIn(ExperimentalUuidApi::class)
-    override suspend fun execute(context: AIAgentGraphContextBase, input: TInput): TOutput =
-        withContext(NodeInfoContextElement(Uuid.random().toString(), getNodeInfoElement()?.id, name, input, inputType)) {
-            logger.debug { "Start executing node (name: $name)" }
-            context.pipeline.onNodeExecutionStarting(this@AIAgentNode, context, input, inputType)
+    override suspend fun execute(context: AIAgentGraphContextBase, input: TInput): TOutput = withParent(context, partName = id) { executionInfo ->
 
-            val output =
-                try {
-                    val executeResult = context.execute(input)
-                    logger.trace { "Finished executing node (name: $name) with output: $executeResult" }
-                    executeResult
-                } catch (e: CancellationException) {
-                    throw e
-                } catch (e: Exception) {
-                    logger.error(e) { "Error executing node (name: $name): ${e.message}" }
-                    context.pipeline.onNodeExecutionFailed(this@AIAgentNode, context, input, inputType, e)
-                    throw e
-                }
+        logger.debug { "Start executing node (name: $name)" }
+        context.pipeline.onNodeExecutionStarting(executionInfo, this@AIAgentNode, context, input, inputType)
 
-            context.pipeline.onNodeExecutionCompleted(this@AIAgentNode, context, input, inputType, output, outputType)
-            output
+        val output = try {
+            val executeResult = context.execute(input)
+            logger.trace { "Finished executing node (name: $name) with output: $executeResult" }
+            executeResult
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            logger.error(e) { "Error executing node (name: $name): ${e.message}" }
+            context.pipeline.onNodeExecutionFailed(executionInfo, this@AIAgentNode, context, input, inputType, e)
+            throw e
         }
+
+        context.pipeline.onNodeExecutionCompleted(executionInfo, this@AIAgentNode, context, input, inputType, output, outputType)
+        output
+    }
 }
+
 
 /**
  * Represents the base node for starting a subgraph in an AI agent strategy graph.
@@ -200,7 +198,7 @@ public class StartNode<TInput> internal constructor(
     name = subgraphName?.let { "${AIAgentSubgraph.START_NODE_PREFIX}$it" } ?: AIAgentSubgraph.START_NODE_PREFIX,
     inputType = type,
     outputType = type,
-    execute = { input -> input }
+    execute = { input -> input },
 )
 
 /**
@@ -226,7 +224,7 @@ public class FinishNode<TOutput> internal constructor(
     name = subgraphName?.let { "${AIAgentSubgraph.FINISH_NODE_PREFIX}$it" } ?: AIAgentSubgraph.FINISH_NODE_PREFIX,
     inputType = type,
     outputType = type,
-    execute = { input -> input }
+    execute = { input -> input },
 ) {
     override fun addEdge(edge: AIAgentEdge<TOutput, *>) {
         throw IllegalStateException("${this::class.simpleName} cannot have outgoing edges")

@@ -37,6 +37,20 @@ class SerializationUtilsTest {
     //region encodeDataToStringOrNull
 
     @Test
+    fun test() {
+        val failingJson = Json
+
+        val data = TestData("test", 42)
+
+        val throwable = assertFailsWith<SerializationException> {
+            @OptIn(InternalAgentsApi::class)
+            SerializationUtils.encodeDataToStringOrNull(data, typeOf<TestData>(), failingJson)
+        }
+
+        assertEquals("Test Serialization failed", throwable.message)
+    }
+
+    @Test
     @JsName("encodeDataToStringOrNullShouldSerializeValidData")
     fun `encodeDataToStringOrNull should serialize valid data`() {
         val data = TestData("test", 42)

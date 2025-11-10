@@ -4,9 +4,11 @@ import ai.koog.agents.core.annotation.ExperimentalAgentsApi
 import ai.koog.agents.core.annotation.InternalAgentsApi
 import ai.koog.agents.core.dsl.builder.forwardTo
 import ai.koog.agents.core.dsl.builder.strategy
+import ai.koog.agents.core.feature.AIAgentFeatureTestAPI.testClock
 import ai.koog.agents.core.feature.debugger.Debugger
 import ai.koog.agents.core.feature.message.FeatureMessage
 import ai.koog.agents.core.feature.model.AIAgentError
+import ai.koog.agents.core.feature.model.events.StrategyStartingEvent
 import ai.koog.agents.core.feature.model.events.SubgraphExecutionCompletedEvent
 import ai.koog.agents.core.feature.model.events.SubgraphExecutionFailedEvent
 import ai.koog.agents.core.feature.model.events.SubgraphExecutionStartingEvent
@@ -19,9 +21,9 @@ import ai.koog.agents.core.system.feature.DebuggerTestAPI.mockLLModel
 import ai.koog.agents.core.system.feature.DebuggerTestAPI.testBaseClient
 import ai.koog.agents.core.system.mock.ClientEventsCollector
 import ai.koog.agents.core.system.mock.createAgent
-import ai.koog.agents.core.system.mock.testClock
 import ai.koog.agents.core.tools.ToolRegistry
 import ai.koog.agents.core.utils.SerializationUtils
+import ai.koog.agents.testing.feature.message.singleEvent
 import ai.koog.agents.testing.network.NetUtil.findAvailablePort
 import ai.koog.agents.testing.tools.DummyTool
 import ai.koog.utils.io.use
@@ -65,8 +67,8 @@ class DebuggerSubgraphTest {
         val subgraphName = "test-subgraph"
         val subgraphNodeOutput = "$userPrompt (subgraph)"
 
-        var expectedClientEvents = emptyList<FeatureMessage>()
-        var actualClientEvents = emptyList<FeatureMessage>()
+        val expectedFilteredEvents = mutableListOf<FeatureMessage>()
+        val actualFilteredEvents = mutableListOf<FeatureMessage>()
 
         // Server
         val serverJob = launch {
@@ -127,28 +129,40 @@ class DebuggerSubgraphTest {
                 val encodedSubgraphOutput = @OptIn(InternalAgentsApi::class)
                 SerializationUtils.encodeDataToJsonElement(subgraphNodeOutput, typeOf<String>())
 
-                // Correct run id will be set after the 'collect events job' is finished.
-                expectedClientEvents = listOf(
-                    SubgraphExecutionStartingEvent(
-                        runId = clientEventsCollector.runId,
-                        subgraphName = subgraphName,
-                        input = encodedUserInput,
-                        timestamp = testClock.now().toEpochMilliseconds(),
-                    ),
-                    SubgraphExecutionCompletedEvent(
-                        runId = clientEventsCollector.runId,
-                        subgraphName = subgraphName,
-                        input = encodedUserInput,
-                        output = encodedSubgraphOutput,
-                        timestamp = testClock.now().toEpochMilliseconds(),
-                    ),
+                val actualClientEvents = clientEventsCollector.collectedEvents
+
+                actualFilteredEvents.addAll(
+                    actualClientEvents.filter { event ->
+                        event is SubgraphExecutionStartingEvent ||
+                            event is SubgraphExecutionCompletedEvent ||
+                            event is SubgraphExecutionFailedEvent
+                    }
                 )
 
-                actualClientEvents = clientEventsCollector.collectedEvents.filter { event ->
-                    event is SubgraphExecutionStartingEvent ||
-                        event is SubgraphExecutionCompletedEvent ||
-                        event is SubgraphExecutionFailedEvent
-                }
+                // Expected events
+                val actualSubgraphStartingEvent = actualClientEvents.singleEvent<SubgraphExecutionStartingEvent>()
+                val actualStrategyStartingEvent = actualClientEvents.singleEvent<StrategyStartingEvent>()
+
+                // Correct run id will be set after the 'collect events job' is finished.
+                expectedFilteredEvents.addAll(
+                    listOf(
+                        SubgraphExecutionStartingEvent(
+                            executionInfo = actualSubgraphStartingEvent.executionInfo,
+                            runId = clientEventsCollector.runId,
+                            subgraphName = subgraphName,
+                            input = encodedUserInput,
+                            timestamp = testClock.now().toEpochMilliseconds(),
+                        ),
+                        SubgraphExecutionCompletedEvent(
+                            executionInfo = actualSubgraphStartingEvent.executionInfo,
+                            runId = clientEventsCollector.runId,
+                            subgraphName = subgraphName,
+                            input = encodedUserInput,
+                            output = encodedSubgraphOutput,
+                            timestamp = testClock.now().toEpochMilliseconds(),
+                        ),
+                    )
+                )
             }
         }
 
@@ -158,8 +172,8 @@ class DebuggerSubgraphTest {
 
         assertNotNull(isFinishedOrNull, "Client or server did not finish in time")
 
-        assertEquals(expectedClientEvents.size, actualClientEvents.size)
-        assertContentEquals(expectedClientEvents, actualClientEvents)
+        assertEquals(expectedFilteredEvents.size, actualFilteredEvents.size)
+        assertContentEquals(expectedFilteredEvents, actualFilteredEvents)
     }
 
     @Test
@@ -188,19 +202,19 @@ class DebuggerSubgraphTest {
 
         val nodeSubgraphErrorMessage = "Test error in subgraph"
 
-        var expectedClientEvents = emptyList<FeatureMessage>()
-        var actualClientEvents = emptyList<FeatureMessage>()
+        val expectedFilteredEvents = mutableListOf<FeatureMessage>()
+        val actualFilteredEvents = mutableListOf<FeatureMessage>()
 
         // Server
         val serverJob = launch {
             val strategy = strategy<String, String>("test-strategy") {
-                val nodeSubgraph by subgraph<String, String>(subgraphName) {
+                val subgraph by subgraph<String, String>(subgraphName) {
                     val nodeSubgraphError by node<String, String>(nodeSubgraphErrorName) {
                         throw IllegalStateException(nodeSubgraphErrorMessage)
                     }
                     nodeStart then nodeSubgraphError then nodeFinish
                 }
-                nodeStart then nodeSubgraph then nodeFinish
+                nodeStart then subgraph then nodeFinish
             }
 
             val throwable = createAgent(
@@ -240,7 +254,6 @@ class DebuggerSubgraphTest {
                 baseClient = testBaseClient,
                 scope = this
             ).use { client ->
-
                 val clientEventsCollector = ClientEventsCollector(client = client)
 
                 val collectEventsJob =
@@ -252,37 +265,48 @@ class DebuggerSubgraphTest {
                 val encodedUserInput = @OptIn(InternalAgentsApi::class)
                 SerializationUtils.encodeDataToJsonElement(userPrompt, typeOf<String>())
 
-                actualClientEvents = clientEventsCollector.collectedEvents.filter { event ->
-                    event is SubgraphExecutionStartingEvent ||
-                        event is SubgraphExecutionCompletedEvent ||
-                        event is SubgraphExecutionFailedEvent
-                }
+                val actualClientEvents = clientEventsCollector.collectedEvents
+
+                actualFilteredEvents.addAll(
+                    actualClientEvents.filter { event ->
+                        event is SubgraphExecutionStartingEvent ||
+                            event is SubgraphExecutionCompletedEvent ||
+                            event is SubgraphExecutionFailedEvent
+                    }
+                )
 
                 // Correct run id will be set after the 'collect events job' is finished.
 
                 // Get error stack trace from an actual event since we currently do not have a way
                 // to collect the same stack trace on a server side
-                val actualFailedEvent = clientEventsCollector.collectedEvents.filterIsInstance<SubgraphExecutionFailedEvent>().firstOrNull()
-                assertNotNull(actualFailedEvent, "Expected SubgraphExecutionFailedEvent event to be captured")
+                val actualFailedEvent = actualClientEvents.singleEvent<SubgraphExecutionFailedEvent>()
 
-                expectedClientEvents = listOf(
-                    SubgraphExecutionStartingEvent(
-                        runId = clientEventsCollector.runId,
-                        subgraphName = subgraphName,
-                        input = encodedUserInput,
-                        timestamp = testClock.now().toEpochMilliseconds(),
-                    ),
-                    SubgraphExecutionFailedEvent(
-                        runId = clientEventsCollector.runId,
-                        subgraphName = subgraphName,
-                        input = encodedUserInput,
-                        error = AIAgentError(
-                            message = nodeSubgraphErrorMessage,
-                            stackTrace = actualFailedEvent.error.stackTrace,
-                            cause = actualFailedEvent.error.cause,
+                // Expected events
+                val actualSubgraphStartingEvent = actualClientEvents.singleEvent<SubgraphExecutionStartingEvent>()
+                val actualStrategyStartingEvent = actualClientEvents.singleEvent<StrategyStartingEvent>()
+
+                expectedFilteredEvents.addAll(
+                    listOf(
+                        SubgraphExecutionStartingEvent(
+                            executionInfo = actualSubgraphStartingEvent.executionInfo,
+                            runId = clientEventsCollector.runId,
+                            subgraphName = subgraphName,
+                            input = encodedUserInput,
+                            timestamp = testClock.now().toEpochMilliseconds(),
                         ),
-                        timestamp = testClock.now().toEpochMilliseconds()
-                    ),
+                        SubgraphExecutionFailedEvent(
+                            executionInfo = actualSubgraphStartingEvent.executionInfo,
+                            runId = clientEventsCollector.runId,
+                            subgraphName = subgraphName,
+                            input = encodedUserInput,
+                            error = AIAgentError(
+                                message = nodeSubgraphErrorMessage,
+                                stackTrace = actualFailedEvent.error.stackTrace,
+                                cause = actualFailedEvent.error.cause,
+                            ),
+                            timestamp = testClock.now().toEpochMilliseconds()
+                        ),
+                    )
                 )
             }
         }
@@ -291,8 +315,8 @@ class DebuggerSubgraphTest {
             listOf(clientJob, serverJob).joinAll()
         }
 
-        assertEquals(expectedClientEvents.size, actualClientEvents.size)
-        assertContentEquals(expectedClientEvents, actualClientEvents)
+        assertEquals(expectedFilteredEvents.size, actualFilteredEvents.size)
+        assertContentEquals(expectedFilteredEvents, actualFilteredEvents)
 
         assertNotNull(isFinishedOrNull, "Client or server did not finish in time")
     }

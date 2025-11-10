@@ -50,7 +50,7 @@ public interface PromptExecutor : AutoCloseable {
 
     /**
      * Receives multiple independent choices from the LLM.
-     * The method is implemented only for some specific providers which support multiple LLM choices.
+     * The method is implemented only for some specific providers that support multiple LLM choices.
      *
      * @param prompt The prompt containing input messages and parameters to guide the language model execution.
      * @param model The language model to be used for processing the prompt.

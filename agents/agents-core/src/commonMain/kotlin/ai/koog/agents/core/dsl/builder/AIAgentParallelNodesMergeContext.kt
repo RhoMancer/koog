@@ -4,6 +4,7 @@ import ai.koog.agents.core.agent.config.AIAgentConfig
 import ai.koog.agents.core.agent.context.AIAgentContext
 import ai.koog.agents.core.agent.context.AIAgentGraphContextBase
 import ai.koog.agents.core.agent.context.AIAgentLLMContext
+import ai.koog.agents.core.agent.context.AgentExecutionInfo
 import ai.koog.agents.core.agent.entity.AIAgentStateManager
 import ai.koog.agents.core.agent.entity.AIAgentStorage
 import ai.koog.agents.core.agent.entity.AIAgentStorageKey
@@ -30,6 +31,7 @@ public class AIAgentParallelNodesMergeContext<Input, Output>(
     public val results: List<ParallelResult<Input, Output>>,
 ) : AIAgentGraphContextBase {
     override val parentContext: AIAgentGraphContextBase = underlyingContextBase
+    override val executionInfo: AgentExecutionInfo = underlyingContextBase.executionInfo
 
     // Delegate all properties to the underlying context
     override val environment: AIAgentEnvironment get() = underlyingContextBase.environment
@@ -74,6 +76,7 @@ public class AIAgentParallelNodesMergeContext<Input, Output>(
         runId: String,
         strategyName: String,
         pipeline: AIAgentGraphPipeline,
+        executionInfo: AgentExecutionInfo
     ): AIAgentGraphContextBase = underlyingContextBase.copy(
         environment = environment,
         agentInput = agentInput,
@@ -84,7 +87,8 @@ public class AIAgentParallelNodesMergeContext<Input, Output>(
         storage = storage,
         runId = runId,
         strategyName = strategyName,
-        pipeline = pipeline
+        pipeline = pipeline,
+        executionInfo = executionInfo
     )
 
     /**

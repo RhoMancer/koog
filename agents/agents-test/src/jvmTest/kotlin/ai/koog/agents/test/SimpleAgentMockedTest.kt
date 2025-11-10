@@ -68,25 +68,25 @@ class SimpleAgentMockedTest {
 
     val eventHandlerConfig: EventHandlerConfig.() -> Unit = {
         onToolCallStarting { eventContext ->
-            println("Tool called: tool ${eventContext.tool.name}, args ${eventContext.toolArgs}")
-            actualToolCalls.add(eventContext.tool.name)
+            println("Tool called: tool ${eventContext.toolName}, args ${eventContext.toolArgs}")
+            actualToolCalls.add(eventContext.toolName)
             iterationCount++
         }
 
         onAgentExecutionFailed { eventContext ->
-            errors.add(eventContext.throwable)
+            eventContext.exception?.let { errors.add(it) }
         }
 
         onToolCallStarting { eventContext ->
-            println("Tool called: tool ${eventContext.tool.name}, args ${eventContext.toolArgs}")
-            actualToolCalls.add(eventContext.tool.name)
+            println("Tool called: tool ${eventContext.toolName}, args ${eventContext.toolArgs}")
+            actualToolCalls.add(eventContext.toolName)
         }
 
         onToolCallFailed { eventContext ->
             println(
-                "Tool call failure: tool ${eventContext.tool.name}, args ${eventContext.toolArgs}, error=${eventContext.throwable.message}"
+                "Tool call failure: tool ${eventContext.toolName}, args ${eventContext.toolArgs}, error=${eventContext.exception?.message}"
             )
-            errors.add(eventContext.throwable)
+            eventContext.exception?.let { errors.add(it) }
         }
 
         onAgentCompleted { eventContext ->

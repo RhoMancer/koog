@@ -6,6 +6,7 @@ import ai.koog.agents.core.agent.config.MissingToolsConversionStrategy
 import ai.koog.agents.core.agent.config.ToolCallDescriber
 import ai.koog.agents.core.environment.AIAgentEnvironment
 import ai.koog.agents.core.environment.ReceivedToolResult
+import ai.koog.agents.core.environment.ToolResultKind
 import ai.koog.agents.core.tools.SimpleTool
 import ai.koog.agents.core.tools.ToolDescriptor
 import ai.koog.agents.core.tools.ToolRegistry
@@ -21,6 +22,7 @@ import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.JsonPrimitive
 import org.junit.jupiter.api.Timeout
 import java.util.concurrent.CopyOnWriteArrayList
 import java.util.concurrent.atomic.AtomicInteger
@@ -156,8 +158,16 @@ class AIAgentLLMContextConcurrencyTest {
 
     private fun createTestEnvironment(): AIAgentEnvironment {
         return object : AIAgentEnvironment {
-            override suspend fun executeTools(toolCalls: List<Message.Tool.Call>): List<ReceivedToolResult> {
-                return emptyList()
+            override suspend fun executeTool(toolCall: Message.Tool.Call): ReceivedToolResult {
+                return ReceivedToolResult(
+                    id = toolCall.id,
+                    tool = toolCall.tool,
+                    toolArgs = toolCall.contentJson,
+                    toolDescription = null,
+                    content = "",
+                    resultKind = ToolResultKind.Success,
+                    result = JsonPrimitive("")
+                )
             }
 
             override suspend fun reportProblem(exception: Throwable) {

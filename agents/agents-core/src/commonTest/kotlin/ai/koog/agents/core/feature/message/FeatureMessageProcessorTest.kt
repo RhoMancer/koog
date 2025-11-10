@@ -1,5 +1,6 @@
 package ai.koog.agents.core.feature.message
 
+import ai.koog.agents.core.agent.context.AgentExecutionInfo
 import ai.koog.agents.core.feature.mock.TestFeatureEventMessage
 import ai.koog.agents.core.feature.mock.TestFeatureMessageProcessor
 import ai.koog.agents.core.feature.model.AIAgentError
@@ -33,9 +34,9 @@ class FeatureMessageProcessorTest {
         val processor = TestFeatureMessageProcessor()
 
         val stringMessage1 = FeatureStringMessage("Test message 1")
-        val eventMessage1 = TestFeatureEventMessage("Test event 1")
+        val eventMessage1 = TestFeatureEventMessage(executionInfo = AgentExecutionInfo("Test event 1"))
         val stringMessage2 = FeatureStringMessage("Test message 2")
-        val eventMessage2 = TestFeatureEventMessage("Test event 2")
+        val eventMessage2 = TestFeatureEventMessage(executionInfo = AgentExecutionInfo("Test event 2"))
 
         val expectedMessages = listOf(stringMessage1, eventMessage1, stringMessage2, eventMessage2)
         expectedMessages.forEach { message -> processor.onMessage(message) }
@@ -108,7 +109,7 @@ class FeatureMessageProcessorTest {
         val processor = TestFeatureMessageProcessor()
 
         val stringMessage = FeatureStringMessage("Test string message")
-        val eventMessage = TestFeatureEventMessage("Test event message")
+        val eventMessage = TestFeatureEventMessage(executionInfo = AgentExecutionInfo(id = "Test event message"))
 
         val messagesToProcess = listOf(stringMessage, eventMessage)
         messagesToProcess.forEach { message -> processor.onMessage(message) }
@@ -128,7 +129,7 @@ class FeatureMessageProcessorTest {
         }
 
         val stringMessage = FeatureStringMessage("Test string message")
-        val eventMessage = TestFeatureEventMessage("Test event message")
+        val eventMessage = TestFeatureEventMessage(executionInfo = AgentExecutionInfo("Test event message"))
 
         val messagesToProcess = listOf(stringMessage, eventMessage)
         messagesToProcess.forEach { message -> processor.onMessage(message) }
@@ -148,14 +149,17 @@ class FeatureMessageProcessorTest {
     fun `test node execution starting even with string input parameter`() = runTest {
         TestFeatureMessageProcessor().use { processor ->
 
+            val testId = "test-id"
+            val testParentId = "test-parent-id"
             val testRunId = "test-run-id"
             val testNodeName = "test-node"
             val testInput = "Test input"
 
             val nodeExecutionStartingEvent = NodeExecutionStartingEvent(
+                executionInfo = AgentExecutionInfo(testId),
                 runId = testRunId,
                 nodeName = testNodeName,
-                input = testInput,
+                input = JsonPrimitive(testInput),
                 timestamp = testClock.now().toEpochMilliseconds()
             )
 
@@ -164,6 +168,7 @@ class FeatureMessageProcessorTest {
             // Verify messages
             val expectedMessages = listOf(
                 NodeExecutionStartingEvent(
+                    executionInfo = AgentExecutionInfo(testId),
                     runId = testRunId,
                     nodeName = testNodeName,
                     input = JsonPrimitive(testInput),
@@ -181,16 +186,19 @@ class FeatureMessageProcessorTest {
     fun `test node execution completed even with string input and output parameters`() = runTest {
         TestFeatureMessageProcessor().use { processor ->
 
+            val testId = "test-id"
+            val testParentId = "test-parent-id"
             val testRunId = "test-run-id"
             val testNodeName = "test-node"
             val testInput = "Test input"
             val testOutput = "Test output"
 
             val nodeExecutionCompletedEvent = NodeExecutionCompletedEvent(
+                executionInfo = AgentExecutionInfo(testId),
                 runId = testRunId,
                 nodeName = testNodeName,
-                input = testInput,
-                output = testOutput,
+                input = JsonPrimitive(testInput),
+                output = JsonPrimitive(testOutput),
                 timestamp = testClock.now().toEpochMilliseconds()
             )
 
@@ -198,6 +206,7 @@ class FeatureMessageProcessorTest {
 
             val expectedMessages = listOf(
                 NodeExecutionCompletedEvent(
+                    executionInfo = AgentExecutionInfo(testId),
                     runId = testRunId,
                     nodeName = testNodeName,
                     input = JsonPrimitive(testInput),
@@ -216,6 +225,8 @@ class FeatureMessageProcessorTest {
     fun `test node execution failed even without input parameter`() = runTest {
         TestFeatureMessageProcessor().use { processor ->
 
+            val testId = "test-id"
+            val testParentId = "test-parent-id"
             val testRunId = "test-run-id"
             val testNodeName = "test-node"
             val testError = AIAgentError(
@@ -226,8 +237,10 @@ class FeatureMessageProcessorTest {
 
             // Node Execution Failed Event
             val nodeExecutionFailedEvent = NodeExecutionFailedEvent(
+                executionInfo = AgentExecutionInfo(testId),
                 runId = testRunId,
                 nodeName = testNodeName,
+                input = null,
                 error = testError,
                 timestamp = testClock.now().toEpochMilliseconds()
             )
@@ -236,6 +249,7 @@ class FeatureMessageProcessorTest {
 
             val expectedMessages = listOf(
                 NodeExecutionFailedEvent(
+                    executionInfo = AgentExecutionInfo(testId),
                     runId = testRunId,
                     nodeName = testNodeName,
                     input = null,
@@ -254,11 +268,14 @@ class FeatureMessageProcessorTest {
     fun `test node execution starting even with json input parameter`() = runTest {
         TestFeatureMessageProcessor().use { processor ->
 
+            val testId = "test-id"
+            val testParentId = "test-parent-id"
             val testRunId = "test-run-id"
             val testNodeName = "test-node"
             val testInput = JsonPrimitive("Test input")
 
             val nodeExecutionStartingEvent = NodeExecutionStartingEvent(
+                executionInfo = AgentExecutionInfo(testId),
                 runId = testRunId,
                 nodeName = testNodeName,
                 input = testInput,
@@ -269,6 +286,7 @@ class FeatureMessageProcessorTest {
 
             val expectedMessages = listOf(
                 NodeExecutionStartingEvent(
+                    executionInfo = AgentExecutionInfo(testId),
                     runId = testRunId,
                     nodeName = testNodeName,
                     input = testInput,
@@ -286,12 +304,15 @@ class FeatureMessageProcessorTest {
     fun `test node execution completed even with json input and output parameters`() = runTest {
         TestFeatureMessageProcessor().use { processor ->
 
+            val testId = "test-id"
+            val testParentId = "test-parent-id"
             val testRunId = "test-run-id"
             val testNodeName = "test-node"
             val testInput = JsonPrimitive("Test input")
             val testOutput = JsonPrimitive("Test output")
 
             val nodeExecutionCompletedEvent = NodeExecutionCompletedEvent(
+                executionInfo = AgentExecutionInfo(testId),
                 runId = testRunId,
                 nodeName = testNodeName,
                 input = testInput,
@@ -303,6 +324,7 @@ class FeatureMessageProcessorTest {
 
             val expectedMessages = listOf(
                 NodeExecutionCompletedEvent(
+                    executionInfo = AgentExecutionInfo(testId),
                     runId = testRunId,
                     nodeName = testNodeName,
                     input = testInput,
@@ -321,6 +343,8 @@ class FeatureMessageProcessorTest {
     fun `test node execution failed even with input parameter`() = runTest {
         TestFeatureMessageProcessor().use { processor ->
 
+            val testId = "test-id"
+            val testParentId = "test-parent-id"
             val testRunId = "test-run-id"
             val testNodeName = "test-node"
             val testInput = JsonPrimitive("Test input")
@@ -332,6 +356,7 @@ class FeatureMessageProcessorTest {
 
             // Node Execution Failed Event
             val nodeExecutionFailedEvent = NodeExecutionFailedEvent(
+                executionInfo = AgentExecutionInfo(testId),
                 runId = testRunId,
                 nodeName = testNodeName,
                 input = testInput,
@@ -343,6 +368,7 @@ class FeatureMessageProcessorTest {
 
             val expectedMessages = listOf(
                 NodeExecutionFailedEvent(
+                    executionInfo = AgentExecutionInfo(testId),
                     runId = testRunId,
                     nodeName = testNodeName,
                     input = testInput,

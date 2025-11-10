@@ -4,6 +4,7 @@ import ai.koog.agents.core.CalculatorChatExecutor.testClock
 import ai.koog.agents.core.agent.config.AIAgentConfig
 import ai.koog.agents.core.environment.AIAgentEnvironment
 import ai.koog.agents.core.environment.ReceivedToolResult
+import ai.koog.agents.core.environment.ToolResultKind
 import ai.koog.agents.core.tools.SimpleTool
 import ai.koog.agents.core.tools.Tool
 import ai.koog.agents.core.tools.ToolDescriptor
@@ -37,20 +38,22 @@ class AIAgentLLMWriteSessionTest {
     private fun assistantMessage(content: String) = Message.Assistant(content, ResponseMetaInfo.create(testClock))
 
     private class TestEnvironment(private val toolRegistry: ToolRegistry) : AIAgentEnvironment {
-        @OptIn(InternalAgentToolsApi::class)
-        override suspend fun executeTools(toolCalls: List<Message.Tool.Call>): List<ReceivedToolResult> {
-            return toolCalls.map { toolCall ->
-                val tool = toolRegistry.getTool(toolCall.tool)
-                val args = tool.decodeArgs(toolCall.contentJson)
-                val result = tool.executeUnsafe(args)
 
-                ReceivedToolResult(
-                    id = toolCall.id,
-                    tool = toolCall.tool,
-                    content = tool.encodeResultToStringUnsafe(result),
-                    result = tool.encodeResultUnsafe(result)
-                )
-            }
+        @OptIn(InternalAgentToolsApi::class)
+        override suspend fun executeTool(toolCall: Message.Tool.Call): ReceivedToolResult {
+            val tool = toolRegistry.getTool(toolCall.tool)
+            val args = tool.decodeArgs(toolCall.contentJson)
+            val result = tool.executeUnsafe(args)
+
+            return ReceivedToolResult(
+                id = toolCall.id,
+                tool = toolCall.tool,
+                toolArgs = toolCall.contentJson,
+                toolDescription = null,
+                content = tool.encodeResultToStringUnsafe(result),
+                resultKind = ToolResultKind.Success,
+                result = tool.encodeResultUnsafe(result)
+            )
         }
 
         override suspend fun reportProblem(exception: Throwable) {

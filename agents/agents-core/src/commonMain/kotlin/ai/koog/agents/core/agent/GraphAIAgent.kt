@@ -4,11 +4,15 @@ import ai.koog.agents.core.agent.config.AIAgentConfig
 import ai.koog.agents.core.agent.context.AIAgentGraphContext
 import ai.koog.agents.core.agent.context.AIAgentGraphContextBase
 import ai.koog.agents.core.agent.context.AIAgentLLMContext
+import ai.koog.agents.core.agent.context.AgentExecutionInfo
+import ai.koog.agents.core.agent.context.AgentExecutionPath
 import ai.koog.agents.core.agent.entity.AIAgentGraphStrategy
 import ai.koog.agents.core.agent.entity.AIAgentStateManager
 import ai.koog.agents.core.agent.entity.AIAgentStorage
 import ai.koog.agents.core.annotation.InternalAgentsApi
+import ai.koog.agents.core.environment.AIAgentEnvironment
 import ai.koog.agents.core.environment.GenericAgentEnvironment
+import ai.koog.agents.core.environment.GenericAgentEnvironmentProxy
 import ai.koog.agents.core.feature.AIAgentFeature
 import ai.koog.agents.core.feature.AIAgentGraphFeature
 import ai.koog.agents.core.feature.PromptExecutorProxy
@@ -66,14 +70,6 @@ public open class GraphAIAgent<Input, Output>(
 
     override val pipeline: AIAgentGraphPipeline = AIAgentGraphPipeline(clock)
 
-    private val environment = GenericAgentEnvironment(
-        agentId = this.id,
-        strategyId = strategy.name,
-        logger = logger,
-        toolRegistry = toolRegistry,
-        pipeline = pipeline
-    )
-
     /**
      * The context for adding and configuring features in a Kotlin AI Agent instance.
      *
@@ -104,40 +100,82 @@ public open class GraphAIAgent<Input, Output>(
         val stateManager = AIAgentStateManager()
         val storage = AIAgentStorage()
 
-        // Environment (initially equal to the current agent), transformed by some features
-        //   (ex: testing feature transforms it into a MockEnvironment with mocked tools)
-        val preparedEnvironment =
-            pipeline.onAgentEnvironmentTransforming(
-                strategy = strategy,
-                agent = this,
-                baseEnvironment = environment
-            )
+        val executionPath = AgentExecutionPath(id)
+        val executionInfo = AgentExecutionInfo(id = id, parent = null, path = executionPath)
+        val preparedEnvironment = prepareEnvironment(executionInfo)
 
-        return AIAgentGraphContext(
+        val initialAgentLLMContext = AIAgentLLMContext(
+            tools = toolRegistry.tools.map { it.descriptor },
+            toolRegistry = toolRegistry,
+            prompt = agentConfig.prompt,
+            model = agentConfig.model,
+            promptExecutor = promptExecutor,
+            environment = preparedEnvironment,
+            config = agentConfig,
+            clock = clock
+        )
+
+        // Context
+        val agentContext = AIAgentGraphContext(
             environment = preparedEnvironment,
             agentId = id,
             agentInput = agentInput,
             agentInputType = inputType,
             config = agentConfig,
-            llm = AIAgentLLMContext(
-                tools = toolRegistry.tools.map { it.descriptor },
-                toolRegistry = toolRegistry,
-                prompt = agentConfig.prompt,
-                model = agentConfig.model,
-                promptExecutor = PromptExecutorProxy(
-                    executor = promptExecutor,
-                    pipeline = pipeline,
-                    runId = runId
-                ),
-                environment = preparedEnvironment,
-                config = agentConfig,
-                clock = clock
-            ),
+            llm = initialAgentLLMContext,
             stateManager = stateManager,
             storage = storage,
             runId = runId,
             strategyName = strategy.name,
             pipeline = pipeline,
+            executionInfo = executionInfo,
         )
+
+        // Updated environment
+        val environmentProxy = GenericAgentEnvironmentProxy(
+            environment = preparedEnvironment,
+            context = agentContext,
+        )
+
+        // Updated prompt executor
+        val promptExecutorProxy = PromptExecutorProxy(
+            executor = promptExecutor,
+            pipeline = pipeline,
+            runId = runId,
+            context = agentContext
+        )
+
+        val updatedLLMContext = agentContext.llm.copy(
+            promptExecutor = promptExecutorProxy,
+            environment = environmentProxy
+        )
+
+        // Update the environment and llm with a created context instance
+        return agentContext.copy(
+            llm = updatedLLMContext,
+            environment = environmentProxy
+        )
+    }
+
+    // Environment (initially equal to the current agent), transformed by some features
+    //   (ex: testing feature transforms it into a MockEnvironment with mocked tools)
+    private suspend fun prepareEnvironment(executionInfo: AgentExecutionInfo): AIAgentEnvironment {
+        val baseEnvironment = GenericAgentEnvironment(
+            agentId = id,
+            logger = logger,
+            toolRegistry = toolRegistry,
+        )
+
+        // Environment (initially equal to the current agent), transformed by some features
+        //   (ex: testing feature transforms it into a MockEnvironment with mocked tools)
+        val preparedEnvironment =
+            pipeline.onAgentEnvironmentTransforming(
+                executionInfo = executionInfo,
+                strategy = strategy,
+                agent = this,
+                baseEnvironment = baseEnvironment
+            )
+
+        return preparedEnvironment
     }
 }

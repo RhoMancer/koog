@@ -4,6 +4,8 @@ import ai.koog.agents.core.model.AgentServiceError
 import kotlinx.serialization.EncodeDefault
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonObject
 
 /**
  * Base class of all messages sent from the environment to the AI agent.
@@ -115,7 +117,7 @@ public sealed interface EnvironmentToolResultToAgentMessage : EnvironmentToAgent
  *
  * @property agentId Identifier for the agent receiving the message.
  * @property message Tool output
- * @property toolCallId Id to identify tool call when calling multiple tools at once.
+ * @property toolCallId The unique id to identify tool call when calling multiple tools at once.
  */
 @Serializable
 public abstract class EnvironmentToolResultToAgentContent : EnvironmentToAgentContent {
@@ -136,7 +138,23 @@ public abstract class EnvironmentToolResultToAgentContent : EnvironmentToAgentCo
      * scope of tool-based operations in an agent's environment.
      */
     public abstract val toolName: String
+
+    /**
+     * Represents the arguments provided to the tool during its invocation.
+     *
+     * This property is encoded as a `JsonObject`, allowing the encapsulation of
+     * key-value pairs that define the parameters and configurations used in the tool's
+     * execution.
+     */
+    public abstract val toolArgs: JsonObject
+
+    /**
+     * Provides an optional textual description of the tool's behavior, purpose, or other relevant details.
+     */
+    public abstract val toolDescription: String?
+
     abstract override val agentId: String
+
     abstract override val message: String
 }
 

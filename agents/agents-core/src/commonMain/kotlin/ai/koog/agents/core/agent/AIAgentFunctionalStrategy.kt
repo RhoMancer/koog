@@ -1,13 +1,17 @@
 package ai.koog.agents.core.agent
 
 import ai.koog.agents.core.agent.context.AIAgentFunctionalContext
+import ai.koog.agents.core.agent.context.withParent
 import ai.koog.agents.core.agent.entity.AIAgentStrategy
+import io.github.oshai.kotlinlogging.KotlinLogging
+import kotlin.reflect.typeOf
+import kotlin.uuid.ExperimentalUuidApi
 
 /**
  * A strategy for implementing AI agent behavior that operates in a loop-based manner.
  *
  * The [AIAgentFunctionalStrategy] class allows for the definition of a custom looping logic
- * that processes input and produces output by utilizing an [ai.koog.agents.core.agent.context.AIAgentFunctionalContext]. This strategy
+ * that processes input and produces output by using an [ai.koog.agents.core.agent.context.AIAgentFunctionalContext]. This strategy
  * can be used to define iterative decision-making or execution processes for AI agents.
  *
  * @param TInput The type of input data processed by the strategy.
@@ -20,10 +24,24 @@ public class AIAgentFunctionalStrategy<TInput, TOutput>(
     override val name: String,
     public val func: suspend AIAgentFunctionalContext.(TInput) -> TOutput
 ) : AIAgentStrategy<TInput, TOutput, AIAgentFunctionalContext> {
+
+    private companion object {
+        private val logger = KotlinLogging.logger { }
+    }
+
+    @OptIn(ExperimentalUuidApi::class)
     override suspend fun execute(
         context: AIAgentFunctionalContext,
         input: TInput
-    ): TOutput = context.func(input)
+    ): TOutput = withParent(context = context, partName = name) { executionInfo ->
+        context.pipeline.onStrategyStarting(executionInfo, this@AIAgentFunctionalStrategy, context)
+        val result = context.func(input)
+        context.pipeline.onStrategyCompleted(executionInfo, this@AIAgentFunctionalStrategy, context, result, typeOf<Any?>())
+
+        logger.debug { "Finished executing strategy (name: $name) with result: $result" }
+        result
+    }
+
 }
 
 /**
