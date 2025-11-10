@@ -76,12 +76,14 @@ public class AIAgentGraphPipeline(clock: Clock = Clock.System) : AIAgentPipeline
      * @param inputType The type of the input data provided to the node
      */
     public suspend fun onNodeExecutionStarting(
+        id: String,
+        parentId: String?,
         node: AIAgentNodeBase<*, *>,
         context: AIAgentGraphContextBase,
         input: Any?,
         inputType: KType
     ) {
-        val eventContext = NodeExecutionStartingContext(node, context, input, inputType)
+        val eventContext = NodeExecutionStartingContext(id, parentId, node, context, input, inputType)
         executeNodeHandlers.values.forEach { handler -> handler.nodeExecutionStartingHandler.handle(eventContext) }
     }
 
@@ -96,6 +98,8 @@ public class AIAgentGraphPipeline(clock: Clock = Clock.System) : AIAgentPipeline
      * @param outputType The type of the output data produced by the node execution
      */
     public suspend fun onNodeExecutionCompleted(
+        id: String,
+        parentId: String?,
         node: AIAgentNodeBase<*, *>,
         context: AIAgentGraphContextBase,
         input: Any?,
@@ -103,7 +107,7 @@ public class AIAgentGraphPipeline(clock: Clock = Clock.System) : AIAgentPipeline
         output: Any?,
         outputType: KType,
     ) {
-        val eventContext = NodeExecutionCompletedContext(node, context, input, inputType, output, outputType)
+        val eventContext = NodeExecutionCompletedContext(id, parentId, node, context, input, inputType, output, outputType)
         executeNodeHandlers.values.forEach { handler -> handler.nodeExecutionCompletedHandler.handle(eventContext) }
     }
 
@@ -117,13 +121,15 @@ public class AIAgentGraphPipeline(clock: Clock = Clock.System) : AIAgentPipeline
      * @param throwable The exception or error that occurred during node execution.
      */
     public suspend fun onNodeExecutionFailed(
+        id: String,
+        parentId: String?,
         node: AIAgentNodeBase<*, *>,
         context: AIAgentGraphContextBase,
         input: Any?,
         inputType: KType,
         throwable: Throwable
     ) {
-        val eventContext = NodeExecutionFailedContext(node, context, input, inputType, throwable)
+        val eventContext = NodeExecutionFailedContext(id, parentId, node, context, input, inputType, throwable)
         executeNodeHandlers.values.forEach { handler -> handler.nodeExecutionFailedHandler.handle(eventContext) }
     }
 
@@ -140,12 +146,14 @@ public class AIAgentGraphPipeline(clock: Clock = Clock.System) : AIAgentPipeline
      * @param inputType The type of the input data provided to the subgraph.
      */
     public suspend fun onSubgraphExecutionStarting(
+        id: String,
+        parentId: String?,
         subgraph: AIAgentSubgraph<*, *>,
         context: AIAgentGraphContextBase,
         input: Any?,
         inputType: KType
     ) {
-        val eventContext = SubgraphExecutionStartingContext(subgraph, context, input, inputType)
+        val eventContext = SubgraphExecutionStartingContext(id, parentId, subgraph, context, input, inputType)
         executeSubgraphHandlers.values.forEach { handler -> handler.subgraphExecutionStartingHandler.handle(eventContext) }
     }
 
@@ -160,6 +168,8 @@ public class AIAgentGraphPipeline(clock: Clock = Clock.System) : AIAgentPipeline
      * @param outputType The type of the output data produced by the subgraph execution.
      */
     public suspend fun onSubgraphExecutionCompleted(
+        id: String,
+        parentId: String?,
         subgraph: AIAgentSubgraph<*, *>,
         context: AIAgentGraphContextBase,
         input: Any?,
@@ -167,7 +177,7 @@ public class AIAgentGraphPipeline(clock: Clock = Clock.System) : AIAgentPipeline
         output: Any?,
         outputType: KType,
     ) {
-        val eventContext = SubgraphExecutionCompletedContext(subgraph, context, input, output, inputType, outputType)
+        val eventContext = SubgraphExecutionCompletedContext(id, parentId, subgraph, context, input, output, inputType, outputType)
         executeSubgraphHandlers.values.forEach { handler -> handler.subgraphExecutionCompletedHandler.handle(eventContext) }
     }
 
@@ -181,13 +191,15 @@ public class AIAgentGraphPipeline(clock: Clock = Clock.System) : AIAgentPipeline
      * @param throwable The exception or error that caused the subgraph execution to fail.
      */
     public suspend fun onSubgraphExecutionFailed(
+        id: String,
+        parentId: String?,
         subgraph: AIAgentSubgraph<*, *>,
         context: AIAgentGraphContextBase,
         input: Any?,
         inputType: KType,
         throwable: Throwable
     ) {
-        val eventContext = SubgraphExecutionFailedContext(subgraph, context, input, inputType, throwable)
+        val eventContext = SubgraphExecutionFailedContext(id, parentId, subgraph, context, input, inputType, throwable)
         executeSubgraphHandlers.values.forEach { handler -> handler.subgraphExecutionFailedHandler.handle(eventContext) }
     }
 

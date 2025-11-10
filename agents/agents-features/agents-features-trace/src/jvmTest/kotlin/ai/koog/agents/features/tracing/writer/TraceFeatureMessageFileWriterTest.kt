@@ -292,12 +292,14 @@ class TraceFeatureMessageFileWriterTest {
             }
         }
 
+        val id = "test-event-id"
+        val parentId = "test-parent-id"
         val agentId = "test-agent-id"
         val runId = "test-run-id"
 
         val messagesToProcess = listOf(
             FeatureStringMessage("Test string message"),
-            AgentStartingEvent(agentId = agentId, runId = runId)
+            AgentStartingEvent(id = id, parentId = parentId, agentId = agentId, runId = runId)
         )
 
         val expectedMessages = listOf(

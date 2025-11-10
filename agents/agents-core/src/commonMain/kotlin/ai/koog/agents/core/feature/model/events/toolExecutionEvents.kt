@@ -13,18 +13,40 @@ import kotlinx.serialization.json.JsonObject
  * or processing tool calls as part of a larger feature pipeline or system
  * workflow.
  *
+ * @property id A unique identifier for the group of events associated with the tool call events;
+ * @property parentId The unique identifier of the parent event, if applicable;
+ * @property runId A unique identifier representing the specific run or instance of the tool call;
+ * @property toolCallId A unique identifier for the tool call;
  * @property toolName The unique name of the tool being called;
  * @property toolArgs The arguments provided for the tool execution;
  * @property timestamp The timestamp of the event, in milliseconds since the Unix epoch.
  */
 @Serializable
 public data class ToolCallStartingEvent(
+    override val id: String,
+    override val parentId: String?,
     val runId: String,
     val toolCallId: String?,
     val toolName: String,
     val toolArgs: JsonObject,
     override val timestamp: Long = Clock.System.now().toEpochMilliseconds(),
-) : DefinedFeatureEvent()
+) : DefinedFeatureEvent() {
+
+    /**
+     * @deprecated Use constructor with [id] and [parentId] parameters
+     */
+    @Deprecated(
+        message = "Use constructor with id, parentId parameters",
+        replaceWith = ReplaceWith("ToolCallStartingEvent(id, parentId, runId, toolCallId, toolName, toolArgs, timestamp)")
+    )
+    public constructor(
+        runId: String,
+        toolCallId: String?,
+        toolName: String,
+        toolArgs: JsonObject,
+        timestamp: Long = Clock.System.now().toEpochMilliseconds()
+    ) : this(ToolCallStartingEvent::class.simpleName.toString(), null, runId, toolCallId, toolName, toolArgs, timestamp)
+}
 
 /**
  * Represents an event indicating that a tool encountered a validation error during its execution.
@@ -32,6 +54,10 @@ public data class ToolCallStartingEvent(
  * This event captures details regarding the tool that failed validation, the arguments
  * provided to the tool, and the specific error message explaining why the validation failed.
  *
+ * @property id A unique identifier for the group of events associated with the tool call events;
+ * @property parentId The unique identifier of the parent event, if applicable;
+ * @property runId A unique identifier representing the specific run or instance of the tool call;
+ * @property toolCallId A unique identifier for the tool call that encountered the validation error;
  * @property toolName The name of the tool that encountered the validation error;
  * @property toolArgs The arguments associated with the tool at the time of validation failure;
  * @property error A message describing the validation error encountered;
@@ -39,13 +65,32 @@ public data class ToolCallStartingEvent(
  */
 @Serializable
 public data class ToolValidationFailedEvent(
+    override val id: String,
+    override val parentId: String?,
     val runId: String,
     val toolCallId: String?,
     val toolName: String,
     val toolArgs: JsonObject,
     val error: String,
     override val timestamp: Long = Clock.System.now().toEpochMilliseconds(),
-) : DefinedFeatureEvent()
+) : DefinedFeatureEvent() {
+
+    /**
+     * @deprecated Use constructor with [id] and [parentId] parameters
+     */
+    @Deprecated(
+        message = "Use constructor with id and parentId parameters",
+        replaceWith = ReplaceWith("ToolValidationFailedEvent(id, parentId, runId, toolCallId, toolName, toolArgs, error, timestamp)")
+    )
+    public constructor(
+        runId: String,
+        toolCallId: String?,
+        toolName: String,
+        toolArgs: JsonObject,
+        error: String,
+        timestamp: Long = Clock.System.now().toEpochMilliseconds()
+    ) : this(ToolValidationFailedEvent::class.simpleName.toString(), null, runId, toolCallId, toolName, toolArgs, error, timestamp)
+}
 
 /**
  * Captures an event where a tool call has failed during its execution.
@@ -54,6 +99,10 @@ public data class ToolValidationFailedEvent(
  * successfully due to an error. It includes relevant details about the failed tool call,
  * such as the tool's name, the arguments provided, and the specific error encountered.
  *
+ * @property id A unique identifier for the group of events associated with the tool call events;
+ * @property parentId The unique identifier of the parent event, if applicable;
+ * @property runId A unique identifier representing the specific run or instance of the tool call;
+ * @property toolCallId A unique identifier for the tool call that failed;
  * @property toolName The name of the tool that failed;
  * @property toolArgs The arguments passed to the tool during the failed execution;
  * @property error The error encountered during the tool's execution;
@@ -61,13 +110,32 @@ public data class ToolValidationFailedEvent(
  */
 @Serializable
 public data class ToolCallFailedEvent(
+    override val id: String,
+    override val parentId: String?,
     val runId: String,
     val toolCallId: String?,
     val toolName: String,
     val toolArgs: JsonObject,
     val error: AIAgentError,
     override val timestamp: Long = Clock.System.now().toEpochMilliseconds(),
-) : DefinedFeatureEvent()
+) : DefinedFeatureEvent() {
+
+    /**
+     * @deprecated Use constructor with [id] and [parentId] parameters
+     */
+    @Deprecated(
+        message = "Use constructor with id and parentId parameters",
+        replaceWith = ReplaceWith("ToolCallFailedEvent(id, parentId, runId, toolCallId, toolName, toolArgs, error, timestamp)")
+    )
+    public constructor(
+        runId: String,
+        toolCallId: String?,
+        toolName: String,
+        toolArgs: JsonObject,
+        error: AIAgentError,
+        timestamp: Long = Clock.System.now().toEpochMilliseconds()
+    ) : this(ToolCallFailedEvent::class.simpleName.toString(), null, runId, toolCallId, toolName, toolArgs, error, timestamp)
+}
 
 /**
  * Represents an event that contains the results of a tool invocation.
@@ -76,6 +144,10 @@ public data class ToolCallFailedEvent(
  * and the resulting outcome. It is used to track and share the details of a tool's execution within
  * the system's event-handling framework.
  *
+ * @property id A unique identifier for the group of events associated with the tool call events;
+ * @property parentId The unique identifier of the parent event, if applicable;
+ * @property runId A unique identifier representing the specific run or instance of the tool call;
+ * @property toolCallId A unique identifier for the tool call that was executed;
  * @property toolName The name of the tool that was executed;
  * @property toolArgs The arguments used for executing the tool;
  * @property result The result of the tool execution, which may be null if no result was produced or an error occurred;
@@ -83,13 +155,32 @@ public data class ToolCallFailedEvent(
  */
 @Serializable
 public data class ToolCallCompletedEvent(
+    override val id: String,
+    override val parentId: String?,
     val runId: String,
     val toolCallId: String?,
     val toolName: String,
     val toolArgs: JsonObject,
     val result: String?,
     override val timestamp: Long = Clock.System.now().toEpochMilliseconds(),
-) : DefinedFeatureEvent()
+) : DefinedFeatureEvent() {
+
+    /**
+     * @deprecated Use constructor with [id] and [parentId] parameters
+     */
+    @Deprecated(
+        message = "Use constructor with [id] and [parentId] parameters",
+        replaceWith = ReplaceWith("ToolCallCompletedEvent(id, parentId, runId, toolCallId, toolName, toolArgs, result, timestamp)")
+    )
+    public constructor(
+        runId: String,
+        toolCallId: String?,
+        toolName: String,
+        toolArgs: JsonObject,
+        result: String?,
+        timestamp: Long = Clock.System.now().toEpochMilliseconds()
+    ) : this(ToolCallCompletedEvent::class.simpleName.toString(), null, runId, toolCallId, toolName, toolArgs, result, timestamp)
+}
 
 //region Deprecated
 

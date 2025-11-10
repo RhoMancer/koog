@@ -3,8 +3,10 @@ package ai.koog.agents.core.agent.entity
 import ai.koog.agents.core.agent.context.AIAgentContext
 import ai.koog.agents.core.agent.context.AIAgentGraphContextBase
 import ai.koog.agents.core.agent.context.DetachedPromptExecutorAPI
-import ai.koog.agents.core.agent.context.element.NodeInfoContextElement
+import ai.koog.agents.core.agent.context.element.SubgraphInfoContextElement
 import ai.koog.agents.core.agent.context.element.getNodeInfoElement
+import ai.koog.agents.core.agent.context.element.getStrategyInfoElement
+import ai.koog.agents.core.agent.context.element.getSubgraphInfoElement
 import ai.koog.agents.core.agent.context.getAgentContextData
 import ai.koog.agents.core.agent.context.store
 import ai.koog.agents.core.agent.exception.AIAgentMaxNumberOfIterationsReachedException
@@ -156,8 +158,11 @@ public open class AIAgentSubgraph<TInput, TOutput>(
      * @return The output of the AI agent execution, generated after processing the input.
      */
     @OptIn(InternalAgentsApi::class, DetachedPromptExecutorAPI::class, ExperimentalUuidApi::class)
-    override suspend fun execute(context: AIAgentGraphContextBase, input: TInput): TOutput? =
-        withContext(NodeInfoContextElement(Uuid.random().toString(), getNodeInfoElement()?.id, name, input, inputType)) {
+    override suspend fun execute(context: AIAgentGraphContextBase, input: TInput): TOutput? {
+        val id = Uuid.random().toString()
+        val parentId = getStrategyInfoElement()?.id ?: getSubgraphInfoElement()?.id ?: getNodeInfoElement()?.id
+
+        return withContext(SubgraphInfoContextElement(id, parentId, name, input, inputType)) {
             val newTools = selectTools(context)
 
             // Copy inner context with new tools, model and LLM params.
@@ -172,7 +177,7 @@ public open class AIAgentSubgraph<TInput, TOutput>(
             }
 
             runIfNonRootContext(context) {
-                pipeline.onSubgraphExecutionStarting(this@AIAgentSubgraph, innerContext, input, inputType)
+                pipeline.onSubgraphExecutionStarting(id, parentId, this@AIAgentSubgraph, innerContext, input, inputType)
             }
 
             // Execute the subgraph with an inner context and get the result and updated prompt.
@@ -183,7 +188,7 @@ public open class AIAgentSubgraph<TInput, TOutput>(
             } catch (e: Exception) {
                 logger.error(e) { "Exception during executing subgraph '$name': ${e.message}" }
                 runIfNonRootContext(context) {
-                    pipeline.onSubgraphExecutionFailed(this@AIAgentSubgraph, context, input, inputType, e)
+                    pipeline.onSubgraphExecutionFailed(id, parentId, this@AIAgentSubgraph, context, input, inputType, e)
                 }
                 throw e
             }
@@ -201,11 +206,12 @@ public open class AIAgentSubgraph<TInput, TOutput>(
             }
 
             runIfNonRootContext(context) {
-                pipeline.onSubgraphExecutionCompleted(this@AIAgentSubgraph, innerContext, input, inputType, result, outputType)
+                pipeline.onSubgraphExecutionCompleted(id, parentId, this@AIAgentSubgraph, innerContext, input, inputType, result, outputType)
             }
 
             result
         }
+    }
 
     @OptIn(InternalAgentsApi::class)
     private suspend fun executeWithInnerContext(context: AIAgentGraphContextBase, initialInput: TInput): TOutput? {

@@ -1,4 +1,4 @@
-package ai.koog.agents.core.system.mock
+package ai.koog.agents.core.feature.mock
 
 import ai.koog.prompt.llm.LLMProvider
 

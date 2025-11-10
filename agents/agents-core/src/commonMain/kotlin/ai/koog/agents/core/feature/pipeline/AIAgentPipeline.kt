@@ -87,6 +87,11 @@ import kotlin.reflect.safeCast
  */
 public abstract class AIAgentPipeline(public val clock: Clock) {
 
+    // Notes on suppressed warnings used in this class:
+    // - Some members are annotated with @Suppress to satisfy explicit API requirements
+    //   (e.g., explicit public visibility) or to keep implementation details concise.
+    //   These suppressions are intentional and safe.
+
     /**
      * Companion object for the AIAgentPipeline class.
      */
@@ -212,17 +217,21 @@ public abstract class AIAgentPipeline(public val clock: Clock) {
     /**
      * Notifies all registered handlers that an agent has started execution.
      *
+     * @param id The unique identifier for the agent execution event;
+     * @param parentId The unique identifier for the parent run, if applicable;
      * @param runId The unique identifier for the agent run
      * @param agent The agent instance for which the execution has started
      * @param context The context of the agent execution, providing access to the agent environment and context features
      */
     @OptIn(InternalAgentsApi::class)
     public suspend fun <TInput, TOutput> onAgentStarting(
+        id: String,
+        parentId: String?,
         runId: String,
         agent: AIAgent<*, *>,
         context: AIAgentContext
     ) {
-        val eventContext = AgentStartingContext(agent, runId, context)
+        val eventContext = AgentStartingContext(id, parentId, agent, runId, context)
         agentEventHandlers.values.forEach { handler ->
             handler.handleAgentStarting(eventContext)
         }
@@ -231,44 +240,56 @@ public abstract class AIAgentPipeline(public val clock: Clock) {
     /**
      * Notifies all registered handlers that an agent has finished execution.
      *
+     * @param id The unique identifier for the agent execution event;
+     * @param parentId The unique identifier for the parent run, if applicable;
      * @param agentId The unique identifier of the agent that finished execution
      * @param runId The unique identifier of the agent run
      * @param result The result produced by the agent, or null if no result was produced
      */
     public suspend fun onAgentCompleted(
+        id: String,
+        parentId: String?,
         agentId: String,
         runId: String,
         result: Any?
     ) {
-        val eventContext = AgentCompletedContext(agentId = agentId, runId = runId, result = result)
+        val eventContext = AgentCompletedContext(id, parentId, agentId, runId, result)
         agentEventHandlers.values.forEach { handler -> handler.agentCompletedHandler.handle(eventContext) }
     }
 
     /**
      * Notifies all registered handlers about an error that occurred during agent execution.
      *
+     * @param id The unique identifier for the agent execution event;
+     * @param parentId The unique identifier for the parent run, if applicable;
      * @param agentId The unique identifier of the agent that encountered the error
      * @param runId The unique identifier of the agent run
      * @param throwable The exception that was thrown during agent execution
      */
     public suspend fun onAgentExecutionFailed(
+        id: String,
+        parentId: String?,
         agentId: String,
         runId: String,
         throwable: Throwable
     ) {
-        val eventContext = AgentExecutionFailedContext(agentId = agentId, runId = runId, throwable = throwable)
+        val eventContext = AgentExecutionFailedContext(id, parentId, agentId, runId, throwable)
         agentEventHandlers.values.forEach { handler -> handler.agentExecutionFailedHandler.handle(eventContext) }
     }
 
     /**
      * Invoked before an agent is closed to perform necessary pre-closure operations.
      *
+     * @param id The unique identifier for the agent execution event;
+     * @param parentId The unique identifier for the parent run, if applicable;
      * @param agentId The unique identifier of the agent that will be closed.
      */
     public suspend fun onAgentClosing(
+        id: String,
+        parentId: String?,
         agentId: String
     ) {
-        val eventContext = AgentClosingContext(agentId = agentId)
+        val eventContext = AgentClosingContext(id, parentId, agentId)
         agentEventHandlers.values.forEach { handler -> handler.agentClosingHandler.handle(eventContext) }
     }
 
@@ -278,17 +299,21 @@ public abstract class AIAgentPipeline(public val clock: Clock) {
      * This method allows features to modify or enhance the agent's environment before it starts execution.
      * Each registered handler can apply its own transformations to the environment in sequence.
      *
+     * @param id The unique identifier for the agent execution event;
+     * @param parentId The unique identifier for the parent run, if applicable;
      * @param strategy The strategy associated with the agent
      * @param agent The agent instance for which the environment is being transformed
      * @param baseEnvironment The initial environment to be transformed
      * @return The transformed environment after all handlers have been applied
      */
     public suspend fun onAgentEnvironmentTransforming(
+        id: String,
+        parentId: String?,
         strategy: AIAgentStrategy<*, *, AIAgentGraphContextBase>,
         agent: GraphAIAgent<*, *>,
         baseEnvironment: AIAgentEnvironment
     ): AIAgentEnvironment {
-        val eventContext = AgentEnvironmentTransformingContext(strategy = strategy, agent = agent)
+        val eventContext = AgentEnvironmentTransformingContext(id, parentId, strategy, agent)
         return agentEventHandlers.values.fold(baseEnvironment) { environment, handler ->
             handler.transformEnvironment(eventContext, environment)
         }
@@ -301,30 +326,41 @@ public abstract class AIAgentPipeline(public val clock: Clock) {
     /**
      * Notifies all registered strategy handlers that a strategy has started execution.
      *
+     * @param id The unique identifier for the strategy event;
+     * @param parentId The unique identifier for the parent run, if applicable;
      * @param strategy The strategy that has started execution
      * @param context The context of the strategy execution
      */
     @OptIn(InternalAgentsApi::class)
-    public suspend fun onStrategyStarting(strategy: AIAgentStrategy<*, *, *>, context: AIAgentContext) {
-        val eventContext = StrategyStartingContext(strategy, context)
+    public suspend fun onStrategyStarting(
+        id: String,
+        parentId: String?,
+        strategy: AIAgentStrategy<*, *, *>,
+        context: AIAgentContext
+    ) {
+        val eventContext = StrategyStartingContext(id, parentId, strategy, context)
         strategyEventHandlers.values.forEach { handler -> handler.handleStrategyStarting(eventContext) }
     }
 
     /**
      * Notifies all registered strategy handlers that a strategy has finished execution.
      *
+     * @param id The unique identifier for the strategy event;
+     * @param parentId The unique identifier for the parent run, if applicable;
      * @param strategy The strategy that has finished execution
      * @param context The context of the strategy execution
      * @param result The result produced by the strategy execution
      */
     @OptIn(InternalAgentsApi::class)
     public suspend fun onStrategyCompleted(
+        id: String,
+        parentId: String?,
         strategy: AIAgentStrategy<*, *, *>,
         context: AIAgentContext,
         result: Any?,
         resultType: KType,
     ) {
-        val eventContext = StrategyCompletedContext(strategy, context, result, resultType,)
+        val eventContext = StrategyCompletedContext(id, parentId, strategy, context, result, resultType,)
         strategyEventHandlers.values.forEach { handler -> handler.handleStrategyCompleted(eventContext) }
     }
 
@@ -335,37 +371,48 @@ public abstract class AIAgentPipeline(public val clock: Clock) {
     /**
      * Notifies all registered LLM handlers before a language model call is made.
      *
+     * @param id The unique identifier for LLM call event;
+     * @param parentId The unique identifier for the parent run, if applicable;
      * @param runId The unique identifier for the current run.
-     * @param callId The unique identifier for the LLM call
      * @param prompt The prompt that will be sent to the language model
-     * @param tools The list of tool descriptors available for the LLM call
      * @param model The language model instance that will process the request
+     * @param tools The list of tool descriptors available for the LLM call
      */
-    public suspend fun onLLMCallStarting(runId: String, callId: String, prompt: Prompt, model: LLModel, tools: List<ToolDescriptor>) {
-        val eventContext = LLMCallStartingContext(runId, callId, prompt, model, tools)
+    public suspend fun onLLMCallStarting(
+        id: String,
+        parentId: String?,
+        runId: String,
+        prompt: Prompt,
+        model: LLModel,
+        tools: List<ToolDescriptor>
+    ) {
+        val eventContext = LLMCallStartingContext(id, parentId, runId, prompt, model, tools)
         llmCallEventHandlers.values.forEach { handler -> handler.llmCallStartingHandler.handle(eventContext) }
     }
 
     /**
      * Notifies all registered LLM handlers after a language model call has completed.
      *
+     * @param id The unique identifier for the LLM call event;
+     * @param parentId The unique identifier for the parent run, if applicable;
      * @param runId Identifier for the current run.
-     * @param callId Identifier for the current LLM call.
      * @param prompt The prompt that was sent to the language model
-     * @param tools The list of tool descriptors that were available for the LLM call
      * @param model The language model instance that processed the request
+     * @param tools The list of tool descriptors that were available for the LLM call
      * @param responses The response messages received from the language model
+     * @param moderationResponse The moderation response, if any, received from the language model
      */
     public suspend fun onLLMCallCompleted(
+        id: String,
+        parentId: String?,
         runId: String,
-        callId: String,
         prompt: Prompt,
         model: LLModel,
         tools: List<ToolDescriptor>,
         responses: List<Message.Response>,
         moderationResponse: ModerationResult? = null,
     ) {
-        val eventContext = LLMCallCompletedContext(runId, callId, prompt, model, tools, responses, moderationResponse)
+        val eventContext = LLMCallCompletedContext(id, parentId, runId, prompt, model, tools, responses, moderationResponse)
         llmCallEventHandlers.values.forEach { handler -> handler.llmCallCompletedHandler.handle(eventContext) }
     }
 
@@ -376,72 +423,94 @@ public abstract class AIAgentPipeline(public val clock: Clock) {
     /**
      * Notifies all registered tool handlers when a tool is called.
      *
+     * @param id The unique identifier for the tool call event;
+     * @param parentId The unique identifier for the parent run, if applicable;
      * @param runId The unique identifier for the current run.
      * @param toolCallId The unique identifier for the current tool call.
      * @param tool The tool that is being called
      * @param toolArgs The arguments provided to the tool
      */
-    public suspend fun onToolCallStarting(runId: String, toolCallId: String?, tool: Tool<*, *>, toolArgs: Any?) {
-        val eventContext = ToolCallStartingContext(runId, toolCallId, tool, toolArgs)
+    public suspend fun onToolCallStarting(
+        id: String,
+        parentId: String?,
+        runId: String,
+        toolCallId: String?,
+        tool: Tool<*, *>,
+        toolArgs: Any?
+    ) {
+        val eventContext = ToolCallStartingContext(id, parentId, runId, toolCallId, tool, toolArgs)
         toolCallEventHandlers.values.forEach { handler -> handler.toolCallHandler.handle(eventContext) }
     }
 
     /**
      * Notifies all registered tool handlers when a validation error occurs during a tool call.
      *
+     * @param id The unique identifier for the tool call event;
+     * @param parentId The unique identifier for the parent run, if applicable;
      * @param runId The unique identifier for the current run.
+     * @param toolCallId The unique identifier for the current tool call.
      * @param tool The tool for which validation failed
      * @param toolArgs The arguments that failed validation
      * @param error The validation error message
      */
     public suspend fun onToolValidationFailed(
+        id: String,
+        parentId: String?,
         runId: String,
         toolCallId: String?,
         tool: Tool<*, *>,
         toolArgs: Any?,
         error: String
     ) {
-        val eventContext = ToolValidationFailedContext(runId, toolCallId, tool, toolArgs, error)
+        val eventContext = ToolValidationFailedContext(id, parentId, runId, toolCallId, tool, toolArgs, error)
         toolCallEventHandlers.values.forEach { handler -> handler.toolValidationErrorHandler.handle(eventContext) }
     }
 
     /**
      * Notifies all registered tool handlers when a tool call fails with an exception.
      *
-     * @param runId The unique identifier for the current run.
-     * @param toolCallId The unique identifier for the current tool call.
-     * @param tool The tool that failed
-     * @param toolArgs The arguments provided to the tool
-     * @param throwable The exception that caused the failure
+     * @param id The unique identifier for the tool call agent event;
+     * @param parentId The unique identifier for the parent run, if applicable;
+     * @param runId The unique identifier for the current run;
+     * @param toolCallId The unique identifier for the current tool call;
+     * @param tool The tool that failed;
+     * @param toolArgs The arguments provided to the tool;
+     * @param throwable The exception that caused the failure.
      */
     public suspend fun onToolCallFailed(
+        id: String,
+        parentId: String?,
         runId: String,
         toolCallId: String?,
         tool: Tool<*, *>,
         toolArgs: Any?,
         throwable: Throwable
     ) {
-        val eventContext = ToolCallFailedContext(runId, toolCallId, tool, toolArgs, throwable)
+        val eventContext = ToolCallFailedContext(id, parentId, runId, toolCallId, tool, toolArgs, throwable)
         toolCallEventHandlers.values.forEach { handler -> handler.toolCallFailureHandler.handle(eventContext) }
     }
 
     /**
      * Notifies all registered tool handlers about the result of a tool call.
      *
-     * @param runId The unique identifier for the current run.
-     * @param toolCallId The unique identifier for the current tool call.
-     * @param tool The tool that was called
-     * @param toolArgs The arguments that were provided to the tool
-     * @param result The result produced by the tool, or null if no result was produced
+     * @param id The unique identifier for the tool call agent event;
+     * @param parentId The unique identifier for the parent run, if applicable;
+     * @param runId The unique identifier for the current run;
+     * @param toolCallId The unique identifier for the current tool call;
+     * @param tool The tool that was called;
+     * @param toolArgs The arguments that were provided to the tool;
+     * @param result The result produced by the tool, or null if no result was produced.
      */
     public suspend fun onToolCallCompleted(
+        id: String,
+        parentId: String?,
         runId: String,
         toolCallId: String?,
         tool: Tool<*, *>,
         toolArgs: Any?,
         result: Any?
     ) {
-        val eventContext = ToolCallCompletedContext(runId, toolCallId, tool, toolArgs, result)
+        val eventContext = ToolCallCompletedContext(id, parentId, runId, toolCallId, tool, toolArgs, result)
         toolCallEventHandlers.values.forEach { handler -> handler.toolCallResultHandler.handle(eventContext) }
     }
 
@@ -455,20 +524,22 @@ public abstract class AIAgentPipeline(public val clock: Clock) {
      * This method notifies all registered stream handlers that streaming is about to start,
      * allowing them to perform preprocessing or logging operations.
      *
-     * @param runId The unique identifier for this streaming session
-     * @param callId The unique identifier for this LLM call
-     * @param prompt The prompt being sent to the language model
-     * @param model The language model being used for streaming
-     * @param tools The list of available tool descriptors for this streaming session
+     * @param id The unique identifier for LLM streaming event;
+     * @param parentId The unique identifier for the parent run, if applicable;
+     * @param runId The unique identifier for this LLM streaming session;
+     * @param prompt The prompt being sent to the language model;
+     * @param model The language model being used for streaming;
+     * @param tools The list of available tool descriptors for this streaming session.
      */
     public suspend fun onLLMStreamingStarting(
+        id: String,
+        parentId: String?,
         runId: String,
-        callId: String,
         prompt: Prompt,
         model: LLModel,
         tools: List<ToolDescriptor>
     ) {
-        val eventContext = LLMStreamingStartingContext(runId, callId, prompt, model, tools)
+        val eventContext = LLMStreamingStartingContext(id, parentId, runId, prompt, model, tools)
         llmStreamingEventHandlers.values.forEach { handler -> handler.llmStreamingStartingHandler.handle(eventContext) }
     }
 
@@ -478,12 +549,18 @@ public abstract class AIAgentPipeline(public val clock: Clock) {
      * This method notifies all registered stream handlers about each incoming stream frame,
      * allowing them to process, transform, or aggregate the streaming content in real-time.
      *
-     * @param runId The unique identifier for this streaming session
-     * @param callId The unique identifier for this LLM call
-     * @param streamFrame The individual stream frame containing partial response data
+     * @param id The unique identifier for LLM streaming event;
+     * @param parentId The unique identifier for the parent run, if applicable;
+     * @param runId The unique identifier for this streaming session;
+     * @param streamFrame The individual stream frame containing partial response data.
      */
-    public suspend fun onLLMStreamingFrameReceived(runId: String, callId: String, streamFrame: StreamFrame) {
-        val eventContext = LLMStreamingFrameReceivedContext(runId, callId, streamFrame)
+    public suspend fun onLLMStreamingFrameReceived(
+        id: String,
+        parentId: String?,
+        runId: String,
+        streamFrame: StreamFrame
+    ) {
+        val eventContext = LLMStreamingFrameReceivedContext(id, parentId, runId, streamFrame)
         llmStreamingEventHandlers.values.forEach { handler -> handler.llmStreamingFrameReceivedHandler.handle(eventContext) }
     }
 
@@ -493,12 +570,18 @@ public abstract class AIAgentPipeline(public val clock: Clock) {
      * This method notifies all registered stream handlers about the streaming error,
      * allowing them to handle or log the error.
      *
-     * @param runId The unique identifier for this streaming session
-     * @param callId The unique identifier for this LLM call
-     * @param throwable The exception that occurred during streaming, if applicable
+     * @param id The unique identifier for LLM streaming event;
+     * @param parentId The unique identifier for the parent run, if applicable;
+     * @param runId The unique identifier for this streaming session;
+     * @param throwable The exception that occurred during streaming if applicable.
      */
-    public suspend fun onLLMStreamingFailed(runId: String, callId: String, throwable: Throwable) {
-        val eventContext = LLMStreamingFailedContext(runId, callId, throwable)
+    public suspend fun onLLMStreamingFailed(
+        id: String,
+        parentId: String?,
+        runId: String,
+        throwable: Throwable
+    ) {
+        val eventContext = LLMStreamingFailedContext(id, parentId, runId, throwable)
         llmStreamingEventHandlers.values.forEach { handler -> handler.llmStreamingFailedHandler.handle(eventContext) }
     }
 
@@ -508,20 +591,22 @@ public abstract class AIAgentPipeline(public val clock: Clock) {
      * This method notifies all registered stream handlers that streaming has finished,
      * allowing them to perform post-processing, cleanup, or final logging operations.
      *
+     * @param id The unique identifier for LLM streaming event;
+     * @param parentId The unique identifier for the parent run, if applicable;
      * @param runId The unique identifier for this streaming session
-     * @param callId The unique identifier for this LLM call
      * @param prompt The prompt that was sent to the language model
      * @param model The language model that was used for streaming
      * @param tools The list of tool descriptors that were available for this streaming session
      */
     public suspend fun onLLMStreamingCompleted(
+        id: String,
+        parentId: String?,
         runId: String,
-        callId: String,
         prompt: Prompt,
         model: LLModel,
         tools: List<ToolDescriptor>
     ) {
-        val eventContext = LLMStreamingCompletedContext(runId, callId, prompt, model, tools)
+        val eventContext = LLMStreamingCompletedContext(id, parentId, runId, prompt, model, tools)
         llmStreamingEventHandlers.values.forEach { handler -> handler.llmStreamingCompletedHandler.handle(eventContext) }
     }
 

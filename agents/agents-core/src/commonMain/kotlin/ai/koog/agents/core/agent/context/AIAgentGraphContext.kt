@@ -29,6 +29,7 @@ import kotlin.reflect.KType
  * and handling complex dependencies between graph nodes.
  */
 public interface AIAgentGraphContextBase : AIAgentContext {
+
     override val pipeline: AIAgentGraphPipeline
 
     /**

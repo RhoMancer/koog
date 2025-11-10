@@ -1,6 +1,8 @@
 package ai.koog.agents.core.environment
 
 import ai.koog.agents.core.agent.context.element.getAgentRunInfoElementOrThrow
+import ai.koog.agents.core.agent.context.element.getNodeInfoElement
+import ai.koog.agents.core.agent.context.element.getStrategyInfoElement
 import ai.koog.agents.core.environment.AIAgentEnvironmentUtils.mapToToolResult
 import ai.koog.agents.core.feature.pipeline.AIAgentPipeline
 import ai.koog.agents.core.model.message.AIAgentEnvironmentToolResultToAgentContent
@@ -18,6 +20,8 @@ import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.supervisorScope
 import kotlinx.serialization.json.JsonElement
+import kotlin.uuid.ExperimentalUuidApi
+import kotlin.uuid.Uuid
 
 internal class GenericAgentEnvironment(
     private val agentId: String,
@@ -86,7 +90,7 @@ internal class GenericAgentEnvironment(
         toolResult = result
     )
 
-    @OptIn(InternalAgentToolsApi::class)
+    @OptIn(InternalAgentToolsApi::class, ExperimentalUuidApi::class)
     private suspend fun processToolCall(
         content: AgentToolCallToEnvironmentContent
     ): EnvironmentToolResultToAgentContent {
@@ -115,13 +119,16 @@ internal class GenericAgentEnvironment(
             )
         }
 
-        pipeline.onToolCallStarting(content.runId, content.toolCallId, tool, toolArgs)
+        val toolCallId = Uuid.random().toString()
+        val parentId = getNodeInfoElement()?.id ?: getStrategyInfoElement()?.id
+
+        pipeline.onToolCallStarting(toolCallId, parentId, content.runId, content.toolCallId, tool, toolArgs)
 
         val toolResult = try {
             @Suppress("UNCHECKED_CAST")
             (tool as Tool<Any?, Any?>).execute(toolArgs)
         } catch (e: ToolException) {
-            pipeline.onToolValidationFailed(content.runId, content.toolCallId, tool, toolArgs, e.message)
+            pipeline.onToolValidationFailed(toolCallId, parentId, content.runId, content.toolCallId, tool, toolArgs, e.message)
 
             return toolResult(
                 message = e.message,
@@ -133,7 +140,7 @@ internal class GenericAgentEnvironment(
         } catch (e: Exception) {
             logger.error(e) { "Tool \"${tool.name}\" failed to execute with arguments: ${content.toolArgs}" }
 
-            pipeline.onToolCallFailed(content.runId, content.toolCallId, tool, toolArgs, e)
+            pipeline.onToolCallFailed(toolCallId, parentId, content.runId, content.toolCallId, tool, toolArgs, e)
 
             return toolResult(
                 message = "Tool \"${tool.name}\" failed to execute because of ${e.message}!",
@@ -144,7 +151,7 @@ internal class GenericAgentEnvironment(
             )
         }
 
-        pipeline.onToolCallCompleted(content.runId, content.toolCallId, tool, toolArgs, toolResult)
+        pipeline.onToolCallCompleted(toolCallId, parentId, content.runId, content.toolCallId, tool, toolArgs, toolResult)
 
         logger.trace { "Completed execution of ${content.toolName} with result: $toolResult" }
 

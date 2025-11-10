@@ -8,11 +8,11 @@ import ai.koog.agents.core.annotation.ExperimentalAgentsApi
 import ai.koog.agents.core.dsl.builder.forwardTo
 import ai.koog.agents.core.dsl.builder.strategy
 import ai.koog.agents.core.dsl.extension.nodeDoNothing
+import ai.koog.agents.core.feature.AIAgentFeatureTestAPI.testClock
 import ai.koog.agents.core.feature.config.FeatureSystemVariables
 import ai.koog.agents.core.feature.debugger.Debugger
 import ai.koog.agents.core.feature.pipeline.AIAgentGraphPipeline
 import ai.koog.agents.core.feature.pipeline.AIAgentPipeline
-import ai.koog.agents.core.system.mock.testClock
 import ai.koog.agents.core.tools.ToolRegistry
 import ai.koog.agents.testing.network.NetUtil
 import ai.koog.agents.testing.tools.getMockExecutor
