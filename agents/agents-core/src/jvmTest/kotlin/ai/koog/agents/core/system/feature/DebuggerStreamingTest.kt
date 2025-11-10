@@ -4,8 +4,10 @@ import ai.koog.agents.core.annotation.ExperimentalAgentsApi
 import ai.koog.agents.core.dsl.builder.forwardTo
 import ai.koog.agents.core.dsl.builder.strategy
 import ai.koog.agents.core.dsl.extension.nodeLLMRequestStreamingAndSendResults
+import ai.koog.agents.core.feature.AIAgentFeatureTestAPI.testClock
 import ai.koog.agents.core.feature.debugger.Debugger
 import ai.koog.agents.core.feature.message.FeatureMessage
+import ai.koog.agents.core.feature.mock.MockLLMProvider
 import ai.koog.agents.core.feature.model.AIAgentError
 import ai.koog.agents.core.feature.model.events.LLMStreamingCompletedEvent
 import ai.koog.agents.core.feature.model.events.LLMStreamingFailedEvent
@@ -20,14 +22,14 @@ import ai.koog.agents.core.system.feature.DebuggerTestAPI.defaultClientServerTim
 import ai.koog.agents.core.system.feature.DebuggerTestAPI.mockLLModel
 import ai.koog.agents.core.system.feature.DebuggerTestAPI.testBaseClient
 import ai.koog.agents.core.system.mock.ClientEventsCollector
-import ai.koog.agents.core.system.mock.MockLLMProvider
 import ai.koog.agents.core.system.mock.assistantMessage
 import ai.koog.agents.core.system.mock.createAgent
 import ai.koog.agents.core.system.mock.systemMessage
-import ai.koog.agents.core.system.mock.testClock
 import ai.koog.agents.core.system.mock.userMessage
 import ai.koog.agents.core.tools.ToolDescriptor
 import ai.koog.agents.core.tools.ToolRegistry
+import ai.koog.agents.testing.feature.message.singleEvent
+import ai.koog.agents.testing.feature.message.singleNodeEvent
 import ai.koog.agents.testing.network.NetUtil.findAvailablePort
 import ai.koog.agents.testing.tools.DummyTool
 import ai.koog.agents.testing.tools.getMockExecutor
@@ -98,8 +100,8 @@ class DebuggerStreamingTest {
         val port = findAvailablePort()
         val clientConfig = DefaultClientConnectionConfig(host = HOST, port = port, protocol = URLProtocol.HTTP)
 
-        var expectedClientEvents = emptyList<FeatureMessage>()
-        var actualClientEvents = emptyList<FeatureMessage>()
+        val expectedFilteredEvents = mutableListOf<FeatureMessage>()
+        val actualFilteredEvents = mutableListOf<FeatureMessage>()
 
         // Server
         val serverJob = launch {
@@ -159,45 +161,51 @@ class DebuggerStreamingTest {
                 client.connectWithRetry(defaultClientServerTimeout)
                 collectEventsJob.join()
 
-                val callIds = clientEventsCollector.collectedEvents.filterIsInstance<LLMStreamingStartingEvent>().map { it.callId }
-                assertEquals(
-                    1,
-                    callIds.size,
-                    "Expected 1 LLMCallStartingEvent, got ${callIds.size}"
+                val actualClientEvents = clientEventsCollector.collectedEvents
+
+                actualFilteredEvents.addAll(
+                    actualClientEvents.filter { event ->
+                        event is LLMStreamingStartingEvent ||
+                            event is LLMStreamingFrameReceivedEvent ||
+                            event is LLMStreamingCompletedEvent ||
+                            event is LLMStreamingFailedEvent
+                    }
                 )
+
+                // Expected events
+                val actualStreamingStartingEvent = actualClientEvents.singleEvent<LLMStreamingStartingEvent>()
+                val actualNodeStreamAndCollectEvent = actualClientEvents.singleNodeEvent("stream-and-collect")
 
                 // Correct run id will be set after the 'collect events job' is finished.
-                expectedClientEvents = listOf(
-                    LLMStreamingStartingEvent(
-                        runId = clientEventsCollector.runId,
-                        callId = callIds[0],
-                        prompt = expectedLLMCallPrompt,
-                        model = mockLLModel.toModelInfo(),
-                        tools = listOf(dummyTool.name),
-                        timestamp = testClock.now().toEpochMilliseconds(),
-                    ),
-                    LLMStreamingFrameReceivedEvent(
-                        runId = clientEventsCollector.runId,
-                        callId = callIds[0],
-                        frame = StreamFrame.Append(testLLMResponse),
-                        timestamp = testClock.now().toEpochMilliseconds(),
-                    ),
-                    LLMStreamingCompletedEvent(
-                        runId = clientEventsCollector.runId,
-                        callId = callIds[0],
-                        prompt = expectedLLMCallPrompt,
-                        model = mockLLModel.toModelInfo(),
-                        tools = listOf(dummyTool.name),
-                        timestamp = testClock.now().toEpochMilliseconds(),
+                expectedFilteredEvents.addAll(
+                    listOf(
+                        LLMStreamingStartingEvent(
+                            id = actualStreamingStartingEvent.id,
+                            parentId = actualNodeStreamAndCollectEvent.id,
+                            runId = clientEventsCollector.runId,
+                            prompt = expectedLLMCallPrompt,
+                            model = mockLLModel.toModelInfo(),
+                            tools = listOf(dummyTool.name),
+                            timestamp = testClock.now().toEpochMilliseconds(),
+                        ),
+                        LLMStreamingFrameReceivedEvent(
+                            id = actualStreamingStartingEvent.id,
+                            parentId = actualNodeStreamAndCollectEvent.id,
+                            runId = clientEventsCollector.runId,
+                            frame = StreamFrame.Append(testLLMResponse),
+                            timestamp = testClock.now().toEpochMilliseconds(),
+                        ),
+                        LLMStreamingCompletedEvent(
+                            id = actualStreamingStartingEvent.id,
+                            parentId = actualNodeStreamAndCollectEvent.id,
+                            runId = clientEventsCollector.runId,
+                            prompt = expectedLLMCallPrompt,
+                            model = mockLLModel.toModelInfo(),
+                            tools = listOf(dummyTool.name),
+                            timestamp = testClock.now().toEpochMilliseconds(),
+                        )
                     )
                 )
-
-                actualClientEvents = clientEventsCollector.collectedEvents.filter { event ->
-                    event is LLMStreamingStartingEvent ||
-                        event is LLMStreamingFrameReceivedEvent ||
-                        event is LLMStreamingFailedEvent ||
-                        event is LLMStreamingCompletedEvent
-                }
             }
         }
 
@@ -207,8 +215,8 @@ class DebuggerStreamingTest {
 
         assertNotNull(isFinishedOrNull, "Client or server did not finish in time")
 
-        assertEquals(expectedClientEvents.size, actualClientEvents.size)
-        assertContentEquals(expectedClientEvents, actualClientEvents)
+        assertEquals(expectedFilteredEvents.size, actualFilteredEvents.size)
+        assertContentEquals(expectedFilteredEvents, actualFilteredEvents)
     }
 
     @Test
@@ -261,7 +269,7 @@ class DebuggerStreamingTest {
                 tools: List<ToolDescriptor>
             ): List<Message.Response> = emptyList()
 
-            override fun executeStreaming(
+            override suspend fun executeStreaming(
                 prompt: Prompt,
                 model: LLModel,
                 tools: List<ToolDescriptor>
@@ -285,8 +293,8 @@ class DebuggerStreamingTest {
         val port = findAvailablePort()
         val clientConfig = DefaultClientConnectionConfig(host = HOST, port = port, protocol = URLProtocol.HTTP)
 
-        var expectedClientEvents = emptyList<FeatureMessage>()
-        var actualClientEvents = emptyList<FeatureMessage>()
+        val expectedFilteredEvents = mutableListOf<FeatureMessage>()
+        val actualFilteredEvents = mutableListOf<FeatureMessage>()
 
         // Server
         val serverJob = launch {
@@ -350,45 +358,51 @@ class DebuggerStreamingTest {
                 client.connectWithRetry(defaultClientServerTimeout)
                 collectEventsJob.join()
 
-                val callIds = clientEventsCollector.collectedEvents.filterIsInstance<LLMStreamingStartingEvent>().map { it.callId }
-                assertEquals(
-                    1,
-                    callIds.size,
-                    "Expected 1 LLMCallStartingEvent, got ${callIds.size}"
+                val actualClientEvents = clientEventsCollector.collectedEvents
+
+                actualFilteredEvents.addAll(
+                    actualClientEvents.filter { event ->
+                        event is LLMStreamingStartingEvent ||
+                            event is LLMStreamingFrameReceivedEvent ||
+                            event is LLMStreamingFailedEvent ||
+                            event is LLMStreamingCompletedEvent
+                    }
                 )
+
+                // Expected events
+                val actualStreamingStartingEvent = actualClientEvents.singleEvent<LLMStreamingStartingEvent>()
+                val actualNodeStreamAndCollectEvent = actualClientEvents.singleNodeEvent("stream-and-collect")
 
                 // Correct run id will be set after the 'collect events job' is finished.
-                expectedClientEvents = listOf(
-                    LLMStreamingStartingEvent(
-                        runId = clientEventsCollector.runId,
-                        callId = callIds[0],
-                        prompt = expectedLLMCallPrompt,
-                        model = testModel.toModelInfo(),
-                        tools = listOf(dummyTool.name),
-                        timestamp = testClock.now().toEpochMilliseconds(),
-                    ),
-                    LLMStreamingFailedEvent(
-                        runId = clientEventsCollector.runId,
-                        callId = callIds[0],
-                        error = AIAgentError(testStreamingErrorMessage, testStreamingStackTrace),
-                        timestamp = testClock.now().toEpochMilliseconds()
-                    ),
-                    LLMStreamingCompletedEvent(
-                        runId = clientEventsCollector.runId,
-                        callId = callIds[0],
-                        prompt = expectedLLMCallPrompt,
-                        model = testModel.toModelInfo(),
-                        tools = listOf(dummyTool.name),
-                        timestamp = testClock.now().toEpochMilliseconds(),
+                expectedFilteredEvents.addAll(
+                    listOf(
+                        LLMStreamingStartingEvent(
+                            id = actualStreamingStartingEvent.id,
+                            parentId = actualNodeStreamAndCollectEvent.id,
+                            runId = clientEventsCollector.runId,
+                            prompt = expectedLLMCallPrompt,
+                            model = testModel.toModelInfo(),
+                            tools = listOf(dummyTool.name),
+                            timestamp = testClock.now().toEpochMilliseconds(),
+                        ),
+                        LLMStreamingFailedEvent(
+                            id = actualStreamingStartingEvent.id,
+                            parentId = actualNodeStreamAndCollectEvent.id,
+                            runId = clientEventsCollector.runId,
+                            error = AIAgentError(testStreamingErrorMessage, testStreamingStackTrace),
+                            timestamp = testClock.now().toEpochMilliseconds()
+                        ),
+                        LLMStreamingCompletedEvent(
+                            id = actualStreamingStartingEvent.id,
+                            parentId = actualNodeStreamAndCollectEvent.id,
+                            runId = clientEventsCollector.runId,
+                            prompt = expectedLLMCallPrompt,
+                            model = testModel.toModelInfo(),
+                            tools = listOf(dummyTool.name),
+                            timestamp = testClock.now().toEpochMilliseconds(),
+                        )
                     )
                 )
-
-                actualClientEvents = clientEventsCollector.collectedEvents.filter { event ->
-                    event is LLMStreamingStartingEvent ||
-                        event is LLMStreamingFrameReceivedEvent ||
-                        event is LLMStreamingFailedEvent ||
-                        event is LLMStreamingCompletedEvent
-                }
             }
         }
 
@@ -398,7 +412,7 @@ class DebuggerStreamingTest {
 
         assertNotNull(isFinishedOrNull, "Client or server did not finish in time")
 
-        assertEquals(expectedClientEvents.size, actualClientEvents.size)
-        assertContentEquals(expectedClientEvents, actualClientEvents)
+        assertEquals(expectedFilteredEvents.size, actualFilteredEvents.size)
+        assertContentEquals(expectedFilteredEvents, actualFilteredEvents)
     }
 }

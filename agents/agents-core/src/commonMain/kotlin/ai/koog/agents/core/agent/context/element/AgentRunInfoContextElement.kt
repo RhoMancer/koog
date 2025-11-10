@@ -1,7 +1,6 @@
 package ai.koog.agents.core.agent.context.element
 
 import ai.koog.agents.core.agent.config.AIAgentConfigBase
-import kotlinx.coroutines.currentCoroutineContext
 import kotlin.coroutines.CoroutineContext
 
 /**
@@ -15,14 +14,14 @@ import kotlin.coroutines.CoroutineContext
  * @property agentId The unique identifier for the agent running in the current context.
  * @property runId The identifier for the session associated with the current agent run.
  * @property agentConfig The agent configuration property.
- * @property strategyName The name of the strategy being executed by the agent in the current context.
  */
 public data class AgentRunInfoContextElement(
+    override val id: String,
+    override val parentId: String?,
     val agentId: String,
     val runId: String,
     val agentConfig: AIAgentConfigBase,
-    val strategyName: String
-) : CoroutineContext.Element {
+) : AIAgentContextElementBase {
 
     /**
      * A companion object that serves as the key for the `AgentRunInfoContextElement` in a `CoroutineContext`.
@@ -34,23 +33,3 @@ public data class AgentRunInfoContextElement(
 
     override val key: CoroutineContext.Key<*> = Key
 }
-
-/**
- * Retrieves the `AgentRunInfoContextElement` from the current coroutine context, if present.
- *
- * @return The `AgentRunInfoContextElement` if it exists in the current coroutine context, or `null` if not found.
- */
-public suspend fun getAgentRunInfoElementOrThrow(): AgentRunInfoContextElement =
-    getAgentRunInfoElement()
-        ?: error(
-            "Unable to retrieve AgentRunInfoContextElement from CoroutineContext. " +
-                "Please make sure the AgentRunInfoContextElement is added to the current CoroutineContext."
-        )
-
-/**
- * Retrieves the `AgentRunInfoContextElement` from the current coroutine context, if present.
- *
- * @return The `AgentRunInfoContextElement` if it exists in the current coroutine context, or `null` if not found.
- */
-public suspend fun getAgentRunInfoElement(): AgentRunInfoContextElement? =
-    currentCoroutineContext()[AgentRunInfoContextElement.Key]

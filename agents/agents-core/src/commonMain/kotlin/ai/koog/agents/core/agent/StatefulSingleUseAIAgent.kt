@@ -18,7 +18,7 @@ import kotlin.uuid.Uuid
 /**
  * Abstract base class representing a single-use AI agent with state.
  *
- * This AI agent is designed to execute a specific long-running strategy only once, and provides API to monitor and manage it's state.
+ * This AI agent is designed to execute a specific long-running strategy only once and provides an API to monitor and manage it's state.
  *
  * It maintains internal states including its running status, whether it was started, its result (if available), and
  * the root context associated with its execution. The class enforces safe state transitions and provides
@@ -85,16 +85,18 @@ public abstract class StatefulSingleUseAIAgent<Input, Output, TContext : AIAgent
             state = State.Starting()
         }
 
+        val id = Uuid.random().toString()
         val runId = Uuid.random().toString()
 
         pipeline.prepareFeatures()
 
         return withContext(
             AgentRunInfoContextElement(
+                id = id,
+                parentId = null,
                 agentId = this@StatefulSingleUseAIAgent.id,
                 runId = runId,
-                agentConfig = agentConfig,
-                strategyName = strategy.name
+                agentConfig = agentConfig
             )
         ) {
             val context = prepareContext(agentInput, runId)
@@ -104,44 +106,26 @@ public abstract class StatefulSingleUseAIAgent<Input, Output, TContext : AIAgent
             }
 
             logger.debug {
-                formatLog(
-                    agentId = this@StatefulSingleUseAIAgent.id,
-                    runId = runId,
-                    message = "Starting agent execution"
-                )
+                formatLog(this@StatefulSingleUseAIAgent.id, runId, "Starting agent execution")
             }
 
-            pipeline.onAgentStarting<Input, Output>(
-                runId = runId,
-                agent = this@StatefulSingleUseAIAgent,
-                context = context
-            )
+            pipeline.onAgentStarting<Input, Output>(id, null, runId, this@StatefulSingleUseAIAgent, context)
 
             val result = try {
                 strategy.execute(context = context, input = agentInput)
             } catch (e: Throwable) {
                 logger.error(e) { "Execution exception reported by server!" }
-                pipeline.onAgentExecutionFailed(
-                    agentId = this@StatefulSingleUseAIAgent.id,
-                    runId = runId,
-                    throwable = e
-                )
+                pipeline.onAgentExecutionFailed(id, null, this@StatefulSingleUseAIAgent.id, runId, e)
+
                 agentStateMutex.withLock { state = State.Failed(e) }
                 throw e
             }
 
             logger.debug {
-                formatLog(
-                    agentId = this@StatefulSingleUseAIAgent.id,
-                    runId = runId,
-                    message = "Finished agent execution"
-                )
+                formatLog(this@StatefulSingleUseAIAgent.id, runId, "Finished agent execution")
             }
-            pipeline.onAgentCompleted(
-                agentId = this@StatefulSingleUseAIAgent.id,
-                runId = runId,
-                result = result
-            )
+
+            pipeline.onAgentCompleted(id, null, this@StatefulSingleUseAIAgent.id, runId, result)
 
             agentStateMutex.withLock {
                 state = if (result != null) {
@@ -159,13 +143,13 @@ public abstract class StatefulSingleUseAIAgent<Input, Output, TContext : AIAgent
      * Closes the AI Agent and performs necessary cleanup operations.
      *
      * This method is a suspending function that ensures that the AI Agent's resources are released
-     * when it is no longer needed. It notifies the pipeline of the agent's closure and ensures
+     * when it is no longer necessary. It notifies the pipeline of the agent's closure and ensures
      * that any associated features or stream providers are properly closed.
      *
      * Overrides the `close` method to implement agent-specific shutdown logic.
      */
     final override suspend fun close() {
-        pipeline.onAgentClosing(agentId = this@StatefulSingleUseAIAgent.id)
+        pipeline.onAgentClosing(id = Uuid.random().toString(), parentId = null, agentId = this@StatefulSingleUseAIAgent.id)
         pipeline.closeFeaturesStreamProviders()
     }
 

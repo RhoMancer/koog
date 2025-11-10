@@ -62,18 +62,23 @@ class NodeInfoContextElementTest {
 
     @Test
     fun testMultipleElementsInContext() = runTest {
-        val nodeElement = NodeInfoContextElement(id = "id", parentId = "parentId", name = nodeName, input = "input", inputType = typeOf<String>())
+        val testId = "test-id"
+        val testParentId = "test-parent-id"
+        val testNodeInput = "test-input"
+        val testNodeInputType = typeOf<String>()
+        val nodeElement = NodeInfoContextElement(id = testId, parentId = testParentId, name = nodeName, input = testNodeInput, inputType = testNodeInputType)
         val testPrompt = prompt("test-prompt") {}
         val testModel = OllamaModels.Meta.LLAMA_3_2
 
         val agentElement = AgentRunInfoContextElement(
+            id = testId,
+            parentId = testParentId,
             agentId = "test-agent",
             runId = "test-run",
             agentConfig = object : AIAgentConfigBase {
                 override val prompt: Prompt = testPrompt
                 override val model: LLModel = testModel
             },
-            strategyName = "test-strategy"
         )
 
         withContext(nodeElement + agentElement) {

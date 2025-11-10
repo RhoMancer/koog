@@ -10,16 +10,34 @@ import kotlinx.serialization.Serializable
  * This event provides details about the agent's strategy, making it useful for
  * monitoring, debugging, and tracking the lifecycle of AI agents within the system.
  *
+ * @property id A unique identifier for the group of events associated with the agent execution event.
+ * @property parentId The unique identifier of the parent event, if applicable.
  * @property agentId The unique identifier of the AI agent;
  * @property runId The unique identifier of the AI agen run;
  * @property timestamp The timestamp of the event, in milliseconds since the Unix epoch.
  */
 @Serializable
 public data class AgentStartingEvent(
+    override val id: String,
+    override val parentId: String?,
     val agentId: String,
     val runId: String,
     override val timestamp: Long = Clock.System.now().toEpochMilliseconds(),
-) : DefinedFeatureEvent()
+) : DefinedFeatureEvent() {
+
+    /**
+     * @deprecated. Creates an instance of [AgentStartingEvent].
+     * Note! Do not relay on [id] and [parentId] parameters with this constructor.
+     */
+    @Deprecated(
+        message = "Please use constructor with id and parentId parameters",
+        replaceWith = ReplaceWith("AgentStartingEvent(id, parentId, agentId, runId)")
+    )
+    public constructor(
+        agentId: String,
+        runId: String
+    ) : this(AgentStartingEvent::class.simpleName.toString(), null, agentId, runId)
+}
 
 /**
  * Event representing the completion of an AI Agent's execution.
@@ -28,6 +46,8 @@ public data class AgentStartingEvent(
  * information about the strategy and its result. It can be used for logging, tracing,
  * or monitoring the outcomes of agent operations.
  *
+ * @property id A unique identifier for the group of events associated with the agent execution event.
+ * @property parentId The unique identifier of the parent event, if applicable.
  * @property agentId The unique identifier of the AI agent;
  * @property runId The unique identifier of the AI agen run;
  * @property result The result of the strategy execution, or null if unavailable;
@@ -35,11 +55,28 @@ public data class AgentStartingEvent(
  */
 @Serializable
 public data class AgentCompletedEvent(
+    override val id: String,
+    override val parentId: String?,
     val agentId: String,
     val runId: String,
     val result: String?,
     override val timestamp: Long = Clock.System.now().toEpochMilliseconds(),
-) : DefinedFeatureEvent()
+) : DefinedFeatureEvent() {
+
+    /**
+     * @deprecated. Creates an instance of [AgentCompletedEvent].
+     * Note! Do not relay on [id] and [parentId] parameters with this constructor.
+     */
+    @Deprecated(
+        message = "Please use constructor with id and parentId parameters",
+        replaceWith = ReplaceWith("AgentCompletedEvent(id, parentId, agentId, runId, result)")
+    )
+    public constructor(
+        agentId: String,
+        runId: String,
+        result: String?
+    ) : this(AgentCompletedEvent::class.simpleName.toString(), null, agentId, runId, result)
+}
 
 /**
  * Represents an event triggered when an AI agent run encounters an error.
@@ -47,7 +84,8 @@ public data class AgentCompletedEvent(
  * This event is used to capture error information during the execution of an AI agent
  * strategy, including details of the strategy and the encountered error.
  *
- * @constructor Creates an instance of [AgentExecutionFailedEvent].
+ * @property id A unique identifier for the group of events associated with the agent execution event.
+ * @property parentId The unique identifier of the parent event, if applicable.
  * @property agentId The unique identifier of the AI agent;
  * @property runId The unique identifier of the AI agen run;
  * @property error The [AIAgentError] instance encapsulating details about the encountered error,
@@ -56,24 +94,58 @@ public data class AgentCompletedEvent(
  */
 @Serializable
 public data class AgentExecutionFailedEvent(
+    override val id: String,
+    override val parentId: String?,
     val agentId: String,
     val runId: String,
     val error: AIAgentError,
     override val timestamp: Long = Clock.System.now().toEpochMilliseconds(),
-) : DefinedFeatureEvent()
+) : DefinedFeatureEvent() {
+
+    /**
+     * @deprecated. Creates an instance of [AgentExecutionFailedEvent].
+     * Note! Do not relay on [id] and [parentId] parameters with this constructor.
+     */
+    @Deprecated(
+        message = "Please use constructor with id and parentId parameters",
+        replaceWith = ReplaceWith("AgentExecutionFailedEvent(id, parentId, agentId, runId, error)")
+    )
+    public constructor(
+        agentId: String,
+        runId: String,
+        error: AIAgentError
+    ) : this(AgentExecutionFailedEvent::class.simpleName.toString(), null, agentId, runId, error)
+}
 
 /**
  * Represents an event that signifies the closure or termination of an AI agent identified
  * by a unique `agentId`.
  *
+ * @property id A unique identifier for the group of events associated with the agent execution event.
+ * @property parentId The unique identifier of the parent event, if applicable.
  * @property agentId The unique identifier of the AI agent;
  * @property timestamp The timestamp of the event, in milliseconds since the Unix epoch.
  */
 @Serializable
 public data class AgentClosingEvent(
+    override val id: String,
+    override val parentId: String?,
     val agentId: String,
     override val timestamp: Long = Clock.System.now().toEpochMilliseconds(),
-) : DefinedFeatureEvent()
+) : DefinedFeatureEvent() {
+
+    /**
+     * @deprecated. Creates an instance of [AgentClosingEvent].
+     * Note! Do not relay on [id] and [parentId] parameters with this constructor.
+     */
+    @Deprecated(
+        message = "Please use constructor with id and parentId parameters",
+        replaceWith = ReplaceWith("AgentClosingEvent(id, parentId, agentId)")
+    )
+    public constructor(
+        agentId: String
+    ) : this(AgentClosingEvent::class.simpleName.toString(), null, agentId)
+}
 
 //region Deprecated
 

@@ -22,8 +22,9 @@ public interface LLMCallEventContext : AgentLifecycleEventContext
  * @property tools The list of tool descriptors available for the LLM call.
  */
 public data class LLMCallStartingContext(
+    override val id: String,
+    override val parentId: String?,
     val runId: String,
-    val callId: String,
     val prompt: Prompt,
     val model: LLModel,
     val tools: List<ToolDescriptor>,
@@ -42,8 +43,9 @@ public data class LLMCallStartingContext(
  * @property moderationResponse The moderation response, if any, received from the language model.
  */
 public data class LLMCallCompletedContext(
+    override val id: String,
+    override val parentId: String?,
     val runId: String,
-    val callId: String,
     val prompt: Prompt,
     val model: LLModel,
     val tools: List<ToolDescriptor>,

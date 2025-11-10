@@ -27,33 +27,70 @@ public abstract class StrategyStartingEvent : DefinedFeatureEvent() {
  * Represents an event triggered at the start of an AI agent strategy execution that involves
  * the use of a graph-based operational model.
  *
- * @property runId A unique identifier representing the specific run or instance of the strategy execution.
- * @property strategyName The name of the graph-based strategy being executed.
- * @property graph The graph structure representing the strategy's execution workflow, encompassing nodes
- *                 and their directed relationships;
+ * @property id A unique identifier for the group of events associated with the strategy events;
+ * @property parentId The unique identifier of the parent event, if applicable;
+ * @property runId A unique identifier representing the specific run or instance of the strategy execution;
+ * @property strategyName The name of the graph-based strategy being executed;
+ * @property graph The graph structure representing the strategy's execution workflow, encompassing nodes and their directed relationships;
  * @property timestamp The timestamp of the event, in milliseconds since the Unix epoch.
  */
 @Serializable
 public data class GraphStrategyStartingEvent(
+    override val id: String,
+    override val parentId: String?,
     override val runId: String,
     override val strategyName: String,
     val graph: StrategyEventGraph,
     override val timestamp: Long = Clock.System.now().toEpochMilliseconds(),
-) : StrategyStartingEvent()
+) : StrategyStartingEvent() {
+
+    /**
+     * @deprecated Use constructor with [id] and [parentId] parameters
+     */
+    @Deprecated(
+        message = "Use constructor with id, parentId parameters",
+        replaceWith = ReplaceWith("GraphStrategyStartingEvent(id, parentId, runId, strategyName, graph, timestamp)")
+    )
+    public constructor(
+        runId: String,
+        strategyName: String,
+        graph: StrategyEventGraph,
+        timestamp: Long = Clock.System.now().toEpochMilliseconds()
+    ) : this(GraphStrategyStartingEvent::class.simpleName.toString(), null, runId, strategyName, graph, timestamp)
+}
 
 /**
  * Represents an event triggered at the start of executing a functional strategy by an AI agent.
  *
+ * @property id A unique identifier for the group of events associated with the strategy events;
+ * @property parentId The unique identifier of the parent event, if applicable;
  * @property runId A unique identifier representing the specific run or instance of the strategy execution;
  * @property strategyName The name of the functional-based strategy being executed;
  * @property timestamp The timestamp of the event, in milliseconds since the Unix epoch.
  */
 @Serializable
 public data class FunctionalStrategyStartingEvent(
+    override val id: String,
+    override val parentId: String?,
     override val runId: String,
     override val strategyName: String,
     override val timestamp: Long = Clock.System.now().toEpochMilliseconds(),
-) : StrategyStartingEvent()
+) : StrategyStartingEvent() {
+
+    /**
+     * @deprecated Use constructor with [id] and [parentId] parameters
+     */
+    @Deprecated(
+        message = "Use constructor with id, parentId parameters",
+        replaceWith = ReplaceWith("FunctionalStrategyStartingEvent(id, parentId, runId, strategyName, timestamp)")
+    )
+    public constructor(
+        runId: String,
+        strategyName: String,
+        graph: StrategyEventGraph,
+        timestamp: Long = Clock.System.now().toEpochMilliseconds()
+    ) : this(FunctionalStrategyStartingEvent::class.simpleName.toString(), null, runId, strategyName, timestamp)
+}
 
 /**
  * Event that represents the completion of an AI agent's strategy execution.
@@ -61,18 +98,37 @@ public data class FunctionalStrategyStartingEvent(
  * This event captures information about the strategy that was executed and the result of its execution.
  * It is used to notify the system or consumers about the conclusion of a specific strategy.
  *
+ * @property id A unique identifier for the group of events associated with the strategy events;
+ * @property parentId The unique identifier of the parent event, if applicable;
+ * @property runId A unique identifier representing the specific run or instance of the strategy execution;
  * @property strategyName The name of the strategy that was executed;
- * @property result The result of the strategy execution, providing details such as success, failure,
- *           or other status descriptions;
+ * @property result The result of the strategy execution, providing details such as success, failure, or other status descriptions;
  * @property timestamp The timestamp of the event, in milliseconds since the Unix epoch.
  */
 @Serializable
 public data class StrategyCompletedEvent(
+    override val id: String,
+    override val parentId: String?,
     val runId: String,
     val strategyName: String,
     val result: String?,
     override val timestamp: Long = Clock.System.now().toEpochMilliseconds(),
-) : DefinedFeatureEvent()
+) : DefinedFeatureEvent() {
+
+    /**
+     * @deprecated Use constructor with [id] and [parentId] parameters
+     */
+    @Deprecated(
+        message = "Use constructor with [id] and [parentId] parameters",
+        replaceWith = ReplaceWith("StrategyCompletedEvent(id, parentId, runId, strategyName, result, timestamp)")
+    )
+    public constructor(
+        runId: String,
+        strategyName: String,
+        result: String?,
+        timestamp: Long = Clock.System.now().toEpochMilliseconds()
+    ) : this(StrategyCompletedEvent::class.simpleName.toString(), null, runId, strategyName, result, timestamp)
+}
 
 /**
  * Represents a graph structure used by an AI agent, consisting of a collection

@@ -21,6 +21,8 @@ import kotlinx.serialization.Serializable
  */
 @Serializable
 public data class FeatureEventMessage(
+    override val id: String,
+    override val parentId: String?,
     override val timestamp: Long = Clock.System.now().toEpochMilliseconds()
 ) : FeatureEvent {
 

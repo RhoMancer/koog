@@ -1,5 +1,6 @@
 package ai.koog.agents.core.feature
 
+import ai.koog.agents.core.feature.mock.MockLLMProvider
 import ai.koog.agents.core.feature.model.AIAgentError
 import ai.koog.agents.core.feature.model.FeatureEventMessage
 import ai.koog.agents.core.feature.model.FeatureStringMessage
@@ -29,7 +30,6 @@ import ai.koog.agents.core.feature.model.events.ToolCallCompletedEvent
 import ai.koog.agents.core.feature.model.events.ToolCallFailedEvent
 import ai.koog.agents.core.feature.model.events.ToolCallStartingEvent
 import ai.koog.agents.core.feature.model.events.ToolValidationFailedEvent
-import ai.koog.agents.core.system.mock.MockLLMProvider
 import ai.koog.prompt.dsl.Prompt
 import ai.koog.prompt.llm.LLModel
 import ai.koog.prompt.llm.toModelInfo
@@ -63,16 +63,22 @@ internal object AIAgentFeatureTestAPI {
     )
 
     internal val featureEventMessage = FeatureEventMessage(
+        id = "test-id",
+        parentId = "test-parent-id",
         timestamp = testClock.now().toEpochMilliseconds()
     )
 
     internal val agentStartingEvent = AgentStartingEvent(
+        id = "test-id",
+        parentId = "test-parent-id",
         agentId = "test-agent-id",
         runId = "test-run-id",
         timestamp = testClock.now().toEpochMilliseconds()
     )
 
     internal val agentCompletedEvent = AgentCompletedEvent(
+        id = "test-id",
+        parentId = "test-parent-id",
         agentId = "test-agent-id",
         runId = "test-run-id",
         result = "test-result",
@@ -80,11 +86,15 @@ internal object AIAgentFeatureTestAPI {
     )
 
     internal val agentClosingEvent = AgentClosingEvent(
+        id = "test-id",
+        parentId = "test-parent-id",
         agentId = "test-agent-id",
         timestamp = testClock.now().toEpochMilliseconds()
     )
 
     internal val agentExecutionFailedEvent = AgentExecutionFailedEvent(
+        id = "test-id",
+        parentId = "test-parent-id",
         agentId = "test-agent-id",
         runId = "test-run-id",
         error = AIAgentError(
@@ -99,6 +109,8 @@ internal object AIAgentFeatureTestAPI {
     internal val graphNode2 = StrategyEventGraphNode("test-node-2-id", "test-node-2-name")
     internal val graphEdge = StrategyEventGraphEdge(graphNode1, graphNode2)
     internal val graphStrategyStartingEvent = GraphStrategyStartingEvent(
+        id = "test-id",
+        parentId = "test-parent-id",
         runId = "test-run-id",
         strategyName = "test-strategy-name",
         graph = StrategyEventGraph(nodes = listOf(graphNode1, graphNode2), edges = listOf(graphEdge)),
@@ -106,12 +118,16 @@ internal object AIAgentFeatureTestAPI {
     )
 
     internal val functionalStrategyStartingEvent = FunctionalStrategyStartingEvent(
+        id = "test-id",
+        parentId = "test-parent-id",
         runId = "test-run-id",
         strategyName = "test-strategy-name",
         timestamp = testClock.now().toEpochMilliseconds()
     )
 
     internal val strategyCompletedEvent = StrategyCompletedEvent(
+        id = "test-id",
+        parentId = "test-parent-id",
         runId = "test-run-id",
         strategyName = "test-strategy-name",
         result = "test-result",
@@ -119,6 +135,8 @@ internal object AIAgentFeatureTestAPI {
     )
 
     internal val nodeExecutionStartingEvent = NodeExecutionStartingEvent(
+        id = "test-id",
+        parentId = "test-parent-id",
         runId = "test-run-id",
         nodeName = "test-node-name",
         input = JsonPrimitive("test-input"),
@@ -126,6 +144,8 @@ internal object AIAgentFeatureTestAPI {
     )
 
     internal val nodeExecutionCompletedEvent = NodeExecutionCompletedEvent(
+        id = "test-id",
+        parentId = "test-parent-id",
         runId = "test-run-id",
         nodeName = "test-node-name",
         input = JsonPrimitive("test-input"),
@@ -134,6 +154,8 @@ internal object AIAgentFeatureTestAPI {
     )
 
     internal val nodeExecutionFailedEvent = NodeExecutionFailedEvent(
+        id = "test-id",
+        parentId = "test-parent-id",
         runId = "test-run-id",
         nodeName = "test-node-name",
         input = JsonPrimitive("test-input"),
@@ -146,6 +168,8 @@ internal object AIAgentFeatureTestAPI {
     )
 
     internal val subgraphExecutionStartingEvent = SubgraphExecutionStartingEvent(
+        id = "test-id",
+        parentId = "test-parent-id",
         runId = "test-run-id",
         subgraphName = "test-subgraph-name",
         input = JsonPrimitive("test-input"),
@@ -153,6 +177,8 @@ internal object AIAgentFeatureTestAPI {
     )
 
     internal val subgraphExecutionCompletedEvent = SubgraphExecutionCompletedEvent(
+        id = "test-id",
+        parentId = "test-parent-id",
         runId = "test-run-id",
         subgraphName = "test-subgraph-name",
         input = JsonPrimitive("test-input"),
@@ -161,6 +187,8 @@ internal object AIAgentFeatureTestAPI {
     )
 
     internal val subgraphExecutionFailedEvent = SubgraphExecutionFailedEvent(
+        id = "test-id",
+        parentId = "test-parent-id",
         runId = "test-run-id",
         subgraphName = "test-subgraph-name",
         input = JsonPrimitive("test-input"),
@@ -173,6 +201,8 @@ internal object AIAgentFeatureTestAPI {
     )
 
     internal val toolCallStartingEvent = ToolCallStartingEvent(
+        id = "test-id",
+        parentId = "test-parent-id",
         runId = "test-run-id",
         toolCallId = "test-tool-call-id",
         toolName = "test-tool-name",
@@ -181,6 +211,8 @@ internal object AIAgentFeatureTestAPI {
     )
 
     internal val toolValidationFailedEvent = ToolValidationFailedEvent(
+        id = "test-id",
+        parentId = "test-parent-id",
         runId = "test-run-id",
         toolCallId = "test-tool-call-id",
         toolName = "test-tool-name",
@@ -190,6 +222,8 @@ internal object AIAgentFeatureTestAPI {
     )
 
     internal val toolCallFailedEvent = ToolCallFailedEvent(
+        id = "test-id",
+        parentId = "test-parent-id",
         runId = "test-run-id",
         toolCallId = "test-tool-call-id",
         toolName = "test-tool-name",
@@ -203,6 +237,8 @@ internal object AIAgentFeatureTestAPI {
     )
 
     internal val toolCallCompletedEvent = ToolCallCompletedEvent(
+        id = "test-id",
+        parentId = "test-parent-id",
         runId = "test-run-id",
         toolCallId = "test-tool-call-id",
         toolName = "test-tool-name",
@@ -212,8 +248,9 @@ internal object AIAgentFeatureTestAPI {
     )
 
     internal val llmCallStartingEvent = LLMCallStartingEvent(
+        id = "test-id",
+        parentId = "test-parent-id",
         runId = "test-run-id",
-        callId = "test-call-id",
         prompt = Prompt(
             id = "test-prompt-id",
             messages = listOf(
@@ -230,8 +267,9 @@ internal object AIAgentFeatureTestAPI {
     )
 
     internal val llmCallCompletedEvent = LLMCallCompletedEvent(
+        id = "test-id",
+        parentId = "test-parent-id",
         runId = "test-run-id",
-        callId = "test-call-id",
         prompt = Prompt(
             id = "test-prompt-id",
             messages = listOf(
@@ -253,8 +291,9 @@ internal object AIAgentFeatureTestAPI {
     )
 
     internal val llmStreamingStartingEvent = LLMStreamingStartingEvent(
+        id = "test-id",
+        parentId = "test-parent-id",
         runId = "test-run-id",
-        callId = "test-call-id",
         prompt = Prompt(
             id = "test-prompt-id",
             messages = listOf(
@@ -271,15 +310,17 @@ internal object AIAgentFeatureTestAPI {
     )
 
     internal val llmStreamingFrameReceivedEvent = LLMStreamingFrameReceivedEvent(
+        id = "test-id",
+        parentId = "test-parent-id",
         runId = "test-run-id",
-        callId = "test-call-id",
         frame = StreamFrame.Append("test-frame"),
         timestamp = testClock.now().toEpochMilliseconds(),
     )
 
     internal val llmStreamingFailedEvent = LLMStreamingFailedEvent(
+        id = "test-id",
+        parentId = "test-parent-id",
         runId = "test-run-id",
-        callId = "test-call-id",
         error = AIAgentError(
             message = "test-error-message",
             stackTrace = "test-error-stacktrace",
@@ -289,8 +330,9 @@ internal object AIAgentFeatureTestAPI {
     )
 
     internal val llmStreamingCompletedEvent = LLMStreamingCompletedEvent(
+        id = "test-id",
+        parentId = "test-parent-id",
         runId = "test-run-id",
-        callId = "test-call-id",
         prompt = Prompt(
             id = "test-prompt-id",
             messages = listOf(

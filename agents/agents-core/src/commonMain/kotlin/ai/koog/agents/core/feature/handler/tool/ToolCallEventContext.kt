@@ -18,6 +18,8 @@ public interface ToolCallEventContext : AgentLifecycleEventContext
  * @property toolArgs The arguments provided for the tool execution, adhering to the tool's expected input structure.
  */
 public data class ToolCallStartingContext(
+    override val id: String,
+    override val parentId: String?,
     val runId: String,
     val toolCallId: String?,
     val tool: Tool<*, *>,
@@ -36,6 +38,8 @@ public data class ToolCallStartingContext(
  * @property error The error message describing the validation issue.
  */
 public data class ToolValidationFailedContext(
+    override val id: String,
+    override val parentId: String?,
     val runId: String,
     val toolCallId: String?,
     val tool: Tool<*, *>,
@@ -55,6 +59,8 @@ public data class ToolValidationFailedContext(
  * @property throwable The exception or error that caused the failure.
  */
 public data class ToolCallFailedContext(
+    override val id: String,
+    override val parentId: String?,
     val runId: String,
     val toolCallId: String?,
     val tool: Tool<*, *>,
@@ -74,6 +80,8 @@ public data class ToolCallFailedContext(
  * @property result An optional result produced by the tool after execution can be null if not applicable.
  */
 public data class ToolCallCompletedContext(
+    override val id: String,
+    override val parentId: String?,
     val runId: String,
     val toolCallId: String?,
     val tool: Tool<*, *>,

@@ -1,13 +1,20 @@
 package ai.koog.agents.core.agent
 
 import ai.koog.agents.core.agent.context.AIAgentFunctionalContext
+import ai.koog.agents.core.agent.context.element.StrategyInfoContextElement
+import ai.koog.agents.core.agent.context.element.getAgentRunInfoElement
 import ai.koog.agents.core.agent.entity.AIAgentStrategy
+import io.github.oshai.kotlinlogging.KotlinLogging
+import kotlinx.coroutines.withContext
+import kotlin.reflect.typeOf
+import kotlin.uuid.ExperimentalUuidApi
+import kotlin.uuid.Uuid
 
 /**
  * A strategy for implementing AI agent behavior that operates in a loop-based manner.
  *
  * The [AIAgentFunctionalStrategy] class allows for the definition of a custom looping logic
- * that processes input and produces output by utilizing an [ai.koog.agents.core.agent.context.AIAgentFunctionalContext]. This strategy
+ * that processes input and produces output by using an [ai.koog.agents.core.agent.context.AIAgentFunctionalContext]. This strategy
  * can be used to define iterative decision-making or execution processes for AI agents.
  *
  * @param TInput The type of input data processed by the strategy.
@@ -20,10 +27,28 @@ public class AIAgentFunctionalStrategy<TInput, TOutput>(
     override val name: String,
     public val func: suspend AIAgentFunctionalContext.(TInput) -> TOutput
 ) : AIAgentStrategy<TInput, TOutput, AIAgentFunctionalContext> {
+
+    private companion object {
+        private val logger = KotlinLogging.logger { }
+    }
+
+    @OptIn(ExperimentalUuidApi::class)
     override suspend fun execute(
         context: AIAgentFunctionalContext,
         input: TInput
-    ): TOutput = context.func(input)
+    ): TOutput {
+        val id = Uuid.random().toString()
+        val parentId = getAgentRunInfoElement()?.id
+
+        return withContext(StrategyInfoContextElement(id, parentId, this.name)) {
+            context.pipeline.onStrategyStarting(id, parentId, this@AIAgentFunctionalStrategy, context)
+            val result = context.func(input)
+            context.pipeline.onStrategyCompleted(id, parentId, this@AIAgentFunctionalStrategy, context, result, typeOf<Any?>())
+
+            logger.debug { "Finished executing strategy (name: $name) with result: $result" }
+            result
+        }
+    }
 }
 
 /**

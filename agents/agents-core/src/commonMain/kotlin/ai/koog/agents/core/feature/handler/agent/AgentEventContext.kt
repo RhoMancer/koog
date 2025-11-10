@@ -26,6 +26,8 @@ public interface AgentEventContext : AgentLifecycleEventContext
  * @property context The context associated with the agent's execution.
  */
 public data class AgentStartingContext(
+    override val id: String,
+    override val parentId: String?,
     public val agent: AIAgent<*, *>,
     public val runId: String,
     public val context: AIAgentContext,
@@ -41,6 +43,8 @@ public data class AgentStartingContext(
  * @property result The optional result of the agent's execution, if available.
  */
 public data class AgentCompletedContext(
+    override val id: String,
+    override val parentId: String?,
     public val agentId: String,
     public val runId: String,
     public val result: Any?,
@@ -56,6 +60,8 @@ public data class AgentCompletedContext(
  * @property throwable The exception or error thrown during the execution.
  */
 public data class AgentExecutionFailedContext(
+    override val id: String,
+    override val parentId: String?,
     val agentId: String,
     val runId: String,
     val throwable: Throwable
@@ -69,6 +75,8 @@ public data class AgentExecutionFailedContext(
  * @property agentId Identifier of the agent that is about to be closed.
  */
 public data class AgentClosingContext(
+    override val id: String,
+    override val parentId: String?,
     val agentId: String,
 ) : AgentEventContext {
     override val eventType: AgentLifecycleEventType = AgentLifecycleEventType.AgentClosing
@@ -81,6 +89,8 @@ public data class AgentClosingContext(
  * @property agent The AI agent being managed or operated upon in the context.
  */
 public class AgentEnvironmentTransformingContext(
+    override val id: String,
+    override val parentId: String?,
     public val strategy: AIAgentStrategy<*, *, AIAgentGraphContextBase>,
     public val agent: GraphAIAgent<*, *>,
 ) : AgentEventContext {
