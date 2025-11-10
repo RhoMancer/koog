@@ -1,6 +1,8 @@
 package ai.koog.agents.core.feature.debugger
 
 import ai.koog.agents.core.feature.config.FeatureConfig
+import ai.koog.agents.core.feature.handler.AgentLifecycleEventContext
+import io.github.oshai.kotlinlogging.KotlinLogging
 import kotlin.time.Duration
 
 /**
@@ -11,6 +13,10 @@ import kotlin.time.Duration
  * number used by the debugger.
  */
 public class DebuggerConfig : FeatureConfig() {
+
+    private companion object {
+        private val logger = KotlinLogging.logger { }
+    }
 
     private var _port: Int? = null
 
@@ -45,5 +51,12 @@ public class DebuggerConfig : FeatureConfig() {
      */
     public fun setAwaitInitialConnectionTimeout(timeout: Duration) {
         _awaitInitialConnectionTimeout = timeout
+    }
+
+    override fun setEventFilter(filter: (AgentLifecycleEventContext) -> Boolean) {
+        // Do not allow events filtering for the Debugger feature
+        // Debugger relays on the execution sequence. Filtering events can break the feature logic.
+        logger.warn { "Events filtering is not allowed for the Debugger feature." }
+        super.setEventFilter { true }
     }
 }

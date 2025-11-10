@@ -5,6 +5,7 @@ import ai.koog.agents.core.dsl.builder.strategy
 import ai.koog.agents.core.dsl.extension.nodeLLMRequest
 import ai.koog.agents.core.dsl.extension.onAssistantMessage
 import ai.koog.agents.features.opentelemetry.OpenTelemetrySpanAsserts.assertSpans
+import ai.koog.agents.features.opentelemetry.OpenTelemetryTestAPI.Parameter.USER_PROMPT_PARIS
 import ai.koog.agents.features.opentelemetry.OpenTelemetryTestAPI.createAgent
 import ai.koog.agents.features.opentelemetry.OpenTelemetryTestAPI.testClock
 import ai.koog.agents.features.opentelemetry.attribute.CustomAttribute
@@ -84,6 +85,30 @@ class OpenTelemetryConfigTest : OpenTelemetryTestBase() {
         assertEquals(expectedServiceName, actualServiceName)
         assertEquals(expectedServiceVersion, actualServiceVersion)
         assertEquals(expectedIsVerbose, actualIsVerbose)
+    }
+
+    @Test
+    fun `test filter is not allowed for open telemetry feature`() = runTest {
+        MockSpanExporter().use { mockExporter ->
+            val userInput = USER_PROMPT_PARIS
+
+            val strategy = strategy<String, String>("test-strategy") {
+                nodeStart then nodeFinish
+            }
+
+            createAgent(strategy = strategy) {
+                install(OpenTelemetry) {
+                    // Try to filter out all events. OpenTelemetryConfig should ignore this filter
+                    setEventFilter { false }
+                    addSpanExporter(mockExporter)
+                }
+            }.use { agent ->
+                agent.run(userInput)
+            }
+
+            val collectedSpans = mockExporter.collectedSpans
+            assertTrue(collectedSpans.isNotEmpty(), "Spans should not be filtered for OpenTelemetry feature")
+        }
     }
 
     @Test
