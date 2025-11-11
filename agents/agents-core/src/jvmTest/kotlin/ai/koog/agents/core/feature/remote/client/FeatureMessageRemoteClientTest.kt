@@ -26,6 +26,8 @@ import kotlinx.serialization.modules.SerializersModule
 import kotlinx.serialization.modules.polymorphic
 import org.junit.jupiter.api.Assertions.assertFalse
 import kotlin.test.Test
+import kotlin.test.assertContentEquals
+import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
@@ -505,6 +507,9 @@ class FeatureMessageRemoteClientTest {
                     .minus(actualClientMessages.map { it::class.simpleName }.toSet())
                     .joinToString("\n") { " - $it" }}\n"
         )
+
+        assertEquals(knownDefinedEvents.size, actualClientMessages.size)
+        assertContentEquals(knownDefinedEvents, actualClientMessages)
     }
 
     //endregion Receive

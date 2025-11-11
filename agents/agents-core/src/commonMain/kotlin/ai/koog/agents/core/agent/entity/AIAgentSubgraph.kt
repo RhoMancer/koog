@@ -22,6 +22,7 @@ import ai.koog.prompt.structure.StructuredOutputConfig
 import ai.koog.prompt.structure.json.JsonStructuredData
 import ai.koog.prompt.structure.json.generator.StandardJsonSchemaGenerator
 import io.github.oshai.kotlinlogging.KotlinLogging
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.Serializable
 import kotlin.reflect.KType
@@ -170,18 +171,20 @@ public open class AIAgentSubgraph<TInput, TOutput>(
                 )
             }
 
-            runInNonRootContext(context) {
+            runIfNonRootContext(context) {
                 pipeline.onSubgraphExecutionStarting(this@AIAgentSubgraph, innerContext, input, inputType)
             }
 
             // Execute the subgraph with an inner context and get the result and updated prompt.
             val result = try {
                 executeWithInnerContext(innerContext, input)
-            } catch (t: Throwable) {
-                runInNonRootContext(context) {
-                    pipeline.onSubgraphExecutionFailed(this@AIAgentSubgraph, context, input, inputType, t)
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                runIfNonRootContext(context) {
+                    pipeline.onSubgraphExecutionFailed(this@AIAgentSubgraph, context, input, inputType, e)
                 }
-                throw t
+                throw e
             }
 
             // Restore original LLM params on the new prompt.
@@ -196,7 +199,7 @@ public open class AIAgentSubgraph<TInput, TOutput>(
                 context.store(innerForcedData)
             }
 
-            runInNonRootContext(context) {
+            runIfNonRootContext(context) {
                 pipeline.onSubgraphExecutionCompleted(this@AIAgentSubgraph, innerContext, input, inputType, result, outputType)
             }
 
@@ -280,7 +283,7 @@ public open class AIAgentSubgraph<TInput, TOutput>(
      * effectively skipping execution for root contexts.
      */
     @OptIn(InternalAgentsApi::class)
-    private suspend fun runInNonRootContext(context: AIAgentGraphContextBase, action: suspend AIAgentGraphContextBase.() -> Unit) {
+    private suspend fun runIfNonRootContext(context: AIAgentGraphContextBase, action: suspend AIAgentGraphContextBase.() -> Unit) {
         if (context.parentContext == null) return
         action(context)
     }
