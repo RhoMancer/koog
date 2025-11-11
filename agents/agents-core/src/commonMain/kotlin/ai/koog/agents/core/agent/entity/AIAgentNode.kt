@@ -5,6 +5,7 @@ import ai.koog.agents.core.agent.context.element.NodeInfoContextElement
 import ai.koog.agents.core.annotation.InternalAgentsApi
 import io.github.oshai.kotlinlogging.KotlinLogging
 import kotlinx.coroutines.withContext
+import kotlin.coroutines.cancellation.CancellationException
 import kotlin.reflect.KType
 import kotlin.uuid.ExperimentalUuidApi
 
@@ -162,7 +163,9 @@ public open class AIAgentNode<TInput, TOutput> internal constructor(
                     logger.trace { "Finished executing node (name: $name) with output: $executeResult" }
                     executeResult
                 } catch (t: Throwable) {
-                    logger.error(t) { "Error executing node (name: $name): ${t.message}" }
+                    if (t !is CancellationException) {
+                        logger.error(t) { "Error executing node (name: $name): ${t.message}" }
+                    }
                     context.pipeline.onNodeExecutionFailed(this@AIAgentNode, context, input, inputType, t)
                     throw t
                 }
