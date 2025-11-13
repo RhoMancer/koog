@@ -16,6 +16,8 @@ jobs:
 
   deploy-dokka-docs:
     runs-on: ubuntu-latest
+    env:
+      BRANCH_KOOG_IS_RELEASING_FROM: ${{ github.ref_name }}
     steps:
       - name: Checkout project
         uses: actions/checkout@v5
@@ -47,6 +49,7 @@ jobs:
           git add .
           git commit -m "Update docs"
           git push --force origin main
+
 
   deploy-gh-pages:
     runs-on: ubuntu-latest
