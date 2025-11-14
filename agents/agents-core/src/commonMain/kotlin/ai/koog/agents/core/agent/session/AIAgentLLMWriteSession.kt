@@ -11,12 +11,12 @@ import ai.koog.prompt.dsl.Prompt
 import ai.koog.prompt.dsl.PromptBuilder
 import ai.koog.prompt.dsl.prompt
 import ai.koog.prompt.executor.model.PromptExecutor
+import ai.koog.prompt.executor.model.StructureFixingParser
 import ai.koog.prompt.llm.LLModel
 import ai.koog.prompt.message.Message
 import ai.koog.prompt.params.LLMParams
 import ai.koog.prompt.streaming.StreamFrame
 import ai.koog.prompt.structure.StructureDefinition
-import ai.koog.prompt.structure.StructureFixingParser
 import ai.koog.prompt.structure.StructuredRequestConfig
 import ai.koog.prompt.structure.StructuredResponse
 import kotlinx.coroutines.flow.Flow
@@ -456,8 +456,9 @@ public class AIAgentLLMWriteSession internal constructor(
      */
     override suspend fun <T> requestLLMStructured(
         config: StructuredRequestConfig<T>,
+        fixingParser: StructureFixingParser?
     ): Result<StructuredResponse<T>> {
-        return super.requestLLMStructured(config).also {
+        return super.requestLLMStructured(config, fixingParser).also {
             it.onSuccess { response ->
                 appendPrompt {
                     message(response.message)

@@ -10,8 +10,12 @@ import ai.koog.prompt.llm.LLModel
 import ai.koog.prompt.message.LLMChoice
 import ai.koog.prompt.message.Message
 import ai.koog.prompt.streaming.StreamFrame
+import ai.koog.prompt.structure.StructuredRequest
+import ai.koog.prompt.structure.StructuredResponse
+import executeStructured
 import io.github.oshai.kotlinlogging.KotlinLogging
 import kotlinx.coroutines.flow.Flow
+import kotlinx.serialization.KSerializer
 
 /**
  * MultiLLMPromptExecutor is a class responsible for executing prompts
@@ -201,6 +205,29 @@ public open class MultiLLMPromptExecutor(
         logger.debug { "Choices: $choices" }
 
         return choices
+    }
+
+    override suspend fun <T> executeStructured(
+        prompt: Prompt,
+        model: LLModel,
+        serializer: KSerializer<T>,
+        examples: List<T>
+    ): Result<StructuredResponse<T>> {
+        val provider = model.provider
+        val client = llmClients[provider] ?: throw IllegalArgumentException("No client found for provider: $provider")
+
+        return client.executeStructured(prompt, model, serializer, examples)
+    }
+
+    override suspend fun <T> executeStructured(
+        prompt: Prompt,
+        model: LLModel,
+        structuredRequest: StructuredRequest<T>
+    ): Result<StructuredResponse<T>> {
+        val provider = model.provider
+        val client = llmClients[provider] ?: throw IllegalArgumentException("No client found for provider: $provider")
+
+        return client.executeStructured(prompt, model, structuredRequest)
     }
 
     /**

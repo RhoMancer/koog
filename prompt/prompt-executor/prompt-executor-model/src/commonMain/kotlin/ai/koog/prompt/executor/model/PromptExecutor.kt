@@ -7,7 +7,10 @@ import ai.koog.prompt.llm.LLModel
 import ai.koog.prompt.message.LLMChoice
 import ai.koog.prompt.message.Message
 import ai.koog.prompt.streaming.StreamFrame
+import ai.koog.prompt.structure.StructuredRequest
+import ai.koog.prompt.structure.StructuredResponse
 import kotlinx.coroutines.flow.Flow
+import kotlinx.serialization.KSerializer
 
 /**
  * An interface representing an executor for processing language model prompts.
@@ -63,6 +66,46 @@ public interface PromptExecutor : AutoCloseable {
         tools: List<ToolDescriptor>
     ): List<LLMChoice> =
         listOf(execute(prompt, model, tools))
+
+    /**
+     * Executes structured output generation for a given prompt and model.
+     *
+     * This method generates structured output based on the provided prompt and model.
+     * It uses the specified structured output configuration to define the expected output format.
+     *
+     * @param prompt The prompt containing input messages and parameters to guide the language model execution.
+     * @param model The language model to be used for processing the prompt.
+     *
+     * @return The generated structured output of type T.
+     */
+    public suspend fun <T> executeStructured(
+        prompt: Prompt,
+        model: LLModel,
+        structuredRequest: StructuredRequest<T>
+    ): Result<StructuredResponse<T>> {
+        throw UnsupportedOperationException("Not implemented for this executor")
+    }
+
+    /**
+     * Executes structured output generation for a given prompt and model.
+     *
+     * This method generates structured output based on the provided prompt and model.
+     * It uses the specified structured output configuration to define the expected output format.
+     *
+     * @param prompt The prompt containing input messages and parameters to guide the language model execution.
+     * @param model The language model to be used for processing the prompt.
+     * @param serializer The serializer for converting the structured output to the expected type.
+     *
+     * @return The generated structured output of type T.
+     */
+    public suspend fun <T> executeStructured(
+        prompt: Prompt,
+        model: LLModel,
+        serializer: KSerializer<T>,
+        examples: List<T> = emptyList(),
+    ): Result<StructuredResponse<T>> {
+        throw UnsupportedOperationException("Not implemented for this executor")
+    }
 
     /**
      * Moderates the content of a given message with attachments using a specified language model.

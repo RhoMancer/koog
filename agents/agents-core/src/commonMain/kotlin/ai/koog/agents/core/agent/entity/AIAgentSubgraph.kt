@@ -14,9 +14,9 @@ import ai.koog.agents.core.dsl.extension.replaceHistoryWithTLDR
 import ai.koog.agents.core.prompt.Prompts.selectRelevantTools
 import ai.koog.agents.core.tools.ToolDescriptor
 import ai.koog.agents.core.tools.annotations.LLMDescription
+import ai.koog.prompt.executor.model.StructureFixingParser
 import ai.koog.prompt.llm.LLModel
 import ai.koog.prompt.params.LLMParams
-import ai.koog.prompt.structure.StructureFixingParser
 import ai.koog.prompt.structure.StructuredRequest
 import ai.koog.prompt.structure.StructuredRequestConfig
 import ai.koog.prompt.structure.json.JsonStructure
@@ -137,8 +137,8 @@ public open class AIAgentSubgraph<TInput, TOutput>(
                             examples = listOf(SelectedTools(listOf()), SelectedTools(tools.map { it.name }.take(3))),
                         ),
                     ),
-                    fixingParser = toolSelectionStrategy.fixingParser,
-                )
+                ),
+                fixingParser = toolSelectionStrategy.fixingParser,
             ).getOrThrow()
 
             prompt = initialPrompt
@@ -157,7 +157,15 @@ public open class AIAgentSubgraph<TInput, TOutput>(
      */
     @OptIn(InternalAgentsApi::class, DetachedPromptExecutorAPI::class, ExperimentalUuidApi::class)
     override suspend fun execute(context: AIAgentGraphContextBase, input: TInput): TOutput? =
-        withContext(NodeInfoContextElement(Uuid.random().toString(), getNodeInfoElement()?.id, name, input, inputType)) {
+        withContext(
+            NodeInfoContextElement(
+                Uuid.random().toString(),
+                getNodeInfoElement()?.id,
+                name,
+                input,
+                inputType
+            )
+        ) {
             val newTools = selectTools(context)
 
             // Copy inner context with new tools, model and LLM params.
@@ -201,7 +209,14 @@ public open class AIAgentSubgraph<TInput, TOutput>(
             }
 
             runIfNonRootContext(context) {
-                pipeline.onSubgraphExecutionCompleted(this@AIAgentSubgraph, innerContext, input, inputType, result, outputType)
+                pipeline.onSubgraphExecutionCompleted(
+                    this@AIAgentSubgraph,
+                    innerContext,
+                    input,
+                    inputType,
+                    result,
+                    outputType
+                )
             }
 
             result
@@ -284,7 +299,10 @@ public open class AIAgentSubgraph<TInput, TOutput>(
      * effectively skipping execution for root contexts.
      */
     @OptIn(InternalAgentsApi::class)
-    private suspend fun runIfNonRootContext(context: AIAgentGraphContextBase, action: suspend AIAgentGraphContextBase.() -> Unit) {
+    private suspend fun runIfNonRootContext(
+        context: AIAgentGraphContextBase,
+        action: suspend AIAgentGraphContextBase.() -> Unit
+    ) {
         if (context.parentContext == null) return
         action(context)
     }

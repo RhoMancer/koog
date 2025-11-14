@@ -13,6 +13,7 @@ kotlin {
             dependencies {
                 api(project(":agents:agents-tools"))
                 api(project(":prompt:prompt-model"))
+                api(project(":prompt:prompt-structure"))
                 api(libs.kotlinx.coroutines.core)
                 api(libs.oshai.kotlin.logging)
             }
@@ -21,6 +22,14 @@ kotlin {
         jvmMain {
             dependencies {
                 api(libs.kotlinx.coroutines.jdk8)
+            }
+        }
+
+        commonTest {
+            dependencies {
+                implementation(kotlin("test"))
+                implementation(libs.kotlinx.coroutines.test)
+                implementation(project(":agents:agents-test"))
             }
         }
     }

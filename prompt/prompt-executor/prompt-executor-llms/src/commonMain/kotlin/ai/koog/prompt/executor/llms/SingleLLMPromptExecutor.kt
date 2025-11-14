@@ -9,8 +9,12 @@ import ai.koog.prompt.llm.LLModel
 import ai.koog.prompt.message.LLMChoice
 import ai.koog.prompt.message.Message
 import ai.koog.prompt.streaming.StreamFrame
+import ai.koog.prompt.structure.StructuredRequest
+import ai.koog.prompt.structure.StructuredResponse
+import executeStructured
 import io.github.oshai.kotlinlogging.KotlinLogging
 import kotlinx.coroutines.flow.Flow
+import kotlinx.serialization.KSerializer
 
 /**
  * Executes prompts using a direct client for communication with large language model (LLM) providers.
@@ -56,6 +60,23 @@ public open class SingleLLMPromptExecutor(
         logger.debug { "Choices: $choices" }
 
         return choices
+    }
+
+    override suspend fun <T> executeStructured(
+        prompt: Prompt,
+        model: LLModel,
+        serializer: KSerializer<T>,
+        examples: List<T>
+    ): Result<StructuredResponse<T>> {
+        return llmClient.executeStructured(prompt, model, serializer, examples)
+    }
+
+    override suspend fun <T> executeStructured(
+        prompt: Prompt,
+        model: LLModel,
+        structuredRequest: StructuredRequest<T>
+    ): Result<StructuredResponse<T>> {
+        return llmClient.executeStructured(prompt, model, structuredRequest)
     }
 
     override suspend fun moderate(prompt: Prompt, model: LLModel): ModerationResult = llmClient.moderate(prompt, model)

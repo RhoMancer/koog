@@ -23,7 +23,6 @@ import ai.koog.prompt.executor.clients.openai.base.models.OpenAIUsage
 import ai.koog.prompt.executor.clients.openai.base.structure.OpenAIBasicJsonSchemaGenerator
 import ai.koog.prompt.executor.clients.openai.base.structure.OpenAIStandardJsonSchemaGenerator
 import ai.koog.prompt.llm.LLMCapability
-import ai.koog.prompt.llm.LLMProvider
 import ai.koog.prompt.llm.LLModel
 import ai.koog.prompt.message.AttachmentContent
 import ai.koog.prompt.message.ContentPart
@@ -34,9 +33,8 @@ import ai.koog.prompt.params.LLMParams
 import ai.koog.prompt.streaming.StreamFrame
 import ai.koog.prompt.streaming.StreamFrameFlowBuilder
 import ai.koog.prompt.streaming.buildStreamFrameFlow
-import ai.koog.prompt.structure.RegisteredBasicJsonSchemaGenerators
-import ai.koog.prompt.structure.RegisteredStandardJsonSchemaGenerators
-import ai.koog.prompt.structure.annotations.InternalStructuredOutputApi
+import ai.koog.prompt.structure.json.generator.BasicJsonSchemaGenerator
+import ai.koog.prompt.structure.json.generator.StandardJsonSchemaGenerator
 import io.github.oshai.kotlinlogging.KLogger
 import io.ktor.client.HttpClient
 import io.ktor.client.plugins.HttpTimeout
@@ -88,18 +86,7 @@ public abstract class AbstractOpenAILLMClient<TResponse : OpenAIBaseLLMResponse,
     private val toolsConverter: OpenAICompatibleToolDescriptorSchemaGenerator,
 ) : LLMClient {
 
-    protected companion object {
-
-        /**
-         * Register basic and standard openai json schema generator for given provider
-         */
-        @Suppress("RedundantVisibilityModifier") // it is required here due to explicitApi
-        @OptIn(InternalStructuredOutputApi::class)
-        public fun registerOpenAIJsonSchemaGenerators(llmProvider: LLMProvider) {
-            RegisteredBasicJsonSchemaGenerators[llmProvider] = OpenAIBasicJsonSchemaGenerator
-            RegisteredStandardJsonSchemaGenerators[llmProvider] = OpenAIStandardJsonSchemaGenerator
-        }
-    }
+    protected open val clientName: String = this::class.simpleName ?: "UnknownClient"
 
     private val chatCompletionsPath: String = settings.chatCompletionsPath
 
@@ -223,6 +210,20 @@ public abstract class AbstractOpenAILLMClient<TResponse : OpenAIBaseLLMResponse,
         model.requireCapability(LLMCapability.MultipleChoices)
 
         return processProviderChatResponse(getResponse(prompt, model, tools))
+    }
+
+    /**
+     * Standard JSON schema generator supported by all models provided by the OpenAI-like LLMClient.
+     */
+    override fun getStandardJsonSchemaGenerator(model: LLModel): StandardJsonSchemaGenerator {
+        return OpenAIStandardJsonSchemaGenerator
+    }
+
+    /**
+     * Basic JSON schema generator supported by all models provided by the OpenAI-like LLMClient.
+     */
+    override fun getBasicJsonSchemaGenerator(model: LLModel): BasicJsonSchemaGenerator {
+        return OpenAIBasicJsonSchemaGenerator
     }
 
     private suspend fun getResponse(

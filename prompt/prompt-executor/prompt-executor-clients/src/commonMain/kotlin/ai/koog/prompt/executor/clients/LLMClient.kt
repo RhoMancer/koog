@@ -8,6 +8,8 @@ import ai.koog.prompt.llm.LLModel
 import ai.koog.prompt.message.LLMChoice
 import ai.koog.prompt.message.Message
 import ai.koog.prompt.streaming.StreamFrame
+import ai.koog.prompt.structure.json.generator.BasicJsonSchemaGenerator
+import ai.koog.prompt.structure.json.generator.StandardJsonSchemaGenerator
 import kotlinx.coroutines.flow.Flow
 
 /**
@@ -84,6 +86,22 @@ public interface LLMClient : AutoCloseable {
      * @return The LLMProvider instance used for executing prompts and managing LLM operations.
      */
     public fun llmProvider(): LLMProvider
+
+    /**
+     * Standard JSON schema generator supported by the LLMClient.
+     * Return [StandardJsonSchemaGenerator] by default.
+     */
+    public fun getStandardJsonSchemaGenerator(model: LLModel): StandardJsonSchemaGenerator {
+        return StandardJsonSchemaGenerator
+    }
+
+    /**
+     * Basic JSON schema generator supported by the LLMClient.
+     * Return [BasicJsonSchemaGenerator] by default.
+     */
+    public fun getBasicJsonSchemaGenerator(model: LLModel): BasicJsonSchemaGenerator {
+        return BasicJsonSchemaGenerator
+    }
 
     /**
      * The name of the client.
