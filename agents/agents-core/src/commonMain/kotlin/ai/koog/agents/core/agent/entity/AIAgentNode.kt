@@ -158,29 +158,29 @@ public open class AIAgentNode<TInput, TOutput> internal constructor(
     @InternalAgentsApi
     @OptIn(ExperimentalUuidApi::class)
     override suspend fun execute(context: AIAgentGraphContextBase, input: TInput): TOutput {
-        val id = Uuid.random().toString()
-        val parentId = getStrategyInfoElement()?.id ?: getSubgraphInfoElement()?.id ?: getNodeInfoElement()?.id
+        val parentId = context.observabilityData.id
+        val currentId = "$parentId.$name"
 
-        return withContext(NodeInfoContextElement(id, parentId, name, input, inputType)) {
-            logger.debug { "Start executing node (name: $name)" }
-            context.pipeline.onNodeExecutionStarting(id, parentId, this@AIAgentNode, context, input, inputType)
+        logger.debug { "Start executing node (name: $name)" }
+        context.pipeline.onNodeExecutionStarting(currentId, parentId, this@AIAgentNode, context, input, inputType)
 
-            val output =
-                try {
-                    val executeResult = context.execute(input)
-                    logger.trace { "Finished executing node (name: $name) with output: $executeResult" }
-                    executeResult
-                } catch (e: CancellationException) {
-                    throw e
-                } catch (e: Exception) {
-                    logger.error(e) { "Error executing node (name: $name): ${e.message}" }
-                    context.pipeline.onNodeExecutionFailed(id, parentId, this@AIAgentNode, context, input, inputType, e)
-                    throw e
-                }
+        val output =
+            try {
+                context.observabilityData.parentId = currentId
+                val executeResult = context.execute(input)
+                logger.trace { "Finished executing node (name: $name) with output: $executeResult" }
+                executeResult
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                logger.error(e) { "Error executing node (name: $name): ${e.message}" }
+                context.pipeline.onNodeExecutionFailed(id, parentId, this@AIAgentNode, context, input, inputType, e)
+                throw e
+            }
 
-            context.pipeline.onNodeExecutionCompleted(id, parentId, this@AIAgentNode, context, input, inputType, output, outputType)
-            output
-        }
+        context.pipeline.onNodeExecutionCompleted(id, parentId, this@AIAgentNode, context, input, inputType, output, outputType)
+        context.observabilityData.parentId = currentId
+        return output
     }
 }
 

@@ -88,7 +88,7 @@ public interface AIAgentContext {
 
     /**
      * Concurrent-safe key-value storage for an agent, used to manage and persist data within the context of
-     * a the AI agent stage execution. The `storage` property provides a thread-safe mechanism for sharing
+     *  the AI agent stage execution. The `storage` property provides a thread-safe mechanism for sharing
      * and storing data specific to the agent's operation.
      */
     public val storage: AIAgentStorage
@@ -103,6 +103,11 @@ public interface AIAgentContext {
      */
     @InternalAgentsApi
     public val parentContext: AIAgentContext?
+
+    /**
+     * Represents the observability data associated with the AI Agent context.
+     */
+    public val observabilityData: ObservabilityContextData
 
     /**
      * Stores a feature in the agent's storage using the specified key.
