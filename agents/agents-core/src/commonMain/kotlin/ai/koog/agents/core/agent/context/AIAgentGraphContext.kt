@@ -61,6 +61,7 @@ public interface AIAgentGraphContextBase : AIAgentContext {
         runId: String = this.runId,
         strategyName: String = this.strategyName,
         pipeline: AIAgentGraphPipeline = this.pipeline,
+        executionInfo: AgentExecutionInfo = this.executionInfo
     ): AIAgentGraphContextBase {
         val clone = AIAgentGraphContext(
             environment = environment,
@@ -74,6 +75,7 @@ public interface AIAgentGraphContextBase : AIAgentContext {
             runId = runId,
             strategyName = strategyName,
             pipeline = pipeline,
+            executionInfo = executionInfo,
             parentContext = this
         )
 
@@ -127,6 +129,7 @@ public class AIAgentGraphContext(
     override val runId: String,
     override val strategyName: String,
     override val pipeline: AIAgentGraphPipeline,
+    override val executionInfo: AgentExecutionInfo,
     override val parentContext: AIAgentGraphContextBase? = null
 ) : AIAgentGraphContextBase {
     private val mutableAIAgentContext = MutableAIAgentContext(llm, stateManager, storage)
@@ -212,6 +215,7 @@ public class AIAgentGraphContext(
         llm = this.llm.copy(),
         storage = this.storage.copy(),
         stateManager = this.stateManager.copy(),
+        executionInfo = AgentExecutionInfo(this.executionInfo.id).copy()
     )
 
     override suspend fun replace(context: AIAgentContext) {

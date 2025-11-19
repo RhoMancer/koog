@@ -3,6 +3,8 @@ package ai.koog.agents.core.agent
 import ai.koog.agents.core.agent.config.AIAgentConfig
 import ai.koog.agents.core.agent.context.AIAgentFunctionalContext
 import ai.koog.agents.core.agent.context.AIAgentLLMContext
+import ai.koog.agents.core.agent.context.AgentExecutionInfo
+import ai.koog.agents.core.agent.context.AgentExecutionPath
 import ai.koog.agents.core.agent.entity.AIAgentStateManager
 import ai.koog.agents.core.agent.entity.AIAgentStorage
 import ai.koog.agents.core.annotation.InternalAgentsApi
@@ -99,6 +101,9 @@ public class FunctionalAIAgent<Input, Output>(
             clock = clock
         )
 
+        val executionPath = AgentExecutionPath(id, runId)
+        val executionInfo = AgentExecutionInfo(id = runId, parentId = id, path = executionPath)
+
         return AIAgentFunctionalContext(
             environment = environment,
             agentId = id,
@@ -109,7 +114,8 @@ public class FunctionalAIAgent<Input, Output>(
             stateManager = AIAgentStateManager(),
             storage = AIAgentStorage(),
             strategyName = strategy.name,
-            pipeline = pipeline
+            pipeline = pipeline,
+            executionInfo = executionInfo,
         )
     }
 }

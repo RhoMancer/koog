@@ -581,7 +581,7 @@ class EventHandlerTest {
                 tools: List<ToolDescriptor>
             ): List<Message.Response> = emptyList()
 
-            override suspend fun executeStreaming(
+            override fun executeStreaming(
                 prompt: Prompt,
                 model: ai.koog.prompt.llm.LLModel,
                 tools: List<ToolDescriptor>

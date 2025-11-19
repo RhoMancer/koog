@@ -86,6 +86,25 @@ class ParallelNodesMergeContextTest {
     @Test
     fun testMergeSelectBy() = runTest {
         val agentStrategy = strategy("test-context") {
+
+
+            val files = listOf("file1, file2")
+
+            val subgraphs = files.map { file ->
+                subgraph<String, String>("subgraph $file") {
+                    nodeStart then nodeFinish
+                }
+            }
+
+            val a = subgraphs.toTypedArray().map {  }
+            val parallelNode by parallel() {
+                selectBy { output -> output.contains("file2") }
+            }
+
+
+
+
+
             val node1 by testNode("node1", "value1")
             val node2 by testNode("node2", "value2")
             val node3 by testNode("node3", "value3")

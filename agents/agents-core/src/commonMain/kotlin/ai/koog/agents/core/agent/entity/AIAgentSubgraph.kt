@@ -3,12 +3,9 @@ package ai.koog.agents.core.agent.entity
 import ai.koog.agents.core.agent.context.AIAgentContext
 import ai.koog.agents.core.agent.context.AIAgentGraphContextBase
 import ai.koog.agents.core.agent.context.DetachedPromptExecutorAPI
-import ai.koog.agents.core.agent.context.element.SubgraphInfoContextElement
-import ai.koog.agents.core.agent.context.element.getNodeInfoElement
-import ai.koog.agents.core.agent.context.element.getStrategyInfoElement
-import ai.koog.agents.core.agent.context.element.getSubgraphInfoElement
 import ai.koog.agents.core.agent.context.getAgentContextData
 import ai.koog.agents.core.agent.context.store
+import ai.koog.agents.core.agent.context.withParent
 import ai.koog.agents.core.agent.exception.AIAgentMaxNumberOfIterationsReachedException
 import ai.koog.agents.core.agent.exception.AIAgentStuckInTheNodeException
 import ai.koog.agents.core.annotation.InternalAgentsApi
@@ -25,11 +22,9 @@ import ai.koog.prompt.structure.json.JsonStructure
 import ai.koog.prompt.structure.json.generator.StandardJsonSchemaGenerator
 import io.github.oshai.kotlinlogging.KotlinLogging
 import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.withContext
 import kotlinx.serialization.Serializable
 import kotlin.reflect.KType
 import kotlin.uuid.ExperimentalUuidApi
-import kotlin.uuid.Uuid
 
 /**
  * [AIAgentSubgraph] represents a structured subgraph within an AI agent workflow. It serves as a logical
@@ -158,59 +153,54 @@ public open class AIAgentSubgraph<TInput, TOutput>(
      * @return The output of the AI agent execution, generated after processing the input.
      */
     @OptIn(InternalAgentsApi::class, DetachedPromptExecutorAPI::class, ExperimentalUuidApi::class)
-    override suspend fun execute(context: AIAgentGraphContextBase, input: TInput): TOutput? {
-        val id = Uuid.random().toString()
-        val parentId = getStrategyInfoElement()?.id ?: getSubgraphInfoElement()?.id ?: getNodeInfoElement()?.id
+    override suspend fun execute(context: AIAgentGraphContextBase, input: TInput): TOutput? = withParent(context, id) {
+        val newTools = selectTools(context)
 
-        return withContext(SubgraphInfoContextElement(id, parentId, name, input, inputType)) {
-            val newTools = selectTools(context)
-
-            // Copy inner context with new tools, model and LLM params.
-            val innerContext = with(context) {
-                copy(
-                    llm = llm.copy(
-                        tools = newTools,
-                        model = llmModel ?: llm.model,
-                        prompt = llm.prompt.copy(params = llmParams ?: llm.prompt.params)
-                    )
+        // Copy inner context with new tools, model and LLM params.
+        val innerContext = with(context) {
+            copy(
+                llm = llm.copy(
+                    tools = newTools,
+                    model = llmModel ?: llm.model,
+                    prompt = llm.prompt.copy(params = llmParams ?: llm.prompt.params)
                 )
-            }
-
-            runIfNonRootContext(context) {
-                pipeline.onSubgraphExecutionStarting(id, parentId, this@AIAgentSubgraph, innerContext, input, inputType)
-            }
-
-            // Execute the subgraph with an inner context and get the result and updated prompt.
-            val result = try {
-                executeWithInnerContext(innerContext, input)
-            } catch (e: CancellationException) {
-                throw e
-            } catch (e: Exception) {
-                logger.error(e) { "Exception during executing subgraph '$name': ${e.message}" }
-                runIfNonRootContext(context) {
-                    pipeline.onSubgraphExecutionFailed(id, parentId, this@AIAgentSubgraph, context, input, inputType, e)
-                }
-                throw e
-            }
-
-            // Restore original LLM params on the new prompt.
-            val newPrompt = innerContext.llm.readSession {
-                prompt.copy(params = context.llm.prompt.params)
-            }
-            context.llm.writeSession { prompt = newPrompt }
-
-            val innerForcedData = innerContext.getAgentContextData()
-
-            if (innerForcedData != null) {
-                context.store(innerForcedData)
-            }
-
-            runIfNonRootContext(context) {
-                pipeline.onSubgraphExecutionCompleted(id, parentId, this@AIAgentSubgraph, innerContext, input, inputType, result, outputType)
-            }
-
-            result
+            )
         }
+
+        runIfNonRootContext(context) {
+            pipeline.onSubgraphExecutionStarting(context.executionInfo.id, context.executionInfo.parentId, this@AIAgentSubgraph, innerContext, input, inputType)
+        }
+
+        // Execute the subgraph with an inner context and get the result and updated prompt.
+        val result = try {
+            executeWithInnerContext(innerContext, input)
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            logger.error(e) { "Exception during executing subgraph '$name': ${e.message}" }
+            runIfNonRootContext(context) {
+                pipeline.onSubgraphExecutionFailed(context.executionInfo.id, context.executionInfo.parentId, this@AIAgentSubgraph, context, input, inputType, e)
+            }
+            throw e
+        }
+
+        // Restore original LLM params on the new prompt.
+        val newPrompt = innerContext.llm.readSession {
+            prompt.copy(params = context.llm.prompt.params)
+        }
+        context.llm.writeSession { prompt = newPrompt }
+
+        val innerForcedData = innerContext.getAgentContextData()
+
+        if (innerForcedData != null) {
+            context.store(innerForcedData)
+        }
+
+        runIfNonRootContext(context) {
+            pipeline.onSubgraphExecutionCompleted(context.executionInfo.id, context.executionInfo.parentId, this@AIAgentSubgraph, innerContext, input, inputType, result, outputType)
+        }
+
+        result
     }
 
     @OptIn(InternalAgentsApi::class)

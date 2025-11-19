@@ -1,8 +1,5 @@
 package ai.koog.agents.core.environment
 
-import ai.koog.agents.core.agent.context.element.getAgentRunInfoElementOrThrow
-import ai.koog.agents.core.agent.context.element.getNodeInfoElement
-import ai.koog.agents.core.agent.context.element.getStrategyInfoElement
 import ai.koog.agents.core.environment.AIAgentEnvironmentUtils.mapToToolResult
 import ai.koog.agents.core.feature.pipeline.AIAgentPipeline
 import ai.koog.agents.core.model.message.AIAgentEnvironmentToolResultToAgentContent
@@ -31,22 +28,17 @@ internal class GenericAgentEnvironment(
     private val pipeline: AIAgentPipeline
 ) : AIAgentEnvironment {
 
-    override suspend fun executeTools(toolCalls: List<Message.Tool.Call>): List<ReceivedToolResult> {
-        val agentRunInfo = getAgentRunInfoElementOrThrow()
+    override suspend fun executeTools(runId: String, toolCalls: List<Message.Tool.Call>): List<ReceivedToolResult> {
         logger.info {
-            formatLog(
-                agentRunInfo.agentId,
-                agentRunInfo.runId,
-                "Executing tools: [${toolCalls.joinToString(", ") { it.tool }}]"
-            )
+            formatLog(runId, "Executing tools: [${toolCalls.joinToString(", ") { it.tool }}]")
         }
 
         val message = AgentToolCallsToEnvironmentMessage(
-            runId = agentRunInfo.runId,
+            runId = runId,
             content = toolCalls.map { call ->
                 AgentToolCallToEnvironmentContent(
                     agentId = agentId,
-                    runId = agentRunInfo.runId,
+                    runId = runId,
                     toolCallId = call.id,
                     toolName = call.tool,
                     toolArgs = call.contentJson
@@ -67,12 +59,8 @@ internal class GenericAgentEnvironment(
     private fun ReceivedToolResult.resultString(): String =
         toolRegistry.tools.firstOrNull { it.name == tool }?.encodeResultToStringUnsafe(result) ?: "null"
 
-    override suspend fun reportProblem(exception: Throwable) {
-        val agentRunInfo = getAgentRunInfoElementOrThrow()
-
-        logger.error(exception) {
-            formatLog(agentRunInfo.agentId, agentRunInfo.runId, "Reporting problem: ${exception.message}")
-        }
+    override suspend fun reportProblem(runId: String, exception: Throwable) {
+        logger.error(exception) { formatLog(runId, "Reporting problem: ${exception.message}") }
         throw exception
     }
 
@@ -179,6 +167,6 @@ internal class GenericAgentEnvironment(
         )
     }
 
-    private fun formatLog(agentId: String, runId: String, message: String): String =
+    private fun formatLog(runId: String, message: String): String =
         "[agent id: $agentId, run id: $runId] $message"
 }

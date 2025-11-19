@@ -3,19 +3,16 @@ package ai.koog.agents.core.agent.entity
 import ai.koog.agents.core.agent.context.AIAgentGraphContextBase
 import ai.koog.agents.core.agent.context.AgentContextData
 import ai.koog.agents.core.agent.context.RollbackStrategy
-import ai.koog.agents.core.agent.context.element.StrategyInfoContextElement
-import ai.koog.agents.core.agent.context.element.getAgentRunInfoElement
 import ai.koog.agents.core.agent.context.getAgentContextData
 import ai.koog.agents.core.agent.context.removeAgentContextData
+import ai.koog.agents.core.agent.context.withParent
 import ai.koog.agents.core.annotation.InternalAgentsApi
 import ai.koog.agents.core.utils.runCatchingCancellable
 import io.github.oshai.kotlinlogging.KotlinLogging
-import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.serializer
 import kotlin.uuid.ExperimentalUuidApi
-import kotlin.uuid.Uuid
 
 /**
  * Represents a strategy for managing and executing AI agent workflows built as subgraphs of interconnected nodes.
@@ -36,7 +33,7 @@ public class AIAgentGraphStrategy<TInput, TOutput>(
     name,
     nodeStart,
     nodeFinish,
-    toolSelectionStrategy
+    toolSelectionStrategy,
 ) {
 
     private companion object {
@@ -56,30 +53,25 @@ public class AIAgentGraphStrategy<TInput, TOutput>(
     public lateinit var metadata: SubgraphMetadata
 
     @OptIn(InternalAgentsApi::class, ExperimentalUuidApi::class)
-    override suspend fun execute(context: AIAgentGraphContextBase, input: TInput): TOutput? {
-        val id = Uuid.random().toString()
-        val parentId = getAgentRunInfoElement()?.id
+    override suspend fun execute(context: AIAgentGraphContextBase, input: TInput): TOutput? = withParent(context = context, partName = id) {
+        runCatchingCancellable {
+            context.pipeline.onStrategyStarting(context.executionInfo.id, context.executionInfo.parentId, this@AIAgentGraphStrategy, context)
+            restoreStateIfNeeded(context)
 
-        return withContext(StrategyInfoContextElement(id, parentId, this.name)) {
-            runCatchingCancellable {
-                context.pipeline.onStrategyStarting(id, parentId, this@AIAgentGraphStrategy, context)
+            var result: TOutput? = super.execute(context = context, input = input)
+
+            while (result == null && context.getAgentContextData() != null) {
                 restoreStateIfNeeded(context)
+                result = super.execute(context = context, input = input)
+            }
 
-                var result: TOutput? = super.execute(context = context, input = input)
+            logger.trace { "Finished executing strategy (name: $name) with output: $result" }
+            context.pipeline.onStrategyCompleted(context.executionInfo.id, context.executionInfo.parentId, this@AIAgentGraphStrategy, context, result, outputType)
 
-                while (result == null && context.getAgentContextData() != null) {
-                    restoreStateIfNeeded(context)
-                    result = super.execute(context = context, input = input)
-                }
-
-                logger.trace { "Finished executing strategy (name: $name) with output: $result" }
-
-                context.pipeline.onStrategyCompleted(id, parentId, this@AIAgentGraphStrategy, context, result, outputType)
-                result
-            }.onFailure {
-                context.environment.reportProblem(it)
-            }.getOrThrow()
-        }
+            result
+        }.onFailure { e ->
+            context.environment.reportProblem(runId = context.runId, exception = e)
+        }.getOrThrow()
     }
 
     @OptIn(InternalAgentsApi::class)

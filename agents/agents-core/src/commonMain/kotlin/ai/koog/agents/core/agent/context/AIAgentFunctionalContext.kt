@@ -42,6 +42,7 @@ public class AIAgentFunctionalContext(
     override val storage: AIAgentStorage,
     override val strategyName: String,
     override val pipeline: AIAgentFunctionalPipeline,
+    override val executionInfo: AgentExecutionInfo,
     override val parentContext: AIAgentContext? = null
 ) : AIAgentContext {
 
@@ -102,7 +103,8 @@ public class AIAgentFunctionalContext(
             storage = storage,
             strategyName = strategyName,
             pipeline = pipeline,
-            parentContext = parentRootContext
+            executionInfo = executionInfo,
+            parentContext = parentRootContext,
         )
 
         // Copy over the internal store map to preserve any stored values

@@ -1,5 +1,7 @@
 package ai.koog.agents.core.feature.handler
 
+import ai.koog.agents.core.agent.context.AgentExecutionPath
+
 /**
  * Represents the context in which event handlers operate, providing a foundational
  * interface for all event handling activities within the AI Agent framework.

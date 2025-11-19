@@ -24,6 +24,7 @@ import kotlin.test.assertFailsWith
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
+import kotlin.test.fail
 
 class SerializationUtilsTest {
 
@@ -35,6 +36,24 @@ class SerializationUtilsTest {
     }
 
     //region encodeDataToStringOrNull
+
+    @Test
+    fun test() {
+        val failingJson = Json {
+            inline fun <reified T> encodeToString(data: T): String {
+                throw SerializationException("Test Serialization failed")
+            }
+        }
+
+        val data = TestData("test", 42)
+
+        val throwable = assertFailsWith<SerializationException> {
+            @OptIn(InternalAgentsApi::class)
+            SerializationUtils.encodeDataToStringOrNull(data, typeOf<TestData>(), failingJson)
+        }
+
+        assertEquals("Test Serialization failed", throwable.message)
+    }
 
     @Test
     @JsName("encodeDataToStringOrNullShouldSerializeValidData")

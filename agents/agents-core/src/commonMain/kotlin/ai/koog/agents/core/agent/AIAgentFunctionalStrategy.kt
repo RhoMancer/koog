@@ -1,14 +1,11 @@
 package ai.koog.agents.core.agent
 
 import ai.koog.agents.core.agent.context.AIAgentFunctionalContext
-import ai.koog.agents.core.agent.context.element.StrategyInfoContextElement
-import ai.koog.agents.core.agent.context.element.getAgentRunInfoElement
+import ai.koog.agents.core.agent.context.withParent
 import ai.koog.agents.core.agent.entity.AIAgentStrategy
 import io.github.oshai.kotlinlogging.KotlinLogging
-import kotlinx.coroutines.withContext
 import kotlin.reflect.typeOf
 import kotlin.uuid.ExperimentalUuidApi
-import kotlin.uuid.Uuid
 
 /**
  * A strategy for implementing AI agent behavior that operates in a loop-based manner.
@@ -36,18 +33,13 @@ public class AIAgentFunctionalStrategy<TInput, TOutput>(
     override suspend fun execute(
         context: AIAgentFunctionalContext,
         input: TInput
-    ): TOutput {
-        val id = Uuid.random().toString()
-        val parentId = getAgentRunInfoElement()?.id
+    ): TOutput = withParent(context = context, partName = name) {
+        context.pipeline.onStrategyStarting(context.executionInfo.id, context.executionInfo.parentId, this@AIAgentFunctionalStrategy, context)
+        val result = context.func(input)
+        context.pipeline.onStrategyCompleted(context.executionInfo.id, context.executionInfo.parentId, this@AIAgentFunctionalStrategy, context, result, typeOf<Any?>())
 
-        return withContext(StrategyInfoContextElement(id, parentId, this.name)) {
-            context.pipeline.onStrategyStarting(id, parentId, this@AIAgentFunctionalStrategy, context)
-            val result = context.func(input)
-            context.pipeline.onStrategyCompleted(id, parentId, this@AIAgentFunctionalStrategy, context, result, typeOf<Any?>())
-
-            logger.debug { "Finished executing strategy (name: $name) with result: $result" }
-            result
-        }
+        logger.debug { "Finished executing strategy (name: $name) with result: $result" }
+        result
     }
 }
 

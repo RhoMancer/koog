@@ -217,7 +217,7 @@ public abstract class AIAgentPipeline(public val clock: Clock) {
     /**
      * Prepares features by initializing their respective message processors.
      */
-    internal suspend fun prepareAllFeatures() {
+    internal suspend fun prepareFeatures() {
         // Install system features (if exist)
         installFeaturesFromSystemConfig()
 

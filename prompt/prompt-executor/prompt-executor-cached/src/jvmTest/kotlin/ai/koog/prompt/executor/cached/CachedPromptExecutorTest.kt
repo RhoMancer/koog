@@ -67,7 +67,7 @@ class CachedPromptExecutorTest {
             return testResponse
         }
 
-        override suspend fun executeStreaming(
+        override fun executeStreaming(
             prompt: Prompt,
             model: LLModel,
             tools: List<ToolDescriptor>

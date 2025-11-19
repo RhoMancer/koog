@@ -10,12 +10,13 @@ public interface AIAgentEnvironment {
     /**
      * Executes a list of tool calls and returns their corresponding results.
      *
+     * @param runId A unique identifier representing the current execution run.
      * @param toolCalls A list of tool call messages to be executed. Each message contains details about the tool,
      * its identifier, the request content, and associated metadata.
      * @return A list of results corresponding to the executed tool calls. Each result includes details such as
      * the tool name, identifier, response content, and associated metadata.
      */
-    public suspend fun executeTools(toolCalls: List<Message.Tool.Call>): List<ReceivedToolResult>
+    public suspend fun executeTools(runId: String, toolCalls: List<Message.Tool.Call>): List<ReceivedToolResult>
 
     /**
      * Reports a problem that occurred within the environment.
@@ -26,7 +27,7 @@ public interface AIAgentEnvironment {
      *
      * @param exception The exception representing the problem to report.
      */
-    public suspend fun reportProblem(exception: Throwable)
+    public suspend fun reportProblem(runId: String, exception: Throwable)
 }
 
 /**
@@ -36,8 +37,9 @@ public interface AIAgentEnvironment {
  * and returns the result of the tool call. It internally leverages `executeTools` to handle
  * the execution and retrieves the first result from the returned list of results.
  *
+ * @param runId A unique identifier representing the current execution run.
  * @param toolCall The tool call to be executed, represented as an instance of [Message.Tool.Call].
  * @return The result of the executed tool call, represented as [ReceivedToolResult].
  */
-public suspend fun AIAgentEnvironment.executeTool(toolCall: Message.Tool.Call): ReceivedToolResult =
-    executeTools(listOf(toolCall)).first()
+public suspend fun AIAgentEnvironment.executeTool(runId: String, toolCall: Message.Tool.Call): ReceivedToolResult =
+    executeTools(runId, listOf(toolCall)).first()

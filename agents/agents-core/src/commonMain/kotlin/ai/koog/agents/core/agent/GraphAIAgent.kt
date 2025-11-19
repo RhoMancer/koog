@@ -4,7 +4,8 @@ import ai.koog.agents.core.agent.config.AIAgentConfig
 import ai.koog.agents.core.agent.context.AIAgentGraphContext
 import ai.koog.agents.core.agent.context.AIAgentGraphContextBase
 import ai.koog.agents.core.agent.context.AIAgentLLMContext
-import ai.koog.agents.core.agent.context.element.getAgentRunInfoElementOrThrow
+import ai.koog.agents.core.agent.context.AgentExecutionInfo
+import ai.koog.agents.core.agent.context.AgentExecutionPath
 import ai.koog.agents.core.agent.entity.AIAgentGraphStrategy
 import ai.koog.agents.core.agent.entity.AIAgentStateManager
 import ai.koog.agents.core.agent.entity.AIAgentStorage
@@ -105,18 +106,21 @@ public open class GraphAIAgent<Input, Output>(
         val stateManager = AIAgentStateManager()
         val storage = AIAgentStorage()
 
-        val agentRunInfoContext = getAgentRunInfoElementOrThrow()
+        val executionPath = AgentExecutionPath(id, runId)
+        val executionInfo = AgentExecutionInfo(id = runId, parentId = id, path = executionPath)
 
         // Environment (initially equal to the current agent), transformed by some features
         //   (ex: testing feature transforms it into a MockEnvironment with mocked tools)
         val preparedEnvironment =
             pipeline.onAgentEnvironmentTransforming(
-                id = agentRunInfoContext.id,
-                parentId = agentRunInfoContext.parentId,
+                id = executionInfo.id,
+                parentId = executionInfo.parentId,
                 strategy = strategy,
                 agent = this,
                 baseEnvironment = environment
             )
+
+        // Agent id / run id / strategy name / node name /
 
         return AIAgentGraphContext(
             environment = preparedEnvironment,
@@ -143,6 +147,7 @@ public open class GraphAIAgent<Input, Output>(
             runId = runId,
             strategyName = strategy.name,
             pipeline = pipeline,
+            executionInfo = executionInfo,
         )
     }
 }
