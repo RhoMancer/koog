@@ -13,14 +13,12 @@ import kotlin.coroutines.CoroutineContext
  *
  * @property agentId The unique identifier for the agent running in the current context.
  * @property runId The identifier for the session associated with the current agent run.
- * @property agentConfig The agent configuration property.
  */
 public data class AgentRunInfoContextElement(
     override val id: String,
     override val parentId: String?,
     val agentId: String,
     val runId: String,
-    val agentConfig: AIAgentConfigBase,
 ) : AIAgentContextElementBase {
 
     /**

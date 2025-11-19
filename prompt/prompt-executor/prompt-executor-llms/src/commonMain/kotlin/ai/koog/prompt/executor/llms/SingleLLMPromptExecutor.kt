@@ -37,7 +37,7 @@ public open class SingleLLMPromptExecutor(
         return response
     }
 
-    override suspend fun executeStreaming(
+    override fun executeStreaming(
         prompt: Prompt,
         model: LLModel,
         tools: List<ToolDescriptor>

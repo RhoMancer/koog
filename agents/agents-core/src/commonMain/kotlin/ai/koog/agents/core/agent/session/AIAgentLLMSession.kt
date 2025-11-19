@@ -109,7 +109,7 @@ public sealed class AIAgentLLMSession(
         return config.missingToolsConversionStrategy.convertPrompt(prompt, tools)
     }
 
-    protected suspend fun executeStreaming(prompt: Prompt, tools: List<ToolDescriptor>): Flow<StreamFrame> {
+    protected fun executeStreaming(prompt: Prompt, tools: List<ToolDescriptor>): Flow<StreamFrame> {
         val preparedPrompt = preparePrompt(prompt, tools)
         return executor.executeStreaming(preparedPrompt, model, tools)
     }

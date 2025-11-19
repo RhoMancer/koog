@@ -65,7 +65,7 @@ public class PromptExecutorProxy(
      * @param tools The list of available tool descriptors for the streaming call
      * @return A Flow of StreamFrame objects representing the streaming response
      */
-    override suspend fun executeStreaming(
+    override fun executeStreaming(
         prompt: Prompt,
         model: LLModel,
         tools: List<ToolDescriptor>
@@ -73,25 +73,24 @@ public class PromptExecutorProxy(
         logger.debug { "Executing LLM streaming call (prompt: $prompt, tools: [${tools.joinToString { it.name }}])" }
 
         val callId: String = Uuid.random().toString()
-        val parentId = getNodeInfoElement()?.id ?: getStrategyInfoElement()?.id
 
         return executor.executeStreaming(prompt, model, tools)
             .onStart {
                 logger.debug { "Starting LLM streaming call" }
-                pipeline.onLLMStreamingStarting(callId, parentId, runId, prompt, model, tools)
+                pipeline.onLLMStreamingStarting(callId, getStreamingEventParentId(), runId, prompt, model, tools)
             }
             .onEach { streamFrame ->
                 logger.debug { "Received frame from LLM streaming call: $streamFrame" }
-                pipeline.onLLMStreamingFrameReceived(callId, parentId, runId, streamFrame)
+                pipeline.onLLMStreamingFrameReceived(callId, getStreamingEventParentId(), runId, streamFrame)
             }
             .catch { error ->
                 logger.debug(error) { "Error in LLM streaming call" }
-                pipeline.onLLMStreamingFailed(callId, parentId, runId, error)
+                pipeline.onLLMStreamingFailed(callId, getStreamingEventParentId(), runId, error)
                 throw error
             }
             .onCompletion { error ->
                 logger.debug(error) { "Finished LLM streaming call" }
-                pipeline.onLLMStreamingCompleted(callId, parentId, runId, prompt, model, tools)
+                pipeline.onLLMStreamingCompleted(callId, getStreamingEventParentId(), runId, prompt, model, tools)
             }
     }
 
@@ -145,4 +144,12 @@ public class PromptExecutorProxy(
     override fun close() {
         executor.close()
     }
+
+    //region Private Methods
+
+    private suspend fun getStreamingEventParentId(): String? {
+        return getNodeInfoElement()?.id ?: getStrategyInfoElement()?.id
+    }
+
+    //endregion Private Methods
 }

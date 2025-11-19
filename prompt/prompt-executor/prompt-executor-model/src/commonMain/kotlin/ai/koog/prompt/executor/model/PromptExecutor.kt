@@ -42,7 +42,7 @@ public interface PromptExecutor : AutoCloseable {
      * @param tools A list of `ToolDescriptor` objects that define the tools available for the execution.
      * @return A flow emitting `StreamFrame` objects that represent the streaming output of the language model.
      */
-    public suspend fun executeStreaming(
+    public fun executeStreaming(
         prompt: Prompt,
         model: LLModel,
         tools: List<ToolDescriptor> = emptyList()

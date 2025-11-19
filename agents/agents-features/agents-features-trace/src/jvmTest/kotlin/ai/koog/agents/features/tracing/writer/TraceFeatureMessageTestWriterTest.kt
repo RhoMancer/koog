@@ -454,7 +454,7 @@ class TraceFeatureMessageTestWriterTest {
                 tools: List<ai.koog.agents.core.tools.ToolDescriptor>
             ): List<Message.Response> = emptyList()
 
-            override suspend fun executeStreaming(
+            override fun executeStreaming(
                 prompt: Prompt,
                 model: ai.koog.prompt.llm.LLModel,
                 tools: List<ai.koog.agents.core.tools.ToolDescriptor>

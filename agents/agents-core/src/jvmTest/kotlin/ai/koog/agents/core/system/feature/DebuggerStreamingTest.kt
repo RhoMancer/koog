@@ -269,7 +269,7 @@ class DebuggerStreamingTest {
                 tools: List<ToolDescriptor>
             ): List<Message.Response> = emptyList()
 
-            override suspend fun executeStreaming(
+            override fun executeStreaming(
                 prompt: Prompt,
                 model: LLModel,
                 tools: List<ToolDescriptor>
