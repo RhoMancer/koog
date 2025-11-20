@@ -119,8 +119,38 @@ public sealed class AIAgentLLMSession(
         return executor.execute(preparedPrompt, model, tools)
     }
 
+    /**
+     * Executes the prompt and returns the first non-reasoning response.
+     *
+     * Some LLMs with reasoning enabled emit an initial Reasoning message before a usable
+     * assistant response or tool-call. If we always return the very first response entry,
+     * the agent may stall on that Reasoning message and never progress.
+     *
+     * This method mitigates that by selecting the first [Message.Response] that is not a
+     * [Message.Reasoning]. If all responses are reasoning messages, it will return the
+     * very first response as a fallback to preserve original behavior.
+     */
+    protected suspend fun executeFirstNonReasoningResponse(
+        prompt: Prompt,
+        tools: List<ToolDescriptor>
+    ): Message.Response {
+        val responses = executeMultiple(prompt, tools)
+        // Prefer the first response that is actionable (non-Reasoning). If none, fallback to the first.
+        return responses.firstOrNull { it !is Message.Reasoning } ?: responses.first()
+    }
+
+    /**
+     * Deprecated: use [executeFirstNonReasoningResponse] instead.
+     *
+     * Historically returned the very first response which could be a Reasoning message
+     * from some models. Kept for binary compatibility; will be removed in a future release.
+     */
+    @Deprecated(
+        message = "Use executeFirstNonReasoningResponse to skip initial Reasoning messages when present",
+        replaceWith = ReplaceWith("executeFirstNonReasoningResponse(prompt, tools)")
+    )
     protected suspend fun executeSingle(prompt: Prompt, tools: List<ToolDescriptor>): Message.Response =
-        executeMultiple(prompt, tools).first()
+        executeFirstNonReasoningResponse(prompt, tools)
 
     /**
      * Sends a request to the language model without utilizing any tools and returns the response.
@@ -143,7 +173,7 @@ public sealed class AIAgentLLMSession(
             .withUpdatedParams { toolChoice = null }
             .let { preparePrompt(it, emptyList()) }
 
-        return executeSingle(promptWithDisabledTools, emptyList())
+        return executeFirstNonReasoningResponse(promptWithDisabledTools, emptyList())
     }
 
     /**
@@ -159,7 +189,7 @@ public sealed class AIAgentLLMSession(
         val promptWithOnlyCallingTools = prompt.withUpdatedParams {
             toolChoice = LLMParams.ToolChoice.Required
         }
-        return executeSingle(promptWithOnlyCallingTools, tools)
+        return executeFirstNonReasoningResponse(promptWithOnlyCallingTools, tools)
     }
 
     /**
@@ -182,7 +212,7 @@ public sealed class AIAgentLLMSession(
         val promptWithForcingOneTool = prompt.withUpdatedParams {
             toolChoice = LLMParams.ToolChoice.Named(tool.name)
         }
-        return executeSingle(promptWithForcingOneTool, tools)
+        return executeFirstNonReasoningResponse(promptWithForcingOneTool, tools)
     }
 
     /**
@@ -202,14 +232,20 @@ public sealed class AIAgentLLMSession(
     }
 
     /**
-     * Sends a request to the underlying LLM and returns the first response.
+     * Sends a request to the underlying LLM and returns the first non-reasoning response.
      * This method ensures the session is active before executing the request.
      *
-     * @return The first response message from the LLM after executing the request.
+     * Why non-reasoning? Some models with reasoning enabled emit an initial [Message.Reasoning]
+     * message before the actionable assistant output or tool call. Returning that first raw
+     * reasoning message prevents the agent from progressing. Therefore, this method selects
+     * the first response that is not a [Message.Reasoning]. If all responses are reasoning
+     * messages, it will return the very first response to keep backward compatibility.
+     *
+     * @return The first non-reasoning response message from the LLM (or the first if all are reasoning).
      */
     public open suspend fun requestLLM(): Message.Response {
         validateSession()
-        return executeSingle(prompt, tools)
+        return executeFirstNonReasoningResponse(prompt, tools)
     }
 
     /**
