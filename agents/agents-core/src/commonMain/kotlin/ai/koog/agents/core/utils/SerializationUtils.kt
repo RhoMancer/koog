@@ -17,13 +17,14 @@ public object SerializationUtils {
 
     private val json = Json {
         prettyPrint = true
+        allowStructuredMapKeys = true
     }
 
     private val logger = KotlinLogging.logger { }
 
     /**
      * Serializes the given data to a string using the specified data type.
-     * If serialization fails, falls back to [data.toString()].
+     * If serialization fails, it falls back to [data.toString()].
      *
      * @param data The object to be serialized.
      * @param dataType The type of the object used to find the appropriate serializer.
