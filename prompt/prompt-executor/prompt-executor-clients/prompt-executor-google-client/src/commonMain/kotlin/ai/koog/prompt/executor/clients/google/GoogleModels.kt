@@ -77,7 +77,7 @@ public object GoogleModels : LLModelDefinitions {
     public val Gemini2_0Flash: LLModel = LLModel(
         provider = LLMProvider.Google,
         id = "gemini-2.0-flash",
-        capabilities = standardCapabilities + toolCapabilities + multimodalCapabilities,
+        capabilities = fullCapabilities,
         contextLength = 1_048_576,
         maxOutputTokens = 8_192,
     )
@@ -101,7 +101,7 @@ public object GoogleModels : LLModelDefinitions {
     public val Gemini2_0FlashLite: LLModel = LLModel(
         provider = LLMProvider.Google,
         id = "gemini-2.0-flash-lite",
-        capabilities = standardCapabilities + toolCapabilities + multimodalCapabilities,
+        capabilities = fullCapabilities,
         contextLength = 1_048_576,
         maxOutputTokens = 8_192,
     )
