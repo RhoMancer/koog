@@ -17,7 +17,6 @@ import kotlin.test.Ignore
 class PersistenceRunsTwiceTest {
 
     @Test
-    @Ignore
     fun `agent runs to end and on second run starts from beginning again`() = runTest {
         // Arrange
         val provider = InMemoryPersistenceStorageProvider()
@@ -79,7 +78,6 @@ class PersistenceRunsTwiceTest {
     }
 
     @Test
-    @Ignore
     fun `agent fails on the first run and second run running successfully`() = runTest {
         val provider = InMemoryPersistenceStorageProvider()
 

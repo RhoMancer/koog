@@ -32,7 +32,7 @@ class SubgraphCheckpointsTest {
         val checkpointId = "test-checkpoint"
         val agent = AIAgent(
             promptExecutor = getMockExecutor { },
-            strategy = createCheckpointSubgraphStrategy(checkpointId),
+            strategy = checkpointSubgraphStrategy(checkpointId),
             agentConfig = agentConfig,
             toolRegistry = toolRegistry
         ) {
@@ -59,7 +59,7 @@ class SubgraphCheckpointsTest {
         val checkpointId = "test-checkpoint"
         val agent = AIAgent(
             promptExecutor = getMockExecutor { },
-            strategy = createCheckpointSubgraphWithRollbackStrategy(checkpointId),
+            strategy = checkpointSubgraphWithRollbackStrategy(checkpointId),
             agentConfig = agentConfig,
             toolRegistry = toolRegistry
         ) {
@@ -86,7 +86,7 @@ class SubgraphCheckpointsTest {
         val checkpointId = "test-checkpoint"
         val agent = AIAgent(
             promptExecutor = getMockExecutor { },
-            strategy = createNestedSubgraphCheckpointStrategy(checkpointId),
+            strategy = nestedSubgraphCheckpointStrategy(checkpointId),
             agentConfig = agentConfig,
             toolRegistry = toolRegistry
         ) {
@@ -114,7 +114,7 @@ class SubgraphCheckpointsTest {
         val checkpointId = "test-checkpoint"
         val agent = AIAgent(
             promptExecutor = getMockExecutor { },
-            strategy = createNestedSubgraphCheckpointWithRollbackStrategy(checkpointId),
+            strategy = nestedSubgraphCheckpointWithRollbackStrategy(checkpointId),
             agentConfig = agentConfig,
             toolRegistry = toolRegistry
         ) {
