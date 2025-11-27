@@ -70,6 +70,7 @@ nav:
                   - Overview: opentelemetry-support.md
                   - Langfuse Exporter: opentelemetry-langfuse-exporter.md
                   - Weave Exporter: opentelemetry-weave-exporter.md
+              - Custom features: custom-features.md
       - Testing: testing.md
   - Why Koog: why-koog.md
   - Examples:
