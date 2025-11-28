@@ -12,7 +12,6 @@ import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.runTest
 import org.awaitility.kotlin.await
 import org.junit.jupiter.api.Test
-import kotlin.test.Ignore
 
 class PersistenceRunsTwiceTest {
 

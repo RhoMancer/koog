@@ -6,6 +6,7 @@ import ai.koog.agents.snapshot.feature.Persistence
 import ai.koog.agents.snapshot.providers.InMemoryPersistenceStorageProvider
 import ai.koog.agents.testing.tools.getMockExecutor
 import ai.koog.prompt.dsl.prompt
+import ai.koog.prompt.executor.model.PromptExecutor
 import ai.koog.prompt.llm.OllamaModels
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
@@ -136,5 +137,57 @@ class SubgraphCheckpointsTest {
                 "sgNode2 node output",
             output
         )
+    }
+
+    @Test
+    fun `test reusing subgraph with Persistence - clean start `() = runTest {
+        val mockExecutor: PromptExecutor = getMockExecutor {}
+
+        val agentConfig = AIAgentConfig(
+            prompt = prompt("test") {
+                system("You are a test agent.")
+            },
+            model = OllamaModels.Meta.LLAMA_3_2,
+            maxAgentIterations = 100
+        )
+
+        val agent = AIAgent(
+            promptExecutor = mockExecutor,
+            strategy = strategyWithRepeatedSubgraphs(),
+            agentConfig = agentConfig,
+        ) {
+            // Install the AgentCheckpoint feature
+            install(Persistence) {
+                storage = InMemoryPersistenceStorageProvider()
+            }
+        }
+
+        agent.run("Start the test")
+    }
+
+    @Test
+    fun `test reusing subgraph with Persistence - checkpoint start`() = runTest {
+        val mockExecutor: PromptExecutor = getMockExecutor {}
+
+        val agentConfig = AIAgentConfig(
+            prompt = prompt("test") {
+                system("You are a test agent.")
+            },
+            model = OllamaModels.Meta.LLAMA_3_2,
+            maxAgentIterations = 100
+        )
+
+        val agent = AIAgent(
+            promptExecutor = mockExecutor,
+            strategy = strategyWithRepeatedSubgraphs(),
+            agentConfig = agentConfig,
+        ) {
+            // Install the AgentCheckpoint feature
+            install(Persistence) {
+                storage = InMemoryPersistenceStorageProvider()
+            }
+        }
+
+        agent.run("Start the test")
     }
 }
