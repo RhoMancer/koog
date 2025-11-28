@@ -239,7 +239,7 @@ class AIAgentMemoryTest {
             } coAnswers {
                 val block = firstArg<suspend AIAgentLLMWriteSession.() -> Any?>()
                 val writeSession = mockk<AIAgentLLMWriteSession> {
-                    every { updatePrompt(capture(promptUpdateSlot)) } answers {
+                    every { appendPrompt(capture(promptUpdateSlot)) } answers {
                         println("[DEBUG_LOG] Updating prompt with message containing facts")
                     }
                 }
@@ -348,7 +348,7 @@ class AIAgentMemoryTest {
 
     @Test
     fun testSaveFactsFromHistoryWithCustomModel() = runTest {
-        val customModel = OpenAIModels.CostOptimized.O3Mini
+        val customModel = OpenAIModels.Chat.O3Mini
         val originalModel = testModel
 
         val memoryProvider = mockk<AgentMemoryProvider>()

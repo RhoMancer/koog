@@ -9,6 +9,7 @@ import ai.koog.agents.core.dsl.extension.nodeLLMSendToolResult
 import ai.koog.agents.core.dsl.extension.onAssistantMessage
 import ai.koog.agents.core.dsl.extension.onToolCall
 import ai.koog.agents.core.feature.message.FeatureMessage
+import ai.koog.agents.core.feature.model.events.AgentClosingEvent
 import ai.koog.agents.core.feature.model.events.AgentCompletedEvent
 import ai.koog.agents.core.feature.model.events.AgentStartingEvent
 import ai.koog.agents.core.feature.model.events.DefinedFeatureEvent
@@ -26,9 +27,8 @@ import ai.koog.agents.core.feature.model.events.ToolCallStartingEvent
 import ai.koog.agents.core.feature.remote.client.FeatureMessageRemoteClient
 import ai.koog.agents.core.feature.remote.client.config.DefaultClientConnectionConfig
 import ai.koog.agents.core.feature.remote.server.config.DefaultServerConnectionConfig
-import ai.koog.agents.core.feature.writer.FeatureMessageRemoteWriter
 import ai.koog.agents.core.tools.ToolRegistry
-import ai.koog.agents.core.utils.SerializationUtil
+import ai.koog.agents.core.utils.SerializationUtils
 import ai.koog.agents.features.tracing.feature.Tracing
 import ai.koog.agents.features.tracing.mock.MockLLMProvider
 import ai.koog.agents.features.tracing.mock.TestFeatureMessageWriter
@@ -48,19 +48,20 @@ import ai.koog.prompt.llm.toModelInfo
 import ai.koog.prompt.message.Message
 import ai.koog.utils.io.use
 import io.github.oshai.kotlinlogging.KotlinLogging
+import io.ktor.client.HttpClient
+import io.ktor.client.plugins.HttpRequestRetry
 import io.ktor.client.plugins.sse.SSEClientException
 import io.ktor.http.URLProtocol
-import kotlinx.coroutines.CompletableDeferred
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Job
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.cancelAndJoin
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.consumeAsFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.joinAll
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeoutOrNull
+import kotlinx.io.IOException
 import kotlinx.serialization.json.JsonPrimitive
 import org.junit.jupiter.api.parallel.Execution
 import org.junit.jupiter.api.parallel.ExecutionMode
@@ -82,43 +83,37 @@ class TraceFeatureMessageRemoteWriterTest {
         private const val HOST = "127.0.0.1"
     }
 
-    private fun CoroutineScope.signalServerStarted(
-        writer: FeatureMessageRemoteWriter,
-        signal: CompletableDeferred<Boolean>,
-    ): Job = launch {
-        val isStarted = withTimeoutOrNull(defaultClientServerTimeout) {
-            writer.isOpen.first { it }
-        } ?: throw AssertionError("Server did not start in time")
-
-        if (!signal.isCompleted) {
-            signal.complete(isStarted)
+    private val testBaseClient: HttpClient
+        get() = HttpClient {
+            install(HttpRequestRetry) {
+                retryOnExceptionIf(maxRetries = 10) { _, cause ->
+                    cause is IOException
+                }
+            }
         }
-    }
 
     @Test
     fun `test health check on agent run`() = runBlocking {
         val port = findAvailablePort()
-        val serverConfig = DefaultServerConnectionConfig(host = HOST, port = port)
+        val serverConfig = DefaultServerConnectionConfig(host = HOST, port = port, awaitInitialConnection = true, awaitInitialConnectionTimeout = defaultClientServerTimeout)
         val clientConfig = DefaultClientConnectionConfig(host = HOST, port = port, protocol = URLProtocol.HTTP)
 
-        val isServerStarted = CompletableDeferred<Boolean>()
-        val isClientFinished = CompletableDeferred<Boolean>()
+        val isClientFinished = MutableStateFlow(false)
 
         val clientJob = launch {
-            FeatureMessageRemoteClient(connectionConfig = clientConfig, scope = this).use { client ->
-                isServerStarted.await()
+            FeatureMessageRemoteClient(
+                connectionConfig = clientConfig,
+                scope = this,
+                baseClient = testBaseClient
+            ).use { client ->
                 client.connect()
                 client.healthCheck()
-
-                isClientFinished.complete(true)
+                isClientFinished.value = true
             }
         }
 
         val serverJob = launch {
             TraceFeatureMessageRemoteWriter(connectionConfig = serverConfig).use { writer ->
-
-                val serverReadyJob = signalServerStarted(writer, isServerStarted)
-
                 val strategy = strategy<String, String>("tracing-test-strategy") {
                     val llmCallNode by nodeLLMRequest("test LLM call")
                     val llmCallWithToolsNode by nodeLLMRequest("test LLM call with tools")
@@ -128,17 +123,20 @@ class TraceFeatureMessageRemoteWriterTest {
                     edge(llmCallWithToolsNode forwardTo nodeFinish transformed { "Done" })
                 }
 
-                try {
-                    createAgent(strategy = strategy) {
-                        install(Tracing) {
-                            addMessageProcessor(writer)
-                        }
-                    }.use { agent ->
-                        agent.run("")
-                        isClientFinished.await()
+                createAgent(strategy = strategy) {
+                    install(Tracing) {
+                        addMessageProcessor(writer)
+                        // Install the test writer that will suspend until a client finishes the health check
+                        addMessageProcessor(
+                            TestFeatureMessageWriter {
+                                withTimeoutOrNull(defaultClientServerTimeout) {
+                                    isClientFinished.first { it }
+                                }
+                            }
+                        )
                     }
-                } finally {
-                    serverReadyJob.join()
+                }.use { agent ->
+                    agent.run("")
                 }
             }
         }
@@ -199,26 +197,20 @@ class TraceFeatureMessageRemoteWriterTest {
             messages = expectedPrompt.messages + listOf(
                 userMessage(content = userPrompt),
                 toolCallMessage(dummyTool.name, content = """{"dummy":"test"}"""),
-                receivedToolResult("0", dummyTool.name, dummyTool.result, dummyTool.result).toMessage(clock = testClock)
+                receivedToolResult("0", dummyTool.name, dummyTool.result, dummyTool.encodeResult(dummyTool.result)).toMessage(clock = testClock)
             )
         )
 
         // Test Data
         val port = findAvailablePort()
-        val serverConfig = DefaultServerConnectionConfig(host = HOST, port = port)
+        val serverConfig = DefaultServerConnectionConfig(host = HOST, port = port, awaitInitialConnection = true, awaitInitialConnectionTimeout = defaultClientServerTimeout)
         val clientConfig = DefaultClientConnectionConfig(host = HOST, port = port, protocol = URLProtocol.HTTP)
 
         val actualEvents = mutableListOf<DefinedFeatureEvent>()
 
-        val isClientFinished = CompletableDeferred<Boolean>()
-        val isServerStarted = CompletableDeferred<Boolean>()
-
         // Server
         val serverJob = launch {
             TraceFeatureMessageRemoteWriter(connectionConfig = serverConfig).use { writer ->
-
-                val serverReadyJob = signalServerStarted(writer, isServerStarted)
-
                 val strategy = strategy(strategyName) {
                     val nodeSendInput by nodeLLMRequest("test-llm-call")
                     val nodeExecuteTool by nodeExecuteTool("test-tool-call")
@@ -233,42 +225,44 @@ class TraceFeatureMessageRemoteWriterTest {
                 }
 
                 val mockExecutor = getMockExecutor(clock = testClock) {
-                    mockLLMToolCall(tool = dummyTool, args = DummyTool.Args("test"), toolCallId = "0") onRequestEquals
-                        userPrompt
+                    mockLLMToolCall(
+                        tool = dummyTool,
+                        args = DummyTool.Args("test"),
+                        toolCallId = "0"
+                    ) onRequestEquals userPrompt
                     mockLLMAnswer(mockResponse) onRequestContains dummyTool.result
                 }
 
-                try {
-                    createAgent(
-                        agentId = agentId,
-                        strategy = strategy,
-                        promptId = promptId,
-                        model = testModel,
-                        userPrompt = userPrompt,
-                        systemPrompt = systemPrompt,
-                        assistantPrompt = assistantPrompt,
-                        toolRegistry = toolRegistry,
-                        promptExecutor = mockExecutor
-                    ) {
-                        install(Tracing) {
-                            addMessageProcessor(writer)
-                        }
-                    }.use { agent ->
-                        agent.run(userPrompt)
-                        isClientFinished.await()
+                createAgent(
+                    agentId = agentId,
+                    strategy = strategy,
+                    promptId = promptId,
+                    model = testModel,
+                    userPrompt = userPrompt,
+                    systemPrompt = systemPrompt,
+                    assistantPrompt = assistantPrompt,
+                    toolRegistry = toolRegistry,
+                    promptExecutor = mockExecutor
+                ) {
+                    install(Tracing) {
+                        addMessageProcessor(writer)
                     }
-                } finally {
-                    serverReadyJob.join()
+                }.use { agent ->
+                    agent.run(userPrompt)
                 }
             }
         }
 
         // Client
         val clientJob = launch {
-            FeatureMessageRemoteClient(connectionConfig = clientConfig, scope = this).use { client ->
+            FeatureMessageRemoteClient(
+                connectionConfig = clientConfig,
+                scope = this,
+                baseClient = testBaseClient
+            ).use { client ->
 
                 var runId = ""
-                val expectedEventsCount = 20
+                val expectedEventsCount = 21
 
                 val collectEventsJob = launch {
                     client.receivedMessages.consumeAsFlow().collect { event ->
@@ -285,8 +279,6 @@ class TraceFeatureMessageRemoteWriterTest {
                     }
                 }
 
-                isServerStarted.await()
-
                 client.connect()
                 collectEventsJob.join()
 
@@ -296,6 +288,13 @@ class TraceFeatureMessageRemoteWriterTest {
 
                 val startGraphNode = StrategyEventGraphNode(id = "__start__", name = "__start__")
                 val finishGraphNode = StrategyEventGraphNode(id = "__finish__", name = "__finish__")
+
+                val callIds = actualEvents.filterIsInstance<LLMCallStartingEvent>().map { it.callId }
+                assertEquals(
+                    2,
+                    callIds.size,
+                    "Expected 2 LLMCallStartingEvent, got ${callIds.size}"
+                )
 
                 // Correct run id will be set after the 'collect events job' is finished.
                 val expectedEvents = listOf(
@@ -339,7 +338,7 @@ class TraceFeatureMessageRemoteWriterTest {
                         runId = runId,
                         nodeName = "__start__",
                         input = @OptIn(InternalAgentsApi::class)
-                        SerializationUtil.trySerializeDataToJsonElement(
+                        SerializationUtils.encodeDataToJsonElementOrNull(
                             data = userPrompt,
                             dataType = typeOf<String>()
                         ),
@@ -349,12 +348,12 @@ class TraceFeatureMessageRemoteWriterTest {
                         runId = runId,
                         nodeName = "__start__",
                         input = @OptIn(InternalAgentsApi::class)
-                        SerializationUtil.trySerializeDataToJsonElement(
+                        SerializationUtils.encodeDataToJsonElementOrNull(
                             data = userPrompt,
                             dataType = typeOf<String>()
                         ),
                         output = @OptIn(InternalAgentsApi::class)
-                        SerializationUtil.trySerializeDataToJsonElement(
+                        SerializationUtils.encodeDataToJsonElementOrNull(
                             data = userPrompt,
                             dataType = typeOf<String>()
                         ),
@@ -364,7 +363,7 @@ class TraceFeatureMessageRemoteWriterTest {
                         runId = runId,
                         nodeName = "test-llm-call",
                         input = @OptIn(InternalAgentsApi::class)
-                        SerializationUtil.trySerializeDataToJsonElement(
+                        SerializationUtils.encodeDataToJsonElementOrNull(
                             data = userPrompt,
                             dataType = typeOf<String>()
                         ),
@@ -372,6 +371,7 @@ class TraceFeatureMessageRemoteWriterTest {
                     ),
                     LLMCallStartingEvent(
                         runId = runId,
+                        callId = callIds[0],
                         prompt = expectedLLMCallPrompt,
                         model = testModel.toModelInfo(),
                         tools = listOf(dummyTool.name),
@@ -379,6 +379,7 @@ class TraceFeatureMessageRemoteWriterTest {
                     ),
                     LLMCallCompletedEvent(
                         runId = runId,
+                        callId = callIds[0],
                         prompt = expectedLLMCallPrompt,
                         model = testModel.toModelInfo(),
                         responses = listOf(toolCallMessage(dummyTool.name, content = """{"dummy":"test"}""")),
@@ -390,7 +391,7 @@ class TraceFeatureMessageRemoteWriterTest {
                         // TODO: KG-485. Update to include serialized [ReceivedToolResult] when it became a serializable type.
                         input = JsonPrimitive(userPrompt),
                         output = @OptIn(InternalAgentsApi::class)
-                        SerializationUtil.trySerializeDataToJsonElement(
+                        SerializationUtils.encodeDataToJsonElementOrNull(
                             data = toolCallMessage(dummyTool.name, content = """{"dummy":"test"}"""),
                             dataType = typeOf<Message>()
                         ),
@@ -400,7 +401,7 @@ class TraceFeatureMessageRemoteWriterTest {
                         runId = runId,
                         nodeName = "test-tool-call",
                         input = @OptIn(InternalAgentsApi::class)
-                        SerializationUtil.trySerializeDataToJsonElement(
+                        SerializationUtils.encodeDataToJsonElementOrNull(
                             data = toolCallMessage(dummyTool.name, content = """{"dummy":"test"}"""),
                             dataType = typeOf<Message.Tool.Call>()
                         ),
@@ -425,23 +426,37 @@ class TraceFeatureMessageRemoteWriterTest {
                         runId = runId,
                         nodeName = "test-tool-call",
                         input = @OptIn(InternalAgentsApi::class)
-                        SerializationUtil.trySerializeDataToJsonElement(
+                        SerializationUtils.encodeDataToJsonElementOrNull(
                             data = toolCallMessage(dummyTool.name, content = """{"dummy":"test"}"""),
                             dataType = typeOf<Message.Tool.Call>()
                         ),
                         timestamp = testClock.now().toEpochMilliseconds(),
-                        // TODO: KG-485. Update to include serialized [ReceivedToolResult] when it became a serializable type.
-                        output = JsonPrimitive(dummyTool.result)
+                        // Tool result is wrapped into an object with id, tool, content, and result fields
+                        output = kotlinx.serialization.json.JsonObject(
+                            mapOf(
+                                "id" to JsonPrimitive("0"),
+                                "tool" to JsonPrimitive(dummyTool.name),
+                                "content" to JsonPrimitive(dummyTool.result),
+                                "result" to dummyTool.encodeResult(dummyTool.result)
+                            )
+                        )
                     ),
                     NodeExecutionStartingEvent(
                         runId = runId,
                         nodeName = "test-node-llm-send-tool-result",
-                        // TODO: KG-485. Update to include serialized [ReceivedToolResult] when it became a serializable type.
-                        input = JsonPrimitive(dummyTool.result),
+                        input = kotlinx.serialization.json.JsonObject(
+                            mapOf(
+                                "id" to JsonPrimitive("0"),
+                                "tool" to JsonPrimitive(dummyTool.name),
+                                "content" to JsonPrimitive(dummyTool.result),
+                                "result" to dummyTool.encodeResult(dummyTool.result)
+                            )
+                        ),
                         timestamp = testClock.now().toEpochMilliseconds()
                     ),
                     LLMCallStartingEvent(
                         runId = runId,
+                        callId = callIds[1],
                         prompt = expectedLLMCallWithToolsPrompt,
                         model = testModel.toModelInfo(),
                         tools = listOf(dummyTool.name),
@@ -449,6 +464,7 @@ class TraceFeatureMessageRemoteWriterTest {
                     ),
                     LLMCallCompletedEvent(
                         runId = runId,
+                        callId = callIds[1],
                         prompt = expectedLLMCallWithToolsPrompt,
                         model = testModel.toModelInfo(),
                         responses = listOf(assistantMessage(mockResponse)),
@@ -457,10 +473,16 @@ class TraceFeatureMessageRemoteWriterTest {
                     NodeExecutionCompletedEvent(
                         runId = runId,
                         nodeName = "test-node-llm-send-tool-result",
-                        // TODO: KG-485. Update to include serialized [ReceivedToolResult] when it became a serializable type.
-                        input = JsonPrimitive(dummyTool.result),
+                        input = kotlinx.serialization.json.JsonObject(
+                            mapOf(
+                                "id" to JsonPrimitive("0"),
+                                "tool" to JsonPrimitive(dummyTool.name),
+                                "content" to JsonPrimitive(dummyTool.result),
+                                "result" to dummyTool.encodeResult(dummyTool.result)
+                            )
+                        ),
                         output = @OptIn(InternalAgentsApi::class)
-                        SerializationUtil.trySerializeDataToJsonElement(
+                        SerializationUtils.encodeDataToJsonElementOrNull(
                             data = assistantMessage(mockResponse),
                             dataType = typeOf<Message>()
                         ),
@@ -470,7 +492,7 @@ class TraceFeatureMessageRemoteWriterTest {
                         runId = runId,
                         nodeName = "__finish__",
                         input = @OptIn(InternalAgentsApi::class)
-                        SerializationUtil.trySerializeDataToJsonElement(
+                        SerializationUtils.encodeDataToJsonElementOrNull(
                             data = mockResponse,
                             dataType = typeOf<String>()
                         ),
@@ -480,12 +502,12 @@ class TraceFeatureMessageRemoteWriterTest {
                         runId = runId,
                         nodeName = "__finish__",
                         input = @OptIn(InternalAgentsApi::class)
-                        SerializationUtil.trySerializeDataToJsonElement(
+                        SerializationUtils.encodeDataToJsonElementOrNull(
                             data = mockResponse,
                             dataType = typeOf<String>()
                         ),
                         output = @OptIn(InternalAgentsApi::class)
-                        SerializationUtil.trySerializeDataToJsonElement(
+                        SerializationUtils.encodeDataToJsonElementOrNull(
                             data = mockResponse,
                             dataType = typeOf<String>()
                         ),
@@ -503,6 +525,10 @@ class TraceFeatureMessageRemoteWriterTest {
                         result = mockResponse,
                         timestamp = testClock.now().toEpochMilliseconds()
                     ),
+                    AgentClosingEvent(
+                        agentId = agentId,
+                        timestamp = testClock.now().toEpochMilliseconds()
+                    ),
                 )
 
                 // The 'runId' is updated when the agent is finished.
@@ -513,9 +539,8 @@ class TraceFeatureMessageRemoteWriterTest {
                     expectedEvents.size,
                     "expectedEventsCount variable in the test need to be updated"
                 )
-                assertContentEquals(expectedEvents, actualEvents)
 
-                isClientFinished.complete(true)
+                assertContentEquals(expectedEvents, actualEvents)
             }
         }
 
@@ -535,13 +560,27 @@ class TraceFeatureMessageRemoteWriterTest {
         val clientConfig = DefaultClientConnectionConfig(host = HOST, port = port, protocol = URLProtocol.HTTP)
 
         val actualEvents = mutableListOf<FeatureMessage>()
-
-        val isClientFinished = CompletableDeferred<Boolean>()
-        val isServerStarted = CompletableDeferred<Boolean>()
+        val isServerStarted = MutableStateFlow(false)
+        val isClientFinished = MutableStateFlow(false)
 
         val serverJob = launch {
-            TraceFeatureMessageRemoteWriter(connectionConfig = serverConfig).use {
-                TestFeatureMessageWriter().use { testWriter ->
+            // Create the test feature message writer that will suspend until a client finishes execution
+            val testFeatureWriter = TestFeatureMessageWriter(onClose = {
+                withTimeoutOrNull(defaultClientServerTimeout) {
+                    isClientFinished.first { it }
+                }
+            })
+
+            // Launch a job to signal about the agent start event
+            launch {
+                withTimeoutOrNull(defaultClientServerTimeout) {
+                    testFeatureWriter.isOpen.first { it }
+                    isServerStarted.value = true
+                }
+            }
+
+            TraceFeatureMessageRemoteWriter(connectionConfig = serverConfig).use { remoteWriter ->
+                testFeatureWriter.use { testWriter ->
 
                     val strategy = strategy<String, String>(strategyName) {
                         val llmCallNode by nodeLLMRequest("test LLM call")
@@ -562,15 +601,19 @@ class TraceFeatureMessageRemoteWriterTest {
                         }
                     }.use { agent ->
                         agent.run("")
-                        isServerStarted.complete(true)
-                        isClientFinished.await()
                     }
                 }
             }
         }
 
         val clientJob = launch {
-            FeatureMessageRemoteClient(connectionConfig = clientConfig, scope = this).use { client ->
+            // Do not use a testBaseClient that perform reconnection because the server job (an agent)
+            // is not expected to launch a server in that test. Instead, the client should wait for an agent
+            // to start execution and perform a single connection attempt that should fail.
+            FeatureMessageRemoteClient(
+                connectionConfig = clientConfig,
+                scope = this,
+            ).use { client ->
 
                 val collectEventsJob = launch {
                     client.receivedMessages.consumeAsFlow().collect { message: FeatureMessage ->
@@ -580,14 +623,18 @@ class TraceFeatureMessageRemoteWriterTest {
                 }
 
                 logger.debug { "Client waits for server to start" }
-                isServerStarted.await()
+                val isServerJobStarted = withTimeoutOrNull(defaultClientServerTimeout) {
+                    isServerStarted.first { it }
+                } != null
+
+                assertTrue(isServerJobStarted, "Server job did not start in time")
 
                 val throwable = assertFailsWith<SSEClientException> {
                     client.connect()
                 }
 
                 logger.debug { "Client sends finish event to a server" }
-                isClientFinished.complete(true)
+                isClientFinished.value = true
 
                 collectEventsJob.cancelAndJoin()
 
@@ -652,26 +699,20 @@ class TraceFeatureMessageRemoteWriterTest {
             messages = expectedPrompt.messages + listOf(
                 userMessage(content = userPrompt),
                 toolCallMessage(dummyTool.name, content = """{"dummy":"test"}"""),
-                receivedToolResult("0", dummyTool.name, dummyTool.result, dummyTool.result).toMessage(clock = testClock)
+                receivedToolResult("0", dummyTool.name, dummyTool.result, dummyTool.encodeResult(dummyTool.result)).toMessage(clock = testClock)
             )
         )
 
         // Test Data
         val port = findAvailablePort()
-        val serverConfig = DefaultServerConnectionConfig(host = HOST, port = port)
+        val serverConfig = DefaultServerConnectionConfig(host = HOST, port = port, awaitInitialConnectionTimeout = defaultClientServerTimeout)
         val clientConfig = DefaultClientConnectionConfig(host = HOST, port = port, protocol = URLProtocol.HTTP)
 
         val actualEvents = mutableListOf<DefinedFeatureEvent>()
 
-        val isClientFinished = CompletableDeferred<Boolean>()
-        val isServerStarted = CompletableDeferred<Boolean>()
-
         // Server
         val serverJob = launch {
             TraceFeatureMessageRemoteWriter(connectionConfig = serverConfig).use { writer ->
-
-                val serverReadyJob = signalServerStarted(writer, isServerStarted)
-
                 val strategy = strategy(strategyName) {
                     val nodeSendInput by nodeLLMRequest("test-llm-call")
                     val nodeExecuteTool by nodeExecuteTool("test-tool-call")
@@ -691,37 +732,36 @@ class TraceFeatureMessageRemoteWriterTest {
                     mockLLMAnswer(mockResponse) onRequestContains dummyTool.result
                 }
 
-                try {
-                    createAgent(
-                        agentId = agentId,
-                        strategy = strategy,
-                        promptId = promptId,
-                        model = testModel,
-                        userPrompt = userPrompt,
-                        systemPrompt = systemPrompt,
-                        assistantPrompt = assistantPrompt,
-                        toolRegistry = toolRegistry,
-                        promptExecutor = mockExecutor
-                    ) {
-                        install(Tracing) {
-                            writer.setMessageFilter { message ->
-                                message is LLMCallStartingEvent || message is LLMCallCompletedEvent
-                            }
-                            addMessageProcessor(writer)
+                createAgent(
+                    agentId = agentId,
+                    strategy = strategy,
+                    promptId = promptId,
+                    model = testModel,
+                    userPrompt = userPrompt,
+                    systemPrompt = systemPrompt,
+                    assistantPrompt = assistantPrompt,
+                    toolRegistry = toolRegistry,
+                    promptExecutor = mockExecutor
+                ) {
+                    install(Tracing) {
+                        writer.setMessageFilter { message ->
+                            message is LLMCallStartingEvent || message is LLMCallCompletedEvent
                         }
-                    }.use { agent ->
-                        agent.run(userPrompt)
-                        isClientFinished.await()
+                        addMessageProcessor(writer)
                     }
-                } finally {
-                    serverReadyJob.join()
+                }.use { agent ->
+                    agent.run(userPrompt)
                 }
             }
         }
 
         // Client
         val clientJob = launch {
-            FeatureMessageRemoteClient(connectionConfig = clientConfig, scope = this).use { client ->
+            FeatureMessageRemoteClient(
+                connectionConfig = clientConfig,
+                scope = this,
+                baseClient = testBaseClient
+            ).use { client ->
 
                 var runId = ""
                 val expectedEventsCount = 4
@@ -741,15 +781,21 @@ class TraceFeatureMessageRemoteWriterTest {
                     }
                 }
 
-                isServerStarted.await()
-
                 client.connect()
                 collectEventsJob.join()
+
+                val callIds = actualEvents.filterIsInstance<LLMCallStartingEvent>().map { it.callId }
+                assertEquals(
+                    2,
+                    callIds.size,
+                    "Expected 2 LLMCallStartingEvent, got ${callIds.size}"
+                )
 
                 // Correct run id will be set after the 'collect events job' is finished.
                 val expectedEvents = listOf(
                     LLMCallStartingEvent(
                         runId = runId,
+                        callId = callIds[0],
                         prompt = expectedLLMCallPrompt,
                         model = testModel.toModelInfo(),
                         tools = listOf(dummyTool.name),
@@ -757,6 +803,7 @@ class TraceFeatureMessageRemoteWriterTest {
                     ),
                     LLMCallCompletedEvent(
                         runId = runId,
+                        callId = callIds[0],
                         prompt = expectedLLMCallPrompt,
                         model = testModel.toModelInfo(),
                         responses = listOf(toolCallMessage(dummyTool.name, content = """{"dummy":"test"}""")),
@@ -764,6 +811,7 @@ class TraceFeatureMessageRemoteWriterTest {
                     ),
                     LLMCallStartingEvent(
                         runId = runId,
+                        callId = callIds[1],
                         prompt = expectedLLMCallWithToolsPrompt,
                         model = testModel.toModelInfo(),
                         tools = listOf(dummyTool.name),
@@ -771,6 +819,7 @@ class TraceFeatureMessageRemoteWriterTest {
                     ),
                     LLMCallCompletedEvent(
                         runId = runId,
+                        callId = callIds[1],
                         prompt = expectedLLMCallWithToolsPrompt,
                         model = testModel.toModelInfo(),
                         responses = listOf(assistantMessage(mockResponse)),
@@ -790,8 +839,6 @@ class TraceFeatureMessageRemoteWriterTest {
 
                 assertEquals(expectedEvents.size, actualEvents.size)
                 assertContentEquals(expectedEvents, actualEvents)
-
-                isClientFinished.complete(true)
             }
         }
 

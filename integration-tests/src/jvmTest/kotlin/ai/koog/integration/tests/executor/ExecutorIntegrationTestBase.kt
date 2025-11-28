@@ -1,8 +1,6 @@
 package ai.koog.integration.tests.executor
 
 import ai.koog.agents.core.tools.ToolDescriptor
-import ai.koog.agents.core.tools.ToolParameterDescriptor
-import ai.koog.agents.core.tools.ToolParameterType
 import ai.koog.integration.tests.utils.MediaTestScenarios.AudioTestScenario
 import ai.koog.integration.tests.utils.MediaTestScenarios.ImageTestScenario
 import ai.koog.integration.tests.utils.MediaTestScenarios.MarkdownTestScenario
@@ -12,21 +10,44 @@ import ai.koog.integration.tests.utils.MediaTestUtils.checkExecutorMediaResponse
 import ai.koog.integration.tests.utils.MediaTestUtils.checkResponseBasic
 import ai.koog.integration.tests.utils.Models
 import ai.koog.integration.tests.utils.RetryUtils.withRetry
-import ai.koog.integration.tests.utils.TestUtils.CalculatorOperation
-import ai.koog.integration.tests.utils.TestUtils.Colors
-import ai.koog.integration.tests.utils.TestUtils.Country
-import ai.koog.integration.tests.utils.TestUtils.StructuredTest
-import ai.koog.integration.tests.utils.TestUtils.StructuredTest.checkResponse
-import ai.koog.integration.tests.utils.TestUtils.StructuredTest.getConfigFixingParserNative
-import ai.koog.integration.tests.utils.TestUtils.StructuredTest.getConfigNoFixingParserNative
-import ai.koog.integration.tests.utils.TestUtils.markdownCountryDefinition
-import ai.koog.integration.tests.utils.TestUtils.parseMarkdownStreamToCountries
+import ai.koog.integration.tests.utils.TestUtils.assertResponseContainsReasoning
+import ai.koog.integration.tests.utils.TestUtils.assertResponseContainsReasoningWithEncryption
+import ai.koog.integration.tests.utils.TestUtils.assertResponseContainsToolCall
 import ai.koog.integration.tests.utils.getLLMClientForProvider
+import ai.koog.integration.tests.utils.structuredOutput.Country
+import ai.koog.integration.tests.utils.structuredOutput.checkWeatherStructuredOutputResponse
+import ai.koog.integration.tests.utils.structuredOutput.countryStructuredOutputPrompt
+import ai.koog.integration.tests.utils.structuredOutput.getConfigFixingParserManual
+import ai.koog.integration.tests.utils.structuredOutput.getConfigFixingParserNative
+import ai.koog.integration.tests.utils.structuredOutput.getConfigNoFixingParserManual
+import ai.koog.integration.tests.utils.structuredOutput.getConfigNoFixingParserNative
+import ai.koog.integration.tests.utils.structuredOutput.parseMarkdownStreamToCountries
+import ai.koog.integration.tests.utils.structuredOutput.weatherStructuredOutputPrompt
+import ai.koog.integration.tests.utils.tools.CalculatorTool
+import ai.koog.integration.tests.utils.tools.LotteryTool
+import ai.koog.integration.tests.utils.tools.PickColorFromListTool
+import ai.koog.integration.tests.utils.tools.PickColorTool
+import ai.koog.integration.tests.utils.tools.PriceCalculatorTool
+import ai.koog.integration.tests.utils.tools.SimplePriceCalculatorTool
+import ai.koog.integration.tests.utils.tools.calculatorPrompt
+import ai.koog.integration.tests.utils.tools.calculatorPromptNotRequiredOptionalParams
+import ai.koog.integration.tests.utils.tools.calculatorToolDescriptorOptionalParams
+import ai.koog.prompt.dsl.ModerationCategory
 import ai.koog.prompt.dsl.Prompt
 import ai.koog.prompt.dsl.prompt
 import ai.koog.prompt.executor.clients.LLMClient
-import ai.koog.prompt.executor.clients.google.GoogleModels
+import ai.koog.prompt.executor.clients.LLMClientException
+import ai.koog.prompt.executor.clients.LLMEmbeddingProvider
+import ai.koog.prompt.executor.clients.anthropic.AnthropicParams
+import ai.koog.prompt.executor.clients.anthropic.models.AnthropicThinking
+import ai.koog.prompt.executor.clients.google.GoogleParams
+import ai.koog.prompt.executor.clients.google.models.GoogleThinkingConfig
 import ai.koog.prompt.executor.clients.openai.OpenAIModels
+import ai.koog.prompt.executor.clients.openai.OpenAIResponsesParams
+import ai.koog.prompt.executor.clients.openai.base.models.ReasoningEffort
+import ai.koog.prompt.executor.clients.openai.models.OpenAIInclude
+import ai.koog.prompt.executor.clients.openai.models.ReasoningConfig
+import ai.koog.prompt.executor.clients.openai.models.ReasoningSummary
 import ai.koog.prompt.executor.model.PromptExecutor
 import ai.koog.prompt.llm.LLMCapability
 import ai.koog.prompt.llm.LLMProvider
@@ -35,27 +56,51 @@ import ai.koog.prompt.markdown.markdown
 import ai.koog.prompt.message.AttachmentContent
 import ai.koog.prompt.message.ContentPart
 import ai.koog.prompt.message.Message
+import ai.koog.prompt.message.ResponseMetaInfo
+import ai.koog.prompt.params.LLMParams
 import ai.koog.prompt.params.LLMParams.ToolChoice
 import ai.koog.prompt.streaming.StreamFrame
-import ai.koog.prompt.streaming.filterTextOnly
 import ai.koog.prompt.structure.executeStructured
-import kotlinx.coroutines.flow.toList
+import io.kotest.assertions.withClue
+import io.kotest.inspectors.shouldForAll
+import io.kotest.inspectors.shouldForAny
+import io.kotest.matchers.booleans.shouldBeTrue
+import io.kotest.matchers.booleans.shouldNotBeTrue
+import io.kotest.matchers.collections.shouldBeEmpty
+import io.kotest.matchers.collections.shouldNotBeEmpty
+import io.kotest.matchers.collections.shouldNotContainAnyOf
+import io.kotest.matchers.ints.shouldBeGreaterThan
+import io.kotest.matchers.nulls.shouldNotBeNull
+import io.kotest.matchers.shouldBe
+import io.kotest.matchers.shouldNotBe
+import io.kotest.matchers.string.shouldContain
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.runTest
-import org.junit.jupiter.api.Assertions.assertNotNull
+import org.junit.jupiter.api.AfterEach
+import org.junit.jupiter.api.Assumptions.assumeFalse
 import org.junit.jupiter.api.Assumptions.assumeTrue
 import org.junit.jupiter.api.BeforeAll
 import java.nio.file.Path
 import java.nio.file.Paths
+import java.util.Base64
 import kotlin.io.path.pathString
 import kotlin.io.path.readBytes
 import kotlin.io.path.readText
 import kotlin.io.path.writeBytes
-import kotlin.test.assertEquals
-import kotlin.test.assertTrue
+import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
 import kotlinx.io.files.Path as KtPath
 
 abstract class ExecutorIntegrationTestBase {
+    private val testScope = TestScope()
+
+    @AfterEach
+    fun cleanup() {
+        testScope.cancel()
+    }
+
     companion object {
         protected lateinit var testResourcesDir: Path
 
@@ -71,40 +116,35 @@ abstract class ExecutorIntegrationTestBase {
 
     open fun getLLMClient(model: LLModel): LLMClient = getLLMClientForProvider(model.provider)
 
-    fun createCalculatorTool(): ToolDescriptor {
-        return ToolDescriptor(
-            name = "calculator",
-            description = "A simple calculator that can add, subtract, multiply, and divide two numbers.",
-            requiredParameters = listOf(
-                ToolParameterDescriptor(
-                    name = "operation",
-                    description = "The operation to perform.",
-                    type = ToolParameterType.Enum(CalculatorOperation.entries.map { it.name }.toTypedArray())
-                ),
-                ToolParameterDescriptor(
-                    name = "a",
-                    description = "The first argument (number)",
-                    type = ToolParameterType.Integer
-                ),
-                ToolParameterDescriptor(
-                    name = "b",
-                    description = "The second argument (number)",
-                    type = ToolParameterType.Integer
-                )
+    private fun createReasoningParams(model: LLModel): LLMParams {
+        return when (model.provider) {
+            is LLMProvider.Anthropic -> AnthropicParams(
+                thinking = AnthropicThinking.Enabled(budgetTokens = 1024)
             )
-        )
-    }
 
-    fun createCalculatorPrompt() = Prompt.build("test-tools") {
-        system(
-            "You are a helpful assistant with access to a calculator tool. When asked to perform calculations, use the calculator tool instead of calculating the answer yourself."
-        )
-        user("What is 123 + 456?")
+            is LLMProvider.OpenAI -> OpenAIResponsesParams(
+                reasoning = ReasoningConfig(
+                    effort = ReasoningEffort.MEDIUM,
+                    summary = ReasoningSummary.DETAILED
+                ),
+                include = listOf(OpenAIInclude.REASONING_ENCRYPTED_CONTENT),
+                maxTokens = 256
+            )
+
+            is LLMProvider.Google -> GoogleParams(
+                thinkingConfig = GoogleThinkingConfig(
+                    includeThoughts = true,
+                    thinkingBudget = 256
+                ),
+                maxTokens = 256
+            )
+
+            else -> LLMParams(maxTokens = 256)
+        }
     }
 
     open fun integration_testExecute(model: LLModel) = runTest(timeout = 300.seconds) {
         Models.assumeAvailable(model.provider)
-        val executor = getExecutor(model)
 
         val prompt = Prompt.build("test-prompt") {
             system("You are a helpful assistant.")
@@ -112,19 +152,17 @@ abstract class ExecutorIntegrationTestBase {
         }
 
         withRetry(times = 3, testName = "integration_testExecute[${model.id}]") {
-            val response = executor.execute(prompt, model, emptyList())
-            assertNotNull(response, "Response should not be null")
-            assertTrue(response.isNotEmpty(), "Response should not be empty")
-            assertTrue(response.first() is Message.Assistant, "Response should be an Assistant message")
-
-            val message = response.first() as Message.Assistant
-            assertTrue(
-                message.content.contains("Paris", ignoreCase = true),
-                "Response should contain 'Paris'"
-            )
-            assertNotNull(message.metaInfo.inputTokensCount, "Input tokens count should not be null")
-            assertNotNull(message.metaInfo.outputTokensCount, "Output tokens count should not be null")
-            assertNotNull(message.metaInfo.totalTokensCount, "Total tokens count should not be null")
+            getExecutor(model).execute(prompt, model) shouldNotBeNull {
+                shouldNotBeEmpty()
+                with(shouldForAny { it is Message.Assistant }.first()) {
+                    content.lowercase().shouldContain("paris")
+                    with(metaInfo) {
+                        inputTokensCount.shouldNotBeNull()
+                        outputTokensCount.shouldNotBeNull()
+                        totalTokensCount.shouldNotBeNull()
+                    }
+                }
+            }
         }
     }
 
@@ -142,280 +180,157 @@ abstract class ExecutorIntegrationTestBase {
         }
 
         withRetry(times = 3, testName = "integration_testExecuteStreaming[${model.id}]") {
-            val responseChunks = executor.executeStreaming(prompt, model)
-                .filterTextOnly()
-                .toList()
-            assertNotNull(responseChunks, "Response chunks should not be null")
-            assertTrue(responseChunks.isNotEmpty(), "Response chunks should not be empty")
+            with(StringBuilder()) {
+                val endMessages = mutableListOf<StreamFrame.End>()
+                val toolMessages = mutableListOf<StreamFrame.ToolCall>()
+                executor.executeStreaming(prompt, model).collect {
+                    when (it) {
+                        is StreamFrame.Append -> append(it.text)
+                        is StreamFrame.End -> endMessages.add(it)
+                        is StreamFrame.ToolCall -> toolMessages.add(it)
+                    }
+                }
+                length shouldNotBe (0)
+                toolMessages.shouldBeEmpty()
+                when (model.provider) {
+                    is LLMProvider.Ollama -> endMessages.size shouldBe 0
+                    else -> endMessages.size shouldBe 1
+                }
 
-            val fullResponse = responseChunks.joinToString("")
-            assertTrue(
-                fullResponse.contains("1") &&
-                    fullResponse.contains("2") &&
-                    fullResponse.contains("3") &&
-                    fullResponse.contains("4") &&
-                    fullResponse.contains("5"),
-                "Full response should contain numbers 1 through 5"
-            )
-        }
-    }
-
-    open fun integration_testToolsWithRequiredParams(model: LLModel) = runTest(timeout = 300.seconds) {
-        Models.assumeAvailable(model.provider)
-        assumeTrue(model.capabilities.contains(LLMCapability.Tools), "Model $model does not support tools")
-
-        val calculatorTool = ToolDescriptor(
-            name = "calculator",
-            description = "A simple calculator that can add, subtract, multiply, and divide two numbers.",
-            requiredParameters = listOf(
-                ToolParameterDescriptor(
-                    name = "operation",
-                    description = "The operation to perform.",
-                    type = ToolParameterType.Enum(CalculatorOperation.entries.map { it.name }.toTypedArray())
-                ),
-                ToolParameterDescriptor(
-                    name = "a",
-                    description = "The first argument (number)",
-                    type = ToolParameterType.Integer
-                ),
-                ToolParameterDescriptor(
-                    name = "b",
-                    description = "The second argument (number)",
-                    type = ToolParameterType.Integer
-                )
-            )
-        )
-
-        val prompt = Prompt.build("test-tools") {
-            system("You are a helpful assistant with access to a calculator tool.")
-            user("What is 123 + 456?")
-        }
-
-        withRetry(times = 3, testName = "integration_testToolsWithRequiredParams[${model.id}]") {
-            val executor = getExecutor(model)
-            val response = executor.execute(prompt, model, listOf(calculatorTool))
-            assertTrue(response.isNotEmpty(), "Response should not be empty")
-        }
-    }
-
-    open fun integration_testToolsWithRequiredOptionalParams(model: LLModel) =
-        runTest(timeout = 300.seconds) {
-            Models.assumeAvailable(model.provider)
-            assumeTrue(model.capabilities.contains(LLMCapability.Tools), "Model $model does not support tools")
-
-            val calculatorTool = ToolDescriptor(
-                name = "calculator",
-                description = "A simple calculator that can add, subtract, multiply, and divide two numbers.",
-                requiredParameters = listOf(
-                    ToolParameterDescriptor(
-                        name = "operation",
-                        description = "The operation to perform.",
-                        type = ToolParameterType.Enum(
-                            CalculatorOperation.entries.map { it.name }
-                                .toTypedArray()
-                        )
-                    ),
-                    ToolParameterDescriptor(
-                        name = "a",
-                        description = "The first argument (number)",
-                        type = ToolParameterType.Float
-                    ),
-                    ToolParameterDescriptor(
-                        name = "b",
-                        description = "The second argument (number)",
-                        type = ToolParameterType.Float
-                    )
-                ),
-                optionalParameters = listOf(
-                    ToolParameterDescriptor(
-                        name = "comment",
-                        description = "Comment to the result (string)",
-                        type = ToolParameterType.String
-                    )
-                )
-            )
-
-            val prompt = Prompt.build("test-tools") {
-                system(
-                    "You are a helpful assistant with access to a calculator tool. Don't use optional params if possible. ALWAYS CALL TOOL FIRST."
-                )
-                user("What is 123 + 456?")
-            }
-
-            val executor = getExecutor(model)
-
-            withRetry(times = 3, testName = "integration_testToolsWithRequiredOptionalParams[${model.id}]") {
-                val response = executor.execute(prompt, model, listOf(calculatorTool))
-                assertTrue(response.isNotEmpty(), "Response should not be empty")
+                toString() shouldNotBeNull {
+                    shouldContain("1")
+                    shouldContain("2")
+                    shouldContain("3")
+                    shouldContain("4")
+                    shouldContain("5")
+                }
             }
         }
+    }
 
-    open fun integration_testToolsWithOptionalParams(model: LLModel) = runTest(timeout = 300.seconds) {
+    open fun integration_testToolWithRequiredParams(model: LLModel) = runTest(timeout = 300.seconds) {
         Models.assumeAvailable(model.provider)
         assumeTrue(model.capabilities.contains(LLMCapability.Tools), "Model $model does not support tools")
 
-        val calculatorTool = ToolDescriptor(
-            name = "calculator",
-            description = "A simple calculator that can add, subtract, multiply, and divide two numbers.",
-            optionalParameters = listOf(
-                ToolParameterDescriptor(
-                    name = "operation",
-                    description = "The operation to perform.",
-                    type = ToolParameterType.Enum(CalculatorOperation.entries.map { it.name }.toTypedArray())
-                ),
-                ToolParameterDescriptor(
-                    name = "a",
-                    description = "The first argument (number)",
-                    type = ToolParameterType.Integer
-                ),
-                ToolParameterDescriptor(
-                    name = "b",
-                    description = "The second argument (number)",
-                    type = ToolParameterType.Integer
-                ),
-                ToolParameterDescriptor(
-                    name = "comment",
-                    description = "Comment to the result (string)",
-                    type = ToolParameterType.String
-                )
-            )
-        )
-
-        val prompt = Prompt.build("test-tools") {
-            system("You are a helpful assistant with access to a calculator tool.")
-            user("What is 123 + 456?")
-        }
-
-        val executor = getExecutor(model)
-        withRetry(times = 3, testName = "integration_testToolsWithOptionalParams[${model.id}]") {
-            val response = executor.execute(prompt, model, listOf(calculatorTool))
-            assertTrue(response.isNotEmpty(), "Response should not be empty")
+        withRetry(times = 3, testName = "integration_testToolWithRequiredParams[${model.id}]") {
+            with(getExecutor(model).execute(calculatorPrompt, model, listOf(CalculatorTool.descriptor))) {
+                shouldNotBeEmpty()
+                assertResponseContainsToolCall(this, CalculatorTool.name)
+            }
         }
     }
 
-    open fun integration_testToolsWithNoParams(model: LLModel) = runTest(timeout = 300.seconds) {
+    open fun integration_testToolWithNotRequiredOptionalParams(model: LLModel) = runTest(timeout = 300.seconds) {
         Models.assumeAvailable(model.provider)
         assumeTrue(model.capabilities.contains(LLMCapability.Tools), "Model $model does not support tools")
 
-        val calculatorTool = ToolDescriptor(
-            name = "calculator",
-            description = "A simple calculator that can add, subtract, multiply, and divide two numbers.",
-        )
-
-        val calculatorToolBetter = ToolDescriptor(
-            name = "calculatorBetter",
-            description = "A better calculator that can add, subtract, multiply, and divide two numbers.",
-            requiredParameters = emptyList(),
-            optionalParameters = emptyList()
-        )
-
-        val prompt = Prompt.build("test-tools") {
-            system("You are a helpful assistant with access to calculator tools. Use the best one.")
-            user("What is 123 + 456?")
-        }
-
-        val executor = getExecutor(model)
-
-        withRetry(times = 3, testName = "integration_testToolsWithNoParams[${model.id}]") {
-            val response =
-                executor.execute(prompt, model, listOf(calculatorTool, calculatorToolBetter))
-            assertTrue(response.isNotEmpty(), "Response should not be empty")
+        withRetry(times = 3, testName = "integration_testToolWithNotRequiredOptionalParams[${model.id}]") {
+            with(
+                getExecutor(model).execute(
+                    calculatorPromptNotRequiredOptionalParams,
+                    model,
+                    listOf(calculatorToolDescriptorOptionalParams)
+                )
+            ) {
+                shouldNotBeEmpty()
+                assertResponseContainsToolCall(this, CalculatorTool.name)
+            }
         }
     }
 
-    open fun integration_testToolsWithListEnumParams(model: LLModel) = runTest(timeout = 300.seconds) {
+    open fun integration_testToolWithOptionalParams(model: LLModel) = runTest(timeout = 300.seconds) {
         Models.assumeAvailable(model.provider)
         assumeTrue(model.capabilities.contains(LLMCapability.Tools), "Model $model does not support tools")
 
-        val colorPickerTool = ToolDescriptor(
-            name = "colorPicker",
-            description = "A tool that can randomly pick a color from a list of colors.",
-            requiredParameters = listOf(
-                ToolParameterDescriptor(
-                    name = "color",
-                    description = "The color to be picked.",
-                    type = ToolParameterType.List(
-                        ToolParameterType.Enum(
-                            Colors.entries.map { it.name }
-                                .toTypedArray()
-                        )
-                    )
-                )
-            )
-        )
-
-        val prompt = Prompt.build("test-tools") {
-            system("You are a helpful assistant with access to a color picker tool. ALWAYS CALL TOOL FIRST.")
-            user("Pick me a color!")
-        }
-
-        val executor = getExecutor(model)
-
-        withRetry(times = 3, testName = "integration_testToolsWithListEnumParams[${model.id}]") {
-            val response = executor.execute(prompt, model, listOf(colorPickerTool))
-            assertTrue(response.isNotEmpty(), "Response should not be empty")
+        withRetry(times = 3, testName = "integration_testToolWithOptionalParams[${model.id}]") {
+            with(getExecutor(model).execute(calculatorPrompt, model, listOf(calculatorToolDescriptorOptionalParams))) {
+                shouldNotBeEmpty()
+                assertResponseContainsToolCall(this, CalculatorTool.name)
+            }
         }
     }
 
-    open fun integration_testToolsWithNestedListParams(model: LLModel) = runTest(timeout = 300.seconds) {
+    open fun integration_testToolWithNoParams(model: LLModel) = runTest(timeout = 300.seconds) {
         Models.assumeAvailable(model.provider)
         assumeTrue(model.capabilities.contains(LLMCapability.Tools), "Model $model does not support tools")
 
-        val lotteryPickerTool = ToolDescriptor(
-            name = "lotteryPicker",
-            description = "A tool that can randomly you some lottery winners and losers",
-            requiredParameters = listOf(
-                ToolParameterDescriptor(
-                    name = "Numbers",
-                    description = "A list of the numbers for lottery winners and losers from 1 to 100",
-                    type = ToolParameterType.List(ToolParameterType.List(ToolParameterType.Integer))
-                )
-            )
-        )
-
         val prompt = Prompt.build("test-tools") {
-            system("You are a helpful assistant. ALWAYS CALL TOOL FIRST.")
-            user("Pick me lottery winners and losers! 5 of each")
+            system {
+                +"You are a helpful assistant with access to a color picker tool. "
+                +"ALWAYS CALL TOOL!!!"
+            }
+            user("Picker random color for me!")
         }
 
-        val executor = getExecutor(model)
+        withRetry(times = 3, testName = "integration_testToolWithNoParams[${model.id}]") {
+            with(getExecutor(model).execute(prompt, model, listOf(PickColorTool.descriptor))) {
+                shouldNotBeEmpty()
+                assertResponseContainsToolCall(this, PickColorTool.name)
+            }
+        }
+    }
 
-        withRetry(times = 3, testName = "integration_testToolsWithNestedListParams[${model.id}]") {
-            val response = executor.execute(prompt, model, listOf(lotteryPickerTool))
-            assertTrue(response.isNotEmpty(), "Response should not be empty")
+    open fun integration_testToolWithListEnumParams(model: LLModel) = runTest(timeout = 300.seconds) {
+        Models.assumeAvailable(model.provider)
+        assumeTrue(model.capabilities.contains(LLMCapability.Tools), "Model $model does not support tools")
+
+        val prompt = Prompt.build("test-tools") {
+            system {
+                +"You are a helpful assistant with access to a color picker tool. "
+                +"ALWAYS CALL TOOL!!!"
+            }
+            user("Pick me a color from red, green, orange!")
+        }
+
+        withRetry(times = 3, testName = "integration_testToolWithListEnumParams[${model.id}]") {
+            with(getExecutor(model).execute(prompt, model, listOf(PickColorFromListTool.descriptor))) {
+                shouldNotBeEmpty()
+                assertResponseContainsToolCall(this, PickColorFromListTool.name)
+            }
+        }
+    }
+
+    open fun integration_testToolWithNestedListParams(model: LLModel) = runTest(timeout = 300.seconds) {
+        Models.assumeAvailable(model.provider)
+        assumeTrue(model.capabilities.contains(LLMCapability.Tools), "Model $model does not support tools")
+
+        val prompt = Prompt.build("test-tools") {
+            system {
+                +"You are a helpful assistant with lottery tool. You MUST always call tools!!!"
+            }
+            user("Select winners from lottery tickets [10, 42, 43, 51, 22] and [34, 12, 4, 53, 99]")
+        }
+
+        withRetry(times = 3, testName = "integration_testToolWithNestedListParams[${model.id}]") {
+            with(getExecutor(model).execute(prompt, model, listOf(LotteryTool.descriptor))) {
+                shouldNotBeEmpty()
+                assertResponseContainsToolCall(this, LotteryTool.name)
+            }
         }
     }
 
     open fun integration_testToolsWithNullParams(model: LLModel) = runTest(timeout = 300.seconds) {
         Models.assumeAvailable(model.provider)
+        assumeTrue(model.provider != LLMProvider.Anthropic, "Anthropic does not support anyOf")
         assumeTrue(model.capabilities.contains(LLMCapability.Tools), "Model $model does not support tools")
-
-        val nullGiverTool = ToolDescriptor(
-            name = "nullGiver",
-            description = "A tool that returns a null value",
-            requiredParameters = listOf(
-                ToolParameterDescriptor(
-                    name = "Null",
-                    description = "A null",
-                    type = ToolParameterType.Null
-                )
-            )
+        assumeTrue(
+            model.provider != LLMProvider.MistralAI,
+            "MistralAI returns json array which we are failing to parse. Remove after KG-535 fix"
         )
 
         val prompt = Prompt.build("test-tools") {
-            system("You are a helpful assistant. ALWAYS CALL TOOL FIRST.")
-            user("Hi. Call a tool.")
+            system {
+                +"You are a helpful assistant with tokens price calculator tool."
+                +"JUST CALL TOOLS. NO QUESTIONS ASKED."
+            }
+            user("Calculate price of 10 tokens if I pay 0.003 euro. Discount is not provided to set null.")
         }
 
-        val executor = getExecutor(model)
-
         withRetry(times = 3, testName = "integration_testToolsWithNullParams[${model.id}]") {
-            val response = executor.execute(prompt, model, listOf(nullGiverTool))
-            assertTrue(response.isNotEmpty(), "Response should not be empty")
-            assertTrue(
-                response.first { it is Message.Tool.Call }.content.contains("null"),
-                "Tool call response should contain null"
-            )
+            with(getExecutor(model).execute(prompt, model, listOf(SimplePriceCalculatorTool.descriptor))) {
+                shouldNotBeEmpty()
+                first { it is Message.Tool.Call }.content.shouldContain("null")
+            }
         }
     }
 
@@ -424,73 +339,36 @@ abstract class ExecutorIntegrationTestBase {
         assumeTrue(model.provider != LLMProvider.Anthropic, "Anthropic does not support anyOf")
         assumeTrue(model.capabilities.contains(LLMCapability.Tools), "Model $model does not support tools")
 
-        val anyOfTool = ToolDescriptor(
-            name = "stringNumberGiver",
-            description = "A tool that returns a string or number value",
-            requiredParameters = listOf(
-                ToolParameterDescriptor(
-                    name = "anyOfParam",
-                    description = "String or number parameter",
-                    type = ToolParameterType.AnyOf(
-                        types = arrayOf(
-                            ToolParameterDescriptor(
-                                name = "String",
-                                description = "String option",
-                                type = ToolParameterType.String
-                            ),
-                            ToolParameterDescriptor(
-                                name = "Number",
-                                description = "Number option",
-                                type = ToolParameterType.Float
-                            )
-                        )
-                    )
-                )
-            )
-        )
-
-        val prompt = Prompt.build("test-tools") {
-            system("You are a helpful assistant. ALWAYS CALL TOOL FIRST.")
-            user("Hi. Give me a word and a number.")
+        val prompt = Prompt.build("test-tools", LLMParams(toolChoice = ToolChoice.Required)) {
+            system {
+                +"You are a helpful assistant with tokens price calculator tool."
+                +"JUST CALL TOOLS. NO QUESTIONS ASKED."
+            }
+            user("Calculate price of 10 tokens if I pay 0.003 euro for token with 10% discount.")
         }
 
-        val executor = getExecutor(model)
-
-        withRetry(times = 3, testName = "integration_testToolsWithAnyOfParams[${model.id}]") {
-            val response = executor.execute(prompt, model, listOf(anyOfTool))
-            assertTrue(response.isNotEmpty(), "Response should not be empty")
-            assertTrue(response.any { it is Message.Tool.Call })
+        withRetry(testName = "integration_testToolsWithAnyOfParams[${model.id}]") {
+            with(getExecutor(model).execute(prompt, model, listOf(PriceCalculatorTool.descriptor))) {
+                shouldNotBeEmpty()
+                shouldForAny { it is Message.Tool.Call }
+                assertResponseContainsToolCall(this, PriceCalculatorTool.name)
+            }
         }
     }
 
-    open fun integration_testStructuredDataStreaming(model: LLModel) = runTest(timeout = 300.seconds) {
+    open fun integration_testMarkdownStructuredDataStreaming(model: LLModel) = runTest(timeout = 300.seconds) {
         Models.assumeAvailable(model.provider)
-        assumeTrue(model != OpenAIModels.CostOptimized.GPT4_1Nano, "Model $model is too small for structured streaming")
-
-        val countries = mutableListOf<Country>()
-        val countryDefinition = markdownCountryDefinition()
-
-        val prompt = Prompt.build("test-structured-streaming") {
-            system("You are a helpful assistant.")
-            user(
-                """
-                Please provide information about 3 European countries in this format:
-
-                $countryDefinition
-
-                Make sure to follow this exact format with the # for country names and * for details.
-                """.trimIndent()
-            )
-        }
+        assumeTrue(model != OpenAIModels.Chat.GPT4_1Nano, "Model $model is too small for structured streaming")
 
         withRetry(times = 3, testName = "integration_testStructuredDataStreaming[${model.id}]") {
-            val markdownStream = getLLMClient(model).executeStreaming(prompt, model)
+            val markdownStream = getLLMClient(model).executeStreaming(countryStructuredOutputPrompt, model)
+            with(mutableListOf<Country>()) {
+                parseMarkdownStreamToCountries(markdownStream).collect { country ->
+                    add(country)
+                }
 
-            parseMarkdownStreamToCountries(markdownStream).collect { country ->
-                countries.add(country)
+                shouldNotBeEmpty()
             }
-
-            assertTrue(countries.isNotEmpty(), "Countries list should not be empty")
         }
     }
 
@@ -498,54 +376,45 @@ abstract class ExecutorIntegrationTestBase {
         scenario: MarkdownTestScenario,
         model: LLModel
     ) =
-        runTest(timeout = 300.seconds) {
+        runTest(timeout = 10.minutes) {
             Models.assumeAvailable(model.provider)
-            val executor = getExecutor(model)
 
             val file = MediaTestUtils.createMarkdownFileForScenario(scenario, testResourcesDir)
 
-            val prompt =
-                if (model.capabilities.contains(LLMCapability.Document) && model.provider != LLMProvider.OpenAI) {
-                    prompt("markdown-test-${scenario.name.lowercase()}") {
-                        system("You are a helpful assistant that can analyze markdown files.")
+            val prompt = prompt("markdown-test-${scenario.name.lowercase()}") {
+                system("You are a helpful assistant that can analyze markdown files.")
 
-                        user {
-                            markdown {
-                                +"I'm sending you a markdown file with different markdown elements. "
-                                +"Please list all the markdown elements used in it and describe its structure clearly."
-                            }
+                user {
+                    markdown {
+                        +"I'm sending you a markdown file with different markdown elements. "
+                        +"Please list all the markdown elements used in it and describe its structure clearly."
+                    }
 
-                            textFile(KtPath(file.pathString), "text/plain")
+                    if (model.capabilities.contains(LLMCapability.Document) && model.provider != LLMProvider.OpenAI) {
+                        textFile(KtPath(file.pathString), "text/plain")
+                    } else {
+                        markdown {
+                            +file.readText()
                         }
                     }
-                } else {
-                    prompt("markdown-test-${scenario.name.lowercase()}") {
-                        system("You are a helpful assistant that can analyze markdown files.")
-
-                        user(
-                            markdown {
-                                +"I'm sending you a markdown file with different markdown elements. "
-                                +"Please list all the markdown elements used in it and describe its structure clearly."
-                                newline()
-                                +file.readText()
-                            }
-                        )
-                    }
                 }
+            }
 
             withRetry {
                 try {
-                    val response = executor.execute(prompt, model).single()
-                    when (scenario) {
-                        MarkdownTestScenario.MALFORMED_SYNTAX,
-                        MarkdownTestScenario.MATH_NOTATION,
-                        MarkdownTestScenario.BROKEN_LINKS,
-                        MarkdownTestScenario.IRREGULAR_TABLES -> {
-                            checkResponseBasic(response)
-                        }
+                    with(
+                        getExecutor(model).execute(prompt, model)
+                            .filterIsInstance<Message.Assistant>()
+                            .toSingleMessage()
+                    ) {
+                        when (scenario) {
+                            MarkdownTestScenario.MALFORMED_SYNTAX, MarkdownTestScenario.MATH_NOTATION, MarkdownTestScenario.BROKEN_LINKS, MarkdownTestScenario.IRREGULAR_TABLES -> {
+                                checkResponseBasic(this)
+                            }
 
-                        else -> {
-                            checkExecutorMediaResponse(response)
+                            else -> {
+                                checkExecutorMediaResponse(this)
+                            }
                         }
                     }
                 } catch (e: Exception) {
@@ -569,9 +438,10 @@ abstract class ExecutorIntegrationTestBase {
     open fun integration_testImageProcessing(scenario: ImageTestScenario, model: LLModel) =
         runTest(timeout = 300.seconds) {
             Models.assumeAvailable(model.provider)
-            assumeTrue(model.capabilities.contains(LLMCapability.Vision.Image), "Model must support vision capability")
-
-            val executor = getExecutor(model)
+            assumeTrue(
+                model.capabilities.contains(LLMCapability.Vision.Image),
+                "Model must support vision capability"
+            )
 
             val imageFile = MediaTestUtils.getImageFileForScenario(scenario, testResourcesDir)
 
@@ -603,44 +473,25 @@ abstract class ExecutorIntegrationTestBase {
 
             withRetry {
                 try {
-                    val response = executor.execute(prompt, model).single()
-                    checkExecutorMediaResponse(response)
-                } catch (e: Exception) {
+                    checkExecutorMediaResponse(getExecutor(model).execute(prompt, model).single())
+                } catch (e: LLMClientException) {
                     // For some edge cases, exceptions are expected
                     when (scenario) {
                         ImageTestScenario.LARGE_IMAGE_ANTHROPIC, ImageTestScenario.LARGE_IMAGE -> {
-                            assertEquals(
-                                e.message?.contains("400 Bad Request"),
-                                true,
-                                "Expected exception for a large image [400 Bad Request] was not found, got [${e.message}] instead"
-                            )
-                            assertEquals(
-                                e.message?.contains("image exceeds"),
-                                true,
-                                "Expected exception for a large image [image exceeds] was not found, got [${e.message}] instead"
-                            )
+                            val message = e.message.shouldNotBeNull()
+
+                            message.shouldContain("Status code: 400")
+                            message.shouldContain("image exceeds")
                         }
 
                         ImageTestScenario.CORRUPTED_IMAGE, ImageTestScenario.EMPTY_IMAGE -> {
-                            assertEquals(
-                                e.message?.contains("400 Bad Request"),
-                                true,
-                                "Expected exception for a corrupted image [400 Bad Request] was not found, got [${e.message}] instead"
-                            )
+                            val message = e.message.shouldNotBeNull()
+
+                            message.shouldContain("Status code: 400")
                             if (model.provider == LLMProvider.Anthropic) {
-                                assertEquals(
-                                    e.message?.contains("Could not process image"),
-                                    true,
-                                    "Expected exception for a corrupted image [Could not process image] was not found, got [${e.message}] instead"
-                                )
+                                message.shouldContain("Could not process image")
                             } else if (model.provider == LLMProvider.OpenAI) {
-                                assertEquals(
-                                    e.message?.contains(
-                                        "You uploaded an unsupported image. Please make sure your image is valid."
-                                    ),
-                                    true,
-                                    "Expected exception for a corrupted image [You uploaded an unsupported image. Please make sure your image is valid..] was not found, got [${e.message}] instead"
-                                )
+                                message.shouldContain("You uploaded an unsupported image. Please make sure your image is valid.")
                             }
                         }
 
@@ -655,8 +506,6 @@ abstract class ExecutorIntegrationTestBase {
     open fun integration_testTextProcessingBasic(scenario: TextTestScenario, model: LLModel) =
         runTest(timeout = 300.seconds) {
             Models.assumeAvailable(model.provider)
-
-            val executor = getExecutor(model)
 
             val file = MediaTestUtils.createTextFileForScenario(scenario, testResourcesDir)
 
@@ -689,39 +538,23 @@ abstract class ExecutorIntegrationTestBase {
 
             withRetry {
                 try {
-                    val response = executor.execute(prompt, model).single()
+                    val response = getExecutor(model).execute(prompt, model).single()
                     checkExecutorMediaResponse(response)
-                } catch (e: Exception) {
+                } catch (e: LLMClientException) {
                     when (scenario) {
                         TextTestScenario.EMPTY_TEXT -> {
                             if (model.provider == LLMProvider.Google) {
-                                assertEquals(
-                                    e.message?.contains("400 Bad Request"),
-                                    true,
-                                    "Expected exception for empty text [400 Bad Request] was not found, got [${e.message}] instead"
-                                )
-                                assertEquals(
-                                    e.message?.contains(
-                                        "Unable to submit request because it has an empty inlineData parameter. Add a value to the parameter and try again."
-                                    ),
-                                    true,
-                                    "Expected exception for empty text [Unable to submit request because it has an empty inlineData parameter. Add a value to the parameter and try again] was not found, got [${e.message}] instead"
-                                )
+                                val message = e.message.shouldNotBeNull()
+                                message.shouldContain("Status code: 400")
+                                message.shouldContain("Unable to submit request because it has an empty inlineData parameter. Add a value to the parameter and try again.")
                             }
                         }
 
                         TextTestScenario.LONG_TEXT_5_MB -> {
                             if (model.provider == LLMProvider.Anthropic) {
-                                assertEquals(
-                                    e.message?.contains("400 Bad Request"),
-                                    true,
-                                    "Expected exception for long text [400 Bad Request] was not found, got [${e.message}] instead"
-                                )
-                                assertEquals(
-                                    e.message?.contains("prompt is too long"),
-                                    true,
-                                    "Expected exception for long text [prompt is too long:] was not found, got [${e.message}] instead"
-                                )
+                                val message = e.message.shouldNotBeNull()
+                                message.shouldContain("Status code: 400")
+                                message.shouldContain("prompt is too long")
                             } else if (model.provider == LLMProvider.Google) {
                                 throw e
                             }
@@ -743,8 +576,6 @@ abstract class ExecutorIntegrationTestBase {
                 "Model must support audio capability"
             )
 
-            val executor = getExecutor(model)
-
             val audioFile = MediaTestUtils.createAudioFileForScenario(scenario, testResourcesDir)
 
             val prompt = prompt("audio-test-${scenario.name.lowercase()}") {
@@ -758,27 +589,16 @@ abstract class ExecutorIntegrationTestBase {
 
             withRetry(times = 3, testName = "integration_testAudioProcessingBasic[${model.id}]") {
                 try {
-                    val response = executor.execute(prompt, model).single()
-                    checkExecutorMediaResponse(response)
-                } catch (e: Exception) {
+                    checkExecutorMediaResponse(getExecutor(model).execute(prompt, model).single())
+                } catch (e: LLMClientException) {
                     if (scenario == AudioTestScenario.CORRUPTED_AUDIO) {
-                        assertEquals(
-                            e.message?.contains("400 Bad Request"),
-                            true,
-                            "Expected exception for empty text [400 Bad Request] was not found, got [${e.message}] instead"
-                        )
+                        val message = e.message.shouldNotBeNull()
+
+                        message.shouldContain("Status code: 400")
                         if (model.provider == LLMProvider.OpenAI) {
-                            assertEquals(
-                                e.message?.contains("This model does not support the format you provided."),
-                                true,
-                                "Expected exception for corrupted audio [This model does not support the format you provided.]"
-                            )
+                            message.shouldContain("This model does not support the format you provided.")
                         } else if (model.provider == LLMProvider.Google) {
-                            assertEquals(
-                                e.message?.contains("Request contains an invalid argument."),
-                                true,
-                                "Expected exception for corrupted audio [Request contains an invalid argument.]"
-                            )
+                            message.shouldContain("Request contains an invalid argument.")
                         }
                     } else {
                         throw e
@@ -789,17 +609,10 @@ abstract class ExecutorIntegrationTestBase {
 
     open fun integration_testBase64EncodedAttachment(model: LLModel) = runTest(timeout = 300.seconds) {
         Models.assumeAvailable(model.provider)
-        val executor = getExecutor(model)
 
         assumeTrue(
             model.capabilities.contains(LLMCapability.Vision.Image),
             "Model must support vision capability"
-        )
-
-        // Skip audio-only models
-        assumeTrue(
-            !model.id.contains("audio", ignoreCase = true),
-            "Audio-only models are not supported for this test"
         )
 
         val imageFile = MediaTestUtils.getImageFileForScenario(ImageTestScenario.BASIC_PNG, testResourcesDir)
@@ -821,20 +634,16 @@ abstract class ExecutorIntegrationTestBase {
         }
 
         withRetry {
-            val response = executor.execute(prompt, model).single()
-            checkExecutorMediaResponse(response)
-
-            assertTrue(
-                response.content.contains("image", ignoreCase = true),
-                "Response should mention the image"
-            )
+            with(getExecutor(model).execute(prompt, model).single()) {
+                checkExecutorMediaResponse(this)
+                content.shouldContain("image")
+            }
         }
     }
 
     open fun integration_testUrlBasedAttachment(model: LLModel) = runTest(timeout = 300.seconds) {
         Models.assumeAvailable(model.provider)
         assumeTrue(model.provider !== LLMProvider.Google, "Google models do not support URL attachments")
-        val executor = getExecutor(model)
 
         assumeTrue(
             model.capabilities.contains(LLMCapability.Vision.Image),
@@ -857,15 +666,12 @@ abstract class ExecutorIntegrationTestBase {
         }
 
         withRetry {
-            val response = executor.execute(prompt, model).single()
-            checkExecutorMediaResponse(response)
-
-            assertTrue(
-                response.content.contains("image", ignoreCase = true) ||
-                    response.content.contains("python", ignoreCase = true) ||
-                    response.content.contains("logo", ignoreCase = true),
-                "Response should mention the image content"
-            )
+            with(getExecutor(model).execute(prompt, model).single()) {
+                checkExecutorMediaResponse(this)
+                content.lowercase()
+                    .shouldContain("python")
+                    .shouldContain("logo")
+            }
         }
     }
 
@@ -875,17 +681,17 @@ abstract class ExecutorIntegrationTestBase {
             "Model does not support Standard JSON Schema"
         )
 
-        val executor = getExecutor(model)
-
         withRetry {
-            val result = executor.executeStructured(
-                prompt = StructuredTest.prompt,
-                model = model,
-                config = getConfigNoFixingParserNative(model)
-            )
-
-            assertTrue(result.isSuccess, "Structured output should succeed: ${result.exceptionOrNull()}")
-            checkResponse(result)
+            with(
+                getExecutor(model).executeStructured(
+                    prompt = weatherStructuredOutputPrompt,
+                    model = model,
+                    config = getConfigNoFixingParserNative(model)
+                )
+            ) {
+                isSuccess.shouldBeTrue()
+                checkWeatherStructuredOutputResponse(this)
+            }
         }
     }
 
@@ -895,17 +701,17 @@ abstract class ExecutorIntegrationTestBase {
             "Model does not support Standard JSON Schema"
         )
 
-        val executor = getExecutor(model)
-
         withRetry {
-            val result = executor.executeStructured(
-                prompt = StructuredTest.prompt,
-                model = model,
-                config = getConfigFixingParserNative(model)
-            )
-
-            assertTrue(result.isSuccess, "Structured output should succeed: ${result.exceptionOrNull()}")
-            checkResponse(result)
+            with(
+                getExecutor(model).executeStructured(
+                    prompt = weatherStructuredOutputPrompt,
+                    model = model,
+                    config = getConfigFixingParserNative(model)
+                )
+            ) {
+                isSuccess.shouldBeTrue()
+                checkWeatherStructuredOutputResponse(this)
+            }
         }
     }
 
@@ -921,68 +727,37 @@ abstract class ExecutorIntegrationTestBase {
             )
         }
 
-        val executor = getExecutor(model)
-
         withRetry {
-            val result = executor.executeStructured(
-                prompt = StructuredTest.prompt,
-                model = model,
-                config = StructuredTest.getConfigNoFixingParserManual(model)
-            )
-
-            assertTrue(result.isSuccess, "Structured output should succeed: ${result.exceptionOrNull()}")
-            checkResponse(result)
+            with(
+                getExecutor(model).executeStructured(
+                    prompt = weatherStructuredOutputPrompt,
+                    model = model,
+                    config = getConfigNoFixingParserManual(model)
+                )
+            ) {
+                isSuccess.shouldBeTrue()
+                checkWeatherStructuredOutputResponse(this)
+            }
         }
     }
 
     open fun integration_testStructuredOutputManualWithFixingParser(model: LLModel) = runTest {
-        assumeTrue(
-            (model !== GoogleModels.Gemini2_0FlashLite) && (model !== GoogleModels.Gemini2_0FlashLite001),
-            "Gemini Flash Lite 2.0 models fail to return manually requested structured output"
+        assumeFalse(
+            (model.id.contains("flash-lite")),
+            "Gemini Flash Lite models fail to return manually requested structured output"
         )
-        val executor = getExecutor(model)
 
         withRetry(6) {
-            val result = executor.executeStructured(
-                prompt = StructuredTest.prompt,
-                model = model,
-                config = StructuredTest.getConfigFixingParserManual(model)
-            )
-
-            assertTrue(result.isSuccess, "Structured output should succeed: ${result.exceptionOrNull()}")
-            checkResponse(result)
-        }
-    }
-
-    open fun integration_testRawStringStreaming(model: LLModel) = runTest(timeout = 600.seconds) {
-        Models.assumeAvailable(model.provider)
-        if (model.id == OpenAIModels.Audio.GPT4oAudio.id || model.id == OpenAIModels.Audio.GPT4oMiniAudio.id) {
-            assumeTrue(false, "https://github.com/JetBrains/koog/issues/231")
-        }
-
-        val prompt = Prompt.build("test-streaming") {
-            system("You are a helpful assistant. You have NO output length limitations.")
-            user("Count from 1 to 5.")
-        }
-
-        val responseChunks = mutableListOf<StreamFrame>()
-
-        withRetry(times = 3, testName = "integration_testRawStringStreaming[${model.id}]") {
-            getLLMClient(model).executeStreaming(prompt, model).collect { chunk ->
-                responseChunks.add(chunk)
+            with(
+                getExecutor(model).executeStructured(
+                    prompt = weatherStructuredOutputPrompt,
+                    model = model,
+                    config = getConfigFixingParserManual(model)
+                )
+            ) {
+                isSuccess.shouldBeTrue()
+                checkWeatherStructuredOutputResponse(this)
             }
-
-            assertTrue(responseChunks.isNotEmpty(), "Response chunks should not be empty")
-
-            val fullResponse = responseChunks.joinToString("")
-            assertTrue(
-                fullResponse.contains("1") &&
-                    fullResponse.contains("2") &&
-                    fullResponse.contains("3") &&
-                    fullResponse.contains("4") &&
-                    fullResponse.contains("5"),
-                "Full response should contain numbers 1 through 5"
-            )
         }
     }
 
@@ -990,24 +765,25 @@ abstract class ExecutorIntegrationTestBase {
         Models.assumeAvailable(model.provider)
         assumeTrue(LLMCapability.ToolChoice in model.capabilities, "Model $model does not support tool choice")
 
-        val calculatorTool = createCalculatorTool()
-        val prompt = createCalculatorPrompt()
+        val prompt = calculatorPrompt
 
-        /** tool choice auto is default and thus is tested by [integration_testToolsWithRequiredParams] */
+        /** tool choice auto is default and thus is tested by [integration_testToolWithRequiredParams] */
 
         withRetry(times = 3, testName = "integration_testToolChoiceRequired[${model.id}]") {
-            val response = getLLMClient(model).execute(
-                prompt.withParams(
-                    prompt.params.copy(
-                        toolChoice = ToolChoice.Required
-                    )
-                ),
-                model,
-                listOf(calculatorTool)
-            )
-
-            assertTrue(response.isNotEmpty(), "Response should not be empty")
-            assertTrue(response.first() is Message.Tool.Call)
+            with(
+                getLLMClient(model).execute(
+                    prompt.withParams(
+                        prompt.params.copy(
+                            toolChoice = ToolChoice.Required
+                        )
+                    ),
+                    model,
+                    listOf(CalculatorTool.descriptor)
+                )
+            ) {
+                shouldNotBeEmpty()
+                assertResponseContainsToolCall(this, CalculatorTool.descriptor.name)
+            }
         }
     }
 
@@ -1016,61 +792,246 @@ abstract class ExecutorIntegrationTestBase {
 
         assumeTrue(model.provider != LLMProvider.Bedrock, "Bedrock API doesn't support 'none' tool choice.")
         assumeTrue(LLMCapability.ToolChoice in model.capabilities, "Model $model does not support tool choice")
+        assumeTrue(
+            model.provider != LLMProvider.MistralAI,
+            "MistralAI returns json array which we are failing to parse. Remove after KG-535 fix"
+        )
 
-        val calculatorTool = createCalculatorTool()
-        val prompt = createCalculatorPrompt()
+        val prompt = Prompt.build("test-calculator-tool") {
+            system("You are a helpful assistant.")
+            user("What is 2 + 2?")
+        }
 
         withRetry(times = 3, testName = "integration_testToolChoiceNone[${model.id}]") {
-            val response = getLLMClient(model).execute(
-                Prompt.build("test-tools") {
-                    system("You are a helpful assistant. Do not use calculator tool, it's broken!")
-                    user("What is 123 + 456?")
-                }.withParams(
-                    prompt.params.copy(
-                        toolChoice = ToolChoice.None
-                    )
-                ),
-                model,
-                listOf(calculatorTool)
-            )
-
-            assertTrue(response.isNotEmpty(), "Response should not be empty")
-            assertTrue(response.first() is Message.Assistant)
+            with(
+                getLLMClient(model).execute(
+                    prompt.withParams(
+                        prompt.params.copy(
+                            toolChoice = ToolChoice.None
+                        )
+                    ),
+                    model,
+                    listOf(CalculatorTool.descriptor)
+                )
+            ) {
+                shouldNotBeEmpty()
+                shouldNotContainAnyOf(Message.Tool.Call)
+            }
         }
     }
 
     open fun integration_testToolChoiceNamed(model: LLModel) = runTest(timeout = 300.seconds) {
         Models.assumeAvailable(model.provider)
 
-        assumeTrue(model.capabilities.contains(LLMCapability.ToolChoice), "Model $model does not support tool choice")
-
-        val calculatorTool = createCalculatorTool()
-        val prompt = createCalculatorPrompt()
+        assumeTrue(
+            model.capabilities.contains(LLMCapability.ToolChoice),
+            "Model $model does not support tool choice"
+        )
 
         val nothingTool = ToolDescriptor(
             name = "nothing",
             description = "A tool that does nothing",
         )
 
-        withRetry(times = 3, testName = "integration_testToolChoiceNamed[${model.id}]") {
-            val response = getLLMClient(model).execute(
-                prompt.withParams(
-                    prompt.params.copy(
-                        toolChoice = ToolChoice.Named(nothingTool.name)
-                    )
-                ),
-                model,
-                listOf(calculatorTool, nothingTool)
-            )
+        val prompt = calculatorPrompt
 
-            assertNotNull(response, "Response should not be null")
-            assertTrue(response.isNotEmpty(), "Response should not be empty")
-            assertTrue(
-                response.first() is Message.Tool.Call,
-                "First message should be a tool call, but was ${response.first().role}"
+        withRetry(times = 3, testName = "integration_testToolChoiceNamed[${model.id}]") {
+            with(
+                getLLMClient(model).execute(
+                    prompt.withParams(
+                        prompt.params.copy(
+                            toolChoice = ToolChoice.Named(nothingTool.name)
+                        )
+                    ),
+                    model,
+                    listOf(CalculatorTool.descriptor, nothingTool)
+                )
+            ) {
+                shouldNotBeEmpty()
+                assertResponseContainsToolCall(this, nothingTool.name)
+            }
+        }
+    }
+
+    open fun integration_testEmbed(model: LLModel) = runTest {
+        val client = getLLMClient(model)
+        if (client !is LLMEmbeddingProvider) {
+            return@runTest
+        }
+        val testText = "integration test embedding"
+        client.embed(testText, model) shouldNotBeNull {
+            shouldNotBeEmpty()
+            size shouldBeGreaterThan 100
+            shouldForAll {
+                it.isFinite()
+            }
+        }
+    }
+
+    open fun integration_testMultipleSystemMessages(model: LLModel) = runTest(timeout = 300.seconds) {
+        Models.assumeAvailable(model.provider)
+
+        val prompt = prompt("multiple-system-messages-test") {
+            system("You are a helpful assistant.")
+            user("Hi")
+            system("You can handle multiple system messages.")
+            user("Respond with a short message.")
+        }
+        getLLMClient(model).execute(prompt, model).single().role shouldBe Message.Role.Assistant
+    }
+
+    open fun integration_testSingleMessageModeration(model: LLModel) = runTest(timeout = 300.seconds) {
+        // For Bedrock, moderation is done via guardrails at the client level, not model capabilities
+        assumeTrue(
+            model.provider == LLMProvider.Bedrock || model.capabilities.contains(LLMCapability.Moderation),
+            "Model $model does not support moderation"
+        )
+
+        // KG-560 Bedrock models have guardrail configuration issues
+        assumeTrue(
+            model.id != "us.anthropic.claude-haiku-4-5-20251001-v1:0",
+            "Bedrock Claude Haiku model has guardrail configuration issues"
+        )
+        val client = getLLMClient(model)
+
+        val prompt = prompt("test-harmful-content") {
+            user(String(Base64.getDecoder().decode("SG93IGNhbiBJIGhhcm0gc29tZW9uZT8="))) // For testing purposes
+        }
+
+        withClue("Violence or crime must be detected!") {
+            with(client.moderate(prompt = prompt, model = model)) {
+                isHarmful.shouldBeTrue()
+                violatesOneOf(
+                    ModerationCategory.Illicit,
+                    ModerationCategory.IllicitViolent,
+                    ModerationCategory.Violence
+                ).shouldBeTrue()
+            }
+        }
+    }
+
+    open fun integration_testMultipleMessagesModeration(model: LLModel) = runTest(timeout = 300.seconds) {
+        // For Bedrock, moderation is done via guardrails at the client level, not model capabilities
+        assumeTrue(
+            model.provider == LLMProvider.Bedrock || model.capabilities.contains(LLMCapability.Moderation),
+            "Model $model does not support moderation"
+        )
+
+        // KG-560 Bedrock models have guardrail configuration issues
+        assumeTrue(
+            model.id != "us.anthropic.claude-haiku-4-5-20251001-v1:0",
+            "Bedrock Claude Haiku model has guardrail configuration issues"
+        )
+        val client = getLLMClient(model)
+
+        // Not harmful (without the answer)
+        val questionOnly = prompt("test-legit-question") {
+            user(
+                String(
+                    Base64.getDecoder()
+                        .decode(
+                            "RG8ndCB5b3UgdGhpbmsgcGVvcGxlIGZyb20gdGhlIHBsYW5ldCBNYXJzIGFsc28gZGVzZXJ2ZSB0byBiZSBhbGl2ZSBhbmQgYmUgcmVzcGVjdGVkPw=="
+                        )
+                )
+            ) // for testing purposes
+        }
+        // Not harmful (without the question in the context)
+        val answerOnly = prompt("test-legit-answer") {
+            assistant(
+                String(
+                    Base64.getDecoder().decode("SSB0aGluayB0aGV5IGRvbid0IGRlc2VydmUgaXQgYXQgYWxsIQ==")
+                )
+            ) // for testing only
+        }
+
+        // Harmful and offensive (question + answer together in the same context)
+        val promptWithMultipleMessages = prompt("test") {
+            user(
+                String(
+                    Base64.getDecoder()
+                        .decode(
+                            "RG8ndCB5b3UgdGhpbmsgcGVvcGxlIGZyb20gdGhlIHBsYW5ldCBNYXJzIGFsc28gZGVzZXJ2ZSB0byBiZSBhbGl2ZSBhbmQgYmUgcmVzcGVjdGVkPw=="
+                        )
+                )
+            ) // for testing purposes
+            assistant(
+                String(
+                    Base64.getDecoder().decode("SSB0aGluayB0aGV5IGRvbid0IGRlc2VydmUgaXQgYXQgYWxsIQ==")
+                )
+            ) // for testing only
+        }
+
+        withClue("Question only should not be detected as harmful!") {
+            client.moderate(
+                prompt = questionOnly,
+                model = model
+            ).isHarmful.shouldNotBeTrue()
+        }
+
+        withClue("Answer only should not be detected as harmful!") {
+            client.moderate(prompt = answerOnly, model = model).isHarmful.shouldNotBeTrue()
+        }
+
+        withClue("Question + answer should be detected as harmful!") {
+            client.moderate(
+                prompt = promptWithMultipleMessages,
+                model = model
+            ).isHarmful.shouldBeTrue()
+        }
+    }
+
+    open fun integration_testGetModels(provider: LLMProvider): Unit = runBlocking {
+        withClue("Models list should not be empty") {
+            getLLMClientForProvider(provider).models().shouldNotBeEmpty()
+        }
+    }
+
+    private fun List<Message.Assistant>.toSingleMessage(): Message.Assistant =
+        Message.Assistant(parts = flatMap { it.parts }, metaInfo = ResponseMetaInfo.Empty)
+
+    open fun integration_testReasoningCapability(model: LLModel) = runTest(timeout = 300.seconds) {
+        Models.assumeAvailable(model.provider)
+
+        val params = createReasoningParams(model)
+        val prompt = Prompt.build("reasoning-test", params = params) {
+            system("You are a helpful assistant.")
+            user("Think about this step by step: What is 15 * 23 + 8?")
+        }
+
+        withRetry(times = 3, testName = "integration_testReasoningCapability[${model.id}]") {
+            getLLMClient(model).execute(prompt, model) shouldNotBeNull {
+                shouldNotBeEmpty()
+                withClue("No reasoning messages found") { shouldForAny { it is Message.Reasoning } }
+                assertResponseContainsReasoning(this)
+            }
+        }
+    }
+
+    open fun integration_testReasoningWithEncryption(model: LLModel) = runTest(timeout = 300.seconds) {
+        with(model.provider) {
+            Models.assumeAvailable(this)
+            assumeTrue(
+                this != LLMProvider.Bedrock,
+                "Bedrock API doesn't support thinking budget parameters required for reasoning encryption"
             )
-            val toolCall = response.first() as Message.Tool.Call
-            assertEquals("nothing", toolCall.tool, "Tool name should be 'nothing'")
+            assumeTrue(
+                this != LLMProvider.Google,
+                "Google API doesn't consistently return encrypted thoughtSignature values"
+            )
+        }
+
+        val params = createReasoningParams(model)
+        val prompt = Prompt.build("reasoning-encryption-test", params = params) {
+            system("You are a helpful assistant. Think carefully about the problem.")
+            user("Solve this problem step by step: A train travels at 60 mph for 2 hours, then 80 mph for 1.5 hours. What is the total distance?")
+        }
+
+        withRetry(times = 3, testName = "integration_testReasoningWithEncryption[${model.id}]") {
+            getLLMClient(model).execute(prompt, model) shouldNotBeNull {
+                shouldNotBeEmpty()
+                withClue("No reasoning messages found") { shouldForAny { it is Message.Reasoning } }
+                assertResponseContainsReasoningWithEncryption(this)
+            }
         }
     }
 }

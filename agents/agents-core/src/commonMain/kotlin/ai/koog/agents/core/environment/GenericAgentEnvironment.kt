@@ -16,8 +16,8 @@ import ai.koog.prompt.message.Message
 import io.github.oshai.kotlinlogging.KLogger
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
-import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.supervisorScope
+import kotlinx.serialization.json.JsonElement
 
 internal class GenericAgentEnvironment(
     private val agentId: String,
@@ -28,7 +28,7 @@ internal class GenericAgentEnvironment(
 ) : AIAgentEnvironment {
 
     override suspend fun executeTools(toolCalls: List<Message.Tool.Call>): List<ReceivedToolResult> {
-        val agentRunInfo = currentCoroutineContext().getAgentRunInfoElementOrThrow()
+        val agentRunInfo = getAgentRunInfoElementOrThrow()
         logger.info {
             formatLog(
                 agentRunInfo.agentId,
@@ -64,7 +64,7 @@ internal class GenericAgentEnvironment(
         toolRegistry.tools.firstOrNull { it.name == tool }?.encodeResultToStringUnsafe(result) ?: "null"
 
     override suspend fun reportProblem(exception: Throwable) {
-        val agentRunInfo = currentCoroutineContext().getAgentRunInfoElementOrThrow()
+        val agentRunInfo = getAgentRunInfoElementOrThrow()
 
         logger.error(exception) {
             formatLog(agentRunInfo.agentId, agentRunInfo.runId, "Reporting problem: ${exception.message}")
@@ -77,7 +77,7 @@ internal class GenericAgentEnvironment(
         toolName: String,
         agentId: String,
         message: String,
-        result: Any?
+        result: JsonElement?
     ): EnvironmentToolResultToAgentContent = AIAgentEnvironmentToolResultToAgentContent(
         toolCallId = toolCallId,
         toolName = toolName,
@@ -91,7 +91,17 @@ internal class GenericAgentEnvironment(
         content: AgentToolCallToEnvironmentContent
     ): EnvironmentToolResultToAgentContent {
         logger.debug { "Handling tool call sent by server..." }
-        val tool = toolRegistry.getTool(content.toolName)
+        val tool = toolRegistry.getToolOrNull(content.toolName)
+            ?: run {
+                logger.error { "Tool \"${content.toolName}\" not found." }
+                return toolResult(
+                    message = "Tool \"${content.toolName}\" not found. Use one of the available tools.",
+                    toolCallId = content.toolCallId,
+                    toolName = content.toolName,
+                    agentId = agentId,
+                    result = null
+                )
+            }
         val toolArgs = try {
             tool.decodeArgs(content.toolArgs)
         } catch (e: Exception) {
@@ -143,7 +153,7 @@ internal class GenericAgentEnvironment(
             toolName = content.toolName,
             agentId = strategyId,
             message = tool.encodeResultToStringUnsafe(toolResult),
-            result = toolResult
+            result = tool.encodeResult(toolResult)
         )
     }
 

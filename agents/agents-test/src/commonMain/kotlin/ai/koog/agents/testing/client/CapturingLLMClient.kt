@@ -4,9 +4,9 @@ import ai.koog.agents.core.tools.ToolDescriptor
 import ai.koog.prompt.dsl.ModerationResult
 import ai.koog.prompt.dsl.Prompt
 import ai.koog.prompt.executor.clients.LLMClient
-import ai.koog.prompt.executor.model.LLMChoice
 import ai.koog.prompt.llm.LLMProvider
 import ai.koog.prompt.llm.LLModel
+import ai.koog.prompt.message.LLMChoice
 import ai.koog.prompt.message.Message
 import ai.koog.prompt.streaming.StreamFrame
 import kotlinx.coroutines.flow.Flow
@@ -23,7 +23,7 @@ import kotlinx.coroutines.flow.flowOf
  * @property streamingChunks The sequence of chunks to emit from [executeStreaming].
  * @property choices The list of [LLMChoice] to return from [executeMultipleChoices].
  * @property moderationResult The [ModerationResult] to return from [moderate].
- * @property llmProvider [LLMPrivider] associated with the client or [LLMProvider.OpenAI], if not defined
+ * @property llmProvider [LLMProvider] associated with the client or [LLMProvider.OpenAI], if not defined
  */
 public class CapturingLLMClient(
     private val executeResponses: List<Message.Response> = emptyList(),

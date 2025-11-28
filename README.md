@@ -6,7 +6,8 @@
 [![Kotlin](https://img.shields.io/badge/kotlin-2.1-blue.svg?logo=kotlin)](http://kotlinlang.org)
 [![CI status](https://img.shields.io/github/checks-status/JetBrains/koog/main)](https://github.com/JetBrains/koog/actions?query=branch%3Amain)
 [![GitHub license](https://img.shields.io/github/license/JetBrains/koog)](LICENSE.txt)
-[![docs](https://img.shields.io/badge/documentation-blue)](https://docs.koog.ai)
+[![API Docs](https://img.shields.io/badge/documentation-blue)](https://docs.koog.ai)
+[![API](https://img.shields.io/badge/API-Docs-blue)](https://api.koog.ai/)
 [![Slack channel](https://img.shields.io/badge/chat-slack-green.svg?logo=slack)](https://kotlinlang.slack.com/messages/koog-agentic-framework/)
 
 Build status:
@@ -87,7 +88,7 @@ Currently, the framework supports the JVM, JS, WasmJS and iOS targets.
 
     ```
     dependencies {
-        implementation("ai.koog:koog-agents:0.5.0")
+        implementation("ai.koog:koog-agents:0.5.2")
     }
     ```
 2. Make sure that you have `mavenCentral()` in the list of repositories.
@@ -97,7 +98,7 @@ Currently, the framework supports the JVM, JS, WasmJS and iOS targets.
 
     ```
     dependencies {
-        implementation 'ai.koog:koog-agents:0.5.1'
+        implementation 'ai.koog:koog-agents:0.5.2'
     }
     ```
 2. Make sure that you have `mavenCentral()` in the list of repositories.
@@ -109,7 +110,7 @@ Currently, the framework supports the JVM, JS, WasmJS and iOS targets.
     <dependency>
         <groupId>ai.koog</groupId>
         <artifactId>koog-agents-jvm</artifactId>
-        <version>0.5.1</version>
+        <version>0.5.2</version>
     </dependency>
     ```
 2. Make sure that you have `mavenCentral` in the list of repositories.

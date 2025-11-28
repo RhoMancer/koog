@@ -12,7 +12,6 @@ pluginManagement {
 include(":agents:agents-core")
 include(":agents:agents-ext")
 
-include(":agents:agents-features:agents-features-debugger")
 include(":agents:agents-features:agents-features-event-handler")
 include(":agents:agents-features:agents-features-memory")
 include(":agents:agents-features:agents-features-opentelemetry")
@@ -45,6 +44,7 @@ include(":prompt:prompt-executor:prompt-executor-clients:prompt-executor-anthrop
 include(":prompt:prompt-executor:prompt-executor-clients:prompt-executor-bedrock-client")
 include(":prompt:prompt-executor:prompt-executor-clients:prompt-executor-deepseek-client")
 include(":prompt:prompt-executor:prompt-executor-clients:prompt-executor-google-client")
+include(":prompt:prompt-executor:prompt-executor-clients:prompt-executor-mistralai-client")
 include(":prompt:prompt-executor:prompt-executor-clients:prompt-executor-ollama-client")
 include(":prompt:prompt-executor:prompt-executor-clients:prompt-executor-openai-client")
 include(":prompt:prompt-executor:prompt-executor-clients:prompt-executor-openai-client-base")

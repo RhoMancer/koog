@@ -16,26 +16,25 @@ import ai.koog.agents.features.eventHandler.feature.EventHandler
 import ai.koog.integration.tests.InjectOllamaTestFixture
 import ai.koog.integration.tests.OllamaTestFixture
 import ai.koog.integration.tests.OllamaTestFixtureExtension
-import ai.koog.integration.tests.tools.AnswerVerificationTool
-import ai.koog.integration.tests.tools.GenericParameterTool
-import ai.koog.integration.tests.tools.GeographyQueryTool
 import ai.koog.integration.tests.utils.annotations.Retry
 import ai.koog.integration.tests.utils.annotations.RetryExtension
+import ai.koog.integration.tests.utils.tools.AnswerVerificationTool
+import ai.koog.integration.tests.utils.tools.GenericParameterTool
+import ai.koog.integration.tests.utils.tools.GeographyQueryTool
 import ai.koog.prompt.dsl.prompt
 import ai.koog.prompt.executor.model.PromptExecutor
 import ai.koog.prompt.llm.OllamaModels
 import ai.koog.prompt.params.LLMParams
+import io.kotest.matchers.string.shouldContain
+import io.kotest.matchers.string.shouldNotBeBlank
 import kotlinx.coroutines.test.runTest
+import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
-import kotlin.test.Test
-import kotlin.test.assertContains
-import kotlin.test.assertNotNull
-import kotlin.test.assertTrue
 import kotlin.time.Duration.Companion.seconds
 
 @ExtendWith(OllamaTestFixtureExtension::class)
 @ExtendWith(RetryExtension::class)
-class OllamaAgentIntegrationTest {
+class OllamaAgentIntegrationTest : AIAgentTestBase() {
     companion object {
         @field:InjectOllamaTestFixture
         private lateinit var fixture: OllamaTestFixture
@@ -89,26 +88,24 @@ class OllamaAgentIntegrationTest {
             val definePrompt by node<Unit, Unit> {
                 llm.writeSession {
                     model = OllamaModels.Meta.LLAMA_3_2
-                    updatePrompt {
-                        prompt("test-ollama") {
-                            system(
-                                """"
-                                        You are a top-tier assistant.
-                                        ALWAYS communicate to user via tools!!!
-                                        ALWAYS use tools you've been provided.
-                                        ALWAYS generate valid JSON responses.
-                                        ALWAYS call tool correctly, with valid arguments.
-                                        NEVER provide tool call in result body.
-                                      
-                                        Example tool call:
-                                        {
-                                            "id":"ollama_tool_call_3743609160"
-                                            "tool":"answer_verification_tool"
-                                            "content":{"answer":"Paris"}
-                                        }.
-                                """.trimIndent()
-                            )
-                        }
+                    appendPrompt {
+                        system(
+                            """"
+                                    You are a top-tier assistant.
+                                    ALWAYS communicate to user via tools!!!
+                                    ALWAYS use tools you've been provided.
+                                    ALWAYS generate valid JSON responses.
+                                    ALWAYS call tool correctly, with valid arguments.
+                                    NEVER provide tool call in result body.
+                                  
+                                    Example tool call:
+                                    {
+                                        "id":"ollama_tool_call_3743609160"
+                                        "tool":"answer_verification_tool"
+                                        "content":{"answer":"Paris"}
+                                    }.
+                            """.trimIndent()
+                        )
                     }
                 }
             }
@@ -171,14 +168,9 @@ class OllamaAgentIntegrationTest {
     @Retry
     @Test
     fun ollama_testAgentClearContext() = runTest(timeout = 600.seconds) {
-        val strategy = createTestStrategy()
-        val toolRegistry = createToolRegistry()
-        val agent = createAgent(executor, strategy, toolRegistry)
-
-        val result = agent.run("What is the capital of France?")
-
-        assertNotNull(result, "Result should not be empty")
-        assertTrue(result.isNotEmpty(), "Result should not be empty")
-        assertContains(result, "Paris", ignoreCase = true, "Result should contain the answer 'Paris'")
+        createAgent(executor, createTestStrategy(), createToolRegistry())
+            .run("What is the capital of France?")
+            .shouldNotBeBlank()
+            .shouldContain("Paris")
     }
 }

@@ -7,6 +7,7 @@ import ai.koog.prompt.llm.LLModel
 import ai.koog.prompt.llm.OllamaModels
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.withContext
+import kotlin.reflect.typeOf
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNotEquals
@@ -18,19 +19,25 @@ class NodeInfoContextElementTest {
 
     @Test
     fun testContextElementCreation() {
+        val id = "test-id"
+        val parentId = "test-parent-id"
         val nodeName = nodeName
+        val nodeInput = "test-input"
+        val nodeInputType = typeOf<String>()
 
-        val element = NodeInfoContextElement(nodeName = nodeName)
+        val element = NodeInfoContextElement(id = id, parentId = parentId, name = nodeName, input = nodeInput, inputType = nodeInputType)
 
-        assertEquals(nodeName, element.nodeName)
+        assertEquals(nodeName, element.name)
         assertEquals(NodeInfoContextElement.Key, element.key)
+        assertEquals(nodeInput, element.input)
+        assertEquals(nodeInputType, element.inputType)
     }
 
     @Test
     fun testContextElementEquality() {
-        val element1 = NodeInfoContextElement(nodeName = "node1")
-        val element2 = NodeInfoContextElement(nodeName = "node1")
-        val element3 = NodeInfoContextElement(nodeName = "node2")
+        val element1 = NodeInfoContextElement(id = "id1", parentId = "parentId1", name = "node1", input = "input1", inputType = typeOf<String>())
+        val element2 = NodeInfoContextElement(id = "id1", parentId = "parentId1", name = "node1", input = "input1", inputType = typeOf<String>())
+        val element3 = NodeInfoContextElement(id = "id2", parentId = "parentId2", name = "node2", input = "input2", inputType = typeOf<String>())
 
         assertEquals(element1, element2)
         assertEquals(element1.hashCode(), element2.hashCode())
@@ -39,23 +46,23 @@ class NodeInfoContextElementTest {
 
     @Test
     fun testGetNodeInfoElement() = runTest {
-        val element = NodeInfoContextElement(nodeName = nodeName)
+        val element = NodeInfoContextElement(id = "id", parentId = "parentId", name = nodeName, input = "input", inputType = typeOf<String>())
 
         // Test with an element in context
         withContext(element) {
-            val retrievedElement = coroutineContext.getNodeInfoElement()
+            val retrievedElement = getNodeInfoElement()
             assertNotNull(retrievedElement)
             assertEquals(element, retrievedElement)
         }
 
         // Test with no element in context
-        val retrievedElement = coroutineContext.getNodeInfoElement()
+        val retrievedElement = getNodeInfoElement()
         assertNull(retrievedElement)
     }
 
     @Test
     fun testMultipleElementsInContext() = runTest {
-        val nodeElement = NodeInfoContextElement(nodeName = nodeName)
+        val nodeElement = NodeInfoContextElement(id = "id", parentId = "parentId", name = nodeName, input = "input", inputType = typeOf<String>())
         val testPrompt = prompt("test-prompt") {}
         val testModel = OllamaModels.Meta.LLAMA_3_2
 
@@ -70,7 +77,7 @@ class NodeInfoContextElementTest {
         )
 
         withContext(nodeElement + agentElement) {
-            val retrievedNodeElement = coroutineContext.getNodeInfoElement()
+            val retrievedNodeElement = getNodeInfoElement()
             val retrievedAgentElement = coroutineContext[AgentRunInfoContextElement.Key]
 
             assertEquals(nodeElement, retrievedNodeElement)

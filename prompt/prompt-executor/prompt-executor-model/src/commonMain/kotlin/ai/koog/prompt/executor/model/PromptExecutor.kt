@@ -4,11 +4,10 @@ import ai.koog.agents.core.tools.ToolDescriptor
 import ai.koog.prompt.dsl.ModerationResult
 import ai.koog.prompt.dsl.Prompt
 import ai.koog.prompt.llm.LLModel
+import ai.koog.prompt.message.LLMChoice
 import ai.koog.prompt.message.Message
 import ai.koog.prompt.streaming.StreamFrame
 import kotlinx.coroutines.flow.Flow
-
-public typealias LLMChoice = List<Message.Response>
 
 /**
  * An interface representing an executor for processing language model prompts.
@@ -78,4 +77,17 @@ public interface PromptExecutor : AutoCloseable {
      *         as harmful.
      */
     public suspend fun moderate(prompt: Prompt, model: LLModel): ModerationResult
+
+    /**
+     * Retrieves a list of available models from all LLM clients managed by this executor.
+     *
+     * This method aggregates models from all configured LLM providers and clients,
+     * returning a comprehensive list of available language models that can be used
+     * with this executor.
+     *
+     * @return A list of [LLModel] instances representing all available models.
+     */
+    public suspend fun models(): List<String> {
+        throw UnsupportedOperationException("Not implemented for this executor")
+    }
 }

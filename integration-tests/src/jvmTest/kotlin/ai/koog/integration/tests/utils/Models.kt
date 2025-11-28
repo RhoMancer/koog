@@ -3,6 +3,7 @@ package ai.koog.integration.tests.utils
 import ai.koog.prompt.executor.clients.anthropic.AnthropicModels
 import ai.koog.prompt.executor.clients.bedrock.BedrockModels
 import ai.koog.prompt.executor.clients.google.GoogleModels
+import ai.koog.prompt.executor.clients.mistralai.MistralAIModels
 import ai.koog.prompt.executor.clients.openai.OpenAIModels
 import ai.koog.prompt.executor.clients.openrouter.OpenRouterModels
 import ai.koog.prompt.llm.LLMCapability
@@ -16,16 +17,15 @@ object Models {
     @JvmStatic
     fun openAIModels(): Stream<LLModel> {
         return Stream.of(
-            OpenAIModels.Chat.GPT5,
-            OpenAIModels.Reasoning.O1,
-            OpenAIModels.CostOptimized.GPT4_1Mini,
+            OpenAIModels.Chat.GPT5_1, // reasoning
+            OpenAIModels.Chat.GPT4_1, // non-reasoning
         )
     }
 
     @JvmStatic
     fun anthropicModels(): Stream<LLModel> {
         return Stream.of(
-            AnthropicModels.Opus_4_1,
+            AnthropicModels.Opus_4_5,
             AnthropicModels.Haiku_4_5,
             AnthropicModels.Sonnet_4_5,
         )
@@ -40,6 +40,17 @@ object Models {
     }
 
     @JvmStatic
+    fun openRouterModels(): Stream<LLModel> = Stream.of(
+        OpenRouterModels.DeepSeekV30324,
+        OpenRouterModels.Qwen2_5,
+    )
+
+    @JvmStatic
+    fun mistralModels(): Stream<LLModel> = Stream.of(
+        MistralAIModels.Chat.MistralMedium31,
+    )
+
+    @JvmStatic
     fun bedrockModels(): Stream<LLModel> {
         return Stream.of(
             BedrockModels.MetaLlama3_1_70BInstruct,
@@ -48,10 +59,53 @@ object Models {
     }
 
     @JvmStatic
-    fun openRouterModels(): Stream<LLModel> = Stream.of(
-        OpenRouterModels.DeepSeekV30324,
-        OpenRouterModels.Qwen2_5,
-    )
+    fun embeddingModels(): Stream<LLModel> {
+        return Stream.of(
+            BedrockModels.Embeddings.AmazonTitanEmbedText,
+            OpenAIModels.Embeddings.TextEmbedding3Large,
+            MistralAIModels.Embeddings.MistralEmbed,
+        )
+    }
+
+    /**
+     * Returns models that support content moderation capabilities.
+     *
+     * Note: For Bedrock, the model returned here is not actually used by the moderation API.
+     * AWS Bedrock Guardrails are model-independent and configured at the client level.
+     * However, we need to provide a Bedrock model here so that the integration tests can
+     * instantiate a [ai.koog.prompt.executor.clients.bedrock.BedrockLLMClient] with the appropriate provider and guardrail settings.
+     * The actual moderation behavior is determined by the guardrail configuration
+     * in [getLLMClientForProvider], not by the model's capabilities.
+     */
+    @JvmStatic
+    fun moderationModels(): Stream<LLModel> {
+        return Stream.of(
+            OpenAIModels.Moderation.Omni,
+            MistralAIModels.Moderation.MistralModeration,
+            BedrockModels.AnthropicClaude4_5Haiku
+        )
+    }
+
+    @JvmStatic
+    fun allCompletionModels(): Stream<LLModel> {
+        return Stream.of(
+            openAIModels(),
+            anthropicModels(),
+            googleModels(),
+            openRouterModels(),
+            bedrockModels(),
+            mistralModels(),
+        ).flatMap { it }
+    }
+
+    @JvmStatic
+    fun reasoningCapableModels(): Stream<LLModel> {
+        return Stream.of(
+            OpenAIModels.Chat.GPT5_1,
+            AnthropicModels.Haiku_4_5,
+            GoogleModels.Gemini2_5Pro,
+        )
+    }
 
     @JvmStatic
     fun modelsWithVisionCapability(): Stream<Arguments> {

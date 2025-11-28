@@ -11,8 +11,8 @@ import ai.koog.agents.core.tools.ToolDescriptor
 import ai.koog.agents.core.tools.ToolResult
 import ai.koog.prompt.message.Message
 import ai.koog.prompt.streaming.StreamFrame
+import ai.koog.prompt.structure.StructureDefinition
 import ai.koog.prompt.structure.StructureFixingParser
-import ai.koog.prompt.structure.StructuredDataDefinition
 import ai.koog.prompt.structure.StructuredResponse
 import kotlinx.coroutines.flow.Flow
 import kotlinx.serialization.serializer
@@ -30,7 +30,7 @@ public suspend fun AIAgentFunctionalContext.requestLLM(
     allowToolCalls: Boolean = true
 ): Message.Response {
     return llm.writeSession {
-        updatePrompt {
+        appendPrompt {
             user(message)
         }
 
@@ -142,9 +142,8 @@ public suspend fun AIAgentFunctionalContext.latestTokenUsage(): Int {
  * The message becomes part of the current prompt, and the LLM's response is processed to extract structured data.
  *
  * @param message The content of the message to be sent to the LLM.
- * @param structure Definition of expected output format and parsing logic.
- * @param retries Number of retry attempts for failed generations.
- * @param fixingModel LLM used for error correction.
+ * @param examples Examples of the structured output.
+ * @param fixingParser Optional parser to fix generated structured data.
  * @return Result containing the structured response if successful, or an error if parsing failed.
  */
 public suspend inline fun <reified T> AIAgentFunctionalContext.requestLLMStructured(
@@ -153,7 +152,7 @@ public suspend inline fun <reified T> AIAgentFunctionalContext.requestLLMStructu
     fixingParser: StructureFixingParser? = null
 ): Result<StructuredResponse<T>> {
     return llm.writeSession {
-        updatePrompt {
+        appendPrompt {
             user(message)
         }
 
@@ -175,10 +174,10 @@ public suspend inline fun <reified T> AIAgentFunctionalContext.requestLLMStructu
  */
 public suspend fun AIAgentFunctionalContext.requestLLMStreaming(
     message: String,
-    structureDefinition: StructuredDataDefinition? = null
+    structureDefinition: StructureDefinition? = null
 ): Flow<StreamFrame> {
     return llm.writeSession {
-        updatePrompt {
+        appendPrompt {
             user(message)
         }
 
@@ -195,7 +194,7 @@ public suspend fun AIAgentFunctionalContext.requestLLMStreaming(
  */
 public suspend fun AIAgentFunctionalContext.requestLLMMultiple(message: String): List<Message.Response> {
     return llm.writeSession {
-        updatePrompt {
+        appendPrompt {
             user(message)
         }
 
@@ -212,7 +211,7 @@ public suspend fun AIAgentFunctionalContext.requestLLMMultiple(message: String):
  */
 public suspend fun AIAgentFunctionalContext.requestLLMOnlyCallingTools(message: String): Message.Response {
     return llm.writeSession {
-        updatePrompt {
+        appendPrompt {
             user(message)
         }
 
@@ -233,7 +232,7 @@ public suspend fun AIAgentFunctionalContext.requestLLMForceOneTool(
     tool: ToolDescriptor
 ): Message.Response {
     return llm.writeSession {
-        updatePrompt {
+        appendPrompt {
             user(message)
         }
 
@@ -254,7 +253,7 @@ public suspend fun AIAgentFunctionalContext.requestLLMForceOneTool(
     tool: Tool<*, *>
 ): Message.Response {
     return llm.writeSession {
-        updatePrompt {
+        appendPrompt {
             user(message)
         }
 
@@ -299,7 +298,7 @@ public suspend fun AIAgentFunctionalContext.executeMultipleTools(
  */
 public suspend fun AIAgentFunctionalContext.sendToolResult(toolResult: ReceivedToolResult): Message.Response {
     return llm.writeSession {
-        updatePrompt {
+        appendPrompt {
             tool {
                 result(toolResult)
             }
@@ -319,7 +318,7 @@ public suspend fun AIAgentFunctionalContext.sendMultipleToolResults(
     results: List<ReceivedToolResult>
 ): List<Message.Response> {
     return llm.writeSession {
-        updatePrompt {
+        appendPrompt {
             tool {
                 results.forEach { result(it) }
             }
@@ -334,17 +333,17 @@ public suspend fun AIAgentFunctionalContext.sendMultipleToolResults(
  *
  * @param tool The tool to execute.
  * @param toolArgs The arguments to pass to the tool.
- * @param doUpdatePrompt Specifies whether to add tool call details to the prompt.
+ * @param doAppendPrompt Specifies whether to add tool call details to the prompt.
  * @return The result of the tool execution.
  */
 public suspend inline fun <reified ToolArg : ToolArgs, reified TResult : ToolResult> AIAgentFunctionalContext.executeSingleTool(
     tool: Tool<ToolArg, TResult>,
     toolArgs: ToolArg,
-    doUpdatePrompt: Boolean = true
+    doAppendPrompt: Boolean = true
 ): SafeTool.Result<TResult> {
     return llm.writeSession {
-        if (doUpdatePrompt) {
-            updatePrompt {
+        if (doAppendPrompt) {
+            appendPrompt {
                 user(
                     "Tool call: ${tool.name} was explicitly called with args: ${
                         tool.encodeArgs(toolArgs)
@@ -355,8 +354,8 @@ public suspend inline fun <reified ToolArg : ToolArgs, reified TResult : ToolRes
 
         val toolResult = callTool<ToolArg, TResult>(tool, toolArgs)
 
-        if (doUpdatePrompt) {
-            updatePrompt {
+        if (doAppendPrompt) {
+            appendPrompt {
                 user(
                     "Tool call: ${tool.name} was explicitly called and returned result: ${
                         toolResult.content
@@ -371,7 +370,6 @@ public suspend inline fun <reified ToolArg : ToolArgs, reified TResult : ToolRes
 /**
  * Compresses the current LLM prompt (message history) into a summary, replacing messages with a TLDR.
  *
- * @param input The input value that will be returned unchanged after compression.
  * @param strategy Determines which messages to include in compression.
  * @param preserveMemory Specifies whether to retain message memory after compression.
  * @return The input value, unchanged.

@@ -23,7 +23,7 @@ import ai.koog.agents.core.feature.model.events.StrategyCompletedEvent
 import ai.koog.agents.core.feature.model.events.ToolCallCompletedEvent
 import ai.koog.agents.core.feature.model.events.ToolCallStartingEvent
 import ai.koog.agents.core.tools.ToolRegistry
-import ai.koog.agents.core.utils.SerializationUtil
+import ai.koog.agents.core.utils.SerializationUtils
 import ai.koog.agents.features.tracing.feature.Tracing
 import ai.koog.agents.features.tracing.mock.MockLLMProvider
 import ai.koog.agents.features.tracing.mock.assistantMessage
@@ -45,7 +45,6 @@ import kotlinx.coroutines.test.runTest
 import kotlinx.io.Sink
 import kotlinx.io.buffered
 import kotlinx.io.files.SystemFileSystem
-import kotlinx.serialization.json.JsonPrimitive
 import org.junit.jupiter.api.io.TempDir
 import java.nio.file.Files
 import java.nio.file.Path
@@ -192,7 +191,7 @@ class TraceFeatureMessageFileWriterTest {
                     "input: \"$userPrompt\", " +
                     "output: ${
                         @OptIn(InternalAgentsApi::class)
-                        SerializationUtil.trySerializeDataToJsonElement(
+                        SerializationUtils.encodeDataToJsonElementOrNull(
                             data = toolCallMessage(
                                 toolName = dummyTool.name,
                                 content = """{"dummy":"test"}"""
@@ -203,7 +202,7 @@ class TraceFeatureMessageFileWriterTest {
                 "${NodeExecutionStartingEvent::class.simpleName} (run id: $runId, node: test-tool-call, " +
                     "input: ${
                         @OptIn(InternalAgentsApi::class)
-                        SerializationUtil.trySerializeDataToJsonElement(
+                        SerializationUtils.encodeDataToJsonElementOrNull(
                             data = toolCallMessage(
                                 toolName = dummyTool.name,
                                 content = """{"dummy":"test"}"""
@@ -216,19 +215,19 @@ class TraceFeatureMessageFileWriterTest {
                 "${NodeExecutionCompletedEvent::class.simpleName} (run id: $runId, node: test-tool-call, " +
                     "input: ${
                         @OptIn(InternalAgentsApi::class)
-                        SerializationUtil.trySerializeDataToJsonElement(
+                        SerializationUtils.encodeDataToJsonElementOrNull(
                             data = toolCallMessage(
                                 toolName = dummyTool.name,
                                 content = """{"dummy":"test"}"""
                             ),
                             dataType = typeOf<Message.Tool.Call>()
                         )}, " +
-                    "output: ${JsonPrimitive(dummyTool.result)}" +
+                    "output: {\"id\":\"0\",\"tool\":\"${dummyTool.name}\",\"content\":\"${dummyTool.result}\",\"result\":${dummyTool.encodeResult(dummyTool.result)}}" +
                     ")",
                 "${NodeExecutionStartingEvent::class.simpleName} (" +
                     "run id: $runId, " +
                     "node: test-node-llm-send-tool-result, " +
-                    "input: ${JsonPrimitive(dummyTool.result)}" +
+                    "input: {\"id\":\"0\",\"tool\":\"${dummyTool.name}\",\"content\":\"${dummyTool.result}\",\"result\":${dummyTool.encodeResult(dummyTool.result)}}" +
                     ")",
                 "${LLMCallStartingEvent::class.simpleName} (run id: $runId, prompt: ${
                     expectedPrompt.copy(
@@ -239,7 +238,7 @@ class TraceFeatureMessageFileWriterTest {
                                 "0",
                                 dummyTool.name,
                                 dummyTool.result,
-                                dummyTool.result
+                                dummyTool.encodeResult(dummyTool.result)
                             ).toMessage(clock = testClock)
                         )
                     ).traceString
@@ -253,16 +252,16 @@ class TraceFeatureMessageFileWriterTest {
                                 "0",
                                 dummyTool.name,
                                 dummyTool.result,
-                                dummyTool.result
+                                dummyTool.encodeResult(dummyTool.result)
                             ).toMessage(clock = testClock)
                         )
                     ).traceString
                 }, model: ${testModel.toModelInfo().modelIdentifierName}, responses: [{${expectedResponse.traceString}}])",
                 "${NodeExecutionCompletedEvent::class.simpleName} (run id: $runId, node: test-node-llm-send-tool-result, " +
-                    "input: ${JsonPrimitive(dummyTool.result)}, " +
+                    "input: {\"id\":\"0\",\"tool\":\"${dummyTool.name}\",\"content\":\"${dummyTool.result}\",\"result\":${dummyTool.encodeResult(dummyTool.result)}}, " +
                     "output: ${
                         @OptIn(InternalAgentsApi::class)
-                        SerializationUtil.trySerializeDataToJsonElement(
+                        SerializationUtils.encodeDataToJsonElementOrNull(
                             data = expectedResponse,
                             dataType = typeOf<Message>()
                         )}" +
@@ -524,7 +523,7 @@ class TraceFeatureMessageFileWriterTest {
                                 "0",
                                 dummyTool.name,
                                 dummyTool.result,
-                                dummyTool.result
+                                dummyTool.encodeResult(dummyTool.result)
                             ).toMessage(clock = testClock)
                         )
                     ).traceString
@@ -538,7 +537,7 @@ class TraceFeatureMessageFileWriterTest {
                                 "0",
                                 dummyTool.name,
                                 dummyTool.result,
-                                dummyTool.result
+                                dummyTool.encodeResult(dummyTool.result)
                             ).toMessage(clock = testClock)
                         )
                     ).traceString

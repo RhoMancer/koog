@@ -15,7 +15,7 @@ import ai.koog.agents.core.annotation.InternalAgentsApi
 import ai.koog.agents.core.feature.AIAgentGraphFeature
 import ai.koog.agents.core.feature.pipeline.AIAgentGraphPipeline
 import ai.koog.agents.core.tools.annotations.InternalAgentToolsApi
-import ai.koog.agents.core.utils.SerializationUtil
+import ai.koog.agents.core.utils.SerializationUtils
 import ai.koog.agents.snapshot.providers.PersistenceStorageProvider
 import ai.koog.prompt.message.Message
 import io.github.oshai.kotlinlogging.KotlinLogging
@@ -151,9 +151,9 @@ public class Persistence(
 
             pipeline.interceptStrategyCompleted(this) { ctx ->
                 if (config.enableAutomaticPersistence && config.rollbackStrategy == RollbackStrategy.Default) {
-                    val parent = persistence.getLatestCheckpoint(ctx.agentId)
+                    val parent = persistence.getLatestCheckpoint(ctx.context.agentId)
                     persistence.createTombstoneCheckpoint(
-                        ctx.agentId,
+                        ctx.context.agentId,
                         persistence.clock.now(),
                         parent?.version?.plus(1) ?: 0L
                     )
@@ -188,7 +188,7 @@ public class Persistence(
         version: Long,
         checkpointId: String? = null,
     ): AgentCheckpointData? {
-        val inputJson = SerializationUtil.trySerializeDataToJsonElement(lastInput, lastInputType)
+        val inputJson = SerializationUtils.encodeDataToJsonElementOrNull(lastInput, lastInputType)
 
         if (inputJson == null) {
             logger.warn {

@@ -72,6 +72,7 @@ public inline fun <reified T> AIAgentSubgraphBuilderBase<*, *>.llmAsAJudge(
                         is Message.System -> append("<system>\n${message.content}\n</system>\n")
                         is Message.User -> append("<user>\n${message.content}\n</user>\n")
                         is Message.Assistant -> append("<assistant>\n${message.content}\n</assistant>\n")
+                        is Message.Reasoning -> append("<thinking>\n${message.content}\n</thinking>\n")
                         is Message.Tool.Call -> append(
                             "<tool_call tool=${message.tool}>\n${message.content}\n</tool_call>\n"
                         )
@@ -108,10 +109,10 @@ public inline fun <reified T> AIAgentSubgraphBuilderBase<*, *>.llmAsAJudge(
             ),
             // optional field -- recommented for reliability of the format
             fixingParser = StructureFixingParser(
-                fixingModel = OpenAIModels.CostOptimized.GPT4oMini,
+                model = OpenAIModels.Chat.GPT4oMini,
                 retries = 3,
             )
-        ).getOrThrow().structure
+        ).getOrThrow().data
 
         prompt = initialPrompt
         model = initialModel

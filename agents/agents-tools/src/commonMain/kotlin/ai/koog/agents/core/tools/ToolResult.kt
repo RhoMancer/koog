@@ -6,7 +6,6 @@ import kotlinx.serialization.descriptors.SerialDescriptor
 import kotlinx.serialization.encoding.Decoder
 import kotlinx.serialization.encoding.Encoder
 import kotlinx.serialization.json.Json
-import kotlinx.serialization.serializer
 import kotlin.jvm.JvmInline
 
 /**
@@ -41,7 +40,10 @@ public interface ToolResult {
     /**
      * Result implementation representing a simple tool result, just a string.
      */
-    @Deprecated("Extending ToolResult.Text is no longer required (just use plain String class instead). Tool results are entirely handled by KotlinX Serialization.")
+    @Deprecated(
+        "Extending ToolResult.Text is no longer required (just use plain String class instead). " +
+            "Tool results are entirely handled by KotlinX Serialization."
+    )
     @Serializable
     @JvmInline
     public value class Text(public val text: String) : JSONSerializable<Text> {

@@ -39,9 +39,13 @@ kotlin {
                     project(":prompt:prompt-executor:prompt-executor-clients:prompt-executor-openrouter-client")
                 )
                 implementation(project(":prompt:prompt-executor:prompt-executor-clients:prompt-executor-google-client"))
+                implementation(
+                    project(":prompt:prompt-executor:prompt-executor-clients:prompt-executor-mistralai-client")
+                )
                 implementation(libs.junit.jupiter.params)
                 implementation(libs.kotlinx.coroutines.test)
                 implementation(libs.kotlinx.serialization.json)
+                implementation(libs.kotest.assertions.core)
                 implementation(libs.aws.sdk.kotlin.sts)
                 implementation(libs.aws.sdk.kotlin.bedrock)
                 implementation(libs.aws.sdk.kotlin.bedrockruntime)

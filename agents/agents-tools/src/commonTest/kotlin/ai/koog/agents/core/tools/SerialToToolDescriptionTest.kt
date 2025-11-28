@@ -50,7 +50,7 @@ class SerialToToolDescriptionTest {
     @Test
     fun primitive_mappings_are_wrapped_as_value_parameter() {
         fun assertValueParam(descriptor: ToolDescriptor, expectedType: ToolParameterType) {
-            assertEquals("value", descriptor.requiredParameters.single().name)
+            assertEquals(toolWrapperValueKey, descriptor.requiredParameters.single().name)
             assertEquals(0, descriptor.optionalParameters.size)
             assertEquals(expectedType, descriptor.requiredParameters.single().type)
         }
@@ -272,10 +272,10 @@ class SerialToToolDescriptionTest {
     fun verify_optional_description_applies() {
         val tripPlanDescriptor = serializer<TripPlan>().descriptor.asToolDescriptor(
             toolName = "provideTripPlan",
-            toolDescription = "Custom tool ,call me!"
+            toolDescription = "Custom tool, call me!"
         )
 
-        assertEquals("Custom tool ,call me!", tripPlanDescriptor.description)
-        assertEquals(expectedTripPlanToolDescriptor.copy(description = "Custom tool ,call me!"), tripPlanDescriptor)
+        assertEquals("Custom tool, call me!", tripPlanDescriptor.description)
+        assertEquals(expectedTripPlanToolDescriptor.copy(description = "Custom tool, call me!"), tripPlanDescriptor)
     }
 }

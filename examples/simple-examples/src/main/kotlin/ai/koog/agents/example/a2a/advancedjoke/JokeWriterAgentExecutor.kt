@@ -36,7 +36,6 @@ import ai.koog.prompt.executor.llms.MultiLLMPromptExecutor
 import ai.koog.prompt.executor.model.PromptExecutor
 import ai.koog.prompt.llm.LLMProvider
 import ai.koog.prompt.message.Message
-import ai.koog.prompt.text.text
 import ai.koog.prompt.xml.xml
 import kotlinx.datetime.Clock
 import kotlinx.serialization.SerialName
@@ -113,9 +112,9 @@ private fun jokeWriterStrategy() = strategy<A2AMessage, Unit>("joke-writer") {
             context.messageStorage.getAll()
         }
 
-        // Update the prompt with the current context messages
+        // Append the current context messages to prompt
         llm.writeSession {
-            updatePrompt {
+            appendPrompt {
                 messages(contextMessages.map { it.toKoogMessage() })
             }
         }
@@ -138,7 +137,7 @@ private fun jokeWriterStrategy() = strategy<A2AMessage, Unit>("joke-writer") {
                 .map { it.toKoogMessage() }
 
             llm.writeSession {
-                updatePrompt {
+                appendPrompt {
                     user {
                         +"There's an ongoing task, the next messages contain conversation history for this task"
                     }
@@ -223,7 +222,7 @@ private fun jokeWriterStrategy() = strategy<A2AMessage, Unit>("joke-writer") {
     // Node: Generate the actual joke based on classified parameters
     val generateJoke by node<JokeRequestClassification.Ready, Message.Assistant> { request ->
         llm.writeSession {
-            updatePrompt {
+            appendPrompt {
                 user {
                     +"Generate a joke based on the following user request:"
                     xml {
@@ -321,13 +320,13 @@ private fun jokeWriterStrategy() = strategy<A2AMessage, Unit>("joke-writer") {
     // New request classification: If not a joke request, decline politely
     edge(
         classifyNewRequest forwardTo respondFallbackMessage
-            transformed { it.getOrThrow().structure }
+            transformed { it.getOrThrow().data }
             onCondition { !it.isJokeRequest }
     )
     // New request classification: If joke request, create a task
     edge(
         classifyNewRequest forwardTo createTask
-            transformed { it.getOrThrow().structure }
+            transformed { it.getOrThrow().data }
             onCondition { it.isJokeRequest }
     )
 

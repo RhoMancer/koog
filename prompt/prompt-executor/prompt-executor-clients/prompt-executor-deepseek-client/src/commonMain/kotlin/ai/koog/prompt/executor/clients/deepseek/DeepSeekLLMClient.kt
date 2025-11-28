@@ -8,14 +8,16 @@ import ai.koog.prompt.executor.clients.deepseek.models.DeepSeekChatCompletionReq
 import ai.koog.prompt.executor.clients.deepseek.models.DeepSeekChatCompletionRequestSerializer
 import ai.koog.prompt.executor.clients.deepseek.models.DeepSeekChatCompletionResponse
 import ai.koog.prompt.executor.clients.deepseek.models.DeepSeekChatCompletionStreamResponse
+import ai.koog.prompt.executor.clients.deepseek.models.DeepSeekModelsResponse
 import ai.koog.prompt.executor.clients.openai.base.AbstractOpenAILLMClient
-import ai.koog.prompt.executor.clients.openai.base.OpenAIBasedSettings
+import ai.koog.prompt.executor.clients.openai.base.OpenAIBaseSettings
+import ai.koog.prompt.executor.clients.openai.base.OpenAICompatibleToolDescriptorSchemaGenerator
 import ai.koog.prompt.executor.clients.openai.base.models.OpenAIMessage
 import ai.koog.prompt.executor.clients.openai.base.models.OpenAITool
 import ai.koog.prompt.executor.clients.openai.base.models.OpenAIToolChoice
-import ai.koog.prompt.executor.model.LLMChoice
 import ai.koog.prompt.llm.LLMProvider
 import ai.koog.prompt.llm.LLModel
+import ai.koog.prompt.message.LLMChoice
 import ai.koog.prompt.params.LLMParams
 import ai.koog.prompt.streaming.StreamFrameFlowBuilder
 import io.github.oshai.kotlinlogging.KotlinLogging
@@ -26,13 +28,16 @@ import kotlinx.datetime.Clock
  * Configuration settings for connecting to the DeepSeek API.
  *
  * @property baseUrl The base URL of the DeepSeek API. The default is "https://api.deepseek.com".
+ * @property chatCompletionsPath The path of the DeepSeek Chat Completions API. The default is "chat/completions".
+ * @property modelsPath The path of the DeepSeek Models API. The default is "models".
  * @property timeoutConfig Configuration for connection timeouts including request, connection, and socket timeouts.
  */
 public class DeepSeekClientSettings(
     baseUrl: String = "https://api.deepseek.com",
     chatCompletionsPath: String = "chat/completions",
+    public val modelsPath: String = "models",
     timeoutConfig: ConnectionTimeoutConfig = ConnectionTimeoutConfig()
-) : OpenAIBasedSettings(baseUrl, chatCompletionsPath, timeoutConfig)
+) : OpenAIBaseSettings(baseUrl, chatCompletionsPath, timeoutConfig)
 
 /**
  * Implementation of [LLMClient] for DeepSeek API.
@@ -46,13 +51,15 @@ public class DeepSeekLLMClient(
     apiKey: String,
     private val settings: DeepSeekClientSettings = DeepSeekClientSettings(),
     baseClient: HttpClient = HttpClient(),
-    clock: Clock = Clock.System
+    clock: Clock = Clock.System,
+    toolsConverter: OpenAICompatibleToolDescriptorSchemaGenerator = OpenAICompatibleToolDescriptorSchemaGenerator()
 ) : AbstractOpenAILLMClient<DeepSeekChatCompletionResponse, DeepSeekChatCompletionStreamResponse>(
-    apiKey,
-    settings,
-    baseClient,
-    clock,
-    staticLogger
+    apiKey = apiKey,
+    settings = settings,
+    baseClient = baseClient,
+    clock = clock,
+    logger = staticLogger,
+    toolsConverter = toolsConverter
 ) {
 
     private companion object {
@@ -139,5 +146,22 @@ public class DeepSeekLLMClient(
     public override suspend fun moderate(prompt: Prompt, model: LLModel): ModerationResult {
         logger.warn { "Moderation is not supported by DeepSeek API" }
         throw UnsupportedOperationException("Moderation is not supported by DeepSeek API.")
+    }
+
+    /**
+     * Fetches a list of available model identifiers from the DeepSeek service.
+     * https://api-docs.deepseek.com/api/list-models
+     *
+     * @return A list of string identifiers representing the available models.
+     */
+    public override suspend fun models(): List<String> {
+        logger.debug { "Fetching available models from DeepSeek" }
+
+        val openAIResponse = httpClient.get(
+            path = settings.modelsPath,
+            responseType = DeepSeekModelsResponse::class
+        )
+
+        return openAIResponse.data.map { it.id }
     }
 }

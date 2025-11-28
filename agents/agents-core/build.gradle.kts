@@ -37,7 +37,6 @@ kotlin {
 
         commonTest {
             dependencies {
-                implementation(project(":agents:agents-features:agents-features-event-handler"))
                 implementation(project(":agents:agents-test"))
                 implementation(project(":test-utils"))
             }
@@ -45,7 +44,7 @@ kotlin {
 
         jvmTest {
             dependencies {
-                implementation("org.jetbrains.lincheck:lincheck:3.1")
+                implementation("org.jetbrains.lincheck:lincheck:3.3.2")
                 implementation(libs.ktor.client.cio)
             }
         }

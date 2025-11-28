@@ -58,6 +58,7 @@ internal class GoogleContent(
 @Serializable(with = GooglePartSerializer::class)
 internal sealed interface GooglePart {
     val thought: Boolean?
+    val thoughtSignature: String?
 
     /**
      * Represents a text element in a Google-specific data context.
@@ -69,12 +70,15 @@ internal sealed interface GooglePart {
      *
      * @property text The textual content represented by this class.
      * @property thought An optional boolean indicating a specific contextual attribute.
+     * @property thoughtSignature An opaque signature for the thought so it can be reused in subsequent requests.
+     * A base64-encoded string.
      */
     @Serializable
     @SerialName("text")
     data class Text(
         val text: String,
         override val thought: Boolean? = null,
+        override val thoughtSignature: String? = null,
     ) : GooglePart
 
     /**
@@ -93,6 +97,7 @@ internal sealed interface GooglePart {
     data class InlineData(
         val inlineData: GoogleData.Blob,
         override val thought: Boolean? = null,
+        override val thoughtSignature: String? = null,
     ) : GooglePart
 
     /**
@@ -112,6 +117,7 @@ internal sealed interface GooglePart {
     data class FileData(
         val fileData: GoogleData.FileData,
         override val thought: Boolean? = null,
+        override val thoughtSignature: String? = null,
     ) : GooglePart
 
     /**
@@ -127,6 +133,7 @@ internal sealed interface GooglePart {
     data class FunctionCall(
         val functionCall: GoogleData.FunctionCall,
         override val thought: Boolean? = null,
+        override val thoughtSignature: String? = null,
     ) : GooglePart
 
     /**
@@ -145,6 +152,7 @@ internal sealed interface GooglePart {
     data class FunctionResponse(
         val functionResponse: GoogleData.FunctionResponse,
         override val thought: Boolean? = null,
+        override val thoughtSignature: String? = null,
     ) : GooglePart
 }
 
@@ -444,6 +452,50 @@ internal class GoogleUsageMetadata(
     val toolUsePromptTokenCount: Int? = null,
     val thoughtsTokenCount: Int? = null,
     val totalTokenCount: Int? = null,
+)
+
+/**
+ * Represents the response structure for a request listing Google models.
+ *
+ * @property models A list of GoogleModel instances containing details of each model.
+ * @property nextPageToken An optional token used for retrieving the next page of results, if available.
+ */
+@Serializable
+internal class GoogleModelsResponse(
+    val models: List<GoogleModel>,
+    val nextPageToken: String? = null,
+)
+
+/**
+ * Represents a Google model with its details and configuration for text generation.
+ *
+ * @property name The unique name of the model.
+ * @property version The version of the model.
+ * @property displayName The human-readable display name of the model.
+ * @property description A brief description of the model's purpose or functionality.
+ * @property inputTokenLimit The maximum number of tokens allowed in the input.
+ * @property outputTokenLimit The maximum number of tokens allowed in the output.
+ * @property supportedGenerationMethods The list of supported generation methods for the model.
+ * @property thinking Indicates whether the model is actively generating a response.
+ * @property temperature The temperature setting influencing text generation randomness.
+ * @property maxTemperature The maximum allowable temperature value for the model.
+ * @property topP The top-p (nucleus) sampling parameter for text generation.
+ * @property topK The top-k sampling parameter for text generation.
+ */
+@Serializable
+internal class GoogleModel(
+    val name: String,
+    val version: String,
+    val displayName: String?,
+    val description: String?,
+    val inputTokenLimit: Int?,
+    val outputTokenLimit: Int?,
+    val supportedGenerationMethods: List<String>?,
+    val thinking: Boolean?,
+    val temperature: Double?,
+    val maxTemperature: Double?,
+    val topP: Double?,
+    val topK: Int?,
 )
 
 /**

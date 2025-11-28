@@ -4,10 +4,10 @@ import ai.koog.agents.core.tools.ToolDescriptor
 import ai.koog.prompt.dsl.ModerationResult
 import ai.koog.prompt.dsl.Prompt
 import ai.koog.prompt.executor.clients.LLMClient
-import ai.koog.prompt.executor.model.LLMChoice
 import ai.koog.prompt.executor.model.PromptExecutor
 import ai.koog.prompt.llm.LLMProvider
 import ai.koog.prompt.llm.LLModel
+import ai.koog.prompt.message.LLMChoice
 import ai.koog.prompt.message.Message
 import ai.koog.prompt.streaming.StreamFrame
 import io.github.oshai.kotlinlogging.KotlinLogging
@@ -218,6 +218,14 @@ public open class MultiLLMPromptExecutor(
         val client = llmClients[provider] ?: throw IllegalArgumentException("No client found for provider: $provider")
 
         return client.moderate(prompt, model)
+    }
+
+    override suspend fun models(): List<String> {
+        logger.debug { "Fetching available models from all clients" }
+
+        return llmClients.values.flatMap { client ->
+            client.models()
+        }
     }
 
     override fun close() {

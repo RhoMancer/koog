@@ -8,12 +8,13 @@ import ai.koog.agents.core.dsl.builder.ParallelNodeExecutionResult
 import ai.koog.agents.core.dsl.builder.forwardTo
 import ai.koog.agents.core.dsl.builder.strategy
 import ai.koog.agents.core.dsl.extension.HistoryCompressionStrategy
+import ai.koog.agents.core.dsl.extension.nodeExecuteTool
 import ai.koog.agents.core.dsl.extension.nodeLLMCompressHistory
 import ai.koog.agents.core.dsl.extension.nodeLLMRequest
+import ai.koog.agents.core.dsl.extension.nodeLLMSendToolResult
 import ai.koog.agents.core.dsl.extension.onAssistantMessage
-import ai.koog.agents.core.tools.SimpleTool
+import ai.koog.agents.core.dsl.extension.onToolCall
 import ai.koog.agents.core.tools.ToolRegistry
-import ai.koog.agents.core.tools.annotations.LLMDescription
 import ai.koog.agents.ext.agent.reActStrategy
 import ai.koog.agents.features.eventHandler.feature.EventHandler
 import ai.koog.agents.features.eventHandler.feature.EventHandlerConfig
@@ -23,44 +24,54 @@ import ai.koog.agents.snapshot.providers.InMemoryPersistenceStorageProvider
 import ai.koog.agents.snapshot.providers.file.JVMFilePersistenceStorageProvider
 import ai.koog.integration.tests.utils.Models
 import ai.koog.integration.tests.utils.RetryUtils.withRetry
-import ai.koog.integration.tests.utils.TestUtils.CalculatorTool
-import ai.koog.integration.tests.utils.TestUtils.DelayTool
-import ai.koog.integration.tests.utils.getLLMClientForProvider
+import ai.koog.integration.tests.utils.tools.CalculateSumTool
+import ai.koog.integration.tests.utils.tools.CalculatorToolNoArgs
+import ai.koog.integration.tests.utils.tools.DelayTool
+import ai.koog.integration.tests.utils.tools.GetTransactionsTool
+import ai.koog.integration.tests.utils.tools.SimpleCalculatorTool
 import ai.koog.prompt.dsl.prompt
-import ai.koog.prompt.executor.clients.anthropic.AnthropicModels
-import ai.koog.prompt.executor.clients.bedrock.BedrockModels
 import ai.koog.prompt.executor.clients.google.GoogleModels
 import ai.koog.prompt.executor.clients.openai.OpenAIModels
-import ai.koog.prompt.executor.llms.SingleLLMPromptExecutor
 import ai.koog.prompt.llm.LLMCapability
 import ai.koog.prompt.llm.LLModel
 import ai.koog.prompt.message.Message
-import ai.koog.prompt.message.ResponseMetaInfo
 import ai.koog.prompt.params.LLMParams
 import ai.koog.prompt.params.LLMParams.ToolChoice
+import io.kotest.assertions.withClue
+import io.kotest.inspectors.shouldForAny
+import io.kotest.matchers.booleans.shouldBeTrue
+import io.kotest.matchers.collections.shouldBeEmpty
+import io.kotest.matchers.collections.shouldContain
+import io.kotest.matchers.collections.shouldNotBeEmpty
+import io.kotest.matchers.comparables.shouldBeLessThan
+import io.kotest.matchers.ints.shouldBeGreaterThan
+import io.kotest.matchers.ints.shouldBeGreaterThanOrEqual
+import io.kotest.matchers.nulls.shouldNotBeNull
+import io.kotest.matchers.should
+import io.kotest.matchers.shouldBe
+import io.kotest.matchers.string.contain
+import io.kotest.matchers.string.shouldContain
+import io.kotest.matchers.string.shouldNotBeBlank
+import io.kotest.matchers.string.shouldNotBeEmpty
+import io.kotest.matchers.string.shouldNotContain
 import kotlinx.coroutines.test.runTest
 import kotlinx.datetime.Clock
-import kotlinx.serialization.Serializable
-import kotlinx.serialization.builtins.serializer
 import org.junit.jupiter.api.Assumptions.assumeTrue
 import org.junit.jupiter.api.BeforeAll
+import org.junit.jupiter.api.Disabled
 import org.junit.jupiter.api.io.TempDir
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.Arguments
 import org.junit.jupiter.params.provider.MethodSource
 import java.nio.file.Path
-import java.nio.file.Paths
 import java.util.Base64
 import java.util.stream.Stream
 import kotlin.io.path.readBytes
 import kotlin.reflect.typeOf
-import kotlin.test.assertEquals
-import kotlin.test.assertFalse
-import kotlin.test.assertNotNull
-import kotlin.test.assertTrue
+import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
 
-class AIAgentIntegrationTest {
+class AIAgentIntegrationTest : AIAgentTestBase() {
 
     companion object {
         private lateinit var testResourcesDir: Path
@@ -68,54 +79,19 @@ class AIAgentIntegrationTest {
         @JvmStatic
         @BeforeAll
         fun setup() {
-            testResourcesDir =
-                Paths.get(AIAgentIntegrationTest::class.java.getResource("/media")!!.toURI())
+            AIAgentTestBase.setup()
+            testResourcesDir = AIAgentTestBase.testResourcesDir
         }
+
+        @JvmStatic
+        fun allModels(): Stream<LLModel> = AIAgentTestBase.allModels()
+
+        @JvmStatic
+        fun modelsWithVisionCapability(): Stream<Arguments> = AIAgentTestBase.modelsWithVisionCapability()
 
         @JvmStatic
         fun reasoningIntervals(): Stream<Int> {
             return listOf(1, 2, 3).stream()
-        }
-
-        @JvmStatic
-        fun openAIModels(): Stream<LLModel> {
-            return Models.openAIModels()
-        }
-
-        @JvmStatic
-        fun anthropicModels(): Stream<LLModel> {
-            return Models.anthropicModels()
-        }
-
-        @JvmStatic
-        fun anthropicModels4_0(): Stream<LLModel> {
-            return listOf(
-                AnthropicModels.Opus_4,
-                AnthropicModels.Opus_4_1,
-                AnthropicModels.Sonnet_4,
-                AnthropicModels.Sonnet_4_5,
-                AnthropicModels.Haiku_4_5,
-            ).stream()
-        }
-
-        @JvmStatic
-        fun googleModels(): Stream<LLModel> {
-            return Models.googleModels()
-        }
-
-        @JvmStatic
-        fun bedrockModels(): Stream<LLModel> {
-            return Models.bedrockModels()
-        }
-
-        @JvmStatic
-        fun openRouterModels(): Stream<LLModel> {
-            return Models.openRouterModels()
-        }
-
-        @JvmStatic
-        fun modelsWithVisionCapability(): Stream<Arguments> {
-            return Models.modelsWithVisionCapability()
         }
 
         @JvmStatic
@@ -131,197 +107,112 @@ class AIAgentIntegrationTest {
                     HistoryCompressionStrategy.FromTimestamp(Clock.System.now().minus(1.seconds)),
                     "FromTimestamp"
                 ),
-                // ToDo uncomment when KG-311 is fully fixed
                 Arguments.of(HistoryCompressionStrategy.Chunked(2), "Chunked(2)")
             )
         }
+    }
 
-        val twoToolsRegistry = ToolRegistry {
-            tool(CalculatorTool)
-            tool(DelayTool)
-        }
+    val twoToolsRegistry = ToolRegistry {
+        tool(SimpleCalculatorTool)
+        tool(DelayTool)
+    }
 
-        val bankingToolsRegistry = ToolRegistry {
-            tool(GetTransactionsTool)
-            tool(CalculateSumTool)
-        }
+    val bankingToolsRegistry = ToolRegistry {
+        tool(GetTransactionsTool)
+        tool(CalculateSumTool)
+    }
 
-        val twoToolsPrompt = """
+    val twoToolsPrompt = """
         I need you to perform two operations:
         1. Calculate 7 times 2
         2. Wait for 500 milliseconds
 
         Respond briefly after completing both tasks. DO NOT EXCEED THE LIMIT OF 20 WORDS.
-        """.trimIndent()
+    """.trimIndent()
 
-        fun getExecutor(model: LLModel): SingleLLMPromptExecutor =
-            SingleLLMPromptExecutor(getLLMClientForProvider(model.provider))
+    private fun getSingleRunAgentWithRunMode(
+        model: LLModel,
+        runMode: ToolCalls,
+        toolRegistry: ToolRegistry = twoToolsRegistry,
+        eventHandlerConfig: EventHandlerConfig.() -> Unit,
+    ) = AIAgent(
+        promptExecutor = getExecutor(model),
+        strategy = singleRunStrategy(runMode),
+        agentConfig = AIAgentConfig(
+            prompt = prompt(
+                id = "single-run-agent",
+                params = LLMParams(
+                    temperature = 1.0,
+                    toolChoice = ToolChoice.Auto,
+                )
+            ) {
+                system {
+                    +"You are a helpful assistant. "
+                    +"JUST CALL THE TOOLS, NO QUESTIONS ASKED."
+                }
+            },
+            model = model,
+            maxAgentIterations = 10,
+        ),
+        toolRegistry = toolRegistry,
+        installFeatures = {
+            install(EventHandler.Feature, eventHandlerConfig)
+        },
+    )
 
-        fun getSingleRunAgentWithRunMode(
-            model: LLModel,
-            runMode: ToolCalls,
-            toolRegistry: ToolRegistry = twoToolsRegistry,
-            eventHandlerConfig: EventHandlerConfig.() -> Unit,
-        ) = AIAgent(
-            promptExecutor = getExecutor(model),
-            strategy = singleRunStrategy(runMode),
-            agentConfig = AIAgentConfig(
-                prompt = prompt(
-                    id = "multiple-tool-calls-agent",
-                    params = LLMParams(
-                        temperature = 1.0,
-                        toolChoice = ToolChoice.Auto,
-                    )
-                ) {
-                    system {
-                        +"You are a helpful assistant. "
-                        +"JUST CALL THE TOOLS, NO QUESTIONS ASKED."
-                    }
-                },
-                model = model,
-                maxAgentIterations = 10,
-            ),
-            toolRegistry = toolRegistry,
-            installFeatures = { install(EventHandler.Feature, eventHandlerConfig) },
+    private fun buildHistoryCompressionWithToolsStrategy(
+        strategy: HistoryCompressionStrategy,
+        compressBeforeToolResult: Boolean,
+    ) = strategy<String, Pair<String, List<Message>>>("history-compression-with-tools-test") {
+        val callLLM by nodeLLMRequest(name = "callLLM", allowToolCalls = true)
+        val executeTool by nodeExecuteTool("execute_tool")
+        val compressResponse by nodeLLMCompressHistory<Message.Response>(
+            name = "compress_history",
+            strategy = strategy
         )
-    }
+        val compressToolResult by nodeLLMCompressHistory<ai.koog.agents.core.environment.ReceivedToolResult>(
+            name = "compress_history",
+            strategy = strategy
+        )
+        val sendToolResult by nodeLLMSendToolResult("send_tool_result")
 
-    @Serializable
-    private object CalculatorToolNoArgs : SimpleTool<Unit>() {
-        override val argsSerializer = Unit.serializer()
-
-        override val name: String = "calculator"
-        override val description: String =
-            "A simple calculator that performs basic calculations. No parameters needed."
-
-        override suspend fun doExecute(args: Unit): String {
-            return "The result of 123 + 456 is 579"
+        edge(nodeStart forwardTo callLLM)
+        if (compressBeforeToolResult) {
+            edge(callLLM forwardTo executeTool onToolCall { true })
+            executeTool then compressToolResult then sendToolResult
+            edge(sendToolResult forwardTo executeTool onToolCall (SimpleCalculatorTool))
+            edge(sendToolResult forwardTo nodeFinish onAssistantMessage { true } transformed { it to llm.prompt.messages })
+        } else {
+            callLLM then compressResponse
+            edge(compressResponse forwardTo executeTool onToolCall (SimpleCalculatorTool))
+            edge(compressResponse forwardTo nodeFinish onAssistantMessage { true } transformed { it to llm.prompt.messages })
+            executeTool then sendToolResult then compressResponse
         }
     }
 
-    @Serializable
-    data class GetTransactionsArgs(
-        @property:LLMDescription("Start date in format YYYY-MM-DD")
-        val startDate: String,
-        @property:LLMDescription("End date in format YYYY-MM-DD")
-        val endDate: String
-    )
-
-    object GetTransactionsTool : SimpleTool<GetTransactionsArgs>() {
-        override val argsSerializer = GetTransactionsArgs.serializer()
-
-        override val name: String = "get_transactions"
-        override val description: String = "Get all transactions between two dates"
-
-        override suspend fun doExecute(args: GetTransactionsArgs): String {
-            // Simulate returning transactions
-            return """
-            [
-              {date: "${args.startDate}", amount: -100.00, description: "Grocery Store"},
-              {date: "${args.startDate}", amount: +1000.00, description: "Salary Deposit"},
-              {date: "${args.endDate}", amount: -500.00, description: "Rent Payment"},
-              {date: "${args.endDate}", amount: -200.00, description: "Utilities"}
-            ]
-            """.trimIndent()
-        }
-    }
-
-    @Serializable
-    data class CalculateSumArgs(
-        @property:LLMDescription("List of amounts to sum")
-        val amounts: List<Double>
-    )
-
-    object CalculateSumTool : SimpleTool<CalculateSumArgs>() {
-        override val argsSerializer = CalculateSumArgs.serializer()
-
-        override val name: String = "calculate_sum"
-        override val description: String = "Calculate the sum of a list of amounts"
-
-        override suspend fun doExecute(args: CalculateSumArgs): String {
-            val sum = args.amounts.sum()
-            return sum.toString()
-        }
-    }
-
-    val systemPrompt = "You are a helpful assistant."
-
-    private class State(
-        var reasoningCallsCount: Int = 0,
-        val actualToolCalls: MutableList<String> = mutableListOf(),
-        val errors: MutableList<Throwable> = mutableListOf(),
-        val results: MutableList<Any?> = mutableListOf(),
-        val toolExecutionCounter: MutableList<String> = mutableListOf(),
-        val parallelToolCalls: MutableList<ToolCallInfo> = mutableListOf(),
-        val singleToolCalls: MutableList<ToolCallInfo> = mutableListOf(),
-    )
-
-    private suspend fun runWithTracking(
-        action: suspend (
-            eventHandlerConfig: EventHandlerConfig.() -> Unit,
-            state: State,
-        ) -> Unit,
+    private fun assertHistoryCompressionWithTools(
+        errors: Collection<Any>,
+        actualToolCalls: Collection<String>,
+        result: String,
+        promptMessages: List<Message>?,
+        strategyName: String,
     ) {
-        val state = State()
-
-        val eventHandlerConfig: EventHandlerConfig.() -> Unit = {
-            onAgentCompleted { eventContext ->
-                state.results.add(eventContext.result)
+        withClue("No errors should occur during agent execution with $strategyName, got: [${errors.joinToString("\n")}]") {
+            errors.shouldBeEmpty()
+        }
+        withClue("The ${SimpleCalculatorTool.name} tool was not called with $strategyName") {
+            actualToolCalls shouldContain SimpleCalculatorTool.name
+        }
+        result.shouldNotBeBlank()
+        promptMessages shouldNotBeNull {
+            withClue("System messages should be preserved after compression with $strategyName") {
+                filterIsInstance<Message.System>().shouldNotBeEmpty()
             }
-
-            onAgentExecutionFailed { eventContext ->
-                state.errors.add(eventContext.throwable)
-            }
-
-            onLLMCallStarting { eventContext ->
-                if (eventContext.tools.isEmpty() &&
-                    eventContext.prompt.params.toolChoice == null
-                ) {
-                    state.reasoningCallsCount++
-                }
-            }
-
-            onNodeExecutionStarting { eventContext ->
-                val input = eventContext.input
-
-                if (input is List<*>) {
-                    input.filterIsInstance<Message.Tool.Call>().forEach { call ->
-                        state.parallelToolCalls.add(
-                            ToolCallInfo(
-                                id = call.id,
-                                tool = call.tool,
-                                content = call.content,
-                                metaInfo = call.metaInfo,
-                            )
-                        )
-                    }
-                } else if (input is Message.Tool.Call) {
-                    state.singleToolCalls.add(
-                        ToolCallInfo(
-                            id = input.id,
-                            tool = input.tool,
-                            content = input.content,
-                            metaInfo = input.metaInfo,
-                        )
-                    )
-                }
-            }
-
-            onToolCallStarting { eventContext ->
-                state.actualToolCalls.add(eventContext.tool.name)
-                state.toolExecutionCounter.add(eventContext.tool.name)
+            withClue("System message content should not be empty after compression with $strategyName") {
+                first().content.shouldNotBeBlank()
             }
         }
-
-        action(eventHandlerConfig, state)
     }
-
-    data class ToolCallInfo(
-        val id: String?,
-        val tool: String,
-        val content: String,
-        val metaInfo: ResponseMetaInfo,
-    )
 
     private fun runMultipleToolsTest(model: LLModel, runMode: ToolCalls) = runTest(timeout = 300.seconds) {
         Models.assumeAvailable(model.provider)
@@ -330,43 +221,51 @@ class AIAgentIntegrationTest {
         /* Some models are not calling tools in parallel:
          * see https://youtrack.jetbrains.com/issue/KG-115
          */
+        assumeTrue(model.id !== OpenAIModels.Chat.O1.id, "Model $model flaks when calling parallel tools")
+        assumeTrue(model.id !== GoogleModels.Gemini2_5Flash.id, "Model $model flaks when calling parallel tools")
 
-        withRetry {
+        withRetry(5) {
             runWithTracking { eventHandlerConfig, state ->
                 val multiToolAgent =
                     getSingleRunAgentWithRunMode(model, runMode, eventHandlerConfig = eventHandlerConfig)
                 multiToolAgent.run(twoToolsPrompt)
 
-                assertTrue(
-                    state.parallelToolCalls.size >= 2,
-                    "There should be at least 2 tool calls in a Multiple tool calls scenario"
-                )
-                assertTrue(
-                    state.singleToolCalls.isEmpty(),
-                    "There should be no single tool calls in a Multiple tool calls scenario"
-                )
+                with(state) {
+                    withClue("There should be at least 2 tool calls in a Multiple tool calls scenario") {
+                        parallelToolCalls.size shouldBeGreaterThanOrEqual 2
+                    }
 
-                val firstCall = state.parallelToolCalls.first()
-                val secondCall = state.parallelToolCalls.last()
+                    withClue("There should be no single tool calls in a Multiple tool calls scenario") {
+                        singleToolCalls.shouldBeEmpty()
+                    }
 
-                if (runMode == ToolCalls.PARALLEL) {
-                    assertTrue(
-                        firstCall.metaInfo.timestamp == secondCall.metaInfo.timestamp ||
-                            firstCall.metaInfo.totalTokensCount == secondCall.metaInfo.totalTokensCount ||
-                            firstCall.metaInfo.inputTokensCount == secondCall.metaInfo.inputTokensCount ||
-                            firstCall.metaInfo.outputTokensCount == secondCall.metaInfo.outputTokensCount,
-                        "At least one of the metadata should be equal for parallel tool calls"
-                    )
+                    val firstCall = parallelToolCalls.first()
+                    val secondCall = state.parallelToolCalls.last()
+
+                    if (runMode == ToolCalls.PARALLEL) {
+                        withClue("At least one of the metadata should be equal for parallel tool calls") {
+                            (
+                                firstCall.metaInfo.timestamp == secondCall.metaInfo.timestamp ||
+                                    firstCall.metaInfo.totalTokensCount == secondCall.metaInfo.totalTokensCount ||
+                                    firstCall.metaInfo.inputTokensCount == secondCall.metaInfo.inputTokensCount ||
+                                    firstCall.metaInfo.outputTokensCount == secondCall.metaInfo.outputTokensCount
+                                ).shouldBeTrue()
+                        }
+                    }
+
+                    withClue("First tool call should be ${SimpleCalculatorTool.name}") {
+                        firstCall.tool shouldBe SimpleCalculatorTool.name
+                    }
+                    withClue("Second tool call should be ${DelayTool.name}") {
+                        secondCall.tool shouldBe DelayTool.name
+                    }
                 }
-
-                assertEquals(CalculatorTool.name, firstCall.tool, "First tool call should be ${CalculatorTool.name}")
-                assertEquals(DelayTool.name, secondCall.tool, "Second tool call should be ${DelayTool.name}")
             }
         }
     }
 
     @ParameterizedTest
-    @MethodSource("openAIModels", "anthropicModels", "googleModels", "bedrockModels", "openRouterModels")
+    @MethodSource("allModels")
     fun integration_AIAgentShouldNotCallToolsByDefault(model: LLModel) = runTest {
         Models.assumeAvailable(model.provider)
         withRetry {
@@ -383,13 +282,15 @@ class AIAgentIntegrationTest {
                 )
                 agent.run("Repeat what I say: hello, I'm good.")
                 // by default, AIAgent has no tools underneath
-                assertTrue(state.actualToolCalls.isEmpty(), "No tools should be called for model $model")
+                withClue("No tools should be called for model $model") {
+                    state.actualToolCalls.shouldBeEmpty()
+                }
             }
         }
     }
 
     @ParameterizedTest
-    @MethodSource("openAIModels", "anthropicModels", "googleModels")
+    @MethodSource("allModels")
     fun integration_AIAgentNoSystemMessage(model: LLModel) = runTest {
         Models.assumeAvailable(model.provider)
         withRetry {
@@ -404,22 +305,21 @@ class AIAgentIntegrationTest {
                     installFeatures = { install(EventHandler.Feature, eventHandlerConfig) },
                 )
                 agent.run("Repeat what I say: hello, I'm good.")
-                assertTrue(
-                    state.errors.isEmpty(),
-                    "No errors were expected during the run, got:\n[${state.errors.joinToString("\n")}]"
-                )
+                withClue("No errors were expected during the run, got:\\n[${state.errors.joinToString("\n")}]") {
+                    state.errors.shouldBeEmpty()
+                }
             }
         }
     }
 
     @ParameterizedTest
-    @MethodSource("openAIModels", "anthropicModels", "googleModels", "bedrockModels", "openRouterModels")
+    @MethodSource("allModels")
     fun integration_AIAgentShouldCallCustomTool(model: LLModel) = runTest {
         Models.assumeAvailable(model.provider)
         assumeTrue(model.capabilities.contains(LLMCapability.Tools), "Model $model does not support tools")
 
         val toolRegistry = ToolRegistry {
-            tool(CalculatorTool)
+            tool(SimpleCalculatorTool)
         }
 
         withRetry {
@@ -438,11 +338,12 @@ class AIAgentIntegrationTest {
                 )
 
                 agent.run("How much is 3 times 5?")
-                assertTrue(state.actualToolCalls.isNotEmpty(), "No tools were called for model $model")
-                assertTrue(
-                    state.actualToolCalls.contains(CalculatorTool.name),
-                    "The ${CalculatorTool.name} tool was not called for model $model"
-                )
+                with(state) {
+                    withClue("No tools were called for model $model") { actualToolCalls.shouldNotBeEmpty() }
+                    withClue("The ${SimpleCalculatorTool.name} tool was not called for model $model") {
+                        actualToolCalls shouldContain SimpleCalculatorTool.name
+                    }
+                }
             }
         }
     }
@@ -481,30 +382,24 @@ class AIAgentIntegrationTest {
 
                 agent.run(promptWithImage)
 
-                assertTrue(state.errors.isEmpty(), "There should be no errors")
-                assertTrue(state.results.isNotEmpty(), "There should be results")
-
-                val result = state.results.first() as String
-                assertNotNull(result, "Result should not be null")
-                assertTrue(result.isNotBlank(), "Result should not be empty or blank")
-                assertTrue(result.length > 20, "Result should contain more than 20 characters")
-
-                val resultLowerCase = result.lowercase()
-                assertFalse(resultLowerCase.contains("error processing"), "Result should not contain error messages")
-                assertFalse(
-                    resultLowerCase.contains("unable to process"),
-                    "Result should not indicate inability to process"
-                )
-                assertFalse(
-                    resultLowerCase.contains("cannot process"),
-                    "Result should not indicate inability to process"
-                )
+                with(state) {
+                    errors.shouldBeEmpty()
+                    results.shouldNotBeEmpty()
+                    results.first() as String shouldNotBeNull {
+                        shouldNotBeBlank()
+                        length shouldBeGreaterThan 20
+                        lowercase()
+                            .shouldNotContain("error processing")
+                            .shouldNotContain("unable to process")
+                            .shouldNotContain("cannot process")
+                    }
+                }
             }
         }
     }
 
     @ParameterizedTest
-    @MethodSource("openAIModels", "anthropicModels", "googleModels", "bedrockModels", "openRouterModels")
+    @MethodSource("allModels")
     fun integration_testRequestLLMWithoutToolsTest(model: LLModel) = runTest(timeout = 180.seconds) {
         Models.assumeAvailable(model.provider)
         assumeTrue(model.capabilities.contains(LLMCapability.Tools), "Model $model does not support tools")
@@ -512,7 +407,7 @@ class AIAgentIntegrationTest {
         val executor = getExecutor(model)
 
         val toolRegistry = ToolRegistry {
-            tool(CalculatorTool)
+            tool(SimpleCalculatorTool)
         }
 
         val customStrategy = strategy("test-without-tools") {
@@ -535,37 +430,28 @@ class AIAgentIntegrationTest {
                     installFeatures = { install(EventHandler.Feature, eventHandlerConfig) },
                 )
 
-                val result = agent.run("What is 123 + 456?")
+                agent.run("What is 123 + 456?") shouldNotBeNull {
+                    shouldNotBeBlank()
+                    shouldContain("579")
+                }
 
-                assertNotNull(result, "Result should not be null")
-                assertTrue(result.isNotEmpty(), "Result should not be empty")
-                assertTrue(state.actualToolCalls.isEmpty(), "No tools should be called for model $model")
-
-                assertTrue(
-                    result.contains("579"),
-                    "Result should contain the correct answer (579)"
-                )
+                state.actualToolCalls.shouldBeEmpty()
             }
         }
     }
 
     @ParameterizedTest
-    @MethodSource("openAIModels", "anthropicModels", "googleModels", "bedrockModels", "openRouterModels")
+    @MethodSource("allModels")
     fun integration_AIAgentSingleRunWithSequentialToolsTest(model: LLModel) = runTest(timeout = 300.seconds) {
         runMultipleToolsTest(model, ToolCalls.SEQUENTIAL)
     }
 
     @ParameterizedTest
-    @MethodSource("openAIModels", "anthropicModels4_0", "googleModels")
+    @MethodSource("allModels")
     fun integration_AIAgentSingleRunWithParallelToolsTest(model: LLModel) = runTest(timeout = 300.seconds) {
         assumeTrue(
             model !in listOf(
-                OpenAIModels.Reasoning.O1,
-                OpenAIModels.Reasoning.O3,
-                OpenAIModels.Reasoning.O3Mini,
-                OpenAIModels.CostOptimized.O4Mini,
-                OpenAIModels.Chat.GPT5Codex,
-                GoogleModels.Gemini2_5Flash,
+                OpenAIModels.Chat.O1,
             ),
             "The model fails to call tools in parallel or flaky, see KG-115"
         )
@@ -574,18 +460,10 @@ class AIAgentIntegrationTest {
     }
 
     @ParameterizedTest
-    @MethodSource("openAIModels", "anthropicModels", "googleModels", "bedrockModels", "openRouterModels")
+    @MethodSource("allModels")
     fun integration_AIAgentSingleRunNoParallelToolsTest(model: LLModel) = runTest(timeout = 300.seconds) {
         Models.assumeAvailable(model.provider)
         assumeTrue(model.capabilities.contains(LLMCapability.Tools), "Model $model does not support tools")
-
-        assumeTrue(
-            model !in listOf(
-                BedrockModels.AnthropicClaude35Haiku,
-                BedrockModels.AmazonNovaLite,
-            ),
-            "These models often reply with additional assistant message even when calling tools, so not suitable for single run sequential strategy."
-        )
 
         withRetry {
             runWithTracking { eventHandlerConfig, state ->
@@ -595,20 +473,17 @@ class AIAgentIntegrationTest {
                     eventHandlerConfig = eventHandlerConfig,
                 )
                 sequentialAgent.run(twoToolsPrompt)
-
-                assertTrue(
-                    state.parallelToolCalls.isEmpty(),
-                    "There should be no parallel tool calls in a Sequential single run scenario"
-                )
-                assertTrue(
-                    state.singleToolCalls.size >= 2,
-                    "There should be more or equal than 2 single tool calls in a Sequential single run scenario"
-                )
-                assertEquals(
-                    CalculatorTool.name,
-                    state.singleToolCalls.first().tool,
-                    "First tool call should be ${CalculatorTool.name}"
-                )
+                with(state) {
+                    withClue("There should be no parallel tool calls in a Sequential single run scenario") {
+                        parallelToolCalls.shouldBeEmpty()
+                    }
+                    withClue("There should be more or equal than 2 single tool calls in a Sequential single run scenario") {
+                        singleToolCalls.size shouldBeGreaterThanOrEqual 2
+                    }
+                    withClue("First tool call should be ${SimpleCalculatorTool.name}") {
+                        singleToolCalls.first().tool shouldBe SimpleCalculatorTool.name
+                    }
+                }
             }
         }
     }
@@ -641,49 +516,46 @@ class AIAgentIntegrationTest {
 
                 agent.run("How much did I spend last month?")
 
-                assertTrue(state.errors.isEmpty(), "There should be no errors")
-                assertTrue(state.results.isNotEmpty(), "There should be results")
-                assertTrue(
-                    state.actualToolCalls.contains(GetTransactionsTool.descriptor.name),
-                    "The ${GetTransactionsTool.descriptor.name} tool should be called"
-                )
-                assertTrue(
-                    state.actualToolCalls.contains(CalculateSumTool.descriptor.name),
-                    "The ${CalculateSumTool.descriptor.name} tool should be called"
-                )
+                with(state) {
+                    errors.shouldBeEmpty()
+                    results.shouldNotBeEmpty()
+                    withClue("The ${GetTransactionsTool.descriptor.name} tool should be called") {
+                        actualToolCalls shouldContain GetTransactionsTool.descriptor.name
+                    }
+                    withClue("The ${CalculateSumTool.descriptor.name} tool should be called") {
+                        actualToolCalls shouldContain CalculateSumTool.descriptor.name
+                    }
+                    withClue("The ${GetTransactionsTool.descriptor.name} tool should be called before the ${CalculateSumTool.descriptor.name} tool") {
+                        actualToolCalls.indexOf(GetTransactionsTool.descriptor.name) shouldBeLessThan actualToolCalls.indexOf(
+                            CalculateSumTool.descriptor.name
+                        )
+                    }
 
-                val getTransactionsIndex = state.actualToolCalls.indexOf(GetTransactionsTool.descriptor.name)
-                val calculateSumIndex = state.actualToolCalls.indexOf(CalculateSumTool.descriptor.name)
-                assertTrue(
-                    getTransactionsIndex < calculateSumIndex,
-                    "The ${GetTransactionsTool.descriptor.name} tool should be called before the ${CalculateSumTool.descriptor.name} tool"
-                )
+                    withClue("Should have at least one reasoning call for the ReAct strategy.") {
+                        reasoningCallsCount shouldBeGreaterThan 0
+                    }
 
-                assertTrue(
-                    state.reasoningCallsCount > 0,
-                    "Should have at least one reasoning call for the ReAct strategy."
-                )
+                    // Count how many times the reasoning step would trigger based on the interval
+                    var expectedReasoningCalls = 1 // Start with 1 for the initial reasoning
+                    for (i in toolExecutionCounter.indices) {
+                        if (i % interval == 0) {
+                            expectedReasoningCalls++
+                        }
+                    }
 
-                // Count how many times the reasoning step would trigger based on the interval
-                var expectedReasoningCalls = 1 // Start with 1 for the initial reasoning
-                for (i in state.toolExecutionCounter.indices) {
-                    if (i % interval == 0) {
-                        expectedReasoningCalls++
+                    withClue(
+                        "With reasoningInterval=$interval and ${toolExecutionCounter.size} tool calls, " +
+                            "expected $expectedReasoningCalls reasoning calls but got $reasoningCallsCount"
+                    ) {
+                        reasoningCallsCount shouldBe expectedReasoningCalls
                     }
                 }
-
-                assertEquals(
-                    expectedReasoningCalls,
-                    state.reasoningCallsCount,
-                    "With reasoningInterval=$interval and ${state.toolExecutionCounter.size} tool calls, " +
-                        "expected $expectedReasoningCalls reasoning calls but got ${state.reasoningCallsCount}"
-                )
             }
         }
     }
 
     @ParameterizedTest
-    @MethodSource("openAIModels", "anthropicModels", "googleModels", "bedrockModels", "openRouterModels")
+    @MethodSource("allModels")
     fun integration_AgentCreateAndRestoreTest(model: LLModel) = runTest(timeout = 180.seconds) {
         val checkpointStorageProvider = InMemoryPersistenceStorageProvider()
         val sayHello = "Hello World!"
@@ -743,9 +615,10 @@ class AIAgentIntegrationTest {
 
         agent.run("Start the test")
 
-        val checkpoints = checkpointStorageProvider.getCheckpoints(agent.id)
-        assertTrue(checkpoints.isNotEmpty(), "No checkpoints were created")
-        assertEquals(save, checkpoints.first().nodeId, "Checkpoint has incorrect node ID")
+        with(checkpointStorageProvider.getCheckpoints(agent.id)) {
+            shouldNotBeEmpty()
+            first().nodeId shouldBe save
+        }
 
         val restoredAgent = AIAgent(
             promptExecutor = getExecutor(model),
@@ -766,14 +639,12 @@ class AIAgentIntegrationTest {
             }
         )
 
-        val restoredResult = restoredAgent.run("Continue the test")
-
         // Verify that the agent continued from the checkpoint
-        assertTrue(restoredResult.contains(sayBye), "Agent did not continue from the checkpoint")
+        restoredAgent.run("Continue the test") shouldContain sayBye
     }
 
     @ParameterizedTest
-    @MethodSource("openAIModels", "anthropicModels", "googleModels", "bedrockModels", "openRouterModels")
+    @MethodSource("allModels")
     fun integration_AgentCheckpointRollbackTest(model: LLModel) = runTest(timeout = 180.seconds) {
         val checkpointStorageProvider = InMemoryPersistenceStorageProvider()
 
@@ -867,30 +738,23 @@ class AIAgentIntegrationTest {
             }
         )
 
-        val result = agent.run("Start the test")
+        withClue("Final result should contain output from the second execution of $rollback") {
+            agent.run("Start the test") shouldContain alreadyRolledBackMessage
+        }
 
-        val executionLogStr = executionLog.toString()
-        assertTrue(executionLogStr.contains(sayHelloLog.trim()), "$hello was not executed")
-        assertTrue(executionLogStr.contains(saySaveLog.trim()), "$save was not executed")
-        assertTrue(executionLogStr.contains(sayByeLog.trim()), "$bye was not executed")
-        assertTrue(
-            executionLogStr.contains(rollbackPerformingLog.trim()),
-            "Rollback was not performed"
-        )
-
-        val savesCount = saySaveLog.trim().toRegex().findAll(executionLogStr).count()
-        val byesCount = sayByeLog.trim().toRegex().findAll(executionLogStr).count()
-        assertEquals(2, savesCount, "$save should be executed twice (before and after rollback)")
-        assertEquals(2, byesCount, "$bye should be executed twice (before and after rollback)")
-
-        assertTrue(
-            result.contains(alreadyRolledBackMessage),
-            "Final result should contain output from the second execution of $rollback"
-        )
+        with(executionLog.toString()) {
+            shouldNotBeEmpty()
+            shouldContain(sayHelloLog.trim())
+            shouldContain(saySaveLog.trim())
+            shouldContain(sayByeLog.trim())
+            shouldContain(rollbackPerformingLog.trim())
+            saySaveLog.trim().toRegex().findAll(this).count() shouldBe 2
+            sayByeLog.trim().toRegex().findAll(this).count() shouldBe 2
+        }
     }
 
     @ParameterizedTest
-    @MethodSource("openAIModels", "anthropicModels", "googleModels", "bedrockModels", "openRouterModels")
+    @MethodSource("allModels")
     fun integration_AgentCheckpointContinuousPersistenceTest(model: LLModel) = runTest(timeout = 180.seconds) {
         val checkpointStorageProvider =
             InMemoryPersistenceStorageProvider()
@@ -909,11 +773,6 @@ class AIAgentIntegrationTest {
         val systemMessage = "You are a helpful assistant."
         val testInput = "Start the test"
 
-        val notEnoughCheckpointsError = "Not enough checkpoints were created"
-        val noCheckpointHelloError = "No checkpoint for Node Hello"
-        val noCheckpointSaveError = "No checkpoint for Node Save"
-        val noCheckpointByeError = "No checkpoint for Node Bye"
-
         val simpleStrategy = strategy(strategyName) {
             val nodeHello by node<String, String>(hello) {
                 sayHello
@@ -923,14 +782,14 @@ class AIAgentIntegrationTest {
                 sayWorld
             }
 
-            val node3 by node<String, String>(bye) {
+            val nodeBye by node<String, String>(bye) {
                 sayBye
             }
 
             edge(nodeStart forwardTo nodeHello)
             edge(nodeHello forwardTo nodeWorld)
-            edge(nodeWorld forwardTo node3)
-            edge(node3 forwardTo nodeFinish)
+            edge(nodeWorld forwardTo nodeBye)
+            edge(nodeBye forwardTo nodeFinish)
         }
 
         val agent = AIAgent(
@@ -954,17 +813,18 @@ class AIAgentIntegrationTest {
 
         agent.run(testInput)
 
-        val checkpoints = checkpointStorageProvider.getCheckpoints(agent.id)
-        assertTrue(checkpoints.size >= 3, notEnoughCheckpointsError)
-
-        val nodeIds = checkpoints.map { it.nodeId }.toSet()
-        assertTrue(nodeIds.contains(hello), noCheckpointHelloError)
-        assertTrue(nodeIds.contains(world), noCheckpointSaveError)
-        assertTrue(nodeIds.contains(bye), noCheckpointByeError)
+        with(checkpointStorageProvider.getCheckpoints(agent.id)) {
+            size shouldBeGreaterThanOrEqual 3
+            map { it.nodeId }.toSet() shouldNotBeNull {
+                shouldContain(hello)
+                shouldContain(world)
+                shouldContain(bye)
+            }
+        }
     }
 
     @ParameterizedTest
-    @MethodSource("openAIModels", "anthropicModels", "googleModels", "bedrockModels", "openRouterModels")
+    @MethodSource("allModels")
     fun integration_AgentCheckpointStorageProvidersTest(
         model: LLModel,
         @TempDir tempDir: Path,
@@ -1030,13 +890,85 @@ class AIAgentIntegrationTest {
 
         agent.run(testInput)
 
-        val checkpoints = fileStorageProvider.getCheckpoints(agent.id).filter { it.nodeId != "tombstone" }
-        assertTrue(checkpoints.isNotEmpty(), noCheckpointsError)
-        assertEquals(bye, checkpoints.first().nodeId, incorrectNodeIdError)
+        with(fileStorageProvider.getCheckpoints(agent.id).filter { it.nodeId != "tombstone" }) {
+            withClue(noCheckpointsError) {
+                isNotEmpty() shouldBe true
+            }
+            withClue(incorrectNodeIdError) {
+                first().nodeId shouldBe bye
+            }
+        }
     }
 
     @ParameterizedTest
-    @MethodSource("openAIModels", "anthropicModels", "googleModels", "bedrockModels", "openRouterModels")
+    @MethodSource("allModels")
+    @Disabled("KG-499 Infinite loop on an attempt to serialize input for checkpoint creation for nodeSendToolResult")
+    fun integration_AgentCheckpointWithToolCallsTest(model: LLModel) = runTest(timeout = 180.seconds) {
+        assumeTrue(model.capabilities.contains(LLMCapability.Tools), "Model $model does not support tools")
+
+        val storageProvider = InMemoryPersistenceStorageProvider()
+        val registry = ToolRegistry {
+            tool(SimpleCalculatorTool)
+        }
+
+        withRetry {
+            runWithTracking { eventHandlerConfig, state ->
+                val executor = getExecutor(model)
+
+                val agent = AIAgent(
+                    promptExecutor = executor,
+                    strategy = singleRunStrategy(ToolCalls.SEQUENTIAL),
+                    agentConfig = AIAgentConfig(
+                        prompt = prompt(
+                            id = "calculator-agent-persistence-test",
+                            params = LLMParams(
+                                temperature = 1.0,
+                                toolChoice = ToolChoice.Required,
+                            )
+                        ) {
+                            system {
+                                +systemPrompt
+                                +"Always use the calculator tool once to answer math questions."
+                                +"JUST CALL THE TOOL, NO QUESTIONS ASKED."
+                            }
+                        },
+                        model = model,
+                        maxAgentIterations = 10
+                    ),
+                    toolRegistry = registry,
+                    installFeatures = {
+                        install(EventHandler.Feature, eventHandlerConfig)
+                        install(Persistence) {
+                            storage = storageProvider
+                            enableAutomaticPersistence = true
+                        }
+                    },
+                )
+
+                agent.run("What is 12 + 34?")
+
+                with(state) {
+                    actualToolCalls shouldBe listOf(SimpleCalculatorTool.descriptor.name)
+                    withClue("${SimpleCalculatorTool.descriptor.name} tool should be called for model $model with persistence") {
+                        errors.shouldBeEmpty()
+                    }
+                }
+
+                withClue("Checkpoint message history should contain a tool call to '${SimpleCalculatorTool.name}'") {
+                    storageProvider.getCheckpoints(agent.id).filter { it.nodeId != "tombstone" }
+                        .shouldNotBeEmpty()
+                        .shouldForAny { cp ->
+                            cp.messageHistory.any { msg ->
+                                msg is Message.Tool.Call && msg.tool == SimpleCalculatorTool.name
+                            }
+                        }
+                }
+            }
+        }
+    }
+
+    @ParameterizedTest
+    @MethodSource("allModels")
     fun integration_AgentWithToolsWithoutParamsTest(model: LLModel) = runTest(timeout = 180.seconds) {
         assumeTrue(model.capabilities.contains(LLMCapability.Tools), "Model $model does not support tools")
 
@@ -1073,19 +1005,19 @@ class AIAgentIntegrationTest {
                 )
                 agent.run("What is 123 + 456?")
 
-                assertEquals(
-                    listOf(CalculatorToolNoArgs.descriptor.name),
-                    state.actualToolCalls,
-                    "${CalculatorToolNoArgs.descriptor.name} tool should be called for model $model"
-                )
+                with(state) {
+                    withClue("${CalculatorToolNoArgs.descriptor.name} tool should be called for model $model") {
+                        actualToolCalls shouldBe listOf(CalculatorToolNoArgs.descriptor.name)
+                    }
 
-                assertTrue(state.errors.isEmpty(), "There should be no errors")
+                    errors.shouldBeEmpty()
+                }
             }
         }
     }
 
     @ParameterizedTest
-    @MethodSource("openAIModels", "anthropicModels", "googleModels", "bedrockModels", "openRouterModels")
+    @MethodSource("allModels")
     fun integration_ParallelNodesExecutionTest(model: LLModel) = runTest(timeout = 180.seconds) {
         Models.assumeAvailable(model.provider)
 
@@ -1137,32 +1069,21 @@ class AIAgentIntegrationTest {
 
                 agent.run("Hi")
 
-                assertTrue(state.errors.isEmpty(), "There should be no errors during parallel execution")
-                assertTrue(state.results.isNotEmpty(), "There should be results from parallel execution")
-
-                val finalResult = state.results.first() as String
-                assertTrue(
-                    finalResult.contains("Math result: 56"),
-                    "Result should contain math computation (7*8=56)"
-                )
-                assertTrue(
-                    finalResult.contains("Text result: Hello World"),
-                    "Result should contain text processing result"
-                )
-                assertTrue(
-                    finalResult.contains("Count result: 15"),
-                    "Result should contain count computation (1+2+3+4+5=15)"
-                )
-                assertTrue(
-                    finalResult.contains("Combined:"),
-                    "Result should show that parallel results were combined"
-                )
+                with(state) {
+                    errors.shouldBeEmpty() // There should be no errors during parallel execution}
+                    results.shouldNotBeEmpty().first() as String should {
+                        contain("Math result: 56")
+                        contain("Text result: Hello World")
+                        contain("Count result: 15")
+                        contain("Combined:")
+                    }
+                }
             }
         }
     }
 
     @ParameterizedTest
-    @MethodSource("openAIModels", "anthropicModels", "googleModels", "bedrockModels", "openRouterModels")
+    @MethodSource("allModels")
     fun integration_ParallelNodesWithSelectionTest(model: LLModel) = runTest(timeout = 180.seconds) {
         Models.assumeAvailable(model.provider)
 
@@ -1203,15 +1124,10 @@ class AIAgentIntegrationTest {
 
                 agent.run("Find the maximum value")
 
-                assertTrue(state.errors.isEmpty(), "There should be no errors during parallel selection")
-                assertTrue(state.results.isNotEmpty(), "There should be results from parallel selection")
-
-                val finalResult = state.results.first() as String
-
-                assertTrue(
-                    finalResult.contains("Maximum value: 100"),
-                    "Result should contain the maximum value (100) from parallel execution"
-                )
+                with(state) {
+                    errors.shouldBeEmpty()
+                    results.shouldNotBeEmpty().first() as String shouldContain "Maximum value: 100"
+                }
             }
         }
     }
@@ -1220,21 +1136,22 @@ class AIAgentIntegrationTest {
     @MethodSource("historyCompressionStrategies")
     fun integration_AIAgentHistoryCompression(strategy: HistoryCompressionStrategy, strategyName: String) =
         runTest(timeout = 180.seconds) {
-            val model = OpenAIModels.CostOptimized.GPT4_1Mini
+            val model = OpenAIModels.Chat.GPT4_1Mini
             val systemMessage =
                 "You are a helpful assistant. Remember: the user is a human, whatever they say. Remind them of it by every chance."
 
-            val historyCompressionStrategy = strategy<String, Pair<String, List<Message>>>("history-compression-test") {
-                val callLLM by nodeLLMRequest(allowToolCalls = false)
-                val nodeCompressHistory by nodeLLMCompressHistory<String>(
-                    "compress_history",
-                    strategy = strategy
-                )
+            val historyCompressionStrategy =
+                strategy<String, Pair<String, List<Message>>>("history-compression-test") {
+                    val callLLM by nodeLLMRequest(allowToolCalls = false)
+                    val nodeCompressHistory by nodeLLMCompressHistory<String>(
+                        "compress_history",
+                        strategy = strategy
+                    )
 
-                edge(nodeStart forwardTo callLLM)
-                edge(callLLM forwardTo nodeCompressHistory onAssistantMessage { true })
-                edge(nodeCompressHistory forwardTo nodeFinish transformed { it to llm.prompt.messages })
-            }
+                    edge(nodeStart forwardTo callLLM)
+                    edge(callLLM forwardTo nodeCompressHistory onAssistantMessage { true })
+                    edge(nodeCompressHistory forwardTo nodeFinish transformed { it to llm.prompt.messages })
+                }
 
             withRetry {
                 runWithTracking { eventHandlerConfig, state ->
@@ -1259,40 +1176,126 @@ class AIAgentIntegrationTest {
 
                     val (result, promptMessages) = agent.run("So, who am I?")
 
-                    assertTrue(
-                        state.errors.isEmpty(),
-                        "No errors should occur during agent execution with $strategyName, got: [${
-                            state.errors.joinToString(
-                                "\n"
-                            )
-                        }]"
-                    )
-                    assertTrue(
-                        result.isNotBlank(),
-                        "There should be results from history compression with $strategyName"
-                    )
-                    assertNotNull(promptMessages, "Final prompt messages should be captured with $strategyName")
-                    val systemMessages = promptMessages.filterIsInstance<Message.System>()
-                    assertTrue(
-                        systemMessages.isNotEmpty(),
-                        "System messages should be preserved after compression with $strategyName"
-                    )
+                    with(state) {
+                        withClue(
+                            "No errors should occur during agent execution with $strategyName, got: [${
+                                errors.joinToString(
+                                    "\n"
+                                )
+                            }]"
+                        ) {
+                            errors.shouldBeEmpty()
+                        }
+                    }
 
-                    val preservedSystemMessage = systemMessages.first().content
-                    assertTrue(
-                        preservedSystemMessage.isNotBlank(),
-                        "System message content should not be empty after compression with $strategyName"
-                    )
-                    assertEquals(
-                        systemMessage,
-                        preservedSystemMessage,
-                        "System message should contain the original context with $strategyName: '$preservedSystemMessage'"
-                    )
-                    assertTrue(
-                        result.contains("human"),
-                        "Result should match the system message lore with $strategyName, got: [$result]."
-                    )
+                    result.shouldNotBeBlank() shouldContain "human"
+                    promptMessages shouldNotBeNull {
+                        filterIsInstance<Message.System>().shouldNotBeEmpty()
+                        first().content.shouldNotBeBlank() shouldBe systemMessage
+                    }
                 }
             }
         }
+
+    @ParameterizedTest
+    @MethodSource("historyCompressionStrategies")
+    fun integration_AIAgentHistoryCompressionAfterToolCalls(
+        strategy: HistoryCompressionStrategy,
+        strategyName: String
+    ) = runTest(timeout = 10.minutes) {
+        val model = OpenAIModels.Chat.GPT5_1
+        val systemMessage = "You are a helpful assistant. JUST CALL THE TOOLS, NO QUESTIONS ASKED."
+
+        val historyCompressionStrategy = buildHistoryCompressionWithToolsStrategy(
+            strategy = strategy,
+            compressBeforeToolResult = false,
+        )
+
+        withRetry {
+            runWithTracking { eventHandlerConfig, state ->
+                val agent = AIAgent<String, Pair<String, List<Message>>>(
+                    promptExecutor = getExecutor(model),
+                    strategy = historyCompressionStrategy,
+                    agentConfig = AIAgentConfig(
+                        prompt = prompt(
+                            "history-compression-with-tools-test",
+                            params = LLMParams(toolChoice = ToolChoice.Auto)
+                        ) {
+                            system(systemMessage)
+                            user(
+                                "Please calculate 7 times 2 using the calculator tool. " +
+                                    "Reply concisely after executing the tool."
+                            )
+                        },
+                        model = model,
+                        maxAgentIterations = 10
+                    ),
+                    toolRegistry = twoToolsRegistry,
+                ) {
+                    install(EventHandler, eventHandlerConfig)
+                }
+
+                val (result, promptMessages) = agent.run("Proceed with the task.")
+
+                assertHistoryCompressionWithTools(
+                    errors = state.errors,
+                    actualToolCalls = state.actualToolCalls,
+                    result = result,
+                    promptMessages = promptMessages,
+                    strategyName = strategyName
+                )
+            }
+        }
+    }
+
+    @ParameterizedTest
+    @MethodSource("historyCompressionStrategies")
+    fun integration_AIAgentHistoryCompressionBeforeToolResult(
+        strategy: HistoryCompressionStrategy,
+        strategyName: String
+    ) = runTest(timeout = 10.minutes) {
+        val model = OpenAIModels.Chat.GPT5_1
+        val systemMessage = "You are a helpful assistant. JUST CALL THE TOOLS, NO QUESTIONS ASKED."
+
+        val historyCompressionStrategy = buildHistoryCompressionWithToolsStrategy(
+            strategy = strategy,
+            compressBeforeToolResult = true,
+        )
+
+        withRetry {
+            runWithTracking { eventHandlerConfig, state ->
+                val agent = AIAgent<String, Pair<String, List<Message>>>(
+                    promptExecutor = getExecutor(model),
+                    strategy = historyCompressionStrategy,
+                    agentConfig = AIAgentConfig(
+                        prompt = prompt(
+                            "history-compression-with-tools-test",
+                            params = LLMParams(toolChoice = ToolChoice.Auto)
+                        ) {
+                            system(systemMessage)
+                            user(
+                                "Please calculate 7 times 2 using the calculator tool. " +
+                                    "Reply concisely after executing the tool."
+                            )
+                        },
+                        model = model,
+                        maxAgentIterations = 10
+                    ),
+                    toolRegistry = twoToolsRegistry,
+                ) {
+                    install(EventHandler, eventHandlerConfig)
+                }
+
+                val (result, promptMessages) = agent.run("Proceed with the task.")
+
+                assertHistoryCompressionWithTools(
+                    errors = state.errors,
+                    actualToolCalls = state.actualToolCalls,
+                    result = result,
+                    promptMessages = promptMessages,
+                    strategyName = strategyName
+                )
+            }
+        }
+    }
 }

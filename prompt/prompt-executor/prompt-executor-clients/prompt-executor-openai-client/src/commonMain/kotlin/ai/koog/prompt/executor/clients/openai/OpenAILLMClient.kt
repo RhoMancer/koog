@@ -7,9 +7,11 @@ import ai.koog.prompt.dsl.ModerationResult
 import ai.koog.prompt.dsl.Prompt
 import ai.koog.prompt.executor.clients.ConnectionTimeoutConfig
 import ai.koog.prompt.executor.clients.LLMClient
+import ai.koog.prompt.executor.clients.LLMClientException
 import ai.koog.prompt.executor.clients.LLMEmbeddingProvider
 import ai.koog.prompt.executor.clients.openai.base.AbstractOpenAILLMClient
-import ai.koog.prompt.executor.clients.openai.base.OpenAIBasedSettings
+import ai.koog.prompt.executor.clients.openai.base.OpenAIBaseSettings
+import ai.koog.prompt.executor.clients.openai.base.OpenAICompatibleToolDescriptorSchemaGenerator
 import ai.koog.prompt.executor.clients.openai.base.models.OpenAIAudioConfig
 import ai.koog.prompt.executor.clients.openai.base.models.OpenAIAudioFormat
 import ai.koog.prompt.executor.clients.openai.base.models.OpenAIAudioVoice
@@ -27,30 +29,36 @@ import ai.koog.prompt.executor.clients.openai.models.OpenAIChatCompletionRespons
 import ai.koog.prompt.executor.clients.openai.models.OpenAIChatCompletionStreamResponse
 import ai.koog.prompt.executor.clients.openai.models.OpenAIEmbeddingRequest
 import ai.koog.prompt.executor.clients.openai.models.OpenAIEmbeddingResponse
+import ai.koog.prompt.executor.clients.openai.models.OpenAIModelsResponse
 import ai.koog.prompt.executor.clients.openai.models.OpenAIOutputFormat
 import ai.koog.prompt.executor.clients.openai.models.OpenAIResponsesAPIRequest
 import ai.koog.prompt.executor.clients.openai.models.OpenAIResponsesAPIRequestSerializer
 import ai.koog.prompt.executor.clients.openai.models.OpenAIResponsesAPIResponse
 import ai.koog.prompt.executor.clients.openai.models.OpenAIResponsesTool
+import ai.koog.prompt.executor.clients.openai.models.OpenAIResponsesTool.Function
 import ai.koog.prompt.executor.clients.openai.models.OpenAIResponsesToolChoice
 import ai.koog.prompt.executor.clients.openai.models.OpenAIStreamEvent
 import ai.koog.prompt.executor.clients.openai.models.OpenAITextConfig
 import ai.koog.prompt.executor.clients.openai.models.OutputContent
-import ai.koog.prompt.executor.model.LLMChoice
 import ai.koog.prompt.llm.LLMCapability
 import ai.koog.prompt.llm.LLMProvider
 import ai.koog.prompt.llm.LLModel
 import ai.koog.prompt.message.AttachmentContent
 import ai.koog.prompt.message.ContentPart
+import ai.koog.prompt.message.LLMChoice
 import ai.koog.prompt.message.Message
 import ai.koog.prompt.message.ResponseMetaInfo
 import ai.koog.prompt.params.LLMParams
 import ai.koog.prompt.streaming.StreamFrame
 import ai.koog.prompt.streaming.StreamFrameFlowBuilder
+import ai.koog.utils.io.SuitableForIO
 import io.github.oshai.kotlinlogging.KotlinLogging
 import io.ktor.client.HttpClient
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.filterNotNull
+import kotlinx.coroutines.withContext
 import kotlinx.datetime.Clock
 import kotlin.concurrent.atomics.ExperimentalAtomicApi
 import kotlin.uuid.ExperimentalUuidApi
@@ -65,6 +73,7 @@ import ai.koog.prompt.executor.clients.openai.base.models.Content as OpenAIConte
  * @property chatCompletionsPath The path of the OpenAI Chat Completions API. Defaults to "v1/chat/completions".
  * @property embeddingsPath The path of the OpenAI Embeddings API. Defaults to "v1/embeddings".
  * @property moderationsPath The path of the OpenAI Moderations API. Defaults to "v1/moderations".
+ * @property modelsPath The path of the OpenAI Models API. Defaults to "v1/models".
  */
 public class OpenAIClientSettings(
     baseUrl: String = "https://api.openai.com",
@@ -73,7 +82,8 @@ public class OpenAIClientSettings(
     public val responsesAPIPath: String = "v1/responses",
     public val embeddingsPath: String = "v1/embeddings",
     public val moderationsPath: String = "v1/moderations",
-) : OpenAIBasedSettings(baseUrl, chatCompletionsPath, timeoutConfig)
+    public val modelsPath: String = "v1/models",
+) : OpenAIBaseSettings(baseUrl, chatCompletionsPath, timeoutConfig)
 
 /**
  * Implementation of [LLMClient] for OpenAI API.
@@ -89,12 +99,14 @@ public open class OpenAILLMClient(
     private val settings: OpenAIClientSettings = OpenAIClientSettings(),
     baseClient: HttpClient = HttpClient(),
     clock: Clock = Clock.System,
+    private val toolsConverter: OpenAICompatibleToolDescriptorSchemaGenerator = OpenAICompatibleToolDescriptorSchemaGenerator(),
 ) : AbstractOpenAILLMClient<OpenAIChatCompletionResponse, OpenAIChatCompletionStreamResponse>(
     apiKey,
     settings,
     baseClient,
     clock,
-    staticLogger
+    staticLogger,
+    toolsConverter
 ),
     LLMEmbeddingProvider {
 
@@ -295,43 +307,51 @@ public open class OpenAILLMClient(
             stream = true
         )
 
-        return httpClient.sse(
-            path = settings.responsesAPIPath,
-            request = request,
-            requestBodyType = String::class,
-            decodeStreamingResponse = { json.decodeFromString<OpenAIStreamEvent>(it) },
-            processStreamingChunk = {
-                // TODO: handle tool calls, not sure if this is supported by the OpenAI Streaming API yet
-                when (it) {
-                    is OpenAIStreamEvent.ResponseOutputItemDone -> {
-                        when (val item = it.item) {
-                            is Item.FunctionToolCall -> StreamFrame.ToolCall(item.id, item.name, item.arguments)
-                            else -> null
-                        }
-                    }
-
-                    is OpenAIStreamEvent.ResponseCompleted -> {
-                        StreamFrame.End(
-                            finishReason = null,
-                            metaInfo = it.response.usage.let { usage ->
-                                ResponseMetaInfo.create(
-                                    clock = clock,
-                                    totalTokensCount = usage?.totalTokens,
-                                    inputTokensCount = usage?.inputTokens,
-                                    outputTokensCount = usage?.outputTokens
-                                )
+        return try {
+            httpClient.sse(
+                path = settings.responsesAPIPath,
+                request = request,
+                requestBodyType = String::class,
+                decodeStreamingResponse = { json.decodeFromString<OpenAIStreamEvent>(it) },
+                processStreamingChunk = {
+                    // TODO: handle tool calls, not sure if this is supported by the OpenAI Streaming API yet
+                    when (it) {
+                        is OpenAIStreamEvent.ResponseOutputItemDone -> {
+                            when (val item = it.item) {
+                                is Item.FunctionToolCall -> StreamFrame.ToolCall(item.id, item.name, item.arguments)
+                                else -> null
                             }
-                        )
-                    }
+                        }
 
-                    is OpenAIStreamEvent.ResponseOutputTextDelta -> {
-                        StreamFrame.Append(it.delta)
-                    }
+                        is OpenAIStreamEvent.ResponseCompleted -> {
+                            StreamFrame.End(
+                                finishReason = null,
+                                metaInfo = it.response.usage.let { usage ->
+                                    ResponseMetaInfo.create(
+                                        clock = clock,
+                                        totalTokensCount = usage?.totalTokens,
+                                        inputTokensCount = usage?.inputTokens,
+                                        outputTokensCount = usage?.outputTokens
+                                    )
+                                }
+                            )
+                        }
 
-                    else -> null
+                        is OpenAIStreamEvent.ResponseOutputTextDelta -> {
+                            StreamFrame.Append(it.delta)
+                        }
+
+                        else -> null
+                    }
                 }
-            }
-        ).filterNotNull()
+            ).filterNotNull()
+        } catch (e: Exception) {
+            throw LLMClientException(
+                clientName = clientName,
+                message = e.message,
+                cause = e
+            )
+        }
     }
 
     override suspend fun executeMultipleChoices(
@@ -358,15 +378,24 @@ public open class OpenAILLMClient(
             input = text
         )
 
-        val openAIResponse = httpClient.post(
-            path = settings.embeddingsPath,
-            request = request,
-            requestBodyType = OpenAIEmbeddingRequest::class,
-            responseType = OpenAIEmbeddingResponse::class
-        )
+        val openAIResponse = try {
+            httpClient.post(
+                path = settings.embeddingsPath,
+                request = request,
+                requestBodyType = OpenAIEmbeddingRequest::class,
+                responseType = OpenAIEmbeddingResponse::class
+            )
+        } catch (e: Exception) {
+            throw LLMClientException(
+                clientName = clientName,
+                message = e.message,
+                cause = e
+            )
+        }
         if (openAIResponse.data.isEmpty()) {
-            logger.error { "Empty data in OpenAI embedding response" }
-            error("Empty data in OpenAI embedding response")
+            val exception = LLMClientException(clientName, "Empty data in OpenAI embedding response")
+            logger.error(exception) { exception.message }
+            throw exception
         }
         return openAIResponse.data.first().embedding
     }
@@ -422,21 +451,61 @@ public open class OpenAILLMClient(
             model = model.id
         )
 
-        val openAIResponse = httpClient.post(
-            path = settings.moderationsPath,
-            request = request,
-            requestBodyType = OpenAIModerationRequest::class,
-            responseType = OpenAIModerationResponse::class
-        )
+        val openAIResponse = withContext(Dispatchers.SuitableForIO) {
+            try {
+                httpClient.post(
+                    path = settings.moderationsPath,
+                    request = request,
+                    requestBodyType = OpenAIModerationRequest::class,
+                    responseType = OpenAIModerationResponse::class
+                )
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                throw LLMClientException(
+                    clientName = clientName,
+                    message = e.message,
+                    cause = e
+                )
+            }
+        }
 
         if (openAIResponse.results.isEmpty()) {
-            logger.error { "Empty results in OpenAI moderation response" }
-            error("Empty results in OpenAI moderation response")
+            val exception = LLMClientException(clientName, "Empty results in OpenAI moderation response")
+            logger.error(exception) { exception.message }
+            throw exception
         }
         val result = openAIResponse.results.first()
 
         // Convert OpenAI categories to a map
         return convertModerationResult(result)
+    }
+
+    /**
+     * Retrieves the list of available models from OpenAI.
+     * https://platform.openai.com/docs/api-reference/models/list
+     *
+     * @return A list of model identifiers available from OpenAI.
+     */
+    override suspend fun models(): List<String> {
+        logger.debug { "Fetching available models from OpenAI" }
+
+        val openAIResponse = try {
+            httpClient.get(
+                path = settings.modelsPath,
+                responseType = OpenAIModelsResponse::class
+            )
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            throw LLMClientException(
+                clientName = clientName,
+                message = e.message,
+                cause = e
+            )
+        }
+
+        return openAIResponse.data.map { it.id }
     }
 
     private fun convertModerationResult(result: OpenAIModerationResult): ModerationResult {
@@ -534,7 +603,14 @@ public open class OpenAILLMClient(
             model.requireCapability(LLMCapability.Tools)
         }
 
-        val llmTools = tools.takeIf { it.isNotEmpty() }?.map { it.toResponsesTool() }
+        val llmTools = tools.takeIf { it.isNotEmpty() }?.map {
+            Function(
+                name = it.name,
+                parameters = toolsConverter.generate(it),
+                description = it.description
+            )
+        }
+
         val messages = convertPromptToInput(prompt, model)
 
         val request = serializeResponsesAPIRequest(
@@ -553,13 +629,6 @@ public open class OpenAILLMClient(
             responseType = OpenAIResponsesAPIResponse::class
         )
     }
-
-    private fun ToolDescriptor.toResponsesTool(): OpenAIResponsesTool.Function =
-        OpenAIResponsesTool.Function(
-            name = name,
-            parameters = paramsToJsonObject(),
-            description = description
-        )
 
     @OptIn(ExperimentalUuidApi::class)
     private fun convertPromptToInput(prompt: Prompt, model: LLModel): List<Item> {
@@ -595,10 +664,20 @@ public open class OpenAILLMClient(
                         flushPendingCalls()
                         add(
                             Item.OutputMessage(
-                                role = "assistant",
                                 content = listOf(
                                     OutputContent.Text(text = message.content, annotations = emptyList())
                                 ),
+                            )
+                        )
+                    }
+
+                    is Message.Reasoning -> {
+                        flushPendingCalls()
+                        add(
+                            Item.Reasoning(
+                                id = message.id ?: Uuid.random().toString(),
+                                encryptedContent = message.encrypted,
+                                summary = listOf(Item.Reasoning.Summary(message.content))
                             )
                         )
                     }
@@ -664,7 +743,7 @@ public open class OpenAILLMClient(
                         add(InputContent.File(fileData = fileData, fileUrl = fileUrl, filename = part.fileName))
                     }
 
-                    else -> throw IllegalArgumentException("Unsupported attachment type: $part, for model: $model with Responses API")
+                    else -> throw LLMClientException(clientName, "Unsupported attachment type: $part, for model: $model with Responses API")
                 }
             }
         }
@@ -681,7 +760,6 @@ public open class OpenAILLMClient(
         )
 
         return response.output
-            .filter { it is Item.FunctionToolCall || it is Item.OutputMessage } // TODO: support all other types of Item
             .map { output ->
                 when (output) {
                     is Item.FunctionToolCall -> Message.Tool.Call(
@@ -697,7 +775,14 @@ public open class OpenAILLMClient(
                         metaInfo = metaInfo
                     )
 
-                    else -> error("Unexpected response from $clientName: no tool calls and no content")
+                    is Item.Reasoning -> Message.Reasoning(
+                        id = output.id,
+                        encrypted = output.encryptedContent,
+                        content = output.summary.joinToString(separator = "\n") { it.text },
+                        metaInfo = metaInfo
+                    )
+
+                    else -> throw LLMClientException(clientName, "Unexpected response from $clientName: no tool calls and no content")
                 }
             }
     }
@@ -718,6 +803,7 @@ public open class OpenAILLMClient(
             )
             params
         }
+
         params is OpenAIChatParams -> {
             model.requireCapability(
                 LLMCapability.OpenAIEndpoint.Completions,
@@ -725,9 +811,10 @@ public open class OpenAILLMClient(
             )
             params
         }
+
         model.supports(LLMCapability.OpenAIEndpoint.Completions) -> params.toOpenAIChatParams()
         model.supports(LLMCapability.OpenAIEndpoint.Responses) -> params.toOpenAIResponsesParams()
-        else -> error("Cannot determine proper LLM params for OpenAI model: ${model.id}")
+        else -> throw LLMClientException(clientName, "Cannot determine proper LLM params for OpenAI model: ${model.id}")
     }
 
     private inline fun <T> selectExecutionStrategy(

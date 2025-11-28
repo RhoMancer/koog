@@ -324,6 +324,8 @@ In addition, Koog also includes custom, Koog-specific attributes. You can recogn
 - `koog.agent.strategy.name`: the name of the agent strategy. A strategy is a Koog-related entity that describes the 
 purpose of the agent. Used in the `InvokeAgentSpan` span.
 - `koog.node.name`: the name of the node being run. Used in the `NodeExecuteSpan` span.
+- `koog.node.input`: the input passed to the node at the beginning of execution. Present on `NodeExecuteSpan` when node starts.
+- `koog.node.output`: the output produced by the node upon completion. Present on `NodeExecuteSpan` when node completes successfully.
 
 ### Events
 
@@ -607,7 +609,7 @@ fun main() {
     runBlocking {
         val agent = AIAgent(
             promptExecutor = simpleOpenAIExecutor(openAIApiKey),
-            llmModel = OpenAIModels.Reasoning.O4Mini,
+            llmModel = OpenAIModels.Chat.O4Mini,
             systemPrompt = "You are a code assistant. Provide concise code examples."
         ) {
             install(OpenTelemetry) {

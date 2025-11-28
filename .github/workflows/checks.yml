@@ -43,7 +43,7 @@ jobs:
       # Configure Gradle for optimal use in GitHub Actions, including caching of downloaded dependencies.
       # See: https://github.com/gradle/actions/blob/main/setup-gradle/README.md
       - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@v4
+        uses: gradle/actions/setup-gradle@v5
 
       - name: Assemble with Gradle Wrapper
         run: ./gradlew assemble ktlintCheck
@@ -70,7 +70,7 @@ jobs:
           python-version-file: "./docs/.python-version"
 
       - name: Install uv
-        uses: astral-sh/setup-uv@v6
+        uses: astral-sh/setup-uv@v7
         with:
           version: "0.8.15"
           enable-cache: true
@@ -105,7 +105,7 @@ jobs:
       # Configure Gradle for optimal use in GitHub Actions, including caching of downloaded dependencies.
       # See: https://github.com/gradle/actions/blob/main/setup-gradle/README.md
       - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@v4
+        uses: gradle/actions/setup-gradle@v5
 
       - name: JvmTest with Gradle Wrapper and Kover coverage
         if: matrix.os == 'ubuntu-latest'
@@ -127,14 +127,14 @@ jobs:
 
       - name: Archive coverage data
         if: matrix.os == 'ubuntu-latest'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: gradle-coverage-data.zip
           path: .qodana/code-coverage
 
       - name: Collect reports
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: reports-${{ matrix.os }}
           path: |
@@ -176,7 +176,7 @@ jobs:
 
       # Download the coverage data artifact
       - name: Download coverage data
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v6
         with:
           name: gradle-coverage-data.zip
           path: .qodana/code-coverage
@@ -199,7 +199,7 @@ jobs:
         with:
           distribution: ${{ env.JAVA_DISTRIBUTION }}
           java-version: ${{ env.JAVA_VERSION }}
-      - uses: gradle/actions/setup-gradle@v4
+      - uses: gradle/actions/setup-gradle@v5
       - name: Generate and verify code examples
         run: |
           echo "Starting knit generation..."
@@ -229,7 +229,7 @@ jobs:
           java-version: ${{ env.JAVA_VERSION }}
           distribution: 'temurin'
       - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@v4
+        uses: gradle/actions/setup-gradle@v5
 
       - name: Verify Dokka
         run: ./gradlew dokkaGenerate

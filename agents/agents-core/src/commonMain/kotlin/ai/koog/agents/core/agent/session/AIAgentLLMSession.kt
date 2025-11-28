@@ -6,14 +6,14 @@ import ai.koog.agents.core.tools.ToolDescriptor
 import ai.koog.agents.core.utils.ActiveProperty
 import ai.koog.prompt.dsl.ModerationResult
 import ai.koog.prompt.dsl.Prompt
-import ai.koog.prompt.executor.model.LLMChoice
 import ai.koog.prompt.executor.model.PromptExecutor
 import ai.koog.prompt.llm.LLModel
+import ai.koog.prompt.message.LLMChoice
 import ai.koog.prompt.message.Message
 import ai.koog.prompt.params.LLMParams
 import ai.koog.prompt.streaming.StreamFrame
 import ai.koog.prompt.structure.StructureFixingParser
-import ai.koog.prompt.structure.StructuredOutputConfig
+import ai.koog.prompt.structure.StructuredRequestConfig
 import ai.koog.prompt.structure.StructuredResponse
 import ai.koog.prompt.structure.executeStructured
 import ai.koog.prompt.structure.parseResponseToStructuredResponse
@@ -263,7 +263,7 @@ public sealed class AIAgentLLMSession(
      * @see [executeStructured]
      */
     public open suspend fun <T> requestLLMStructured(
-        config: StructuredOutputConfig<T>,
+        config: StructuredRequestConfig<T>,
     ): Result<StructuredResponse<T>> {
         validateSession()
 
@@ -346,7 +346,7 @@ public sealed class AIAgentLLMSession(
      */
     public suspend fun <T> parseResponseToStructuredResponse(
         response: Message.Assistant,
-        config: StructuredOutputConfig<T>
+        config: StructuredRequestConfig<T>
     ): StructuredResponse<T> = executor.parseResponseToStructuredResponse(response, config, model)
 
     /**

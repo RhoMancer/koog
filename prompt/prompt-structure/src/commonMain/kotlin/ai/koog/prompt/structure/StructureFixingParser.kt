@@ -14,74 +14,78 @@ import kotlinx.serialization.SerializationException
  * Helper fixing parser for handling malformed structured data that uses LLMs to attempt to
  * correct any errors in the provided content to produce valid structured outputs.
  *
- * @property fixingModel LLM to use for processing and attempting to fix format.
+ * @property model LLM to use for processing and attempting to fix format.
  * @property retries Number of attempts to fix the structure before giving up.
- * @property fixingPrompt Prompt explaining to LLM how to fix a given structure.
+ * @property prompt Prompt explaining to LLM how to fix a given structure.
  */
 public class StructureFixingParser(
-    public val fixingModel: LLModel,
+    public val model: LLModel,
     public val retries: Int,
-    private val fixingPrompt: (
+    private val prompt: (
         builder: PromptBuilder,
         content: String,
-        structure: StructuredData<*, *>,
+        structure: Structure<*, *>,
         exception: SerializationException
     ) -> PromptBuilder = ::defaultFixingPrompt,
 ) {
 
     init {
-        require(retries > 0) { "Retries must be greater than 0" }
+        require(retries >= 0) { "Retries must be no less than 0" }
     }
 
     /**
      * Parses the given content string into an instance of the specified type using the provided structured data schema.
      * If the initial parsing fails, attempts to fix the content based on the error and retries parsing.
      *
-     * @param executor Executor to preform requests to [fixingModel]
+     * @param executor Executor to preform requests to [model]
      * @param structure The structured data schema and serializer to use for parsing the content.
      * @param content The string content to parse into the structured data type.
      * @throws SerializationException If parsing fails both initially and after attempting to fix the content.
      */
-    public suspend fun <T> parse(executor: PromptExecutor, structure: StructuredData<T, *>, content: String): T {
-        var currentContent = content
-        var currentException: SerializationException? = null
+    public suspend fun <T> parse(executor: PromptExecutor, structure: Structure<T, *>, content: String): T {
+        try {
+            return structure.parse(content)
+        } catch (initialException: SerializationException) {
+            var currentContent = content
+            var currentException: SerializationException = initialException
+            var attempt = 0
 
-        repeat(retries) { attempt ->
-            try {
-                logger.debug { "$attempt/$retries: Try to parse LLM response content: <$content>" }
+            while (++attempt <= retries) {
+                logger.debug { "$attempt/$retries: Try to fix LLM structured response:\n$currentContent" }
+                currentContent = executeFixStructure(executor, currentContent, structure, currentException)
 
-                return structure.parse(currentContent)
-            } catch (exception: SerializationException) {
-                logger.warn(exception) { "Failed to parse structure from content: <$content>" }
-
-                currentException = exception
-                currentContent = executeFixStructure(executor, content, structure, exception)
+                try {
+                    return structure.parse(currentContent)
+                } catch (e: SerializationException) {
+                    logger.warn(e) { "Failed to parse structure from content:\n$currentContent" }
+                    currentException = e
+                }
             }
-        }
 
-        throw LLMStructuredParsingError("Unable to parse structure after $retries retries", currentException)
+            throw LLMStructuredParsingError("Unable to parse structure after $retries retries", currentException)
+        }
     }
 
     private suspend fun <T> executeFixStructure(
         executor: PromptExecutor,
         content: String,
-        structure: StructuredData<T, *>,
+        structure: Structure<T, *>,
         exception: SerializationException,
     ): String {
         val prompt = prompt(
             "structure-fixing",
             LLMParams(
-                schema = if (structure.schema.capability in fixingModel.capabilities) {
+                schema = if (structure.schema.capability in model.capabilities) {
                     structure.schema
                 } else {
                     null
                 }
             )
         ) {
-            fixingPrompt(this, content, structure, exception)
+            prompt(this, content, structure, exception)
         }
 
-        val response = executor.execute(prompt = prompt, model = fixingModel).single()
+        val response = executor.execute(prompt = prompt, model = model).single()
         require(response is Message.Assistant) { "Response for fixing structure must be an assistant message, got ${response::class.simpleName} instead" }
 
         return response.content
@@ -99,7 +103,7 @@ public class StructureFixingParser(
         public fun defaultFixingPrompt(
             builder: PromptBuilder,
             content: String,
-            structure: StructuredData<*, *>,
+            structure: Structure<*, *>,
             exception: SerializationException
         ): PromptBuilder = builder.apply {
             system {

@@ -16,7 +16,6 @@ import ai.koog.agents.core.feature.config.FeatureConfig
 import ai.koog.agents.core.feature.pipeline.AIAgentGraphPipeline
 import ai.koog.agents.core.tools.ToolRegistry
 import ai.koog.prompt.executor.model.PromptExecutor
-import ai.koog.utils.io.Closeable
 import io.github.oshai.kotlinlogging.KotlinLogging
 import kotlinx.datetime.Clock
 import kotlin.reflect.KType
@@ -35,7 +34,7 @@ import kotlin.reflect.KType
  * @property inputType [KType] representing [Input] - agent input.
  * @property outputType [KType] representing [Output] - agent output.
  * @property promptExecutor Executor used to manage and execute prompt strings.
- * @property strategy The execution strategy defining how the agent processes input and produces output..
+ * @property strategy The execution strategy defining how the agent processes input and produces output.
  * @property agentConfig Configuration details for the local agent that define its operational parameters.
  * @property toolRegistry Registry of tools the agent can interact with, defaulting to an empty registry.
  * @property installFeatures Lambda for installing additional features within the agent environment.
@@ -59,7 +58,7 @@ public open class GraphAIAgent<Input, Output>(
 ) : StatefulSingleUseAIAgent<Input, Output, AIAgentGraphContextBase>(
     logger = logger,
     id = id,
-), Closeable {
+) {
 
     private companion object {
         private val logger = KotlinLogging.logger {}

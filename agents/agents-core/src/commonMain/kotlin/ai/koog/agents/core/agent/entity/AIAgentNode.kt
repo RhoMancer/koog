@@ -2,11 +2,14 @@ package ai.koog.agents.core.agent.entity
 
 import ai.koog.agents.core.agent.context.AIAgentGraphContextBase
 import ai.koog.agents.core.agent.context.element.NodeInfoContextElement
+import ai.koog.agents.core.agent.context.element.getNodeInfoElement
 import ai.koog.agents.core.annotation.InternalAgentsApi
 import io.github.oshai.kotlinlogging.KotlinLogging
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.withContext
 import kotlin.reflect.KType
 import kotlin.uuid.ExperimentalUuidApi
+import kotlin.uuid.Uuid
 
 /**
  * Represents an abstract node in an AI agent strategy graph, responsible for executing a specific
@@ -112,7 +115,7 @@ public abstract class AIAgentNodeBase<TInput, TOutput> internal constructor() {
      *
      * @param context The execution context that provides necessary runtime information and functionality.
      * @param input The input data required to perform the execution.
-     * @return The result of the execution as an Output object.
+     * @return The result of the execution as [TOutput] object.
      */
     public abstract suspend fun execute(context: AIAgentGraphContextBase, input: TInput): TOutput?
 
@@ -151,8 +154,9 @@ public open class AIAgentNode<TInput, TOutput> internal constructor(
     }
 
     @InternalAgentsApi
+    @OptIn(ExperimentalUuidApi::class)
     override suspend fun execute(context: AIAgentGraphContextBase, input: TInput): TOutput =
-        withContext(NodeInfoContextElement(nodeName = name)) {
+        withContext(NodeInfoContextElement(Uuid.random().toString(), getNodeInfoElement()?.id, name, input, inputType)) {
             logger.debug { "Start executing node (name: $name)" }
             context.pipeline.onNodeExecutionStarting(this@AIAgentNode, context, input, inputType)
 
@@ -161,13 +165,15 @@ public open class AIAgentNode<TInput, TOutput> internal constructor(
                     val executeResult = context.execute(input)
                     logger.trace { "Finished executing node (name: $name) with output: $executeResult" }
                     executeResult
-                } catch (t: Throwable) {
-                    logger.error(t) { "Error executing node (name: $name): ${t.message}" }
-                    context.pipeline.onNodeExecutionFailed(this@AIAgentNode, context, input, inputType, t)
-                    throw t
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (e: Exception) {
+                    logger.error(e) { "Error executing node (name: $name): ${e.message}" }
+                    context.pipeline.onNodeExecutionFailed(this@AIAgentNode, context, input, inputType, e)
+                    throw e
                 }
 
-            context.pipeline.onNodeExecutionCompleted(this@AIAgentNode, context, input, output, inputType, outputType)
+            context.pipeline.onNodeExecutionCompleted(this@AIAgentNode, context, input, inputType, output, outputType)
             output
         }
 }

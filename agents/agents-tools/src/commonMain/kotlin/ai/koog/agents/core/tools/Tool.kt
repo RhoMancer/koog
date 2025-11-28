@@ -4,14 +4,14 @@ import ai.koog.agents.core.tools.annotations.InternalAgentToolsApi
 import ai.koog.agents.core.tools.serialization.ToolJson
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.StringFormat
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.jsonObject
 
 /**
  * Represents a tool that, when executed, makes changes to the environment.
  */
-@Suppress("unused")
 public abstract class Tool<TArgs, TResult> {
     /**
      * Serializer responsible for encoding and decoding the arguments required for the tool execution.
@@ -22,6 +22,18 @@ public abstract class Tool<TArgs, TResult> {
      * proper serialization and deserialization of the tool arguments.
      */
     public abstract val argsSerializer: KSerializer<TArgs>
+
+    // FIXME just a quickfix, more proper and thorough update is required for Tool
+    @OptIn(InternalAgentToolsApi::class)
+    private val actualArgsSerializer by lazy {
+        argsSerializer.asToolDescriptorSerializer()
+    }
+
+    // FIXME just a quickfix, more proper and thorough update is required for Tool
+    @OptIn(InternalAgentToolsApi::class)
+    private val actualResultSerializer by lazy {
+        resultSerializer.asToolDescriptorSerializer()
+    }
 
     /**
      * Serializer responsible for encoding the result of the tool execution.
@@ -34,10 +46,10 @@ public abstract class Tool<TArgs, TResult> {
     public abstract val resultSerializer: KSerializer<TResult>
 
     /**
-     * The [StringFormat] used to encode and decode the arguments and results of the tool.
-     * This property is used to serialize and deserialize the tool arguments and results.
+     * The [Json] used to encode and decode the arguments and results of the tool.
      */
-    protected open val format: StringFormat = ToolJson
+    @OptIn(InternalAgentToolsApi::class)
+    protected open val json: Json = ToolJson
 
     /**
      * The name of the tool.
@@ -107,7 +119,16 @@ public abstract class Tool<TArgs, TResult> {
      * @param rawArgs the raw JSON object that contains the encoded arguments
      * @return the decoded arguments of type TArgs
      */
-    public fun decodeArgs(rawArgs: JsonObject): TArgs = ToolJson.decodeFromJsonElement(argsSerializer, rawArgs)
+    public fun decodeArgs(rawArgs: JsonObject): TArgs = json.decodeFromJsonElement(actualArgsSerializer, rawArgs)
+
+    /**
+     * Decodes the provided raw JSON element into an instance of the specified result type.
+     *
+     * @param rawResult The raw JSON element that contains the encoded result.
+     * @return The decoded result of type TResult.
+     */
+    public fun decodeResult(rawResult: JsonElement): TResult =
+        json.decodeFromJsonElement(actualResultSerializer, rawResult)
 
     /**
      * Encodes the given arguments into a JSON representation.
@@ -115,7 +136,48 @@ public abstract class Tool<TArgs, TResult> {
      * @param args The arguments to be encoded.
      * @return A JsonObject representing the encoded arguments.
      */
-    public fun encodeArgs(args: TArgs): JsonObject = ToolJson.encodeToJsonElement(argsSerializer, args).jsonObject
+    public fun encodeArgs(args: TArgs): JsonObject = json.encodeToJsonElement(actualArgsSerializer, args).jsonObject
+
+    /**
+     * Encodes the given arguments into a JSON representation without type safety checks.
+     *
+     * This method attempts to cast the arguments to the expected type and uses the configured serializer
+     * for the actual encoding. Use caution when calling this method, as bypassing type safety may lead
+     * to runtime exceptions if the cast is invalid.
+     *
+     * @param args The input arguments to be encoded. These are provided as a generic `Any?` type and are
+     *             internally cast to the expected type.
+     * @return A JsonObject representing the encoded arguments.
+     * @throws ClassCastException If the provided arguments cannot be cast to the expected type.
+     */
+    public fun encodeArgsUnsafe(args: Any?): JsonObject {
+        @Suppress("UNCHECKED_CAST")
+        return json.encodeToJsonElement(actualArgsSerializer, args as TArgs).jsonObject
+    }
+
+    /**
+     * Encodes the given result into a JSON representation using the configured result serializer.
+     *
+     * @param result The result object of type TResult to be encoded.
+     * @return A JsonObject representing the encoded result.
+     */
+    public fun encodeResult(result: TResult): JsonElement =
+        json.encodeToJsonElement(actualResultSerializer, result)
+
+    /**
+     * Encodes the given result object into a JSON representation without type safety checks.
+     * This method casts the provided result to the expected `TResult` type and leverages the `encodeResult` method
+     * to produce the JSON output.
+     *
+     * @param result The result object of type `Any?` to be encoded. It is internally cast to `TResult`,
+     *               which may lead to runtime exceptions if the cast is invalid.
+     * @return A JsonObject representing the encoded result.
+     */
+    @InternalAgentToolsApi
+    public fun encodeResultUnsafe(result: Any?): JsonElement {
+        @Suppress("UNCHECKED_CAST")
+        return encodeResult(result as TResult)
+    }
 
     /**
      * Encodes the provided arguments into a JSON string representation using the configured serializer.
@@ -123,7 +185,23 @@ public abstract class Tool<TArgs, TResult> {
      * @param args the arguments to be encoded into a JSON string
      * @return the JSON string representation of the provided arguments
      */
-    public fun encodeArgsToString(args: TArgs): String = ToolJson.encodeToString(argsSerializer, args)
+    public fun encodeArgsToString(args: TArgs): String = json.encodeToString(actualArgsSerializer, args)
+
+    /**
+     * Encodes the provided arguments into a JSON string representation without type safety checks.
+     *
+     * This method casts the provided `args` to the expected `TArgs` type and invokes the type-safe
+     * `encodeArgsToString` method to perform the encoding. Use caution when calling this method,
+     * as it bypasses type safety and may result in a runtime exception if the cast fails.
+     *
+     * @param args The arguments to be encoded into a JSON string, provided as a generic `Any?` type.
+     * @return A JSON string representation of the provided arguments.
+     * @throws ClassCastException If the provided arguments cannot be cast to the expected type `TArgs`.
+     */
+    public fun encodeArgsToStringUnsafe(args: Any?): String {
+        @Suppress("UNCHECKED_CAST")
+        return encodeArgsToString(args as TArgs)
+    }
 
     /**
      * Encodes the given result of type TResult to its string representation for the LLM.s
@@ -131,7 +209,7 @@ public abstract class Tool<TArgs, TResult> {
      * @param result The result object of type TResult to be encoded into a string.
      * @return The string representation of the given result.
      */
-    public open fun encodeResultToString(result: TResult): String = format.encodeToString(resultSerializer, result)
+    public open fun encodeResultToString(result: TResult): String = json.encodeToString(resultSerializer, result)
 
     /**
      * Encodes the provided result object into a JSON string representation without type safety checks.

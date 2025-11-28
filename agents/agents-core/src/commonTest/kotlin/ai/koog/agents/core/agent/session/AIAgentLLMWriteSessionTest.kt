@@ -48,7 +48,7 @@ class AIAgentLLMWriteSessionTest {
                     id = toolCall.id,
                     tool = toolCall.tool,
                     content = tool.encodeResultToStringUnsafe(result),
-                    result = result
+                    result = tool.encodeResultUnsafe(result)
                 )
             }
         }
@@ -277,7 +277,7 @@ class AIAgentLLMWriteSessionTest {
     }
 
     @Test
-    fun testUpdatePrompt() = runTest {
+    fun testAppendPrompt() = runTest {
         val mockExecutor = getMockExecutor {
             mockLLMAnswer("Updated prompt response").asDefaultResponse
         }
@@ -289,7 +289,7 @@ class AIAgentLLMWriteSessionTest {
 
         val session = createSession(mockExecutor, prompt = initialPrompt)
 
-        session.updatePrompt {
+        session.appendPrompt {
             user("Additional user message")
         }
 

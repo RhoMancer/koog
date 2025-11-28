@@ -146,7 +146,7 @@ public inline fun <IncomingOutput, IntermediateOutput, OutgoingInput, reified Re
 ): AIAgentEdgeBuilderIntermediate<IncomingOutput, ReceivedToolResult, OutgoingInput> {
     return onIsInstance(ReceivedToolResult::class)
         .onCondition { toolResult ->
-            (toolResult.tool == tool.name) && block(toolResult.toSafeResult())
+            (toolResult.tool == tool.name) && block(toolResult.toSafeResult(tool))
         }
 }
 
@@ -160,10 +160,9 @@ public infix fun <IncomingOutput, OutgoingInput> AIAgentEdgeBuilderIntermediate<
     block: suspend (List<Message.Tool.Call>) -> Boolean
 ): AIAgentEdgeBuilderIntermediate<IncomingOutput, List<Message.Tool.Call>, OutgoingInput> {
     return onIsInstance(List::class)
-        .transformed { it to it.filterIsInstance<Message.Tool.Call>() }
+        .transformed { it.filterIsInstance<Message.Tool.Call>() }
         // skipping this edge in case we have list of only assistant messages
-        .onCondition { (_, filtered) -> filtered.any() }
-        .transformed { (_, filtered) -> filtered }
+        .onCondition { it.isNotEmpty() }
         .onCondition { toolCalls -> block(toolCalls) }
 }
 
@@ -178,9 +177,8 @@ public infix fun <IncomingOutput, IntermediateOutput, OutgoingInput> AIAgentEdge
     block: suspend (List<ReceivedToolResult>) -> Boolean
 ): AIAgentEdgeBuilderIntermediate<IncomingOutput, List<ReceivedToolResult>, OutgoingInput> {
     return onIsInstance(List::class)
-        .transformed { it to it.filterIsInstance<ReceivedToolResult>() }
-        .onCondition { (original, filtered) -> original == filtered }
-        .transformed { (_, filtered) -> filtered }
+        .transformed { it.filterIsInstance<ReceivedToolResult>() }
+        .onCondition { it.isNotEmpty() }
         .onCondition { toolResults -> block(toolResults) }
 }
 
@@ -208,11 +206,9 @@ public infix fun <IncomingOutput, OutgoingInput> AIAgentEdgeBuilderIntermediate<
     block: suspend (List<Message.Assistant>) -> Boolean
 ): AIAgentEdgeBuilderIntermediate<IncomingOutput, List<Message.Assistant>, OutgoingInput> {
     return onIsInstance(List::class)
-        .transformed { it to it.filterIsInstance<Message.Assistant>() }
-        .onCondition { (original, filtered) -> original == filtered }
-        .transformed { (_, filtered) -> filtered }
+        .transformed { it.filterIsInstance<Message.Assistant>() }
+        .onCondition { it.isNotEmpty() }
         .onCondition { toolResults -> block(toolResults) }
-        .transformed { it }
 }
 
 /**

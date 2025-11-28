@@ -14,11 +14,10 @@ import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.Base64
 
-group = "ai.koog"
 version = run {
     // our version follows the semver specification
 
-    val main = "0.5.0"
+    val baseVersion = project.property("version") as String
 
     val feat = run {
         val releaseBuild = !System.getenv("BRANCH_KOOG_IS_RELEASING_FROM").isNullOrBlank()
@@ -73,7 +72,7 @@ version = run {
         }
     }
 
-    "$main$feat"
+    "$baseVersion$feat"
 }
 
 fun isCustomReleaseBranch(branchName: String): Boolean = branchName.matches(Regex("""^\d+\.\d+\.\d+$"""))
@@ -121,12 +120,16 @@ subprojects {
         environment.putAll(
             mapOf(
                 "ANTHROPIC_API_TEST_KEY" to System.getenv("ANTHROPIC_API_TEST_KEY"),
-                "OPEN_AI_API_TEST_KEY" to System.getenv("OPEN_AI_API_TEST_KEY"),
-                "GEMINI_API_TEST_KEY" to System.getenv("GEMINI_API_TEST_KEY"),
-                "OPEN_ROUTER_API_TEST_KEY" to System.getenv("OPEN_ROUTER_API_TEST_KEY"),
-                "AWS_SECRET_ACCESS_KEY" to System.getenv("AWS_SECRET_ACCESS_KEY"),
                 "AWS_ACCESS_KEY_ID" to System.getenv("AWS_ACCESS_KEY_ID"),
+                "AWS_BEARER_TOKEN_BEDROCK" to System.getenv("AWS_BEARER_TOKEN_BEDROCK"),
+                "AWS_SECRET_ACCESS_KEY" to System.getenv("AWS_SECRET_ACCESS_KEY"),
+                "AWS_BEDROCK_GUARDRAIL_ID" to System.getenv("AWS_BEDROCK_GUARDRAIL_ID"),
+                "AWS_BEDROCK_GUARDRAIL_VERSION" to System.getenv("AWS_BEDROCK_GUARDRAIL_VERSION"),
                 "DEEPSEEK_API_TEST_KEY" to System.getenv("DEEPSEEK_API_TEST_KEY"),
+                "GEMINI_API_TEST_KEY" to System.getenv("GEMINI_API_TEST_KEY"),
+                "MISTRAL_AI_API_TEST_KEY" to System.getenv("MISTRAL_AI_API_TEST_KEY"),
+                "OPEN_AI_API_TEST_KEY" to System.getenv("OPEN_AI_API_TEST_KEY"),
+                "OPEN_ROUTER_API_TEST_KEY" to System.getenv("OPEN_ROUTER_API_TEST_KEY"),
             )
         )
     }
@@ -206,7 +209,6 @@ tasks {
 dependencies {
     dokka(project(":agents:agents-core"))
     dokka(project(":agents:agents-ext"))
-    dokka(project(":agents:agents-features:agents-features-debugger"))
     dokka(project(":agents:agents-features:agents-features-event-handler"))
     dokka(project(":agents:agents-features:agents-features-memory"))
     dokka(project(":agents:agents-features:agents-features-opentelemetry"))
@@ -230,6 +232,7 @@ dependencies {
     dokka(project(":prompt:prompt-executor:prompt-executor-clients:prompt-executor-bedrock-client"))
     dokka(project(":prompt:prompt-executor:prompt-executor-clients:prompt-executor-deepseek-client"))
     dokka(project(":prompt:prompt-executor:prompt-executor-clients:prompt-executor-google-client"))
+    dokka(project(":prompt:prompt-executor:prompt-executor-clients:prompt-executor-mistralai-client"))
     dokka(project(":prompt:prompt-executor:prompt-executor-clients:prompt-executor-ollama-client"))
     dokka(project(":prompt:prompt-executor:prompt-executor-clients:prompt-executor-openai-client"))
     dokka(project(":prompt:prompt-executor:prompt-executor-clients:prompt-executor-openai-client-base"))

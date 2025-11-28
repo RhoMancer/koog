@@ -3,10 +3,10 @@ package ai.koog.agents.features.tracing.writer
 import ai.koog.agents.core.annotation.InternalAgentsApi
 import ai.koog.agents.core.dsl.builder.forwardTo
 import ai.koog.agents.core.dsl.builder.strategy
+import ai.koog.agents.core.dsl.extension.nodeAppendPrompt
 import ai.koog.agents.core.dsl.extension.nodeExecuteTool
 import ai.koog.agents.core.dsl.extension.nodeLLMRequest
 import ai.koog.agents.core.dsl.extension.nodeLLMRequestStreamingAndSendResults
-import ai.koog.agents.core.dsl.extension.nodeUpdatePrompt
 import ai.koog.agents.core.feature.model.AIAgentError
 import ai.koog.agents.core.feature.model.events.LLMCallStartingEvent
 import ai.koog.agents.core.feature.model.events.LLMStreamingCompletedEvent
@@ -14,10 +14,14 @@ import ai.koog.agents.core.feature.model.events.LLMStreamingFailedEvent
 import ai.koog.agents.core.feature.model.events.LLMStreamingFrameReceivedEvent
 import ai.koog.agents.core.feature.model.events.LLMStreamingStartingEvent
 import ai.koog.agents.core.feature.model.events.NodeExecutionFailedEvent
+import ai.koog.agents.core.feature.model.events.SubgraphExecutionCompletedEvent
+import ai.koog.agents.core.feature.model.events.SubgraphExecutionFailedEvent
+import ai.koog.agents.core.feature.model.events.SubgraphExecutionStartingEvent
 import ai.koog.agents.core.feature.model.events.ToolCallCompletedEvent
 import ai.koog.agents.core.feature.model.events.ToolCallStartingEvent
+import ai.koog.agents.core.tools.ToolDescriptor
 import ai.koog.agents.core.tools.ToolRegistry
-import ai.koog.agents.core.utils.SerializationUtil
+import ai.koog.agents.core.utils.SerializationUtils
 import ai.koog.agents.features.tracing.feature.Tracing
 import ai.koog.agents.features.tracing.mock.RecursiveTool
 import ai.koog.agents.features.tracing.mock.TestFeatureMessageWriter
@@ -60,12 +64,12 @@ class TraceFeatureMessageTestWriterTest {
     @Test
     fun `test subsequent LLM calls`() = runBlocking {
         val strategy = strategy("tracing-test-strategy") {
-            val setPrompt by nodeUpdatePrompt<String>("Set prompt") {
+            val setPrompt by nodeAppendPrompt<String>("Set prompt") {
                 system("System 1")
                 user("User 1")
             }
 
-            val updatePrompt by nodeUpdatePrompt<String>("Update prompt") {
+            val appendPrompt by nodeAppendPrompt<String>("Update prompt") {
                 system("System 2")
                 user("User 2")
             }
@@ -76,8 +80,8 @@ class TraceFeatureMessageTestWriterTest {
 
             edge(nodeStart forwardTo setPrompt)
             edge(setPrompt forwardTo llmRequest0)
-            edge(llmRequest0 forwardTo updatePrompt transformed { _ -> "" })
-            edge(updatePrompt forwardTo llmRequest1 transformed { _ -> "" })
+            edge(llmRequest0 forwardTo appendPrompt transformed { _ -> "" })
+            edge(appendPrompt forwardTo llmRequest1 transformed { _ -> "" })
             edge(llmRequest1 forwardTo nodeFinish transformed { input -> input.content })
         }
 
@@ -98,6 +102,7 @@ class TraceFeatureMessageTestWriterTest {
 
         val llmStartEvents = messageProcessor.messages.filterIsInstance<LLMCallStartingEvent>().toList()
         assertEquals(2, llmStartEvents.size)
+
         assertEquals(
             listOf("User 0", "User 1", ""),
             llmStartEvents[0].prompt.messages.filter { it.role == Message.Role.User }.map { it.content }
@@ -135,13 +140,15 @@ class TraceFeatureMessageTestWriterTest {
             }
         }
 
-        val throwable = assertFails {
-            agent.run("")
-            agent.close()
-        }
+        // Calling a non-existent tool returns an observation with an error
+        // instead of throwing an exception, allowing the agent to handle it gracefully
+        val result = agent.run("")
+        agent.close()
+
+        // Verify the result contains the error message about the tool not being found
         assertEquals(
-            "Tool \"there is no tool with this name\" is not defined",
-            throwable.message
+            "Tool \"there is no tool with this name\" not found. Use one of the available tools.",
+            result
         )
     }
 
@@ -284,7 +291,6 @@ class TraceFeatureMessageTestWriterTest {
         }
 
         TestFeatureMessageWriter().use { writer ->
-
             createAgent(
                 agentId = agentId,
                 strategy = strategy
@@ -303,7 +309,7 @@ class TraceFeatureMessageTestWriterTest {
                         runId = writer.runId,
                         nodeName = nodeWithErrorName,
                         input = @OptIn(InternalAgentsApi::class)
-                        SerializationUtil.trySerializeDataToJsonElement(
+                        SerializationUtils.encodeDataToJsonElementOrNull(
                             data = "",
                             dataType = typeOf<String>()
                         ),
@@ -376,23 +382,33 @@ class TraceFeatureMessageTestWriterTest {
                     id = promptId
                 )
 
+                val callIds = actualEvents.filterIsInstance<LLMStreamingStartingEvent>().map { it.callId }
+                assertEquals(
+                    1,
+                    callIds.size,
+                    "Expected 2 LLMCallStartingEvent, got ${callIds.size}"
+                )
+
                 val expectedEvents = listOf(
                     LLMStreamingStartingEvent(
                         runId = writer.runId,
+                        callId = callIds[0],
                         prompt = expectedPrompt,
-                        model = model.toModelInfo().modelIdentifierName,
+                        model = model.toModelInfo(),
                         tools = toolRegistry.tools.map { it.name },
                         timestamp = testClock.now().toEpochMilliseconds()
                     ),
                     LLMStreamingFrameReceivedEvent(
                         runId = writer.runId,
+                        callId = callIds[0],
                         frame = StreamFrame.Append(testLLMResponse),
                         timestamp = testClock.now().toEpochMilliseconds()
                     ),
                     LLMStreamingCompletedEvent(
                         runId = writer.runId,
+                        callId = callIds[0],
                         prompt = expectedPrompt,
-                        model = model.toModelInfo().modelIdentifierName,
+                        model = model.toModelInfo(),
                         tools = toolRegistry.tools.map { it.name },
                         timestamp = testClock.now().toEpochMilliseconds()
                     )
@@ -428,13 +444,13 @@ class TraceFeatureMessageTestWriterTest {
             override suspend fun execute(
                 prompt: Prompt,
                 model: ai.koog.prompt.llm.LLModel,
-                tools: List<ai.koog.agents.core.tools.ToolDescriptor>
+                tools: List<ToolDescriptor>
             ): List<Message.Response> = emptyList()
 
             override fun executeStreaming(
                 prompt: Prompt,
                 model: ai.koog.prompt.llm.LLModel,
-                tools: List<ai.koog.agents.core.tools.ToolDescriptor>
+                tools: List<ToolDescriptor>
             ): Flow<StreamFrame> = flow {
                 val testException = IllegalStateException(testStreamingErrorMessage)
                 testStreamingStackTrace = testException.stackTraceToString()
@@ -489,23 +505,33 @@ class TraceFeatureMessageTestWriterTest {
                         event is LLMStreamingCompletedEvent
                 }
 
+                val callIds = actualEvents.filterIsInstance<LLMStreamingStartingEvent>().map { it.callId }
+                assertEquals(
+                    1,
+                    callIds.size,
+                    "Expected 2 LLMCallStartingEvent, got ${callIds.size}"
+                )
+
                 val expectedEvents = listOf(
                     LLMStreamingStartingEvent(
                         runId = writer.runId,
+                        callId = callIds[0],
                         prompt = expectedPrompt,
-                        model = model.toModelInfo().modelIdentifierName,
+                        model = model.toModelInfo(),
                         tools = toolRegistry.tools.map { it.name },
                         timestamp = testClock.now().toEpochMilliseconds()
                     ),
                     LLMStreamingFailedEvent(
                         runId = writer.runId,
+                        callId = callIds[0],
                         error = AIAgentError(testStreamingErrorMessage, testStreamingStackTrace),
                         timestamp = testClock.now().toEpochMilliseconds()
                     ),
                     LLMStreamingCompletedEvent(
                         runId = writer.runId,
+                        callId = callIds[0],
                         prompt = expectedPrompt,
-                        model = model.toModelInfo().modelIdentifierName,
+                        model = model.toModelInfo(),
                         tools = toolRegistry.tools.map { it.name },
                         timestamp = testClock.now().toEpochMilliseconds()
                     )
@@ -514,6 +540,156 @@ class TraceFeatureMessageTestWriterTest {
                 assertEquals(expectedEvents.size, actualEvents.size)
                 assertContentEquals(expectedEvents, actualEvents)
             }
+        }
+    }
+
+    @Test
+    fun `test subgraph execution events success`() = runBlocking {
+        val strategyName = "test-strategy"
+        val subgraphName = "test-subgraph"
+        val subgraphNodeName = "test-subgraph-node"
+        val subgraphOutput = "test-subgraph-output"
+        val inputRequest = "Test input"
+
+        val strategy = strategy<String, String>(strategyName) {
+            val subgraph by subgraph<String, String>(subgraphName) {
+                val subgraphNode by node<String, String>(subgraphNodeName) { subgraphOutput }
+                nodeStart then subgraphNode then nodeFinish
+            }
+            nodeStart then subgraph then nodeFinish
+        }
+
+        TestFeatureMessageWriter().use { writer ->
+            val agentOutput = createAgent(
+                strategy = strategy,
+            ) {
+                install(Tracing) {
+                    addMessageProcessor(writer)
+                }
+            }.use { agent ->
+                agent.run(inputRequest)
+            }
+
+            val actualEvents = writer.messages.filter { event ->
+                event is SubgraphExecutionStartingEvent ||
+                    event is SubgraphExecutionCompletedEvent ||
+                    event is SubgraphExecutionFailedEvent
+            }
+
+            val runIdFromEvents = (actualEvents.first() as SubgraphExecutionStartingEvent).runId
+
+            val expectedInput = @OptIn(InternalAgentsApi::class)
+            SerializationUtils.encodeDataToJsonElementOrNull(
+                data = inputRequest,
+                dataType = typeOf<String>()
+            )
+
+            val expectedOutput = @OptIn(InternalAgentsApi::class)
+            SerializationUtils.encodeDataToJsonElementOrNull(
+                data = agentOutput,
+                dataType = typeOf<String>()
+            )
+
+            val expectedEvents = listOf(
+                SubgraphExecutionStartingEvent(
+                    runId = runIdFromEvents,
+                    subgraphName = subgraphName,
+                    input = expectedInput,
+                    timestamp = testClock.now().toEpochMilliseconds()
+                ),
+                SubgraphExecutionCompletedEvent(
+                    runId = runIdFromEvents,
+                    subgraphName = subgraphName,
+                    input = expectedInput,
+                    output = expectedOutput,
+                    timestamp = testClock.now().toEpochMilliseconds()
+                ),
+            )
+
+            assertEquals(expectedEvents.size, actualEvents.size)
+            assertContentEquals(expectedEvents, actualEvents)
+        }
+    }
+
+    @Test
+    fun `test subgraph execution events failure`() = runBlocking {
+        val strategyName = "test-strategy"
+        val subgraphName = "test-subgraph"
+        val subgraphErrorNodeName = "test-subgraph-error-node"
+        val subgraphNodeErrorMessage = "Test subgraph error"
+        val inputRequest = "Test input"
+
+        val strategy = strategy<String, String>(strategyName) {
+            val subgraph by subgraph<String, String>(subgraphName) {
+                val nodeWithError by node<String, String>(subgraphErrorNodeName) {
+                    throw IllegalStateException(subgraphNodeErrorMessage)
+                }
+                nodeStart then nodeWithError then nodeFinish
+            }
+            nodeStart then subgraph then nodeFinish
+        }
+
+        TestFeatureMessageWriter().use { writer ->
+            var expectedStackTrace = ""
+            var expectedCause = ""
+
+            val agentThrowable = createAgent(
+                strategy = strategy,
+            ) {
+                install(Tracing) {
+                    addMessageProcessor(writer)
+                }
+            }.use { agent ->
+                assertFails {
+                    try {
+                        agent.run(inputRequest)
+                    } catch (t: Throwable) {
+                        expectedStackTrace = t.stackTraceToString()
+                        expectedCause = t.cause?.stackTraceToString() ?: ""
+                        throw t
+                    }
+                }
+            }
+
+            // Ensure the error message is as expected
+            assertEquals(subgraphNodeErrorMessage, agentThrowable.message)
+
+            val actualEvents = writer.messages.filter { event ->
+                event is SubgraphExecutionStartingEvent ||
+                    event is SubgraphExecutionCompletedEvent ||
+                    event is SubgraphExecutionFailedEvent
+            }
+
+            val runIdFromEvents = (actualEvents.first() as SubgraphExecutionStartingEvent).runId
+
+            val expectedInput = @OptIn(InternalAgentsApi::class)
+            SerializationUtils.encodeDataToJsonElementOrNull(
+                data = inputRequest,
+                dataType = typeOf<String>()
+            )
+
+            val expectedEvents = listOf(
+                SubgraphExecutionStartingEvent(
+                    runId = runIdFromEvents,
+                    subgraphName = subgraphName,
+                    input = expectedInput,
+                    timestamp = testClock.now().toEpochMilliseconds()
+                ),
+                SubgraphExecutionFailedEvent(
+                    runId = runIdFromEvents,
+                    subgraphName = subgraphName,
+                    input = expectedInput,
+                    error = AIAgentError(
+                        message = subgraphNodeErrorMessage,
+                        stackTrace = expectedStackTrace,
+                        cause = expectedCause,
+                    ),
+                    timestamp = testClock.now().toEpochMilliseconds()
+                )
+            )
+
+            assertEquals(expectedEvents.size, actualEvents.size)
+            assertContentEquals(expectedEvents, actualEvents)
         }
     }
 }

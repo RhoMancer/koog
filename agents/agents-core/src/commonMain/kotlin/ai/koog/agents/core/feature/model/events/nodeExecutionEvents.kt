@@ -2,7 +2,7 @@ package ai.koog.agents.core.feature.model.events
 
 import ai.koog.agents.core.annotation.InternalAgentsApi
 import ai.koog.agents.core.feature.model.AIAgentError
-import ai.koog.agents.core.utils.SerializationUtil
+import ai.koog.agents.core.utils.SerializationUtils
 import kotlinx.datetime.Clock
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonElement
@@ -46,7 +46,7 @@ public data class NodeExecutionStartingEvent(
         runId = runId,
         nodeName = nodeName,
         input = @OptIn(InternalAgentsApi::class)
-        SerializationUtil.tryParseToJsonElement(input),
+        SerializationUtils.parseDataToJsonElementOrDefault(input),
         timestamp = timestamp
     )
 }
@@ -89,9 +89,9 @@ public data class NodeExecutionCompletedEvent(
         runId = runId,
         nodeName = nodeName,
         input = @OptIn(InternalAgentsApi::class)
-        SerializationUtil.tryParseToJsonElement(input),
+        SerializationUtils.parseDataToJsonElementOrDefault(input),
         output = @OptIn(InternalAgentsApi::class)
-        SerializationUtil.tryParseToJsonElement(output),
+        SerializationUtils.parseDataToJsonElementOrDefault(output),
         timestamp = timestamp
     )
 }
@@ -99,14 +99,6 @@ public data class NodeExecutionCompletedEvent(
 /**
  * Represents an event that signifies the occurrence of an error during the execution of a specific node
  * within an AI agent's process.
- *
- * This event captures information about the failed execution, including the identifier of the run,
- * the name of the node where the error occurred, and the details of the error itself. It provides
- * contextual information necessary for debugging, tracing, or analyzing issues encountered during
- * the AI agent's execution.
- *
- * This event extends the `DefinedFeatureEvent` class, inheriting common event properties such as
- * timestamps and message types.
  *
  * @property runId A unique identifier associated with the specific run of the AI agent;
  * @property nodeName The name of the node where the error occurred;

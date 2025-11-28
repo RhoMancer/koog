@@ -5,18 +5,24 @@ import ai.koog.agents.core.tools.annotations.LLMDescription
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.descriptors.PolymorphicKind
 import kotlinx.serialization.descriptors.PrimitiveKind
-import kotlinx.serialization.descriptors.PrimitiveSerialDescriptor
 import kotlinx.serialization.descriptors.SerialDescriptor
 import kotlinx.serialization.descriptors.SerialKind
 import kotlinx.serialization.descriptors.StructureKind
 import kotlinx.serialization.encoding.Decoder
 import kotlinx.serialization.encoding.Encoder
-import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonDecoder
+import kotlinx.serialization.json.JsonEncoder
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.jsonObject
 
 private fun SerialDescriptor.description(): String =
     annotations.filterIsInstance<LLMDescription>().firstOrNull()?.description ?: ""
+
+/**
+ * Special key used to wrap primitive arguments in JSON objects, to support tools with "primitive" args/results.
+ */
+internal const val toolWrapperValueKey = "__wrapped_value__"
 
 /**
  * Converts a [SerialDescriptor] into a [ToolDescriptor] with metadata about a tool,
@@ -153,40 +159,55 @@ public fun SerialDescriptor.asToolDescriptor(
 }
 
 /**
- * Provides a custom deserializer for tools using the `KSerializer` interface.
- * Converts the current serializer into a specialized tool descriptor deserializer
- * if the underlying descriptor has a primitive kind.
- *
- * Serializes and deserializes specific data structures while restricting usage of
- * unsupported operations, such as serialization.
- *
- * This function is a utility to adapt serializers for internal tooling.
- *
- * @return A `KSerializer` that acts as*/
+ * Provides a custom serializer for tools, wrapping and unwrapping values that do not serialize into [JsonObject] into a
+ * custom [JsonObject] with `value` key. This wrapping/unwrapping is needed because for LLM APIs tool arguments must always be [JsonObject].
+ */
 @InternalAgentToolsApi
-public fun <T> KSerializer<T>.asToolDescriptorDeserializer(json: Json = Json): KSerializer<T> {
-    val kind = descriptor.kind
+public fun <T> KSerializer<T>.asToolDescriptorSerializer(): KSerializer<T> {
+    val origSerializer = this
 
-    return if (kind is PrimitiveKind) {
-        object : KSerializer<T> {
-            override val descriptor: SerialDescriptor = PrimitiveSerialDescriptor("Primitive", kind)
+    return object : KSerializer<T> {
+        override val descriptor: SerialDescriptor = origSerializer.descriptor
 
-            override fun serialize(encoder: Encoder, value: T) {
-                throw UnsupportedOperationException("Serialization is not supported")
-            }
+        override fun serialize(encoder: Encoder, value: T) {
+            if (encoder !is JsonEncoder) throw IllegalStateException("Should be json encoder")
 
-            override fun deserialize(decoder: Decoder): T {
-                val jsonDecoder = decoder as? JsonDecoder
-                    ?: throw IllegalStateException("`asToolDescriptorDeserializer` for primitive types should be json decoder")
+            val origSerialized = encoder.json.encodeToJsonElement(origSerializer, value)
 
-                return json.decodeFromJsonElement(
-                    this@asToolDescriptorDeserializer,
-                    jsonDecoder.decodeJsonElement().jsonObject.getValue("value")
+            if (origSerialized is JsonObject) {
+                require(toolWrapperValueKey !in origSerialized) {
+                    "Serialized objects can't contain key '$toolWrapperValueKey', since this is a special key reserved to wrap primitive arguments in JSON objects"
+                }
+
+                encoder.encodeJsonElement(origSerialized)
+            } else {
+                encoder.encodeJsonElement(
+                    buildJsonObject {
+                        put(toolWrapperValueKey, origSerialized)
+                    }
                 )
             }
         }
-    } else {
-        this
+
+        override fun deserialize(decoder: Decoder): T {
+            if (decoder !is JsonDecoder) throw IllegalStateException("Should be json decoder")
+
+            val deserialized = decoder
+                .decodeJsonElement()
+                .let {
+                    require(it is JsonObject) {
+                        "All serialized tool arguments must be represented as JSON objects, and primitives wrapped into a JSON object with key '$toolWrapperValueKey'"
+                    }
+
+                    it.jsonObject
+                }
+
+            return if (deserialized.keys == setOf(toolWrapperValueKey)) {
+                decoder.json.decodeFromJsonElement(origSerializer, deserialized.getValue(toolWrapperValueKey))
+            } else {
+                decoder.json.decodeFromJsonElement(origSerializer, deserialized)
+            }
+        }
     }
 }
 
@@ -233,7 +254,13 @@ private fun ToolParameterType.asValueTool(name: String, description: String, val
     ToolDescriptor(
         name = name,
         description = description,
-        requiredParameters = listOf(ToolParameterDescriptor(name = "value", description = valueDescription ?: "", this))
+        requiredParameters = listOf(
+            ToolParameterDescriptor(
+                name = toolWrapperValueKey,
+                description = valueDescription ?: "",
+                this
+            )
+        )
     )
 
 private fun SerialDescriptor.parameterDescriptors(required: MutableList<String>): List<ToolParameterDescriptor> =

@@ -98,7 +98,7 @@ public class MockLLMBuilder(private val clock: Clock, private val tokenizer: Tok
 
     private val assistantPartialMatches = mutableMapOf<String, List<String>>()
     private val assistantExactMatches = mutableMapOf<String, List<String>>()
-    private val conditionalResponses = mutableMapOf<(String) -> Boolean, String>()
+    private val conditionalResponses = mutableMapOf<(String) -> Boolean, List<String>>()
     private var defaultResponse: String = ""
 
     private val moderationPartialMatches = mutableMapOf<String, ModerationResult>()
@@ -114,7 +114,7 @@ public class MockLLMBuilder(private val clock: Clock, private val tokenizer: Tok
      *
      * Useful in scenarios where the mock response handling involves mixed results
      * from the LLM, and there is a need to differentiate between handling the general
-     * last message vs the last assistant-specific message.
+     * last message vs. the last assistant-specific message.
      */
     public var handleLastAssistantMessage: Boolean = false
 
@@ -184,7 +184,12 @@ public class MockLLMBuilder(private val clock: Clock, private val tokenizer: Tok
                     id = toolCallId,
                     tool = tool.name,
                     content = toolContent,
-                    metaInfo = ResponseMetaInfo.create(clock, outputTokensCount = tokenizer?.countTokens(toolContent))
+                    metaInfo = ResponseMetaInfo.create(
+                        clock,
+                        inputTokensCount = null, // Will be updated at runtime with actual input
+                        outputTokensCount = tokenizer?.countTokens(toolContent),
+                        totalTokensCount = null // Will be calculated at runtime
+                    )
                 )
             )
         }
@@ -208,7 +213,12 @@ public class MockLLMBuilder(private val clock: Clock, private val tokenizer: Tok
                     id = null,
                     tool = tool.name,
                     content = toolContent,
-                    metaInfo = ResponseMetaInfo.create(clock, outputTokensCount = tokenizer?.countTokens(toolContent))
+                    metaInfo = ResponseMetaInfo.create(
+                        clock,
+                        inputTokensCount = null, // Will be updated at runtime with actual input
+                        outputTokensCount = tokenizer?.countTokens(toolContent),
+                        totalTokensCount = null // Will be calculated at runtime
+                    )
                 )
             )
         }
@@ -231,7 +241,12 @@ public class MockLLMBuilder(private val clock: Clock, private val tokenizer: Tok
                     id = null,
                     tool = tool.name,
                     content = toolContent,
-                    metaInfo = ResponseMetaInfo.create(clock, outputTokensCount = tokenizer?.countTokens(toolContent))
+                    metaInfo = ResponseMetaInfo.create(
+                        clock,
+                        inputTokensCount = null, // Will be updated at runtime with actual input
+                        outputTokensCount = tokenizer?.countTokens(toolContent),
+                        totalTokensCount = null // Will be calculated at runtime
+                    )
                 )
             }
         }
@@ -253,7 +268,12 @@ public class MockLLMBuilder(private val clock: Clock, private val tokenizer: Tok
                     id = null,
                     tool = tool.name,
                     content = toolContent,
-                    metaInfo = ResponseMetaInfo.create(clock, outputTokensCount = tokenizer?.countTokens(toolContent))
+                    metaInfo = ResponseMetaInfo.create(
+                        clock,
+                        inputTokensCount = null, // Will be updated at runtime with actual input
+                        outputTokensCount = tokenizer?.countTokens(toolContent),
+                        totalTokensCount = null // Will be calculated at runtime
+                    )
                 )
             }
         }
@@ -278,7 +298,12 @@ public class MockLLMBuilder(private val clock: Clock, private val tokenizer: Tok
                     id = null,
                     tool = tool.name,
                     content = toolContent,
-                    metaInfo = ResponseMetaInfo.create(clock, outputTokensCount = tokenizer?.countTokens(toolContent))
+                    metaInfo = ResponseMetaInfo.create(
+                        clock,
+                        inputTokensCount = null, // Will be updated at runtime with actual input
+                        outputTokensCount = tokenizer?.countTokens(toolContent),
+                        totalTokensCount = null // Will be calculated at runtime
+                    )
                 )
             }
         }
@@ -306,10 +331,46 @@ public class MockLLMBuilder(private val clock: Clock, private val tokenizer: Tok
                     id = null,
                     tool = tool.name,
                     content = toolContent,
-                    metaInfo = ResponseMetaInfo.create(clock, outputTokensCount = tokenizer?.countTokens(toolContent))
+                    metaInfo = ResponseMetaInfo.create(
+                        clock,
+                        inputTokensCount = null, // Cannot determine input tokens for conditional matches without the actual input string
+                        outputTokensCount = tokenizer?.countTokens(toolContent),
+                        totalTokensCount = null // Will be calculated at runtime
+                    )
                 )
             )
         }
+    }
+
+    /**
+     * Registers conditional matches linking logical conditions to tool calls and corresponding responses.
+     *
+     * @param condition A predicate function that takes a String and returns a Boolean indicating whether the condition is satisfied.
+     * @param toolCalls A list of tool calls represented as pairs where the first element is the tool reference and the second is its arguments.
+     * @param responses A list of response strings to be associated with the condition.
+     */
+    public fun <Args> addLLMAnswerConditionalMatches(
+        condition: (String) -> Boolean,
+        toolCalls: List<Pair<Tool<Args, *>, Args>>,
+        responses: List<String>,
+    ) {
+        toolCallConditionalMatches[condition] = toolCalls.map { (tool, args) ->
+            tool.encodeArgsToString(args).let { toolContent ->
+                Message.Tool.Call(
+                    id = null,
+                    tool = tool.name,
+                    content = toolContent,
+                    metaInfo = ResponseMetaInfo.create(
+                        clock,
+                        inputTokensCount = null, // Cannot determine input tokens for conditional matches without the actual input string
+                        outputTokensCount = tokenizer?.countTokens(toolContent),
+                        totalTokensCount = null // Will be calculated at runtime
+                    )
+                )
+            }
+        }
+
+        conditionalResponses[condition] = responses
     }
 
     /**
@@ -340,7 +401,12 @@ public class MockLLMBuilder(private val clock: Clock, private val tokenizer: Tok
                     id = null,
                     tool = tool.name,
                     content = toolContent,
-                    metaInfo = ResponseMetaInfo.create(clock, outputTokensCount = tokenizer?.countTokens(toolContent))
+                    metaInfo = ResponseMetaInfo.create(
+                        clock,
+                        inputTokensCount = tokenizer?.countTokens(pattern),
+                        outputTokensCount = tokenizer?.countTokens(toolContent),
+                        totalTokensCount = null // Will be calculated at runtime
+                    )
                 )
             }
         }
@@ -466,7 +532,7 @@ public class MockLLMBuilder(private val clock: Clock, private val tokenizer: Tok
      * @return The MockLLMBuilder instance for method chaining
      */
     public infix fun String.onCondition(condition: (String) -> Boolean): MockLLMBuilder {
-        conditionalResponses[condition] = this
+        conditionalResponses[condition] = listOf(this)
         return this@MockLLMBuilder
     }
 
@@ -564,6 +630,19 @@ public class MockLLMBuilder(private val clock: Clock, private val tokenizer: Tok
             builder.addLLMAnswerPartialPattern(pattern, toolCalls, responses)
 
             return pattern
+        }
+
+        /**
+         * Configures a conditional response or tool call based on a custom condition provided as a lambda.
+         * The condition evaluates user input, and if the condition is satisfied, the associated responses
+         * or tool calls are utilized.
+         *
+         * @param condition A lambda function that takes a user input string and returns a boolean.
+         * If the lambda returns `true`, the predefined responses or tool calls associated with this condition
+         * will be triggered.
+         */
+        public infix fun onCondition(condition: (String) -> Boolean) {
+            builder.addLLMAnswerConditionalMatches(condition, toolCalls, responses)
         }
     }
 
@@ -753,16 +832,22 @@ public class MockLLMBuilder(private val clock: Clock, private val tokenizer: Tok
             texts.map { text ->
                 Message.Assistant(
                     text,
-                    ResponseMetaInfo.create(clock, outputTokensCount = tokenizer?.countTokens(text))
+                    ResponseMetaInfo.create(
+                        clock,
+                        inputTokensCount = null, // Will be updated at runtime with actual input
+                        outputTokensCount = tokenizer?.countTokens(text),
+                        totalTokensCount = null // Will be calculated at runtime
+                    )
                 )
             }
         }
 
-        val combinedExactMatches = (processedAssistantExactMatches.keys + toolCallExactMatches.keys).associateWith { key ->
-            val assistantList = processedAssistantExactMatches[key] ?: emptyList()
-            val toolCallList = toolCallExactMatches[key] ?: emptyList()
-            assistantList + toolCallList
-        }
+        val combinedExactMatches =
+            (processedAssistantExactMatches.keys + toolCallExactMatches.keys).associateWith { key ->
+                val assistantList = processedAssistantExactMatches[key] ?: emptyList()
+                val toolCallList = toolCallExactMatches[key] ?: emptyList()
+                assistantList + toolCallList
+            }
 
         // Partial Matches
         val processedAssistantPartialMatches = assistantPartialMatches.mapValues { (_, value) ->
@@ -770,7 +855,12 @@ public class MockLLMBuilder(private val clock: Clock, private val tokenizer: Tok
             texts.map { text ->
                 Message.Assistant(
                     text,
-                    ResponseMetaInfo.create(clock, outputTokensCount = tokenizer?.countTokens(text))
+                    ResponseMetaInfo.create(
+                        clock,
+                        inputTokensCount = null, // Will be updated at runtime with actual input
+                        outputTokensCount = tokenizer?.countTokens(text),
+                        totalTokensCount = null // Will be calculated at runtime
+                    )
                 )
             }
         }
@@ -785,25 +875,42 @@ public class MockLLMBuilder(private val clock: Clock, private val tokenizer: Tok
         // Conditional Matches
         val processedAssistantConditionalMatches: Map<(String) -> Boolean, List<Message.Response>> =
             conditionalResponses.takeIf { it.isNotEmpty() }?.mapValues { (_, textResponse) ->
-                listOf(
+                textResponse.map { response ->
                     Message.Assistant(
-                        content = textResponse,
-                        metaInfo = ResponseMetaInfo.create(clock)
+                        content = response,
+                        metaInfo = ResponseMetaInfo.create(
+                            clock,
+                            inputTokensCount = null, // Cannot determine input tokens for conditional matches without the actual input string
+                            outputTokensCount = tokenizer?.countTokens(response),
+                            totalTokensCount = null // Will be calculated at runtime
+                        )
                     )
-                )
+                }
             } ?: emptyMap()
 
-        val combinedConditionalMatches = (processedAssistantConditionalMatches.keys + toolCallConditionalMatches.keys).associateWith { key ->
-            val assistantList = processedAssistantConditionalMatches[key] ?: emptyList()
-            val toolCallList = toolCallConditionalMatches[key] ?: emptyList()
-            assistantList + toolCallList
-        }
+        val combinedConditionalMatches =
+            (processedAssistantConditionalMatches.keys + toolCallConditionalMatches.keys).associateWith { key ->
+                buildList {
+                    processedAssistantConditionalMatches[key]?.let { addAll(it) }
+                    toolCallConditionalMatches[key]?.let { addAll(it) }
+                }
+            }
 
         val responseMatcher = ResponseMatcher(
             partialMatches = combinedPartialMatches.takeIf { it.isNotEmpty() },
             exactMatches = combinedExactMatches.takeIf { it.isNotEmpty() },
             conditional = combinedConditionalMatches,
-            defaultResponse = listOf(Message.Assistant(defaultResponse, ResponseMetaInfo.create(clock)))
+            defaultResponse = listOf(
+                Message.Assistant(
+                    defaultResponse,
+                    ResponseMetaInfo.create(
+                        clock,
+                        inputTokensCount = null, // Will be updated at runtime with actual input
+                        outputTokensCount = tokenizer?.countTokens(defaultResponse),
+                        totalTokensCount = null // Will be calculated at runtime
+                    )
+                )
+            )
         )
 
         val moderationResponseMatcher = ResponseMatcher(
@@ -902,7 +1009,7 @@ public class DefaultResponseReceiver(
  * @param clock: A clock that is used for mock message timestamps
  * @param tokenizer: Tokenizer that will be used to estimate token counts in mock messages
  * @param init A lambda with receiver that configures the mock LLM executor
- * @return A configured PromptExecutor for testing
+ * @return Сonfigured PromptExecutor for testing
  *
  * Example usage:
  * ```kotlin
