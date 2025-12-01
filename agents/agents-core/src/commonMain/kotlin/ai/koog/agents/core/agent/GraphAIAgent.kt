@@ -11,6 +11,7 @@ import ai.koog.agents.core.agent.entity.AIAgentStateManager
 import ai.koog.agents.core.agent.entity.AIAgentStorage
 import ai.koog.agents.core.annotation.InternalAgentsApi
 import ai.koog.agents.core.environment.GenericAgentEnvironment
+import ai.koog.agents.core.environment.GenericAgentEnvironmentProxy
 import ai.koog.agents.core.feature.AIAgentFeature
 import ai.koog.agents.core.feature.AIAgentGraphFeature
 import ai.koog.agents.core.feature.PromptExecutorProxy
@@ -68,12 +69,6 @@ public open class GraphAIAgent<Input, Output>(
 
     override val pipeline: AIAgentGraphPipeline = AIAgentGraphPipeline(clock)
 
-    private val environment = GenericAgentEnvironment(
-        logger = logger,
-        toolRegistry = toolRegistry,
-        context = XXX,
-    )
-
     /**
      * The context for adding and configuring features in a Kotlin AI Agent instance.
      *
@@ -107,6 +102,12 @@ public open class GraphAIAgent<Input, Output>(
         val executionPath = AgentExecutionPath(id, runId)
         val executionInfo = AgentExecutionInfo(id = runId, parentId = id, path = executionPath)
 
+        val environment = GenericAgentEnvironment(
+            agentId = id,
+            logger = logger,
+            toolRegistry = toolRegistry,
+        )
+
         // Environment (initially equal to the current agent), transformed by some features
         //   (ex: testing feature transforms it into a MockEnvironment with mocked tools)
         val preparedEnvironment =
@@ -117,8 +118,6 @@ public open class GraphAIAgent<Input, Output>(
                 agent = this,
                 baseEnvironment = environment
             )
-
-        // Agent id / run id / strategy name / node name /
 
         val initialAgentLLMContext = AIAgentLLMContext(
             tools = toolRegistry.tools.map { it.descriptor },
@@ -131,6 +130,7 @@ public open class GraphAIAgent<Input, Output>(
             clock = clock
         )
 
+        // Context
         val agentContext = AIAgentGraphContext(
             environment = preparedEnvironment,
             agentId = id,
@@ -146,15 +146,25 @@ public open class GraphAIAgent<Input, Output>(
             executionInfo = executionInfo,
         )
 
+        // Updated prompt executor
         val promptExecutorProxy = PromptExecutorProxy(
             executor = promptExecutor,
             pipeline = pipeline,
             runId = runId,
             context = agentContext
         )
+        val updatedLLMContext = agentContext.llm.copy(promptExecutor = promptExecutorProxy)
 
+        // Updated environment
+        val environmentProxy = GenericAgentEnvironmentProxy(
+            environment = preparedEnvironment,
+            context = agentContext,
+        )
+
+        // Update the environment and llm with a created context instance
         return agentContext.copy(
-            llm = agentContext.llm.copy(promptExecutor = promptExecutorProxy)
+            llm = updatedLLMContext,
+            environment = environmentProxy
         )
     }
 }

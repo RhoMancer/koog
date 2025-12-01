@@ -31,7 +31,6 @@ public sealed interface AgentToolCallToEnvironmentMessage : AgentToEnvironmentMe
 /**
  * Content of tool call messages sent from the agent.
  *
- * @property agentId Identifier for the agent receiving the message.
  * @property toolName Name of the tool to call.
  * @property toolArgs Arguments for the called tool.
  * @property toolCallId Id to identify tool call when calling multiple tools at once.
@@ -39,7 +38,6 @@ public sealed interface AgentToolCallToEnvironmentMessage : AgentToEnvironmentMe
  */
 @Serializable
 public data class AgentToolCallToEnvironmentContent(
-    val agentId: String,
     val runId: String,
     val toolCallId: String?,
     val toolName: String,

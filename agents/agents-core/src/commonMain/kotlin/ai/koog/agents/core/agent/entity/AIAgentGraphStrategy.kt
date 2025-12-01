@@ -53,9 +53,9 @@ public class AIAgentGraphStrategy<TInput, TOutput>(
     public lateinit var metadata: SubgraphMetadata
 
     @OptIn(InternalAgentsApi::class, ExperimentalUuidApi::class)
-    override suspend fun execute(context: AIAgentGraphContextBase, input: TInput): TOutput? = withParent(context = context, partName = id) {
+    override suspend fun execute(context: AIAgentGraphContextBase, input: TInput): TOutput? = withParent(context = context, partName = id) { parentId, id ->
         runCatchingCancellable {
-            context.pipeline.onStrategyStarting(context.executionInfo.id, context.executionInfo.parentId, this@AIAgentGraphStrategy, context)
+            context.pipeline.onStrategyStarting(id, parentId, this@AIAgentGraphStrategy, context)
             restoreStateIfNeeded(context)
 
             var result: TOutput? = super.execute(context = context, input = input)
@@ -66,7 +66,7 @@ public class AIAgentGraphStrategy<TInput, TOutput>(
             }
 
             logger.trace { "Finished executing strategy (name: $name) with output: $result" }
-            context.pipeline.onStrategyCompleted(context.executionInfo.id, context.executionInfo.parentId, this@AIAgentGraphStrategy, context, result, outputType)
+            context.pipeline.onStrategyCompleted(id, parentId, this@AIAgentGraphStrategy, context, result, outputType)
 
             result
         }.onFailure { e ->
