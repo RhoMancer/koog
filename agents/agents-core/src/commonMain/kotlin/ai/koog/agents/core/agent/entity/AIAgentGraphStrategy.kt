@@ -94,13 +94,13 @@ public class AIAgentGraphStrategy<TInput, TOutput>(
 
     @OptIn(InternalAgentsApi::class)
     private suspend fun restoreDefault(agentContext: AIAgentGraphContextBase, data: AgentContextData) {
-        val nodeId = data.nodeId
+        val nodePath = data.nodePath
 
         // Perform additional cleanup (ex: rollback tools):
         data.additionalRollbackActions(agentContext)
 
         // Set current graph node:
-        setExecutionPoint(nodeId, data.lastInput)
+        setExecutionPoint(nodePath, data.lastInput)
 
         // Reset the message history:
         agentContext.llm.withPrompt {
@@ -111,15 +111,10 @@ public class AIAgentGraphStrategy<TInput, TOutput>(
     /**
      * Finds and sets the node for the strategy based on the provided context.
      */
-    public fun setExecutionPoint(nodeId: String, input: JsonElement) {
-        val fullPath = metadata.nodesMap.keys.firstOrNull {
-            val segments = it.split(":")
-            segments.last() == nodeId
-        } ?: throw IllegalArgumentException("Node $nodeId not found")
-
-        val segments = fullPath.split(":")
+    public fun setExecutionPoint(nodePath: String, input: JsonElement) {
+        val segments = nodePath.split(":")
         if (segments.isEmpty()) {
-            throw IllegalArgumentException("Invalid node path: $fullPath")
+            throw IllegalArgumentException("Invalid node path: $nodePath")
         }
 
         val strategyName = segments.firstOrNull() ?: return
@@ -143,7 +138,7 @@ public class AIAgentGraphStrategy<TInput, TOutput>(
         }
 
         // forcing the very last segment to the latest pre-leaf node to complete the chain
-        val leaf = metadata.nodesMap[fullPath] ?: throw IllegalStateException("Node ${segments.last()} not found")
+        val leaf = metadata.nodesMap[nodePath] ?: throw IllegalStateException("Node ${segments.last()} not found")
         val inputType = leaf.inputType
 
         val actualInput = serializer.decodeFromJsonElement(serializer.serializersModule.serializer(inputType), input)

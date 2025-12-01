@@ -2,6 +2,7 @@ import ai.koog.agents.core.agent.AIAgent
 import ai.koog.agents.core.agent.config.AIAgentConfig
 import ai.koog.agents.core.tools.ToolRegistry
 import ai.koog.agents.ext.tool.SayToUser
+import ai.koog.agents.snapshot.feature.AgentCheckpointData
 import ai.koog.agents.snapshot.feature.Persistence
 import ai.koog.agents.snapshot.providers.InMemoryPersistenceStorageProvider
 import ai.koog.agents.testing.tools.getMockExecutor
@@ -9,6 +10,8 @@ import ai.koog.prompt.dsl.prompt
 import ai.koog.prompt.executor.model.PromptExecutor
 import ai.koog.prompt.llm.OllamaModels
 import kotlinx.coroutines.test.runTest
+import kotlinx.datetime.Clock
+import kotlinx.serialization.json.JsonPrimitive
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
@@ -168,6 +171,20 @@ class SubgraphCheckpointsTest {
     @Test
     fun `test reusing subgraph with Persistence - checkpoint start`() = runTest {
         val mockExecutor: PromptExecutor = getMockExecutor {}
+        val agentId = "test-agent"
+
+        val inMemoryPersistence = InMemoryPersistenceStorageProvider()
+
+        val checkpoint = AgentCheckpointData(
+            checkpointId = "checkpoint-1",
+            createdAt = Clock.System.now(),
+            nodeId = "repeated-subgraphs-test:sg1:sgNode1",
+            lastInput = JsonPrimitive("Input at checkpoint"),
+            messageHistory = listOf(),
+            version = 1L
+        )
+
+        inMemoryPersistence.saveCheckpoint(agentId, checkpoint)
 
         val agentConfig = AIAgentConfig(
             prompt = prompt("test") {
@@ -178,13 +195,13 @@ class SubgraphCheckpointsTest {
         )
 
         val agent = AIAgent(
+            id = agentId,
             promptExecutor = mockExecutor,
             strategy = strategyWithRepeatedSubgraphs(),
-            agentConfig = agentConfig,
+            agentConfig = agentConfig
         ) {
-            // Install the AgentCheckpoint feature
             install(Persistence) {
-                storage = InMemoryPersistenceStorageProvider()
+                storage = inMemoryPersistence
             }
         }
 

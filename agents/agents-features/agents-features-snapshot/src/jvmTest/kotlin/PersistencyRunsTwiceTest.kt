@@ -79,7 +79,6 @@ class PersistenceRunsTwiceTest {
     @Test
     fun `agent fails on the first run and second run running successfully`() = runTest {
         val provider = InMemoryPersistenceStorageProvider()
-
         val testCollector = TestAgentLogsCollector()
 
         val agentService = AIAgentService(
@@ -127,7 +126,7 @@ class PersistenceRunsTwiceTest {
         val secondRunResult = runCatching { secondAgent.run("Start the test") }
 
         // Assert: second run is successful
-        assert(secondRunResult.isSuccess)
+        assert(secondRunResult.isSuccess) { "Second run should complete successfully" }
         testCollector.logs() shouldContainExactly listOf(
             "Second Step",
             "Second try successful",
