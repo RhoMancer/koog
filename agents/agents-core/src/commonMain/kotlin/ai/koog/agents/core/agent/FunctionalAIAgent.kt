@@ -55,11 +55,9 @@ public class FunctionalAIAgent<Input, Output>(
     override val pipeline: AIAgentFunctionalPipeline = AIAgentFunctionalPipeline(clock)
 
     private val environment = GenericAgentEnvironment(
-        agentId = this.id,
-        strategyId = strategy.name,
         logger = logger,
         toolRegistry = toolRegistry,
-        pipeline = pipeline
+        context = XXX,
     )
 
     /**

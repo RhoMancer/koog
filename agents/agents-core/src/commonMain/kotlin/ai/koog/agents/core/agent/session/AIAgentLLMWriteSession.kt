@@ -374,6 +374,7 @@ public class AIAgentLLMWriteSession internal constructor(
      * @return the response from the LLM after processing the request, as a [Message.Response].
      */
     override suspend fun requestLLMWithoutTools(): Message.Response {
+        config
         return super.requestLLMWithoutTools().also { response -> appendPrompt { message(response) } }
     }
 

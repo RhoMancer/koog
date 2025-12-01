@@ -383,7 +383,7 @@ public fun AIAgentSubgraphBuilderBase<*, *>.nodeExecuteTool(
     name: String? = null
 ): AIAgentNodeDelegate<Message.Tool.Call, ReceivedToolResult> =
     node(name) { toolCall ->
-        environment.executeTool(toolCall)
+        environment.executeTool(runId, toolCall)
     }
 
 /**
@@ -420,9 +420,9 @@ public fun AIAgentSubgraphBuilderBase<*, *>.nodeExecuteMultipleTools(
 ): AIAgentNodeDelegate<List<Message.Tool.Call>, List<ReceivedToolResult>> =
     node(name) { toolCalls ->
         if (parallelTools) {
-            environment.executeTools(toolCalls)
+            environment.executeTools(runId, toolCalls)
         } else {
-            toolCalls.map { environment.executeTool(it) }
+            toolCalls.map { environment.executeTool(runId, it) }
         }
     }
 
@@ -444,9 +444,9 @@ public fun AIAgentSubgraphBuilderBase<*, *>.nodeExecuteMultipleToolsAndSendResul
 ): AIAgentNodeDelegate<List<Message.Tool.Call>, List<Message.Response>> =
     node(name) { toolCalls ->
         val results = if (parallelTools) {
-            environment.executeTools(toolCalls)
+            environment.executeTools(runId, toolCalls)
         } else {
-            toolCalls.map { environment.executeTool(it) }
+            toolCalls.map { environment.executeTool(runId, it) }
         }
 
         llm.writeSession {

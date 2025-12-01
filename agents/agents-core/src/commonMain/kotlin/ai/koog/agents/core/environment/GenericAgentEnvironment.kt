@@ -1,7 +1,8 @@
 package ai.koog.agents.core.environment
 
+import ai.koog.agents.core.agent.context.AIAgentContext
+import ai.koog.agents.core.agent.context.withParent
 import ai.koog.agents.core.environment.AIAgentEnvironmentUtils.mapToToolResult
-import ai.koog.agents.core.feature.pipeline.AIAgentPipeline
 import ai.koog.agents.core.model.message.AIAgentEnvironmentToolResultToAgentContent
 import ai.koog.agents.core.model.message.AgentToolCallToEnvironmentContent
 import ai.koog.agents.core.model.message.AgentToolCallsToEnvironmentMessage
@@ -17,15 +18,11 @@ import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.supervisorScope
 import kotlinx.serialization.json.JsonElement
-import kotlin.uuid.ExperimentalUuidApi
-import kotlin.uuid.Uuid
 
 internal class GenericAgentEnvironment(
-    private val agentId: String,
-    private val strategyId: String,
     private val logger: KLogger,
     private val toolRegistry: ToolRegistry,
-    private val pipeline: AIAgentPipeline
+    private val context: AIAgentContext,
 ) : AIAgentEnvironment {
 
     override suspend fun executeTools(runId: String, toolCalls: List<Message.Tool.Call>): List<ReceivedToolResult> {
@@ -37,7 +34,7 @@ internal class GenericAgentEnvironment(
             runId = runId,
             content = toolCalls.map { call ->
                 AgentToolCallToEnvironmentContent(
-                    agentId = agentId,
+                    agentId = context.agentId,
                     runId = runId,
                     toolCallId = call.id,
                     toolName = call.tool,
@@ -78,75 +75,73 @@ internal class GenericAgentEnvironment(
         toolResult = result
     )
 
-    @OptIn(InternalAgentToolsApi::class, ExperimentalUuidApi::class)
+    @OptIn(InternalAgentToolsApi::class)
     private suspend fun processToolCall(
         content: AgentToolCallToEnvironmentContent
-    ): EnvironmentToolResultToAgentContent {
+    ): EnvironmentToolResultToAgentContent = withParent(context, "SD -- TODO") { parentId, id ->
         logger.debug { "Handling tool call sent by server..." }
         val tool = toolRegistry.getToolOrNull(content.toolName)
             ?: run {
                 logger.error { "Tool \"${content.toolName}\" not found." }
-                return toolResult(
+                return@withParent toolResult(
                     message = "Tool \"${content.toolName}\" not found. Use one of the available tools.",
                     toolCallId = content.toolCallId,
                     toolName = content.toolName,
-                    agentId = agentId,
+                    agentId = context.agentId,
                     result = null
                 )
             }
+
         val toolArgs = try {
             tool.decodeArgs(content.toolArgs)
         } catch (e: Exception) {
             logger.error(e) { "Tool \"${tool.name}\" failed to parse arguments: ${content.toolArgs}" }
-            return toolResult(
+            return@withParent toolResult(
                 message = "Tool \"${tool.name}\" failed to parse arguments because of ${e.message}!",
                 toolCallId = content.toolCallId,
                 toolName = content.toolName,
-                agentId = agentId,
+                agentId = context.agentId,
                 result = null
             )
         }
 
-        val toolCallId = Uuid.random().toString()
-        val parentId = getNodeInfoElement()?.id ?: getStrategyInfoElement()?.id
-
-        pipeline.onToolCallStarting(toolCallId, parentId, content.runId, content.toolCallId, tool, toolArgs)
+        context.pipeline.onToolCallStarting(id, parentId, content.runId, content.toolCallId, tool, toolArgs)
 
         val toolResult = try {
             @Suppress("UNCHECKED_CAST")
             (tool as Tool<Any?, Any?>).execute(toolArgs)
         } catch (e: ToolException) {
-            pipeline.onToolValidationFailed(toolCallId, parentId, content.runId, content.toolCallId, tool, toolArgs, e.message)
+            context.pipeline.onToolValidationFailed(id, parentId, content.runId, content.toolCallId, tool, toolArgs, e.message)
 
-            return toolResult(
+            return@withParent toolResult(
                 message = e.message,
                 toolCallId = content.toolCallId,
                 toolName = content.toolName,
-                agentId = strategyId,
+                agentId = context.agentId,
                 result = null
             )
         } catch (e: Exception) {
             logger.error(e) { "Tool \"${tool.name}\" failed to execute with arguments: ${content.toolArgs}" }
 
-            pipeline.onToolCallFailed(toolCallId, parentId, content.runId, content.toolCallId, tool, toolArgs, e)
+            context.pipeline.onToolCallFailed(id, parentId, content.runId, content.toolCallId, tool, toolArgs, e)
 
-            return toolResult(
+            return@withParent toolResult(
                 message = "Tool \"${tool.name}\" failed to execute because of ${e.message}!",
                 toolCallId = content.toolCallId,
                 toolName = content.toolName,
-                agentId = strategyId,
+                agentId = context.agentId,
                 result = null
             )
         }
 
-        pipeline.onToolCallCompleted(toolCallId, parentId, content.runId, content.toolCallId, tool, toolArgs, toolResult)
+        context.pipeline.onToolCallCompleted(id, parentId, content.runId, content.toolCallId, tool, toolArgs, toolResult)
 
         logger.trace { "Completed execution of ${content.toolName} with result: $toolResult" }
 
-        return toolResult(
+        toolResult(
             toolCallId = content.toolCallId,
             toolName = content.toolName,
-            agentId = strategyId,
+            agentId = context.agentId,
             message = tool.encodeResultToStringUnsafe(toolResult),
             result = tool.encodeResult(toolResult)
         )
@@ -168,5 +163,5 @@ internal class GenericAgentEnvironment(
     }
 
     private fun formatLog(runId: String, message: String): String =
-        "[agent id: $agentId, run id: $runId] $message"
+        "[agent id: ${context.agentId}, run id: $runId] $message"
 }

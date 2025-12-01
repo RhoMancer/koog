@@ -69,11 +69,9 @@ public open class GraphAIAgent<Input, Output>(
     override val pipeline: AIAgentGraphPipeline = AIAgentGraphPipeline(clock)
 
     private val environment = GenericAgentEnvironment(
-        agentId = this.id,
-        strategyId = strategy.name,
         logger = logger,
         toolRegistry = toolRegistry,
-        pipeline = pipeline
+        context = XXX,
     )
 
     /**
@@ -122,32 +120,41 @@ public open class GraphAIAgent<Input, Output>(
 
         // Agent id / run id / strategy name / node name /
 
-        return AIAgentGraphContext(
+        val initialAgentLLMContext = AIAgentLLMContext(
+            tools = toolRegistry.tools.map { it.descriptor },
+            toolRegistry = toolRegistry,
+            prompt = agentConfig.prompt,
+            model = agentConfig.model,
+            promptExecutor = promptExecutor,
+            environment = preparedEnvironment,
+            config = agentConfig,
+            clock = clock
+        )
+
+        val agentContext = AIAgentGraphContext(
             environment = preparedEnvironment,
             agentId = id,
             agentInput = agentInput,
             agentInputType = inputType,
             config = agentConfig,
-            llm = AIAgentLLMContext(
-                tools = toolRegistry.tools.map { it.descriptor },
-                toolRegistry = toolRegistry,
-                prompt = agentConfig.prompt,
-                model = agentConfig.model,
-                promptExecutor = PromptExecutorProxy(
-                    executor = promptExecutor,
-                    pipeline = pipeline,
-                    runId = runId
-                ),
-                environment = preparedEnvironment,
-                config = agentConfig,
-                clock = clock
-            ),
+            llm = initialAgentLLMContext,
             stateManager = stateManager,
             storage = storage,
             runId = runId,
             strategyName = strategy.name,
             pipeline = pipeline,
             executionInfo = executionInfo,
+        )
+
+        val promptExecutorProxy = PromptExecutorProxy(
+            executor = promptExecutor,
+            pipeline = pipeline,
+            runId = runId,
+            context = agentContext
+        )
+
+        return agentContext.copy(
+            llm = agentContext.llm.copy(promptExecutor = promptExecutorProxy)
         )
     }
 }

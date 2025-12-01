@@ -21,7 +21,7 @@ public data class AgentExecutionInfo(
 public suspend fun <T> withParent(
     context: AIAgentContext,
     partName: String,
-    block: suspend () -> T
+    block: suspend (parentId: String?, id: String) -> T
 ): T {
     val originalParentId = context.executionInfo.parentId
     val originalId = context.executionInfo.id
@@ -34,7 +34,7 @@ public suspend fun <T> withParent(
     context.executionInfo.path.append(partName)
 
     try {
-        return block()
+        return block(originalId, id)
     } finally {
         context.executionInfo.id = originalId
         context.executionInfo.parentId = originalParentId
