@@ -8,6 +8,9 @@ import ai.koog.prompt.llm.LLModel
 import ai.koog.prompt.message.LLMChoice
 import ai.koog.prompt.message.Message
 import ai.koog.prompt.streaming.StreamFrame
+import ai.koog.prompt.structure.StructuredOutputPrompts.appendStructuredOutputInstructions
+import ai.koog.prompt.structure.StructuredRequest
+import ai.koog.prompt.structure.StructuredResponse
 import ai.koog.prompt.structure.json.generator.BasicJsonSchemaGenerator
 import ai.koog.prompt.structure.json.generator.StandardJsonSchemaGenerator
 import kotlinx.coroutines.flow.Flow
@@ -101,6 +104,49 @@ public interface LLMClient : AutoCloseable {
      */
     public fun getBasicJsonSchemaGenerator(model: LLModel): BasicJsonSchemaGenerator {
         return BasicJsonSchemaGenerator
+    }
+
+    /**
+     * Executes a prompt with structured output, enhancing it with schema instructions or native structured output
+     * parameter, and parses the response into the defined structure.
+     *
+     * This is a simple version of the full `executeStructured`. Unlike the full version, it does not require specifying
+     * struct definitions and structured output modes manually. It attempts to find the best approach to provide a structured
+     * output based on the defined [model] capabilities.
+     *
+     * For example, it chooses which JSON schema to use (simple or full) and with which mode (native or manual).
+     *
+     * @param T The structure to request.
+     * @param prompt The prompt to be executed.
+     * @param model LLM to execute requests.
+     * @param structuredRequest The structured output to request.
+     *
+     * understand the format better.
+     *
+     * @return [kotlin.Result] with parsed [StructuredResponse] or error.
+     */
+    public suspend fun <T> executeStructured(
+        prompt: Prompt,
+        model: LLModel,
+        structuredRequest: StructuredRequest<T>,
+    ): StructuredResponse<T> {
+        val updatedPrompt = appendStructuredOutputInstructions(prompt, structuredRequest)
+        val message = this.execute(prompt = updatedPrompt, model = model)
+            .filterIsInstance<Message.Assistant>()
+            .firstOrNull()
+
+        try {
+            requireNotNull(message) { "Response for structured output must be an assistant message" }
+            return StructuredResponse.Success(
+                message = message,
+                data = structuredRequest.structure.parse(message.content),
+            )
+        } catch (e: Exception) {
+            return StructuredResponse.Failure(
+                message = message,
+                exception = e,
+            )
+        }
     }
 
     /**

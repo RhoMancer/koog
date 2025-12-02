@@ -203,7 +203,7 @@ public inline fun <reified T> AIAgentSubgraphBuilderBase<*, *>.nodeLLMRequestStr
     name: String? = null,
     config: StructuredRequestConfig<T>,
     fixingParser: StructureFixingParser? = null,
-): AIAgentNodeDelegate<String, Result<StructuredResponse<T>>> =
+): AIAgentNodeDelegate<String, StructuredResponse<T>> =
     node(name) { message ->
         llm.writeSession {
             appendPrompt {
@@ -234,7 +234,7 @@ public inline fun <reified T> AIAgentSubgraphBuilderBase<*, *>.nodeLLMRequestStr
     name: String? = null,
     examples: List<T> = emptyList(),
     fixingParser: StructureFixingParser? = null
-): AIAgentNodeDelegate<String, Result<StructuredResponse<T>>> =
+): AIAgentNodeDelegate<String, StructuredResponse<T>> =
     node(name) { message ->
         llm.writeSession {
             appendPrompt {

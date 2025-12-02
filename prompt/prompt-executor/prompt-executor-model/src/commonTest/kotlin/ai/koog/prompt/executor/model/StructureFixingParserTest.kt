@@ -4,8 +4,13 @@ import ai.koog.agents.testing.tools.getMockExecutor
 import ai.koog.prompt.executor.clients.openai.OpenAIModels
 import ai.koog.prompt.executor.model.LLMStructuredParsingError
 import ai.koog.prompt.executor.model.StructureFixingParser
+import ai.koog.prompt.message.Message
+import ai.koog.prompt.message.ResponseMetaInfo
+import ai.koog.prompt.structure.StructuredResponse
+import ai.koog.prompt.structure.getOrThrow
 import ai.koog.prompt.structure.json.JsonStructure
 import kotlinx.coroutines.test.runTest
+import kotlinx.datetime.Clock
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonElement
@@ -14,6 +19,7 @@ import kotlinx.serialization.json.JsonPrimitive
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
+import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 class StructureFixingParserTest {
@@ -33,6 +39,8 @@ class StructureFixingParserTest {
     private val testDataJson = Json.Default.encodeToString(testData)
     private val testStructure = JsonStructure.Companion.create<TestData>()
 
+    private fun buildMessage(content: String) = Message.Assistant(content, ResponseMetaInfo(Clock.System.now()))
+
     @Test
     fun testParseValidContentWithoutFixing() = runTest {
         val parser = StructureFixingParser(
@@ -41,8 +49,11 @@ class StructureFixingParserTest {
         )
         val mockExecutor = getMockExecutor {}
 
-        val result = parser.parse(mockExecutor, testStructure, testDataJson)
-        assertEquals(testData, result)
+        val response = StructuredResponse.Success(buildMessage(testDataJson), testData)
+
+        val result = parser.parse(mockExecutor, testStructure, response)
+        assertTrue(result.isSuccess)
+        assertEquals(testData, result.getOrThrow().data)
     }
 
     @Test
@@ -64,8 +75,16 @@ class StructureFixingParserTest {
             mockLLMAnswer(testDataJson) onRequestContains firstResponse
         }
 
-        val result = parser.parse(mockExecutor, testStructure, invalidContent)
-        assertEquals(testData, result)
+        val result = parser.parse(
+            mockExecutor,
+            testStructure,
+            StructuredResponse.Failure(
+                buildMessage(invalidContent),
+                LLMStructuredParsingError(message = "Failed to parse", cause = null)
+            )
+        )
+        assertTrue(result.isSuccess)
+        assertEquals(testData, result.getOrThrow().data)
     }
 
     @Test
@@ -83,8 +102,19 @@ class StructureFixingParserTest {
             mockLLMAnswer(invalidContent).asDefaultResponse
         }
 
+        val result = parser.parse(
+            mockExecutor,
+            testStructure,
+            StructuredResponse.Failure(
+                buildMessage(invalidContent),
+                LLMStructuredParsingError(message = "Failed to parse", cause = null)
+            )
+        )
+
+        assertFalse(result.isSuccess)
+
         assertFailsWith<LLMStructuredParsingError> {
-            parser.parse(mockExecutor, testStructure, invalidContent)
+            result.getOrThrow()
         }
     }
 
@@ -121,7 +151,7 @@ class StructureFixingParserTest {
             mockLLMAnswer(fixedContent) onRequestContains "unquotedKey"
         }
 
-        val result = parser.parse(mockExecutor, structure, invalidContent)
+        val result = parser.parse(mockExecutor, structure, invalidContent).getOrThrow()
 
         assertEquals("test-id", result.id)
         assertTrue(result.payload is JsonObject)

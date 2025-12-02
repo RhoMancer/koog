@@ -9,6 +9,7 @@ import ai.koog.prompt.executor.clients.openai.OpenAIModels
 import ai.koog.prompt.executor.model.StructureFixingParser
 import ai.koog.prompt.llm.LLModel
 import ai.koog.prompt.message.Message
+import ai.koog.prompt.structure.getOrThrow
 import kotlinx.serialization.Serializable
 
 /**

@@ -11,10 +11,10 @@ import ai.koog.prompt.message.Message
 import ai.koog.prompt.streaming.StreamFrame
 import ai.koog.prompt.structure.StructuredRequest
 import ai.koog.prompt.structure.StructuredResponse
-import executeStructured
+import ai.koog.prompt.structure.json.generator.BasicJsonSchemaGenerator
+import ai.koog.prompt.structure.json.generator.StandardJsonSchemaGenerator
 import io.github.oshai.kotlinlogging.KotlinLogging
 import kotlinx.coroutines.flow.Flow
-import kotlinx.serialization.KSerializer
 
 /**
  * Executes prompts using a direct client for communication with large language model (LLM) providers.
@@ -65,18 +65,17 @@ public open class SingleLLMPromptExecutor(
     override suspend fun <T> executeStructured(
         prompt: Prompt,
         model: LLModel,
-        serializer: KSerializer<T>,
-        examples: List<T>
-    ): Result<StructuredResponse<T>> {
-        return llmClient.executeStructured(prompt, model, serializer, examples)
+        structuredRequest: StructuredRequest<T>,
+    ): StructuredResponse<T> {
+        return llmClient.executeStructured(prompt, model, structuredRequest)
     }
 
-    override suspend fun <T> executeStructured(
-        prompt: Prompt,
-        model: LLModel,
-        structuredRequest: StructuredRequest<T>
-    ): Result<StructuredResponse<T>> {
-        return llmClient.executeStructured(prompt, model, structuredRequest)
+    override fun getBasicJsonSchemaGenerator(model: LLModel): BasicJsonSchemaGenerator {
+        return llmClient.getBasicJsonSchemaGenerator(model)
+    }
+
+    override fun getStandardJsonSchemaGenerator(model: LLModel): StandardJsonSchemaGenerator {
+        return llmClient.getStandardJsonSchemaGenerator(model)
     }
 
     override suspend fun moderate(prompt: Prompt, model: LLModel): ModerationResult = llmClient.moderate(prompt, model)

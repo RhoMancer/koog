@@ -1,7 +1,5 @@
 package ai.koog.prompt.executor.model
 
-import kotlinx.serialization.SerializationException
-
 /**
  * Exception indicating an error during the parsing of structured output from a language model.
  *
@@ -12,4 +10,4 @@ import kotlinx.serialization.SerializationException
  * @param message A detailed message describing the cause of the parsing error.
  * @param cause [kotlinx.serialization.SerializationException] that caused parsing exception.
  */
-public class LLMStructuredParsingError(message: String, cause: SerializationException?) : Exception(message, cause)
+public class LLMStructuredParsingError(message: String, cause: Exception?) : Exception(message, cause)

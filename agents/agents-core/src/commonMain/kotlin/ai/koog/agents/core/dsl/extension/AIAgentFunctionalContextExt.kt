@@ -150,7 +150,7 @@ public suspend inline fun <reified T> AIAgentFunctionalContext.requestLLMStructu
     message: String,
     examples: List<T> = emptyList(),
     fixingParser: StructureFixingParser? = null
-): Result<StructuredResponse<T>> {
+): StructuredResponse<T> {
     return llm.writeSession {
         appendPrompt {
             user(message)

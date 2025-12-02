@@ -21,6 +21,7 @@ import ai.koog.agents.core.environment.result
 import ai.koog.prompt.executor.model.StructureFixingParser
 import ai.koog.prompt.message.Message
 import ai.koog.prompt.structure.StructuredRequestConfig
+import ai.koog.prompt.structure.getOrThrow
 
 // FIXME improve this strategy to use Message.Assistant to chat, it works better than tools
 
@@ -218,7 +219,7 @@ public inline fun <reified Input, reified Output> structuredOutputWithToolsStrat
     val sendToolResult by nodeLLMSendMultipleToolResults()
     val transformToStructuredOutput by node<Message.Assistant, Output> { response ->
         llm.writeSession {
-            parseResponseToStructuredResponse(response, config, fixingParser).data
+            parseResponseToStructuredResponse(response, config, fixingParser).getOrThrow().data
         }
     }
 

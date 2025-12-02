@@ -17,15 +17,41 @@ import kotlinx.serialization.KSerializer
  * text as returned from a processing step, such as a language model execution.
  *
  * @param T The type of the structured data contained within this response.
- * @property data The parsed structured data corresponding to the specific schema.
  * @property structure The structure used for the response.
  * @property message The original assistant message from which the structure was parsed.
  */
-public data class StructuredResponse<T>(
-    val data: T,
-    val structure: Structure<T, *>,
-    val message: Message.Assistant
-)
+public sealed interface StructuredResponse<T> {
+    public val message: Message.Assistant?
+    public val isSuccess: Boolean
+
+    public data class Success<T>(
+        override val message: Message.Assistant?,
+        val data: T,
+    ) : StructuredResponse<T> {
+        override val isSuccess: Boolean = true
+    }
+
+    public data class Failure<T>(
+        override val message: Message.Assistant?,
+        val exception: Exception,
+    ) : StructuredResponse<T> {
+        override val isSuccess: Boolean = false
+    }
+}
+
+public fun <T> StructuredResponse<T>.getOrThrow(): StructuredResponse.Success<T> {
+    return when (this) {
+        is StructuredResponse.Success -> this
+        is StructuredResponse.Failure -> throw exception
+    }
+}
+
+public fun <T> StructuredResponse<T>.getOrNull(): StructuredResponse.Success<T>? {
+    return when (this) {
+        is StructuredResponse.Success -> this
+        is StructuredResponse.Failure -> null
+    }
+}
 
 /**
  * Configures structured output behavior.

@@ -12,10 +12,10 @@ import ai.koog.prompt.message.Message
 import ai.koog.prompt.streaming.StreamFrame
 import ai.koog.prompt.structure.StructuredRequest
 import ai.koog.prompt.structure.StructuredResponse
-import executeStructured
+import ai.koog.prompt.structure.json.generator.BasicJsonSchemaGenerator
+import ai.koog.prompt.structure.json.generator.StandardJsonSchemaGenerator
 import io.github.oshai.kotlinlogging.KotlinLogging
 import kotlinx.coroutines.flow.Flow
-import kotlinx.serialization.KSerializer
 
 /**
  * MultiLLMPromptExecutor is a class responsible for executing prompts
@@ -210,24 +210,29 @@ public open class MultiLLMPromptExecutor(
     override suspend fun <T> executeStructured(
         prompt: Prompt,
         model: LLModel,
-        serializer: KSerializer<T>,
-        examples: List<T>
-    ): Result<StructuredResponse<T>> {
+        structuredRequest: StructuredRequest<T>,
+    ): StructuredResponse<T> {
         val provider = model.provider
-        val client = llmClients[provider] ?: throw IllegalArgumentException("No client found for provider: $provider")
+        val llmClient =
+            llmClients[provider] ?: throw IllegalArgumentException("No client found for provider: $provider")
 
-        return client.executeStructured(prompt, model, serializer, examples)
+        return llmClient.executeStructured(prompt, model, structuredRequest)
     }
 
-    override suspend fun <T> executeStructured(
-        prompt: Prompt,
-        model: LLModel,
-        structuredRequest: StructuredRequest<T>
-    ): Result<StructuredResponse<T>> {
+    override fun getBasicJsonSchemaGenerator(model: LLModel): BasicJsonSchemaGenerator {
         val provider = model.provider
-        val client = llmClients[provider] ?: throw IllegalArgumentException("No client found for provider: $provider")
+        val llmClient =
+            llmClients[provider] ?: throw IllegalArgumentException("No client found for provider: $provider")
 
-        return client.executeStructured(prompt, model, structuredRequest)
+        return llmClient.getBasicJsonSchemaGenerator(model)
+    }
+
+    override fun getStandardJsonSchemaGenerator(model: LLModel): StandardJsonSchemaGenerator {
+        val provider = model.provider
+        val llmClient =
+            llmClients[provider] ?: throw IllegalArgumentException("No client found for provider: $provider")
+
+        return llmClient.getStandardJsonSchemaGenerator(model)
     }
 
     /**

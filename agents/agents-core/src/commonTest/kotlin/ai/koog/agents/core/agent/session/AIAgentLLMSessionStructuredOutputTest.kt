@@ -11,6 +11,7 @@ import ai.koog.prompt.message.Message
 import ai.koog.prompt.message.ResponseMetaInfo
 import ai.koog.prompt.structure.StructuredRequest
 import ai.koog.prompt.structure.StructuredRequestConfig
+import ai.koog.prompt.structure.getOrThrow
 import ai.koog.prompt.structure.json.JsonStructure
 import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.Serializable
@@ -73,7 +74,7 @@ class AIAgentLLMSessionStructuredOutputTest : AgentTestBase() {
         )
 
         val result = context.llm.writeSession {
-            parseResponseToStructuredResponse(assistantMessage, config)
+            parseResponseToStructuredResponse(assistantMessage, config).getOrThrow()
         }
 
         assertNotNull(result)
@@ -125,7 +126,7 @@ class AIAgentLLMSessionStructuredOutputTest : AgentTestBase() {
         )
 
         val result = context.llm.writeSession {
-            parseResponseToStructuredResponse(assistantMessage, config)
+            parseResponseToStructuredResponse(assistantMessage, config).getOrThrow()
         }
 
         assertNotNull(result)
@@ -205,7 +206,7 @@ class AIAgentLLMSessionStructuredOutputTest : AgentTestBase() {
         )
 
         val result = context.llm.writeSession {
-            parseResponseToStructuredResponse(assistantMessage, config)
+            parseResponseToStructuredResponse(assistantMessage, config).getOrThrow()
         }
 
         assertNotNull(result)

@@ -32,6 +32,7 @@ import ai.koog.prompt.llm.LLModel
 import ai.koog.prompt.message.Message
 import ai.koog.prompt.structure.StructuredRequest
 import ai.koog.prompt.structure.StructuredRequestConfig
+import ai.koog.prompt.structure.getOrNull
 import ai.koog.prompt.structure.json.JsonStructure
 import io.github.oshai.kotlinlogging.KotlinLogging
 import kotlinx.datetime.Clock

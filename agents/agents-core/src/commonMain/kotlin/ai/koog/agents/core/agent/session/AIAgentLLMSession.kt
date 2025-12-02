@@ -9,7 +9,6 @@ import ai.koog.prompt.dsl.Prompt
 import ai.koog.prompt.executor.model.PromptExecutor
 import ai.koog.prompt.executor.model.StructureFixingParser
 import ai.koog.prompt.executor.model.executeStructured
-import ai.koog.prompt.executor.model.parseResponseToStructuredResponse
 import ai.koog.prompt.llm.LLModel
 import ai.koog.prompt.message.LLMChoice
 import ai.koog.prompt.message.Message
@@ -280,7 +279,7 @@ public sealed class AIAgentLLMSession(
     public open suspend fun <T> requestLLMStructured(
         config: StructuredRequestConfig<T>,
         fixingParser: StructureFixingParser? = null
-    ): Result<StructuredResponse<T>> {
+    ): StructuredResponse<T> {
         validateSession()
 
         val preparedPrompt = preparePrompt(prompt, tools = emptyList())
@@ -311,7 +310,7 @@ public sealed class AIAgentLLMSession(
         serializer: KSerializer<T>,
         examples: List<T> = emptyList(),
         fixingParser: StructureFixingParser? = null
-    ): Result<StructuredResponse<T>> {
+    ): StructuredResponse<T> {
         validateSession()
 
         val preparedPrompt = preparePrompt(prompt, tools = emptyList())
@@ -342,7 +341,7 @@ public sealed class AIAgentLLMSession(
     public suspend inline fun <reified T> requestLLMStructured(
         examples: List<T> = emptyList(),
         fixingParser: StructureFixingParser? = null
-    ): Result<StructuredResponse<T>> = requestLLMStructured(
+    ): StructuredResponse<T> = requestLLMStructured(
         serializer = serializer<T>(),
         examples = examples,
         fixingParser = fixingParser,
@@ -365,7 +364,10 @@ public sealed class AIAgentLLMSession(
         response: Message.Assistant,
         config: StructuredRequestConfig<T>,
         fixingParser: StructureFixingParser? = null
-    ): StructuredResponse<T> = executor.parseResponseToStructuredResponse(response, config, model, fixingParser)
+    ): StructuredResponse<T> {
+        TODO("")
+//        executor.parseResponseToStructuredResponse(response, config, model, fixingParser)
+    }
 
     /**
      * Sends a request to the language model, potentially receiving multiple choices,

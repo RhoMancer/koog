@@ -19,6 +19,7 @@ import ai.koog.prompt.llm.LLModel
 import ai.koog.prompt.params.LLMParams
 import ai.koog.prompt.structure.StructuredRequest
 import ai.koog.prompt.structure.StructuredRequestConfig
+import ai.koog.prompt.structure.getOrThrow
 import ai.koog.prompt.structure.json.JsonStructure
 import ai.koog.prompt.structure.json.generator.StandardJsonSchemaGenerator
 import io.github.oshai.kotlinlogging.KotlinLogging

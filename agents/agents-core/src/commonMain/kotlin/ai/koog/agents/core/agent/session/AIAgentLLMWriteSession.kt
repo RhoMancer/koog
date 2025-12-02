@@ -457,11 +457,11 @@ public class AIAgentLLMWriteSession internal constructor(
     override suspend fun <T> requestLLMStructured(
         config: StructuredRequestConfig<T>,
         fixingParser: StructureFixingParser?
-    ): Result<StructuredResponse<T>> {
-        return super.requestLLMStructured(config, fixingParser).also {
-            it.onSuccess { response ->
+    ): StructuredResponse<T> {
+        return super.requestLLMStructured(config, fixingParser).also { response ->
+            if (response.isSuccess) {
                 appendPrompt {
-                    message(response.message)
+                    response.message?.let { message(it) }
                 }
             }
         }
@@ -485,11 +485,11 @@ public class AIAgentLLMWriteSession internal constructor(
         serializer: KSerializer<T>,
         examples: List<T>,
         fixingParser: StructureFixingParser?
-    ): Result<StructuredResponse<T>> {
-        return super.requestLLMStructured(serializer, examples, fixingParser).also {
-            it.onSuccess { response ->
+    ): StructuredResponse<T> {
+        return super.requestLLMStructured(serializer, examples, fixingParser).also { response ->
+            if (response.isSuccess) {
                 appendPrompt {
-                    message(response.message)
+                    response.message?.let { message(it) }
                 }
             }
         }

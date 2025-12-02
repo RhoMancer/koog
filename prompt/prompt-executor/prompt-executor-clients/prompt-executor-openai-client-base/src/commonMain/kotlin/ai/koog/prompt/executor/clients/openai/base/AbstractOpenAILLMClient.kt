@@ -86,8 +86,6 @@ public abstract class AbstractOpenAILLMClient<TResponse : OpenAIBaseLLMResponse,
     private val toolsConverter: OpenAICompatibleToolDescriptorSchemaGenerator,
 ) : LLMClient {
 
-    protected open val clientName: String = this::class.simpleName ?: "UnknownClient"
-
     private val chatCompletionsPath: String = settings.chatCompletionsPath
 
     protected val json: Json = Json {
