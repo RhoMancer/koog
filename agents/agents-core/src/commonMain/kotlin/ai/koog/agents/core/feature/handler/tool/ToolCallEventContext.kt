@@ -2,7 +2,8 @@ package ai.koog.agents.core.feature.handler.tool
 
 import ai.koog.agents.core.feature.handler.AgentLifecycleEventContext
 import ai.koog.agents.core.feature.handler.AgentLifecycleEventType
-import ai.koog.agents.core.tools.Tool
+import ai.koog.agents.core.tools.ToolException
+import kotlinx.serialization.json.JsonElement
 
 /**
  * Represents the context for handling tool-specific events within the framework.
@@ -23,7 +24,7 @@ public data class ToolCallStartingContext(
     val runId: String,
     val toolCallId: String?,
     val toolName: String,
-    val toolArgs: Any?
+    val toolArgs: JsonElement?
 ) : ToolCallEventContext {
     override val eventType: AgentLifecycleEventType = AgentLifecycleEventType.ToolCallStarting
 }
@@ -31,10 +32,10 @@ public data class ToolCallStartingContext(
 /**
  * Represents the context for handling validation errors that occur during the execution of a tool.
  *
- * @property runId The unique identifier for this tool call session.
- * @property toolCallId The unique identifier for this tool call.
- * @property tool The tool instance associated with the validation error.
- * @property toolArgs The arguments passed to the tool when the error occurred.
+ * @property runId The unique identifier for this tool call session;
+ * @property toolCallId The unique identifier for this tool call;
+ * @property toolName The name of the tool associated with the validation error;
+ * @property toolArgs The arguments passed to the tool when the error occurred;
  * @property error The error message describing the validation issue.
  */
 public data class ToolValidationFailedContext(
@@ -42,9 +43,10 @@ public data class ToolValidationFailedContext(
     override val parentId: String?,
     val runId: String,
     val toolCallId: String?,
-    val tool: Tool<*, *>,
-    val toolArgs: Any?,
-    val error: String
+    val toolName: String,
+    val toolArgs: JsonElement,
+    val message: String,
+    val error: ToolException
 ) : ToolCallEventContext {
     override val eventType: AgentLifecycleEventType = AgentLifecycleEventType.ToolValidationFailed
 }
@@ -52,11 +54,12 @@ public data class ToolValidationFailedContext(
 /**
  * Represents the context provided to handle a failure during the execution of a tool.
  *
- * @property runId The unique identifier for this tool call session.
- * @property toolCallId The unique identifier for this tool call.
- * @property toolName The name of the tool being executed when the failure occurred.
- * @property toolArgs The arguments that were passed to the tool during execution.
- * @property throwable The exception or error that caused the failure.
+ * @property runId The unique identifier for this tool call session;
+ * @property toolCallId The unique identifier for this tool call;
+ * @property toolName The name of the tool being executed when the failure occurred;
+ * @property toolArgs The arguments that were passed to the tool during execution;
+ * @property message A message describing the failure that occurred.
+ * @property error The error message describing the tool call failure.
  */
 public data class ToolCallFailedContext(
     override val id: String,
@@ -65,7 +68,8 @@ public data class ToolCallFailedContext(
     val toolCallId: String?,
     val toolName: String,
     val toolArgs: Any?,
-    val throwable: Throwable
+    val message: String,
+    val error: Exception?
 ) : ToolCallEventContext {
     override val eventType: AgentLifecycleEventType = AgentLifecycleEventType.ToolCallFailed
 }

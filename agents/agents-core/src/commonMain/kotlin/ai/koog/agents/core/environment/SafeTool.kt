@@ -134,6 +134,7 @@ public data class SafeTool<TArgs, TResult>(
     @Suppress("UNCHECKED_CAST")
     public suspend fun execute(args: TArgs): Result<TResult> {
         return environment.executeTool(
+            runId,
             Message.Tool.Call(
                 id = null,
                 tool = tool.name,

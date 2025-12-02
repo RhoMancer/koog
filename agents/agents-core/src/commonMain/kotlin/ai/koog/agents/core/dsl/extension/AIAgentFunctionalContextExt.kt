@@ -3,7 +3,7 @@ package ai.koog.agents.core.dsl.extension
 import ai.koog.agents.core.agent.context.AIAgentFunctionalContext
 import ai.koog.agents.core.environment.ReceivedToolResult
 import ai.koog.agents.core.environment.SafeTool
-import ai.koog.agents.core.environment.executeTool
+import ai.koog.agents.core.environment.executeTools
 import ai.koog.agents.core.environment.result
 import ai.koog.agents.core.tools.Tool
 import ai.koog.agents.core.tools.ToolArgs
@@ -268,7 +268,7 @@ public suspend fun AIAgentFunctionalContext.requestLLMForceOneTool(
  * @return The result of the tool execution.
  */
 public suspend fun AIAgentFunctionalContext.executeTool(toolCall: Message.Tool.Call): ReceivedToolResult {
-    return environment.executeTool(this, toolCall)
+    return environment.executeTool(runId, toolCall)
 }
 
 /**
@@ -284,10 +284,10 @@ public suspend fun AIAgentFunctionalContext.executeMultipleTools(
     parallelTools: Boolean = false
 ): List<ReceivedToolResult> {
     return if (parallelTools) {
-        environment.executeTools(this, toolCalls)
+        environment.executeTools(runId, toolCalls)
     } else {
         toolCalls.map { toolCall ->
-            environment.executeTool(this, toolCall)
+            environment.executeTool(runId, toolCall)
         }
     }
 }

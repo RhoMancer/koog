@@ -88,49 +88,40 @@ public abstract class StatefulSingleUseAIAgent<Input, Output, TContext : AIAgent
         val context = prepareContext(agentInput, runId)
 
         return pipeline.withPreparedPipeline {
-            agentStateMutex.withLock {
-                state = State.Running(context)
-            }
 
-            logger.debug { formatLog(this@StatefulSingleUseAIAgent.id, runId, "Starting agent execution") }
-            pipeline.onAgentStarting<Input, Output>(
-                context.executionInfo.id,
-                context.executionInfo.parentId,
-                runId,
-                this@StatefulSingleUseAIAgent,
-                context
-            )
+            // Agent
+            withParent(context, runId) { parentId, id ->
+                agentStateMutex.withLock {
+                    state = State.Running(context)
+                }
 
-            val result = withParent(context, runId) {
-                try {
+                logger.debug { formatLog(this@StatefulSingleUseAIAgent.id, runId, "Starting agent execution") }
+                pipeline.onAgentStarting<Input, Output>(id, parentId, runId, this@StatefulSingleUseAIAgent, context)
+
+                // Strategy
+                val result = try {
                     strategy.execute(context = context, input = agentInput)
                 } catch (e: Throwable) {
                     logger.error(e) { "Execution exception reported by server!" }
-                    pipeline.onAgentExecutionFailed(id, null, this@StatefulSingleUseAIAgent.id, runId, e)
+                    pipeline.onAgentExecutionFailed(id, parentId, this@StatefulSingleUseAIAgent.id, runId, e)
 
                     agentStateMutex.withLock { state = State.Failed(e) }
                     throw e
                 }
-            }
 
-            logger.debug { formatLog(this@StatefulSingleUseAIAgent.id, runId, "Finished agent execution") }
-            pipeline.onAgentCompleted(
-                context.executionInfo.id,
-                context.executionInfo.parentId,
-                this@StatefulSingleUseAIAgent.id,
-                runId,
-                result
-            )
+                logger.debug { formatLog(this@StatefulSingleUseAIAgent.id, runId, "Finished agent execution") }
+                pipeline.onAgentCompleted(id, parentId, this@StatefulSingleUseAIAgent.id, runId, result)
 
-            agentStateMutex.withLock {
-                state = if (result != null) {
-                    State.Finished(result)
-                } else {
-                    State.Failed(Exception("result is null"))
+                agentStateMutex.withLock {
+                    state = if (result != null) {
+                        State.Finished(result)
+                    } else {
+                        State.Failed(Exception("result is null"))
+                    }
                 }
-            }
 
-            result ?: error("result is null")
+                result ?: error("result is null")
+            }
         }
     }
 

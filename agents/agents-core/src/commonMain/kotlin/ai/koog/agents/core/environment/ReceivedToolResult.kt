@@ -22,6 +22,7 @@ import kotlinx.serialization.json.JsonElement
 public data class ReceivedToolResult(
     val id: String?,
     val tool: String,
+    val toolArgs: JsonElement,
     val content: String,
     val resultType: ToolResultType,
     val result: JsonElement?
@@ -65,6 +66,7 @@ public fun EnvironmentToolResultToAgentContent.toResult(): ReceivedToolResult {
 public fun AIAgentEnvironmentToolResultToAgentContent.toResult(): ReceivedToolResult = ReceivedToolResult(
     id = toolCallId,
     tool = toolName,
+    toolArgs = toolArgs,
     content = message,
     resultType = toolResultType,
     result = toolResult

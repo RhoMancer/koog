@@ -131,6 +131,12 @@ public open class GraphAIAgent<Input, Output>(
             executionInfo = executionInfo,
         )
 
+        // Updated environment
+        val environmentProxy = GenericAgentEnvironmentProxy(
+            environment = preparedEnvironment,
+            context = agentContext,
+        )
+
         // Updated prompt executor
         val promptExecutorProxy = PromptExecutorProxy(
             executor = promptExecutor,
@@ -138,12 +144,10 @@ public open class GraphAIAgent<Input, Output>(
             runId = runId,
             context = agentContext
         )
-        val updatedLLMContext = agentContext.llm.copy(promptExecutor = promptExecutorProxy)
 
-        // Updated environment
-        val environmentProxy = GenericAgentEnvironmentProxy(
-            environment = preparedEnvironment,
-            context = agentContext,
+        val updatedLLMContext = agentContext.llm.copy(
+            promptExecutor = promptExecutorProxy,
+            environment = environmentProxy
         )
 
         // Update the environment and llm with a created context instance

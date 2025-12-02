@@ -8,7 +8,9 @@ import ai.koog.agents.core.agent.context.AgentExecutionPath
 import ai.koog.agents.core.agent.entity.AIAgentStateManager
 import ai.koog.agents.core.agent.entity.AIAgentStorage
 import ai.koog.agents.core.annotation.InternalAgentsApi
+import ai.koog.agents.core.environment.AIAgentEnvironment
 import ai.koog.agents.core.environment.GenericAgentEnvironment
+import ai.koog.agents.core.environment.GenericAgentEnvironmentProxy
 import ai.koog.agents.core.feature.AIAgentFeature
 import ai.koog.agents.core.feature.AIAgentFunctionalFeature
 import ai.koog.agents.core.feature.PromptExecutorProxy
@@ -54,12 +56,6 @@ public class FunctionalAIAgent<Input, Output>(
 
     override val pipeline: AIAgentFunctionalPipeline = AIAgentFunctionalPipeline(clock)
 
-    private val environment = GenericAgentEnvironment(
-        logger = logger,
-        toolRegistry = toolRegistry,
-        context = XXX,
-    )
-
     /**
      * Represents a context for managing and configuring features in an AI agent.
      * Provides functionality to install and configure features into a specific instance of an AI agent.
@@ -84,36 +80,81 @@ public class FunctionalAIAgent<Input, Output>(
     }
 
     override suspend fun prepareContext(agentInput: Input, runId: String): AIAgentFunctionalContext {
-        val llm = AIAgentLLMContext(
+
+        val environment = GenericAgentEnvironment(
+            agentId = id,
+            logger = logger,
+            toolRegistry = toolRegistry,
+        )
+
+        val initialAgentLLMContext = AIAgentLLMContext(
             tools = toolRegistry.tools.map { it.descriptor },
             toolRegistry = toolRegistry,
             prompt = agentConfig.prompt,
             model = agentConfig.model,
-            promptExecutor = PromptExecutorProxy(
-                executor = promptExecutor,
-                pipeline = pipeline,
-                runId = runId
-            ),
+            promptExecutor = promptExecutor,
             environment = environment,
             config = agentConfig,
             clock = clock
         )
 
+
         val executionPath = AgentExecutionPath(id, runId)
         val executionInfo = AgentExecutionInfo(id = runId, parentId = id, path = executionPath)
+        val preparedEnvironment = prepareEnvironment()
 
-        return AIAgentFunctionalContext(
-            environment = environment,
+        // Context
+        val agentContext = AIAgentFunctionalContext(
+            environment = preparedEnvironment,
             agentId = id,
             runId = runId,
             agentInput = agentInput,
             config = agentConfig,
-            llm = llm,
+            llm = initialAgentLLMContext,
             stateManager = AIAgentStateManager(),
             storage = AIAgentStorage(),
             strategyName = strategy.name,
             pipeline = pipeline,
             executionInfo = executionInfo,
         )
+
+        // Updated environment
+        val environmentProxy = GenericAgentEnvironmentProxy(
+            environment = preparedEnvironment,
+            context = agentContext,
+        )
+
+        // Updated prompt executor
+        val promptExecutorProxy = PromptExecutorProxy(
+            executor = promptExecutor,
+            pipeline = pipeline,
+            runId = runId,
+            context = agentContext
+        )
+
+        val updatedLLMContext = agentContext.llm.copy(
+            promptExecutor = promptExecutorProxy,
+            environment = environmentProxy
+        )
+
+        // Update the environment and llm with a created context instance
+        return agentContext.copy(
+            llm = updatedLLMContext,
+            environment = environmentProxy
+        )
     }
+
+    //region Private Methods
+
+    private fun prepareEnvironment(): AIAgentEnvironment {
+        val baseEnvironment = GenericAgentEnvironment(
+            agentId = id,
+            logger = logger,
+            toolRegistry = toolRegistry,
+        )
+
+        return baseEnvironment
+    }
+
+    //endregion Private Methods
 }

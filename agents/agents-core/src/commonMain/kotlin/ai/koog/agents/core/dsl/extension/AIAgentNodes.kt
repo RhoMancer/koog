@@ -6,7 +6,7 @@ import ai.koog.agents.core.dsl.builder.AIAgentNodeDelegate
 import ai.koog.agents.core.dsl.builder.AIAgentSubgraphBuilderBase
 import ai.koog.agents.core.environment.ReceivedToolResult
 import ai.koog.agents.core.environment.SafeTool
-import ai.koog.agents.core.environment.executeTool
+import ai.koog.agents.core.environment.executeTools
 import ai.koog.agents.core.environment.result
 import ai.koog.agents.core.tools.Tool
 import ai.koog.agents.core.tools.ToolDescriptor
@@ -420,9 +420,9 @@ public fun AIAgentSubgraphBuilderBase<*, *>.nodeExecuteMultipleTools(
 ): AIAgentNodeDelegate<List<Message.Tool.Call>, List<ReceivedToolResult>> =
     node(name) { toolCalls ->
         if (parallelTools) {
-            environment.executeTools(this, toolCalls)
+            environment.executeTools(runId, toolCalls)
         } else {
-            toolCalls.map { environment.executeTool(this, it) }
+            toolCalls.map { environment.executeTool(runId, it) }
         }
     }
 

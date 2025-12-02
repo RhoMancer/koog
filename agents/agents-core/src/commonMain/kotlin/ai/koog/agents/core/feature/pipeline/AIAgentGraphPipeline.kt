@@ -77,6 +77,8 @@ public class AIAgentGraphPipeline(clock: Clock = Clock.System) : AIAgentPipeline
      * @param inputType The type of the input data provided to the node
      */
     public suspend fun onNodeExecutionStarting(
+        id: String,
+        parentId: String?,
         executionData: AgentExecutionInfo,
         node: AIAgentNodeBase<*, *>,
         context: AIAgentGraphContextBase,
@@ -98,6 +100,8 @@ public class AIAgentGraphPipeline(clock: Clock = Clock.System) : AIAgentPipeline
      * @param outputType The type of the output data produced by the node execution
      */
     public suspend fun onNodeExecutionCompleted(
+        id: String,
+        parentId: String?,
         executionData: AgentExecutionInfo,
         node: AIAgentNodeBase<*, *>,
         context: AIAgentGraphContextBase,
@@ -120,6 +124,8 @@ public class AIAgentGraphPipeline(clock: Clock = Clock.System) : AIAgentPipeline
      * @param throwable The exception or error that occurred during node execution.
      */
     public suspend fun onNodeExecutionFailed(
+        id: String,
+        parentId: String?,
         executionData: AgentExecutionInfo,
         node: AIAgentNodeBase<*, *>,
         context: AIAgentGraphContextBase,

@@ -17,6 +17,7 @@ import kotlinx.serialization.json.JsonElement
 public data class AIAgentEnvironmentToolResultToAgentContent(
     override val toolCallId: String?,
     override val toolName: String,
+    override val toolArgs: JsonElement,
     override val agentId: String,
     override val message: String,
     val toolResultType: ToolResultType,

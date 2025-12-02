@@ -34,69 +34,7 @@ internal class GenericAgentEnvironment(
             )
         )
 
-        val content = message.content
-
-        logger.debug { "Handling tool call sent by server..." }
-        val tool = toolRegistry.getToolOrNull(content.toolName)
-            ?: run {
-                logger.error { "Tool \"${content.toolName}\" not found." }
-                return toolResult(
-                    message = "Tool \"${content.toolName}\" not found. Use one of the available tools.",
-                    toolCallId = content.toolCallId,
-                    toolName = content.toolName,
-                    agentId = agentId,
-                    resultType = ToolResultType.FAILURE,
-                    result = null
-                ).toResult()
-            }
-
-        val toolArgs = try {
-            tool.decodeArgs(content.toolArgs)
-        } catch (e: Exception) {
-            logger.error(e) { "Tool \"${tool.name}\" failed to parse arguments: ${content.toolArgs}" }
-            return toolResult(
-                message = "Tool \"${tool.name}\" failed to parse arguments because of ${e.message}!",
-                toolCallId = content.toolCallId,
-                toolName = content.toolName,
-                agentId = agentId,
-                resultType = ToolResultType.FAILURE,
-                result = null
-            ).toResult()
-        }
-
-        val toolResult = try {
-            @Suppress("UNCHECKED_CAST")
-            (tool as Tool<Any?, Any?>).execute(toolArgs)
-        } catch (e: ToolException) {
-            return toolResult(
-                message = e.message,
-                toolCallId = content.toolCallId,
-                toolName = content.toolName,
-                agentId = agentId,
-                resultType = ToolResultType.VALIDATION_ERROR,
-                result = null
-            ).toResult()
-        } catch (e: Exception) {
-            logger.error(e) { "Tool \"${tool.name}\" failed to execute with arguments: ${content.toolArgs}" }
-            return toolResult(
-                message = "Tool \"${tool.name}\" failed to execute because of ${e.message}!",
-                toolCallId = content.toolCallId,
-                toolName = content.toolName,
-                agentId = agentId,
-                resultType = ToolResultType.FAILURE,
-                result = null
-            ).toResult()
-        }
-
-        logger.trace { "Completed execution of ${content.toolName} with result: $toolResult" }
-        return toolResult(
-            toolCallId = content.toolCallId,
-            toolName = content.toolName,
-            agentId = agentId,
-            message = tool.encodeResultToStringUnsafe(toolResult),
-            resultType = ToolResultType.SUCCESS,
-            result = tool.encodeResult(toolResult)
-        ).toResult()
+        return processToolCall(toolCallContent = message.content).toResult()
     }
 
     override suspend fun reportProblem(runId: String, exception: Throwable) {
@@ -142,6 +80,7 @@ internal class GenericAgentEnvironment(
     private fun toolResult(
         toolCallId: String?,
         toolName: String,
+        toolArgs: JsonElement,
         agentId: String,
         message: String,
         resultType: ToolResultType,
@@ -149,6 +88,7 @@ internal class GenericAgentEnvironment(
     ): EnvironmentToolResultToAgentContent = AIAgentEnvironmentToolResultToAgentContent(
         toolCallId = toolCallId,
         toolName = toolName,
+        toolArgs = toolArgs,
         agentId = agentId,
         message = message,
         toolResultType = resultType,
@@ -157,32 +97,34 @@ internal class GenericAgentEnvironment(
 
     @OptIn(InternalAgentToolsApi::class)
     private suspend fun processToolCall(
-        content: AgentToolCallToEnvironmentContent
+        toolCallContent: AgentToolCallToEnvironmentContent
     ): EnvironmentToolResultToAgentContent {
         logger.debug { "Handling tool call sent by server..." }
-        val tool = toolRegistry.getToolOrNull(content.toolName)
+        val tool = toolRegistry.getToolOrNull(toolCallContent.toolName)
             ?: run {
-                logger.error { "Tool \"${content.toolName}\" not found." }
+                logger.error { "Tool \"${toolCallContent.toolName}\" not found." }
                 return toolResult(
-                    message = "Tool \"${content.toolName}\" not found. Use one of the available tools.",
-                    toolCallId = content.toolCallId,
-                    toolName = content.toolName,
+                    message = "Tool \"${toolCallContent.toolName}\" not found. Use one of the available tools.",
+                    toolCallId = toolCallContent.toolCallId,
+                    toolName = toolCallContent.toolName,
+                    toolArgs = toolCallContent.toolArgs,
                     agentId = agentId,
-                    resultType = ToolResultType.FAILURE,
+                    resultType = ToolResultType.Failure(null),
                     result = null
                 )
             }
 
         val toolArgs = try {
-            tool.decodeArgs(content.toolArgs)
+            tool.decodeArgs(toolCallContent.toolArgs)
         } catch (e: Exception) {
-            logger.error(e) { "Tool \"${tool.name}\" failed to parse arguments: ${content.toolArgs}" }
+            logger.error(e) { "Tool \"${tool.name}\" failed to parse arguments: ${toolCallContent.toolArgs}" }
             return toolResult(
                 message = "Tool \"${tool.name}\" failed to parse arguments because of ${e.message}!",
-                toolCallId = content.toolCallId,
-                toolName = content.toolName,
+                toolCallId = toolCallContent.toolCallId,
+                toolName = toolCallContent.toolName,
+                toolArgs = toolCallContent.toolArgs,
                 agentId = agentId,
-                resultType = ToolResultType.FAILURE,
+                resultType = ToolResultType.Failure(e),
                 result = null
             )
         }
@@ -193,31 +135,34 @@ internal class GenericAgentEnvironment(
         } catch (e: ToolException) {
             return toolResult(
                 message = e.message,
-                toolCallId = content.toolCallId,
-                toolName = content.toolName,
+                toolCallId = toolCallContent.toolCallId,
+                toolName = toolCallContent.toolName,
+                toolArgs = toolCallContent.toolArgs,
                 agentId = agentId,
-                resultType = ToolResultType.VALIDATION_ERROR,
+                resultType = ToolResultType.ValidationError(e),
                 result = null
             )
         } catch (e: Exception) {
-            logger.error(e) { "Tool \"${tool.name}\" failed to execute with arguments: ${content.toolArgs}" }
+            logger.error(e) { "Tool \"${tool.name}\" failed to execute with arguments: ${toolCallContent.toolArgs}" }
             return toolResult(
                 message = "Tool \"${tool.name}\" failed to execute because of ${e.message}!",
-                toolCallId = content.toolCallId,
-                toolName = content.toolName,
+                toolCallId = toolCallContent.toolCallId,
+                toolName = toolCallContent.toolName,
+                toolArgs = toolCallContent.toolArgs,
                 agentId = agentId,
-                resultType = ToolResultType.FAILURE,
+                resultType = ToolResultType.Failure(e),
                 result = null
             )
         }
 
-        logger.trace { "Completed execution of ${content.toolName} with result: $toolResult" }
+        logger.trace { "Completed execution of ${toolCallContent.toolName} with result: $toolResult" }
         return toolResult(
-            toolCallId = content.toolCallId,
-            toolName = content.toolName,
+            toolCallId = toolCallContent.toolCallId,
+            toolName = toolCallContent.toolName,
+            toolArgs = toolCallContent.toolArgs,
             agentId = agentId,
             message = tool.encodeResultToStringUnsafe(toolResult),
-            resultType = ToolResultType.SUCCESS,
+            resultType = ToolResultType.Success,
             result = tool.encodeResult(toolResult)
         )
     }

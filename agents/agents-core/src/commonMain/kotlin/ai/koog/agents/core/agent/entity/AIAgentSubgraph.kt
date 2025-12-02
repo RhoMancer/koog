@@ -153,7 +153,7 @@ public open class AIAgentSubgraph<TInput, TOutput>(
      * @return The output of the AI agent execution, generated after processing the input.
      */
     @OptIn(InternalAgentsApi::class, DetachedPromptExecutorAPI::class, ExperimentalUuidApi::class)
-    override suspend fun execute(context: AIAgentGraphContextBase, input: TInput): TOutput? = withParent(context, id) {
+    override suspend fun execute(context: AIAgentGraphContextBase, input: TInput): TOutput? = withParent(context, id) { parentId, id ->
         val newTools = selectTools(context)
 
         // Copy inner context with new tools, model and LLM params.
@@ -168,7 +168,7 @@ public open class AIAgentSubgraph<TInput, TOutput>(
         }
 
         runIfNonRootContext(context) {
-            pipeline.onSubgraphExecutionStarting(context.executionInfo.id, context.executionInfo.parentId, this@AIAgentSubgraph, innerContext, input, inputType)
+            pipeline.onSubgraphExecutionStarting(id, parentId, this@AIAgentSubgraph, innerContext, input, inputType)
         }
 
         // Execute the subgraph with an inner context and get the result and updated prompt.
@@ -179,7 +179,7 @@ public open class AIAgentSubgraph<TInput, TOutput>(
         } catch (e: Exception) {
             logger.error(e) { "Exception during executing subgraph '$name': ${e.message}" }
             runIfNonRootContext(context) {
-                pipeline.onSubgraphExecutionFailed(context.executionInfo.id, context.executionInfo.parentId, this@AIAgentSubgraph, context, input, inputType, e)
+                pipeline.onSubgraphExecutionFailed(id, parentId, this@AIAgentSubgraph, context, input, inputType, e)
             }
             throw e
         }
@@ -197,7 +197,7 @@ public open class AIAgentSubgraph<TInput, TOutput>(
         }
 
         runIfNonRootContext(context) {
-            pipeline.onSubgraphExecutionCompleted(context.executionInfo.id, context.executionInfo.parentId, this@AIAgentSubgraph, innerContext, input, inputType, result, outputType)
+            pipeline.onSubgraphExecutionCompleted(id, parentId, this@AIAgentSubgraph, innerContext, input, inputType, result, outputType)
         }
 
         result

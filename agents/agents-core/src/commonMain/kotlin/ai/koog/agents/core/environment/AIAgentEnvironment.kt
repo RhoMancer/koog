@@ -1,6 +1,9 @@
 package ai.koog.agents.core.environment
 
 import ai.koog.prompt.message.Message
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.supervisorScope
 
 /**
  * AIAgentEnvironment provides a mechanism for AI agents to interface with an external environment.
@@ -34,16 +37,26 @@ public interface AIAgentEnvironment {
     public suspend fun reportProblem(runId: String, exception: Throwable)
 }
 
-///**
-// * Executes a single tool call and retrieves the result.
-// *
-// * This method sends the specified tool call to the tool execution environment, processes it,
-// * and returns the result of the tool call. It internally leverages `executeTools` to handle
-// * the execution and retrieves the first result from the returned list of results.
-// *
-// * @param runId A unique identifier representing the current execution run.
-// * @param toolCall The tool call to be executed, represented as an instance of [Message.Tool.Call].
-// * @return The result of the executed tool call, represented as [ReceivedToolResult].
-// */
-//public suspend fun AIAgentEnvironment.executeTools(runId: String, toolCall: Message.Tool.Call): ReceivedToolResult =
-//    executeTool(runId, listOf(toolCall)).first()
+/**
+ * Executes a batch of tool calls within the AI agent environment and processes their results.
+ *
+ * This method takes a list of tool call messages, processes them by sending appropriate requests
+ * to the underlying environment, and returns a list of results corresponding to the tool calls.
+ *
+ * @param runId A unique identifier representing the current execution run.
+ * @param toolCalls A list of tool call messages to be executed. Each message contains details
+ *        about the tool, its identifier, the request content, and associated metadata.
+ * @return A list of results corresponding to the executed tool calls. Each result includes details
+ *         such as the tool name, identifier, response content, and metadata.
+ */
+public suspend fun AIAgentEnvironment.executeTools(runId: String, toolCalls: List<Message.Tool.Call>): List<ReceivedToolResult> {
+    val results = supervisorScope {
+        toolCalls
+            .map { toolCall ->
+                async { executeTool(runId, toolCall) }
+            }
+            .awaitAll()
+    }
+
+    return results
+}

@@ -64,7 +64,7 @@ public data class AgentExecutionFailedContext(
     override val parentId: String?,
     val agentId: String,
     val runId: String,
-    val throwable: Throwable
+    val throwable: Exception
 ) : AgentEventContext {
     override val eventType: AgentLifecycleEventType = AgentLifecycleEventType.AgentExecutionFailed
 }

@@ -3,6 +3,7 @@ package ai.koog.agents.core.feature.model.events
 import ai.koog.agents.core.feature.model.AIAgentError
 import kotlinx.datetime.Clock
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 
 /**
@@ -28,7 +29,7 @@ public data class ToolCallStartingEvent(
     val runId: String,
     val toolCallId: String?,
     val toolName: String,
-    val toolArgs: JsonObject,
+    val toolArgs: JsonElement?,
     override val timestamp: Long = Clock.System.now().toEpochMilliseconds(),
 ) : DefinedFeatureEvent() {
 
@@ -70,8 +71,9 @@ public data class ToolValidationFailedEvent(
     val runId: String,
     val toolCallId: String?,
     val toolName: String,
-    val toolArgs: JsonObject,
-    val error: String,
+    val toolArgs: JsonElement?,
+    val message: String?,
+    val error: AIAgentError,
     override val timestamp: Long = Clock.System.now().toEpochMilliseconds(),
 ) : DefinedFeatureEvent() {
 

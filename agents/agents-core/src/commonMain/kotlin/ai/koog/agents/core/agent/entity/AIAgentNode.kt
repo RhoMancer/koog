@@ -153,25 +153,24 @@ public open class AIAgentNode<TInput, TOutput> internal constructor(
 
     @InternalAgentsApi
     @OptIn(ExperimentalUuidApi::class)
-    override suspend fun execute(context: AIAgentGraphContextBase, input: TInput): TOutput = withParent(context, name) {
+    override suspend fun execute(context: AIAgentGraphContextBase, input: TInput): TOutput = withParent(context, name) { parentId, id ->
 
         logger.debug { "Start executing node (name: $name)" }
-        context.pipeline.onNodeExecutionStarting(context.executionInfo, this@AIAgentNode, context, input, inputType)
+        context.pipeline.onNodeExecutionStarting(id, parentId, context.executionInfo, this@AIAgentNode, context, input, inputType)
 
-        val output =
-            try {
-                val executeResult = context.execute(input)
-                logger.trace { "Finished executing node (name: $name) with output: $executeResult" }
-                executeResult
-            } catch (e: CancellationException) {
-                throw e
-            } catch (e: Exception) {
-                logger.error(e) { "Error executing node (name: $name): ${e.message}" }
-                context.pipeline.onNodeExecutionFailed(context.executionInfo, this@AIAgentNode, context, input, inputType, e)
-                throw e
-            }
+        val output = try {
+            val executeResult = context.execute(input)
+            logger.trace { "Finished executing node (name: $name) with output: $executeResult" }
+            executeResult
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            logger.error(e) { "Error executing node (name: $name): ${e.message}" }
+            context.pipeline.onNodeExecutionFailed(id, parentId, context.executionInfo, this@AIAgentNode, context, input, inputType, e)
+            throw e
+        }
 
-        context.pipeline.onNodeExecutionCompleted(context.executionInfo, this@AIAgentNode, context, input, inputType, output, outputType)
+        context.pipeline.onNodeExecutionCompleted(id, parentId, context.executionInfo, this@AIAgentNode, context, input, inputType, output, outputType)
         output
     }
 }

@@ -55,8 +55,8 @@ import ai.koog.agents.core.feature.handler.tool.ToolValidationErrorHandler
 import ai.koog.agents.core.feature.handler.tool.ToolValidationFailedContext
 import ai.koog.agents.core.system.getEnvironmentVariableOrNull
 import ai.koog.agents.core.system.getVMOptionOrNull
-import ai.koog.agents.core.tools.Tool
 import ai.koog.agents.core.tools.ToolDescriptor
+import ai.koog.agents.core.tools.ToolException
 import ai.koog.prompt.dsl.ModerationResult
 import ai.koog.prompt.dsl.Prompt
 import ai.koog.prompt.llm.LLModel
@@ -64,7 +64,7 @@ import ai.koog.prompt.message.Message
 import ai.koog.prompt.streaming.StreamFrame
 import io.github.oshai.kotlinlogging.KotlinLogging
 import kotlinx.datetime.Clock
-import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonElement
 import kotlin.reflect.KClass
 import kotlin.reflect.KType
 import kotlin.reflect.safeCast
@@ -479,7 +479,7 @@ public abstract class AIAgentPipeline(public val clock: Clock) {
         runId: String,
         toolCallId: String?,
         toolName: String,
-        toolArgs: JsonObject
+        toolArgs: JsonElement,
     ) {
         val eventContext = ToolCallStartingContext(id, parentId, runId, toolCallId, toolName, toolArgs)
         toolCallEventHandlers.values.forEach { handler -> handler.toolCallHandler.handle(eventContext) }
@@ -492,7 +492,7 @@ public abstract class AIAgentPipeline(public val clock: Clock) {
      * @param parentId The unique identifier for the parent run, if applicable;
      * @param runId The unique identifier for the current run.
      * @param toolCallId The unique identifier for the current tool call.
-     * @param tool The tool for which validation failed
+     * @param toolName The name of the tool for which validation failed
      * @param toolArgs The arguments that failed validation
      * @param error The validation error message
      */
@@ -501,11 +501,12 @@ public abstract class AIAgentPipeline(public val clock: Clock) {
         parentId: String?,
         runId: String,
         toolCallId: String?,
-        tool: Tool<*, *>,
-        toolArgs: Any?,
-        error: String
+        toolName: String,
+        toolArgs: JsonElement,
+        message: String,
+        error: ToolException,
     ) {
-        val eventContext = ToolValidationFailedContext(id, parentId, runId, toolCallId, tool, toolArgs, error)
+        val eventContext = ToolValidationFailedContext(id, parentId, runId, toolCallId, toolName, toolArgs, message, error)
         toolCallEventHandlers.values.forEach { handler -> handler.toolValidationErrorHandler.handle(eventContext) }
     }
 
@@ -518,7 +519,7 @@ public abstract class AIAgentPipeline(public val clock: Clock) {
      * @param toolCallId The unique identifier for the current tool call;
      * @param toolName The tool name that was called;
      * @param toolArgs The arguments provided to the tool;
-     * @param throwable The exception that caused the failure.
+     * @param error The [Exception] that caused the failure.
      */
     public suspend fun onToolCallFailed(
         id: String,
@@ -526,10 +527,11 @@ public abstract class AIAgentPipeline(public val clock: Clock) {
         runId: String,
         toolCallId: String?,
         toolName: String,
-        toolArgs: Any?,
-        throwable: Throwable
+        toolArgs: JsonElement,
+        message: String,
+        error: Exception?
     ) {
-        val eventContext = ToolCallFailedContext(id, parentId, runId, toolCallId, toolName, toolArgs, throwable)
+        val eventContext = ToolCallFailedContext(id, parentId, runId, toolCallId, toolName, toolArgs, message, error)
         toolCallEventHandlers.values.forEach { handler -> handler.toolCallFailureHandler.handle(eventContext) }
     }
 
@@ -550,7 +552,7 @@ public abstract class AIAgentPipeline(public val clock: Clock) {
         runId: String,
         toolCallId: String?,
         toolName: String,
-        toolArgs: Any?,
+        toolArgs: JsonElement,
         toolResult: Any?
     ) {
         val eventContext = ToolCallCompletedContext(id, parentId, runId, toolCallId, toolName, toolArgs, toolResult)
