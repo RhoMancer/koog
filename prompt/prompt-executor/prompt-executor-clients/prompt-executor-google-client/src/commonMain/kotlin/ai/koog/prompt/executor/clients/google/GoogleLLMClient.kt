@@ -43,7 +43,6 @@ import ai.koog.prompt.streaming.streamFrameFlow
 import ai.koog.prompt.structure.annotations.InternalStructuredOutputApi
 import ai.koog.prompt.structure.json.generator.BasicJsonSchemaGenerator
 import ai.koog.prompt.structure.json.generator.StandardJsonSchemaGenerator
-import ai.koog.utils.io.SuitableForIO
 import io.github.oshai.kotlinlogging.KotlinLogging
 import io.ktor.client.HttpClient
 import io.ktor.client.plugins.HttpTimeout
