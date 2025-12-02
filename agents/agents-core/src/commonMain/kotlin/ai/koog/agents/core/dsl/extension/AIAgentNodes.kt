@@ -420,9 +420,9 @@ public fun AIAgentSubgraphBuilderBase<*, *>.nodeExecuteMultipleTools(
 ): AIAgentNodeDelegate<List<Message.Tool.Call>, List<ReceivedToolResult>> =
     node(name) { toolCalls ->
         if (parallelTools) {
-            environment.executeTools(runId, toolCalls)
+            environment.executeTools(this, toolCalls)
         } else {
-            toolCalls.map { environment.executeTool(runId, it) }
+            toolCalls.map { environment.executeTool(this, it) }
         }
     }
 

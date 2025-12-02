@@ -23,6 +23,7 @@ public data class ReceivedToolResult(
     val id: String?,
     val tool: String,
     val content: String,
+    val resultType: ToolResultType,
     val result: JsonElement?
 ) {
     /**
@@ -65,6 +66,7 @@ public fun AIAgentEnvironmentToolResultToAgentContent.toResult(): ReceivedToolRe
     id = toolCallId,
     tool = toolName,
     content = message,
+    resultType = toolResultType,
     result = toolResult
 )
 

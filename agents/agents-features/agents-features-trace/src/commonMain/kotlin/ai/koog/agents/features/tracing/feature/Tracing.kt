@@ -418,7 +418,7 @@ public class Tracing {
                     toolCallId = eventContext.toolCallId,
                     toolName = eventContext.tool.name,
                     toolArgs = eventContext.tool.encodeArgsUnsafe(eventContext.toolArgs),
-                    result = eventContext.result?.let { result -> eventContext.tool.encodeResultToStringUnsafe(result) },
+                    result = eventContext.toolResult?.let { result -> eventContext.tool.encodeResultToStringUnsafe(result) },
                     timestamp = pipeline.clock.now().toEpochMilliseconds()
                 )
                 processMessage(config, event)

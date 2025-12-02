@@ -6,7 +6,6 @@ import ai.koog.agents.core.model.message.AgentToolCallToEnvironmentContent
 import ai.koog.agents.core.model.message.AgentToolCallsToEnvironmentMessage
 import ai.koog.agents.core.model.message.EnvironmentToolResultMultipleToAgentMessage
 import ai.koog.agents.core.model.message.EnvironmentToolResultToAgentContent
-import ai.koog.agents.core.model.message.ToolResultKind
 import ai.koog.agents.core.tools.Tool
 import ai.koog.agents.core.tools.ToolException
 import ai.koog.agents.core.tools.ToolRegistry
@@ -24,24 +23,108 @@ internal class GenericAgentEnvironment(
     private val toolRegistry: ToolRegistry,
 ) : AIAgentEnvironment {
 
-    override suspend fun executeTools(runId: String, toolCalls: List<Message.Tool.Call>): List<ReceivedToolResult> {
+    override suspend fun executeTool(runId: String, toolCall: Message.Tool.Call): ReceivedToolResult {
+
+        val message = AgentToolCallsToEnvironmentMessage(
+            runId = runId,
+            content = AgentToolCallToEnvironmentContent(
+                toolCallId = toolCall.id,
+                toolName = toolCall.tool,
+                toolArgs = toolCall.contentJson
+            )
+        )
+
+        val content = message.content
+
+        logger.debug { "Handling tool call sent by server..." }
+        val tool = toolRegistry.getToolOrNull(content.toolName)
+            ?: run {
+                logger.error { "Tool \"${content.toolName}\" not found." }
+                return toolResult(
+                    message = "Tool \"${content.toolName}\" not found. Use one of the available tools.",
+                    toolCallId = content.toolCallId,
+                    toolName = content.toolName,
+                    agentId = agentId,
+                    resultKind = ToolResultType.FAILURE,
+                    result = null
+                ).toResult()
+            }
+
+        val toolArgs = try {
+            tool.decodeArgs(content.toolArgs)
+        } catch (e: Exception) {
+            logger.error(e) { "Tool \"${tool.name}\" failed to parse arguments: ${content.toolArgs}" }
+            return toolResult(
+                message = "Tool \"${tool.name}\" failed to parse arguments because of ${e.message}!",
+                toolCallId = content.toolCallId,
+                toolName = content.toolName,
+                agentId = agentId,
+                resultKind = ToolResultType.FAILURE,
+                result = null
+            ).toResult()
+        }
+
+        val toolResult = try {
+            @Suppress("UNCHECKED_CAST")
+            (tool as Tool<Any?, Any?>).execute(toolArgs)
+        } catch (e: ToolException) {
+            return toolResult(
+                message = e.message,
+                toolCallId = content.toolCallId,
+                toolName = content.toolName,
+                agentId = agentId,
+                resultKind = ToolResultType.VALIDATION_ERROR,
+                result = null
+            ).toResult()
+        } catch (e: Exception) {
+            logger.error(e) { "Tool \"${tool.name}\" failed to execute with arguments: ${content.toolArgs}" }
+            return toolResult(
+                message = "Tool \"${tool.name}\" failed to execute because of ${e.message}!",
+                toolCallId = content.toolCallId,
+                toolName = content.toolName,
+                agentId = agentId,
+                resultKind = ToolResultType.FAILURE,
+                result = null
+            ).toResult()
+        }
+
+        logger.trace { "Completed execution of ${content.toolName} with result: $toolResult" }
+        return toolResult(
+            toolCallId = content.toolCallId,
+            toolName = content.toolName,
+            agentId = agentId,
+            message = tool.encodeResultToStringUnsafe(toolResult),
+            resultKind = ToolResultType.SUCCESS,
+            result = tool.encodeResult(toolResult)
+        ).toResult()
+    }
+
+    override suspend fun reportProblem(runId: String, exception: Throwable) {
+        logger.error(exception) { formatLog(runId, "Reporting problem: ${exception.message}") }
+        throw exception
+    }
+
+    suspend fun executeTools(runId: String, toolCalls: List<Message.Tool.Call>): List<ReceivedToolResult> {
         logger.info {
             formatLog(runId, "Executing tools: [${toolCalls.joinToString(", ") { it.tool }}]")
         }
 
-        val message = AgentToolCallsToEnvironmentMessage(
-            runId = runId,
-            content = toolCalls.map { call ->
-                AgentToolCallToEnvironmentContent(
-                    runId = runId,
+        val toolCallEnvironmentMessages = toolCalls.map { call ->
+            AgentToolCallsToEnvironmentMessage(
+                runId = runId,
+                content = AgentToolCallToEnvironmentContent(
                     toolCallId = call.id,
                     toolName = call.tool,
                     toolArgs = call.contentJson
                 )
-            }
-        )
+            )
+        }
 
-        val results = processToolCallMultiple(message).mapToToolResult()
+        val results = processToolCallMultiple(
+            runId = runId,
+            messages = toolCallEnvironmentMessages
+        ).mapToToolResult()
+
         logger.debug {
             "Received results from tools call (" +
                 "tools: [${toolCalls.joinToString(", ") { it.tool }}], " +
@@ -51,30 +134,24 @@ internal class GenericAgentEnvironment(
         return results
     }
 
-    override suspend fun reportProblem(runId: String, exception: Throwable) {
-        logger.error(exception) { formatLog(runId, "Reporting problem: ${exception.message}") }
-        throw exception
-    }
-
     //region Private Methods
 
     private fun ReceivedToolResult.resultString(): String =
         toolRegistry.tools.firstOrNull { it.name == tool }?.encodeResultToStringUnsafe(result) ?: "null"
 
-    @InternalAgentToolsApi
     private fun toolResult(
         toolCallId: String?,
         toolName: String,
         agentId: String,
         message: String,
-        resultKind: ToolResultKind,
+        resultKind: ToolResultType,
         result: JsonElement?
     ): EnvironmentToolResultToAgentContent = AIAgentEnvironmentToolResultToAgentContent(
         toolCallId = toolCallId,
         toolName = toolName,
         agentId = agentId,
         message = message,
-        resultKind = resultKind,
+        toolResultType = resultKind,
         toolResult = result
     )
 
@@ -91,7 +168,7 @@ internal class GenericAgentEnvironment(
                     toolCallId = content.toolCallId,
                     toolName = content.toolName,
                     agentId = agentId,
-                    resultKind = ToolResultKind.FAILED,
+                    resultKind = ToolResultType.FAILURE,
                     result = null
                 )
             }
@@ -105,7 +182,7 @@ internal class GenericAgentEnvironment(
                 toolCallId = content.toolCallId,
                 toolName = content.toolName,
                 agentId = agentId,
-                resultKind = ToolResultKind.FAILED,
+                resultKind = ToolResultType.FAILURE,
                 result = null
             )
         }
@@ -119,7 +196,7 @@ internal class GenericAgentEnvironment(
                 toolCallId = content.toolCallId,
                 toolName = content.toolName,
                 agentId = agentId,
-                resultKind = ToolResultKind.VALIDATION_ERROR,
+                resultKind = ToolResultType.VALIDATION_ERROR,
                 result = null
             )
         } catch (e: Exception) {
@@ -129,7 +206,7 @@ internal class GenericAgentEnvironment(
                 toolCallId = content.toolCallId,
                 toolName = content.toolName,
                 agentId = agentId,
-                resultKind = ToolResultKind.FAILED,
+                resultKind = ToolResultType.FAILURE,
                 result = null
             )
         }
@@ -140,22 +217,26 @@ internal class GenericAgentEnvironment(
             toolName = content.toolName,
             agentId = agentId,
             message = tool.encodeResultToStringUnsafe(toolResult),
-            resultKind = ToolResultKind.COMPLETED,
+            resultKind = ToolResultType.SUCCESS,
             result = tool.encodeResult(toolResult)
         )
     }
 
+
     private suspend fun processToolCallMultiple(
-        message: AgentToolCallsToEnvironmentMessage
+        runId: String,
+        messages: List<AgentToolCallsToEnvironmentMessage>
     ): EnvironmentToolResultMultipleToAgentMessage {
         val results = supervisorScope {
-            message.content
-                .map { call -> async { processToolCall(call) } }
+            messages
+                .map { message ->
+                    async { processToolCall(message.content) }
+                }
                 .awaitAll()
         }
 
         return EnvironmentToolResultMultipleToAgentMessage(
-            runId = message.runId,
+            runId = runId,
             content = results
         )
     }

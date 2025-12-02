@@ -1,6 +1,6 @@
 package ai.koog.agents.core.model.message
 
-import ai.koog.agents.core.tools.annotations.InternalAgentToolsApi
+import ai.koog.agents.core.environment.ToolResultType
 import kotlinx.serialization.json.JsonElement
 
 /**
@@ -14,12 +14,11 @@ import kotlinx.serialization.json.JsonElement
  * @property message Output message describing the result of the tool execution.
  * @property toolResult The result of the tool call, encapsulated as an optional `ToolResult` object.
  */
-@InternalAgentToolsApi
-internal data class AIAgentEnvironmentToolResultToAgentContent(
+public data class AIAgentEnvironmentToolResultToAgentContent(
     override val toolCallId: String?,
     override val toolName: String,
     override val agentId: String,
     override val message: String,
-    val resultKind: ToolResultKind,
+    val toolResultType: ToolResultType,
     val toolResult: JsonElement? = null
 ) : EnvironmentToolResultToAgentContent()
