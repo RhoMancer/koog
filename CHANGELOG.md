@@ -1,3 +1,20 @@
+# 0.5.4
+> Published 02 December 2025
+
+## Improvements
+- LLM clients: better error reporting (#1149). Possible **breaking change**: LLM clients now throw `LLMClientException` instead of `IllegalStateException` ([KG-552](https://youtrack.jetbrains.com/issue/KG-552))
+- Add Bedrock support in Ktor for configuring and initializing Bedrock LLM clients. (#1141)
+- Improve Bedrock moderation implementation (#1105)
+- Add handler for `GooglePart.InlineData` in `GoogleLLMClient` (#1094) ([KG-487](https://youtrack.jetbrains.com/issue/KG-487))
+- Improvements in `ReadFileTool` (#1182) and (#1213)
+
+## Bug Fixes
+- Fix and simplify `McpTool` to properly support updated Tool serialization (#1128)
+- Fix file tools to properly use newer API to provide textual tool result representation (#1201)
+- Fix empty list condition check in `onMultipleToolResults` and `onMultipleAssistantMessages` (#1192)
+- Fix reasoning message handling in strategy (#1166)
+- Fix timeout in `JvmShellCommandExecutor` (#1005)
+
 # 0.5.3
 > Published 12 November 2025
 
