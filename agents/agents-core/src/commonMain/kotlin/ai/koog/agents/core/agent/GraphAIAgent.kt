@@ -10,6 +10,7 @@ import ai.koog.agents.core.agent.entity.AIAgentGraphStrategy
 import ai.koog.agents.core.agent.entity.AIAgentStateManager
 import ai.koog.agents.core.agent.entity.AIAgentStorage
 import ai.koog.agents.core.annotation.InternalAgentsApi
+import ai.koog.agents.core.environment.AIAgentEnvironment
 import ai.koog.agents.core.environment.GenericAgentEnvironment
 import ai.koog.agents.core.environment.GenericAgentEnvironmentProxy
 import ai.koog.agents.core.feature.AIAgentFeature
@@ -101,23 +102,7 @@ public open class GraphAIAgent<Input, Output>(
 
         val executionPath = AgentExecutionPath(id, runId)
         val executionInfo = AgentExecutionInfo(id = runId, parentId = id, path = executionPath)
-
-        val environment = GenericAgentEnvironment(
-            agentId = id,
-            logger = logger,
-            toolRegistry = toolRegistry,
-        )
-
-        // Environment (initially equal to the current agent), transformed by some features
-        //   (ex: testing feature transforms it into a MockEnvironment with mocked tools)
-        val preparedEnvironment =
-            pipeline.onAgentEnvironmentTransforming(
-                id = executionInfo.id,
-                parentId = executionInfo.parentId,
-                strategy = strategy,
-                agent = this,
-                baseEnvironment = environment
-            )
+        val preparedEnvironment = prepareEnvironment(executionInfo)
 
         val initialAgentLLMContext = AIAgentLLMContext(
             tools = toolRegistry.tools.map { it.descriptor },
@@ -166,5 +151,28 @@ public open class GraphAIAgent<Input, Output>(
             llm = updatedLLMContext,
             environment = environmentProxy
         )
+    }
+
+    // Environment (initially equal to the current agent), transformed by some features
+    //   (ex: testing feature transforms it into a MockEnvironment with mocked tools)
+    private suspend fun prepareEnvironment(executionInfo: AgentExecutionInfo): AIAgentEnvironment {
+        val baseEnvironment = GenericAgentEnvironment(
+            agentId = id,
+            logger = logger,
+            toolRegistry = toolRegistry,
+        )
+
+        // Environment (initially equal to the current agent), transformed by some features
+        //   (ex: testing feature transforms it into a MockEnvironment with mocked tools)
+        val preparedEnvironment =
+            pipeline.onAgentEnvironmentTransforming(
+                id = executionInfo.id,
+                parentId = executionInfo.parentId,
+                strategy = strategy,
+                agent = this,
+                baseEnvironment = baseEnvironment
+            )
+
+        return preparedEnvironment
     }
 }

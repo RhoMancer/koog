@@ -38,7 +38,6 @@ public sealed interface AgentToolCallToEnvironmentMessage : AgentToEnvironmentMe
  */
 @Serializable
 public data class AgentToolCallToEnvironmentContent(
-    val runId: String,
     val toolCallId: String?,
     val toolName: String,
     val toolArgs: JsonObject,
@@ -52,11 +51,17 @@ public data class AgentToolCallToEnvironmentContent(
  * the agent, tool name, arguments, and an optional tool call identifier.
  */
 @Serializable
-@SerialName("ACTION_MULTIPLE")
 public data class AgentToolCallsToEnvironmentMessage(
     override val runId: String,
-    val content: List<AgentToolCallToEnvironmentContent>
+    val content: AgentToolCallToEnvironmentContent
 ) : AgentToolCallToEnvironmentMessage
+
+//@Serializable
+//@SerialName("ACTION_MULTIPLE")
+//public data class AgentToolCallsToEnvironmentMessage(
+//    override val runId: String,
+//    val content: List<AgentToolCallToEnvironmentContent>
+//) : AgentToolCallToEnvironmentMessage
 
 /**
  * Represents an error response from the server.

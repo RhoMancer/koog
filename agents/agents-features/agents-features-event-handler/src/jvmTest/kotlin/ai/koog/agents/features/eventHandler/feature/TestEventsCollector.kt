@@ -146,7 +146,7 @@ class TestEventsCollector {
         onToolCallCompleted { eventContext ->
             updateRunId(eventContext.runId)
             _collectedEvents.add(
-                "OnToolCallCompleted (run id: ${eventContext.runId}, tool: ${eventContext.tool.name}, args: ${eventContext.toolArgs}, result: ${eventContext.result})"
+                "OnToolCallCompleted (run id: ${eventContext.runId}, tool: ${eventContext.tool.name}, args: ${eventContext.toolArgs}, result: ${eventContext.toolResult})"
             )
         }
 

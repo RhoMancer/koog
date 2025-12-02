@@ -514,7 +514,7 @@ public class OpenTelemetry {
                     ?: return@intercept
 
                 // End the ExecuteToolSpan span
-                eventContext.result?.let { result ->
+                eventContext.toolResult?.let { result ->
                     executeToolSpan.addAttribute(
                         attribute = SpanAttributes.Tool.OutputValue(
                             output = eventContext.tool.encodeResultToStringUnsafe(

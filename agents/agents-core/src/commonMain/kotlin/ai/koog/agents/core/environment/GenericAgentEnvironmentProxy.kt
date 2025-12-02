@@ -9,13 +9,44 @@ internal class GenericAgentEnvironmentProxy(
     val context: AIAgentContext,
 ) : AIAgentEnvironment {
 
-    override suspend fun executeTools(runId: String, toolCalls: List<Message.Tool.Call>): List<ReceivedToolResult> =
-        withParent(context, "TODO: SD -- ") { parentId, id ->
-            context.pipeline.onToolCallStarting(id, parentId, runId, toolCalls.firstOrNull()?.id, null, null)
-            val toolResult = environment.executeTools(runId, toolCalls)
+    override suspend fun executeTool(runId: String, toolCall: Message.Tool.Call): ReceivedToolResult =
+        withParent(context, toolCall.tool) { parentId, id ->
 
-            when (toolResult.size) {}
+            context.pipeline.onToolCallStarting(
+                id, parentId, runId, toolCall.id, toolCall.tool, toolCall.contentJson
+            )
+
+            val toolResult = environment.executeTool(runId, toolCall)
+
 
             toolResult
         }
+
+    override suspend fun reportProblem(runId: String, exception: Throwable) {
+        environment.reportProblem(runId, exception)
+    }
+
+    //region Private Methods
+
+    private suspend fun processToolResult(
+        id: String,
+        parentId: String,
+        toolResult: ReceivedToolResult
+    ) {
+        when (toolResult.resultType) {
+            ToolResultType.SUCCESS -> {
+                context.pipeline.onToolCallCompleted(
+                    id, parentId, context.runId, toolResult.id, toolResult.tool, toolResult.content, toolResult.result
+                )
+            }
+            ToolResultType.FAILURE -> {
+                context.pipeline.onToolCallFailed(
+                    id, parentId, context.runId, toolResult.id, toolResult.tool, toolResult.content, toolResult .error
+                )
+            }
+
+        }
+    }
+
+    //endregion Private Methods
 }

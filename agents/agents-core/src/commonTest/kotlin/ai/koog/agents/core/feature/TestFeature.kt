@@ -115,7 +115,7 @@ class TestFeature(val events: MutableList<String>, val runIds: MutableList<Strin
 
             pipeline.interceptToolCallCompleted(this) { event ->
                 config.events +=
-                    "Tool: finish tool call with result (tool: ${event.tool.name}, result: ${event.result?.let(event.tool::encodeResultToStringUnsafe) ?: "null"})"
+                    "Tool: finish tool call with result (tool: ${event.tool.name}, result: ${event.toolResult?.let(event.tool::encodeResultToStringUnsafe) ?: "null"})"
             }
         }
 

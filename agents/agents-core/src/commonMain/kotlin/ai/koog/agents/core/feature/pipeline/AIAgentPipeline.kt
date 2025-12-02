@@ -64,6 +64,7 @@ import ai.koog.prompt.message.Message
 import ai.koog.prompt.streaming.StreamFrame
 import io.github.oshai.kotlinlogging.KotlinLogging
 import kotlinx.datetime.Clock
+import kotlinx.serialization.json.JsonObject
 import kotlin.reflect.KClass
 import kotlin.reflect.KType
 import kotlin.reflect.safeCast
@@ -469,7 +470,7 @@ public abstract class AIAgentPipeline(public val clock: Clock) {
      * @param parentId The unique identifier for the parent run, if applicable;
      * @param runId The unique identifier for the current run.
      * @param toolCallId The unique identifier for the current tool call.
-     * @param tool The tool that is being called
+     * @param toolName The tool name that is being called
      * @param toolArgs The arguments provided to the tool
      */
     public suspend fun onToolCallStarting(
@@ -477,10 +478,10 @@ public abstract class AIAgentPipeline(public val clock: Clock) {
         parentId: String?,
         runId: String,
         toolCallId: String?,
-        tool: Tool<*, *>,
-        toolArgs: Any?
+        toolName: String,
+        toolArgs: JsonObject
     ) {
-        val eventContext = ToolCallStartingContext(id, parentId, runId, toolCallId, tool, toolArgs)
+        val eventContext = ToolCallStartingContext(id, parentId, runId, toolCallId, toolName, toolArgs)
         toolCallEventHandlers.values.forEach { handler -> handler.toolCallHandler.handle(eventContext) }
     }
 
@@ -515,7 +516,7 @@ public abstract class AIAgentPipeline(public val clock: Clock) {
      * @param parentId The unique identifier for the parent run, if applicable;
      * @param runId The unique identifier for the current run;
      * @param toolCallId The unique identifier for the current tool call;
-     * @param tool The tool that failed;
+     * @param toolName The tool name that was called;
      * @param toolArgs The arguments provided to the tool;
      * @param throwable The exception that caused the failure.
      */
@@ -524,11 +525,11 @@ public abstract class AIAgentPipeline(public val clock: Clock) {
         parentId: String?,
         runId: String,
         toolCallId: String?,
-        tool: Tool<*, *>,
+        toolName: String,
         toolArgs: Any?,
         throwable: Throwable
     ) {
-        val eventContext = ToolCallFailedContext(id, parentId, runId, toolCallId, tool, toolArgs, throwable)
+        val eventContext = ToolCallFailedContext(id, parentId, runId, toolCallId, toolName, toolArgs, throwable)
         toolCallEventHandlers.values.forEach { handler -> handler.toolCallFailureHandler.handle(eventContext) }
     }
 
@@ -539,20 +540,20 @@ public abstract class AIAgentPipeline(public val clock: Clock) {
      * @param parentId The unique identifier for the parent run, if applicable;
      * @param runId The unique identifier for the current run;
      * @param toolCallId The unique identifier for the current tool call;
-     * @param tool The tool that was called;
+     * @param toolName The tool name that was called;
      * @param toolArgs The arguments that were provided to the tool;
-     * @param result The result produced by the tool, or null if no result was produced.
+     * @param toolResult The result produced by the tool, or null if no result was produced.
      */
     public suspend fun onToolCallCompleted(
         id: String,
         parentId: String?,
         runId: String,
         toolCallId: String?,
-        tool: Tool<*, *>,
+        toolName: String,
         toolArgs: Any?,
-        result: Any?
+        toolResult: Any?
     ) {
-        val eventContext = ToolCallCompletedContext(id, parentId, runId, toolCallId, tool, toolArgs, result)
+        val eventContext = ToolCallCompletedContext(id, parentId, runId, toolCallId, toolName, toolArgs, toolResult)
         toolCallEventHandlers.values.forEach { handler -> handler.toolCallResultHandler.handle(eventContext) }
     }
 
