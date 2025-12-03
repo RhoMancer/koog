@@ -70,7 +70,7 @@ public class AIAgentGraphStrategy<TInput, TOutput>(
 
             result
         }.onFailure { e ->
-            context.environment.reportProblem(runId = context.runId, exception = e)
+            context.environment.reportProblem(exception = e)
         }.getOrThrow()
     }
 

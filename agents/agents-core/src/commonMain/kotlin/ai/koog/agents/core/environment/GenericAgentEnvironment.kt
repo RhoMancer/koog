@@ -24,7 +24,7 @@ internal class GenericAgentEnvironment(
     private val toolRegistry: ToolRegistry,
 ) : AIAgentEnvironment {
 
-    override suspend fun executeTool(runId: String, toolCall: Message.Tool.Call): ReceivedToolResult {
+    override suspend fun executeTool(toolCall: Message.Tool.Call): ReceivedToolResult {
 
         val message = AgentToolCallsToEnvironmentMessage(
             runId = runId,
@@ -38,7 +38,7 @@ internal class GenericAgentEnvironment(
         return processToolCall(toolCallContent = message.content).toResult()
     }
 
-    override suspend fun reportProblem(runId: String, exception: Throwable) {
+    override suspend fun reportProblem(exception: Throwable) {
         logger.error(exception) { formatLog(runId, "Reporting problem: ${exception.message}") }
         throw exception
     }

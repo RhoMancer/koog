@@ -12,18 +12,14 @@ import kotlinx.coroutines.supervisorScope
 public interface AIAgentEnvironment {
 
     /**
-     * Executes a tool call and returns it result.
+     * Executes a tool call and returns its result.
      *
-     * @param runId A unique identifier representing the current execution run.
      * @param toolCall A tool call messages to be executed. A message contains details about the tool,
      *        its identifier, the request content, and associated metadata.
      * @return A result corresponding to the executed tool call. The result includes details such as
      *         the tool name, identifier, response content, and associated metadata.
      */
-    public suspend fun executeTool(
-        runId: String,
-        toolCall: Message.Tool.Call
-    ): ReceivedToolResult
+    public suspend fun executeTool(toolCall: Message.Tool.Call): ReceivedToolResult
 
     /**
      * Reports a problem that occurred within the environment.
@@ -34,7 +30,7 @@ public interface AIAgentEnvironment {
      *
      * @param exception The exception representing the problem to report.
      */
-    public suspend fun reportProblem(runId: String, exception: Throwable)
+    public suspend fun reportProblem(exception: Throwable)
 }
 
 /**
@@ -43,17 +39,16 @@ public interface AIAgentEnvironment {
  * This method takes a list of tool call messages, processes them by sending appropriate requests
  * to the underlying environment, and returns a list of results corresponding to the tool calls.
  *
- * @param runId A unique identifier representing the current execution run.
  * @param toolCalls A list of tool call messages to be executed. Each message contains details
  *        about the tool, its identifier, the request content, and associated metadata.
  * @return A list of results corresponding to the executed tool calls. Each result includes details
  *         such as the tool name, identifier, response content, and metadata.
  */
-public suspend fun AIAgentEnvironment.executeTools(runId: String, toolCalls: List<Message.Tool.Call>): List<ReceivedToolResult> {
+public suspend fun AIAgentEnvironment.executeTools(toolCalls: List<Message.Tool.Call>): List<ReceivedToolResult> {
     val results = supervisorScope {
         toolCalls
             .map { toolCall ->
-                async { executeTool(runId, toolCall) }
+                async { executeTool(toolCall) }
             }
             .awaitAll()
     }

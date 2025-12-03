@@ -14,23 +14,23 @@ internal class GenericAgentEnvironmentProxy(
         private val logger = KotlinLogging.logger { }
     }
 
-    override suspend fun executeTool(runId: String, toolCall: Message.Tool.Call): ReceivedToolResult =
+    override suspend fun executeTool(toolCall: Message.Tool.Call): ReceivedToolResult =
         withParent(context, toolCall.tool) { parentId, id ->
-            logger.trace { "Executing tool call (run id: $runId, tool call id: ${toolCall.id}, tool: ${toolCall.tool}, args: ${toolCall.contentJson})" }
+            logger.trace { "Executing tool call (run id: ${context.runId}, tool call id: ${toolCall.id}, tool: ${toolCall.tool}, args: ${toolCall.contentJson})" }
 
             context.pipeline.onToolCallStarting(
-                id, parentId, runId, toolCall.id, toolCall.tool, toolCall.contentJson
+                id, parentId, context.runId, toolCall.id, toolCall.tool, toolCall.contentJson
             )
 
-            val toolResult = environment.executeTool(runId, toolCall)
+            val toolResult = environment.executeTool(toolCall)
             processToolResult(id, parentId, toolResult)
 
-            logger.trace { "Tool call completed (run id: $runId, tool call id: ${toolCall.id}, tool: ${toolCall.tool}, args: ${toolCall.contentJson}) with result: $toolResult" }
+            logger.trace { "Tool call completed (run id: ${context.runId}, tool call id: ${toolCall.id}, tool: ${toolCall.tool}, args: ${toolCall.contentJson}) with result: $toolResult" }
             toolResult
         }
 
-    override suspend fun reportProblem(runId: String, exception: Throwable) {
-        environment.reportProblem(runId, exception)
+    override suspend fun reportProblem(exception: Throwable) {
+        environment.reportProblem(exception)
     }
 
     //region Private Methods

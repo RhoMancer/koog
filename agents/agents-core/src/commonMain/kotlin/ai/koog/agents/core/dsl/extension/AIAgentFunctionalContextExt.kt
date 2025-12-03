@@ -268,7 +268,7 @@ public suspend fun AIAgentFunctionalContext.requestLLMForceOneTool(
  * @return The result of the tool execution.
  */
 public suspend fun AIAgentFunctionalContext.executeTool(toolCall: Message.Tool.Call): ReceivedToolResult {
-    return environment.executeTool(runId, toolCall)
+    return environment.executeTool(toolCall)
 }
 
 /**
@@ -284,10 +284,10 @@ public suspend fun AIAgentFunctionalContext.executeMultipleTools(
     parallelTools: Boolean = false
 ): List<ReceivedToolResult> {
     return if (parallelTools) {
-        environment.executeTools(runId, toolCalls)
+        environment.executeTools(toolCalls)
     } else {
         toolCalls.map { toolCall ->
-            environment.executeTool(runId, toolCall)
+            environment.executeTool(toolCall)
         }
     }
 }
