@@ -22,7 +22,7 @@ import ai.koog.prompt.dsl.prompt
 import ai.koog.prompt.executor.clients.openai.OpenAIModels
 import ai.koog.prompt.executor.llms.all.simpleOpenAIExecutor
 import ai.koog.prompt.executor.model.StructureFixingParser
-import kotlinx.coroutines.runBlocking
+import ai.koog.prompt.structure.getOrThrow
 
 suspend fun main() {
     val toolRegistry = ToolRegistry {

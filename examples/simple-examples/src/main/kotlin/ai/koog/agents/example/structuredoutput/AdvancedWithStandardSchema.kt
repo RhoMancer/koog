@@ -22,6 +22,7 @@ import ai.koog.prompt.executor.model.StructureFixingParser
 import ai.koog.prompt.llm.LLMProvider
 import ai.koog.prompt.structure.StructuredRequest
 import ai.koog.prompt.structure.StructuredRequestConfig
+import ai.koog.prompt.structure.getOrThrow
 import ai.koog.prompt.structure.json.JsonStructure
 import ai.koog.prompt.structure.json.generator.StandardJsonSchemaGenerator
 import ai.koog.prompt.text.text

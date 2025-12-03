@@ -23,12 +23,14 @@ import kotlinx.serialization.KSerializer
 public sealed interface StructuredResponse<T> {
     public val message: Message.Assistant?
     public val isSuccess: Boolean
+    public val isFailure: Boolean
 
     public data class Success<T>(
         override val message: Message.Assistant?,
         val data: T,
     ) : StructuredResponse<T> {
         override val isSuccess: Boolean = true
+        override val isFailure: Boolean = false
     }
 
     public data class Failure<T>(
@@ -36,9 +38,14 @@ public sealed interface StructuredResponse<T> {
         val exception: Exception,
     ) : StructuredResponse<T> {
         override val isSuccess: Boolean = false
+        override val isFailure: Boolean = true
     }
 }
 
+/**
+ * Returns the [StructuredResponse.Success] value if this is a [StructuredResponse.Success],
+ * or throws an exception if this is a [StructuredResponse.Failure].
+ */
 public fun <T> StructuredResponse<T>.getOrThrow(): StructuredResponse.Success<T> {
     return when (this) {
         is StructuredResponse.Success -> this
@@ -46,11 +53,33 @@ public fun <T> StructuredResponse<T>.getOrThrow(): StructuredResponse.Success<T>
     }
 }
 
+/**
+ * Returns the [StructuredResponse.Success] value if this is a [StructuredResponse.Success],
+ * or `null` if this is a [StructuredResponse.Failure].
+ */
 public fun <T> StructuredResponse<T>.getOrNull(): StructuredResponse.Success<T>? {
     return when (this) {
         is StructuredResponse.Success -> this
         is StructuredResponse.Failure -> null
     }
+}
+
+/**
+ * Executes the given [block] if this is a [StructuredResponse.Success].
+ * @return The original [StructuredResponse] instance.
+ */
+public fun <T> StructuredResponse<T>.onSuccess(block: (StructuredResponse.Success<T>) -> Unit): StructuredResponse<T> {
+    if (this is StructuredResponse.Success) block(this)
+    return this
+}
+
+/**
+ * Executes the given [block] if this is a [StructuredResponse.Failure].
+ * @return The original [StructuredResponse] instance.
+ */
+public fun <T> StructuredResponse<T>.onFailure(block: (StructuredResponse.Failure<T>) -> Unit): StructuredResponse<T> {
+    if (this is StructuredResponse.Failure) block(this)
+    return this
 }
 
 /**
