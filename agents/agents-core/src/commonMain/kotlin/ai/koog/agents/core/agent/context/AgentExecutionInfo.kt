@@ -1,5 +1,6 @@
 package ai.koog.agents.core.agent.context
 
+import kotlinx.serialization.Serializable
 import kotlin.uuid.ExperimentalUuidApi
 import kotlin.uuid.Uuid
 
@@ -9,6 +10,7 @@ import kotlin.uuid.Uuid
  * @property id A unique identifier for the current context.
  * @property parentId An optional identifier that links this context to its parent if applicable.
  */
+@Serializable
 public data class AgentExecutionInfo(
     var id: String,
     var parentId: String? = null,
