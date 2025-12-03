@@ -1,6 +1,7 @@
 package ai.koog.agents.core.environment
 
 import ai.koog.agents.core.agent.context.AIAgentContext
+import ai.koog.agents.core.agent.context.AgentExecutionInfo
 import ai.koog.agents.core.agent.context.withParent
 import ai.koog.prompt.message.Message
 import io.github.oshai.kotlinlogging.KotlinLogging
@@ -15,15 +16,15 @@ internal class GenericAgentEnvironmentProxy(
     }
 
     override suspend fun executeTool(toolCall: Message.Tool.Call): ReceivedToolResult =
-        withParent(context, toolCall.tool) { parentId, id ->
+        withParent(context, toolCall.tool) { executionInfo ->
             logger.trace { "Executing tool call (run id: ${context.runId}, tool call id: ${toolCall.id}, tool: ${toolCall.tool}, args: ${toolCall.contentJson})" }
 
             context.pipeline.onToolCallStarting(
-                id, parentId, context.runId, toolCall.id, toolCall.tool, toolCall.contentJson
+                executionInfo, context.runId, toolCall.id, toolCall.tool, toolCall.contentJson
             )
 
             val toolResult = environment.executeTool(toolCall)
-            processToolResult(id, parentId, toolResult)
+            processToolResult(executionInfo, toolResult)
 
             logger.trace { "Tool call completed (run id: ${context.runId}, tool call id: ${toolCall.id}, tool: ${toolCall.tool}, args: ${toolCall.contentJson}) with result: $toolResult" }
             toolResult
@@ -36,26 +37,25 @@ internal class GenericAgentEnvironmentProxy(
     //region Private Methods
 
     private suspend fun processToolResult(
-        id: String,
-        parentId: String?,
+        executionInfo: AgentExecutionInfo,
         toolResult: ReceivedToolResult
     ) {
-        when (val toolResultType = toolResult.resultType) {
-            is ToolResultType.Success -> {
+        when (val toolResultKind = toolResult.resultKind) {
+            is ToolResultKind.Success -> {
                 context.pipeline.onToolCallCompleted(
-                    id, parentId, context.runId, toolResult.id, toolResult.tool, toolResult.toolArgs, toolResult.result
+                    executionInfo, context.runId, toolResult.id, toolResult.tool, toolResult.toolArgs, toolResult.result
                 )
             }
 
-            is ToolResultType.Failure -> {
+            is ToolResultKind.Failure -> {
                 context.pipeline.onToolCallFailed(
-                    id, parentId, context.runId, toolResult.id, toolResult.tool, toolResult.toolArgs, toolResult.content, toolResultType.exception
+                    executionInfo, context.runId, toolResult.id, toolResult.tool, toolResult.toolArgs, toolResult.content, toolResultKind.exception
                 )
             }
 
-            is ToolResultType.ValidationError -> {
+            is ToolResultKind.ValidationError -> {
                 context.pipeline.onToolValidationFailed(
-                    id, parentId, context.runId, toolResult.id, toolResult.tool, toolResult.toolArgs, toolResult.content, toolResultType.exception
+                    executionInfo, context.runId, toolResult.id, toolResult.tool, toolResult.toolArgs, toolResult.content, toolResultKind.exception
                 )
             }
 

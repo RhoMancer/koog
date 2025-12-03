@@ -1,5 +1,6 @@
 package ai.koog.agents.core.feature.model.events
 
+import ai.koog.agents.core.agent.context.AgentExecutionInfo
 import ai.koog.agents.core.agent.context.AgentExecutionPath
 import ai.koog.agents.utils.ModelInfo
 import ai.koog.prompt.dsl.ModerationResult
@@ -15,8 +16,7 @@ import kotlinx.serialization.Serializable
  * input prompt and any tools that will be used during the call. It extends the `DefinedFeatureEvent` class
  * and serves as a specific type of event in a feature-driven framework.
  *
- * @property id A unique identifier for the group of events associated with the LLM call.
- * @property parentId The unique identifier of the parent event, if applicable.
+ * @property executionInfo Provides contextual information about the execution associated with this event.
  * @property runId A unique identifier associated with the specific run of the LLM call.
  * @property prompt The input prompt encapsulated as a [Prompt] object. This represents the structured set of
  *                  messages and configuration parameters sent to the LLM.
@@ -27,9 +27,7 @@ import kotlinx.serialization.Serializable
  */
 @Serializable
 public data class LLMCallStartingEvent(
-    override val id: String,
-    override val parentId: String?,
-    override val executionPath: AgentExecutionPath,
+    override val executionInfo: AgentExecutionInfo,
     val runId: String,
     val prompt: Prompt,
     val model: ModelInfo,
@@ -38,12 +36,12 @@ public data class LLMCallStartingEvent(
 ) : DefinedFeatureEvent() {
 
     /**
-     * @deprecated Use constructor with model parameter of type [ModelInfo]:
-     *             LLMCallStartingEvent(id, parentId, executionPath, runId, prompt, model, tools, timestamp)
+     * @deprecated Use constructor with executionInfo parameter and model parameter of type [ModelInfo]:
+     *             LLMCallStartingEvent(executionInfo, runId, prompt, model, tools, timestamp)
      */
     @Deprecated(
-        message = "Please use constructor with id, parentId, executionPath parameters, and model parameter of type [ModelInfo]: LLMCallStartingEvent(id, parentId, executionPath, runId, prompt, model, tools, timestamp)",
-        replaceWith = ReplaceWith("LLMCallStartingEvent(id, parentId, executionPath, runId, prompt, model, tools, timestamp)")
+        message = "Please use constructor with executionInfo parameter and model parameter of type [ModelInfo]: LLMCallStartingEvent(executionInfo, runId, prompt, model, tools, timestamp)",
+        replaceWith = ReplaceWith("LLMCallStartingEvent(executionInfo, runId, prompt, model, tools, timestamp)")
     )
     public constructor(
         runId: String,
@@ -53,9 +51,11 @@ public data class LLMCallStartingEvent(
         eventId: String = LLMCallStartingEvent::class.simpleName!!,
         timestamp: Long = Clock.System.now().toEpochMilliseconds()
     ) : this(
-        id = eventId,
-        parentId = null,
-        executionPath = AgentExecutionPath.EMPTY,
+        executionInfo = AgentExecutionInfo(
+            id = eventId,
+            parentId = null,
+            path = AgentExecutionPath.EMPTY
+        ),
         runId = runId,
         prompt = prompt,
         model = ModelInfo.fromString(model),
@@ -78,8 +78,7 @@ public data class LLMCallStartingEvent(
  * The event is used within the system to capture relevant output data and ensure proper tracking
  * and logging of LLM-related interactions.
  *
- * @property id A unique identifier for the group of events associated with the LLM call.
- * @property parentId The unique identifier of the parent event, if applicable.
+ * @property executionInfo Provides contextual information about the execution associated with this event.
  * @property runId The unique identifier of the LLM run.
  * @property prompt The input prompt encapsulated as a [Prompt] object. This represents the structured set of
  *                  messages and configuration parameters sent to the LLM.
@@ -92,9 +91,7 @@ public data class LLMCallStartingEvent(
  */
 @Serializable
 public data class LLMCallCompletedEvent(
-    override val id: String,
-    override val parentId: String?,
-    override val executionPath: AgentExecutionPath,
+    override val executionInfo: AgentExecutionInfo,
     val runId: String,
     val prompt: Prompt,
     val model: ModelInfo,
@@ -104,12 +101,12 @@ public data class LLMCallCompletedEvent(
 ) : DefinedFeatureEvent() {
 
     /**
-     * @deprecated Use constructor with model parameter of type [ModelInfo]:
-     *             LLMCallCompletedEvent(id, parentId, executionPath, runId, prompt, model, responses, moderationResponse, timestamp)
+     * @deprecated Use constructor with executionInfo parameter and model parameter of type [ModelInfo]:
+     *             LLMCallCompletedEvent(executionInfo, runId, prompt, model, responses, moderationResponse, timestamp)
      */
     @Deprecated(
-        message = "Please use constructor with id, parentId, executionPath parameters, and model parameter of type [ModelInfo]: LLMCallCompletedEvent(id, parentId, executionPath, runId, prompt, model, responses, moderationResponse, timestamp)",
-        replaceWith = ReplaceWith("LLMCallCompletedEvent(id, parentId, executionPath, runId, prompt, model, responses, moderationResponse, timestamp)")
+        message = "Please use constructor with executionInfo parameter and model parameter of type [ModelInfo]: LLMCallCompletedEvent(executionInfo, runId, prompt, model, responses, moderationResponse, timestamp)",
+        replaceWith = ReplaceWith("LLMCallCompletedEvent(executionInfo, runId, prompt, model, responses, moderationResponse, timestamp)")
     )
     public constructor(
         runId: String,
@@ -120,9 +117,11 @@ public data class LLMCallCompletedEvent(
         eventId: String = LLMCallCompletedEvent::class.simpleName!!,
         timestamp: Long = Clock.System.now().toEpochMilliseconds()
     ) : this(
-        id = eventId,
-        parentId = null,
-        executionPath = AgentExecutionPath.EMPTY,
+        executionInfo = AgentExecutionInfo(
+            id = eventId,
+            parentId = null,
+            path = AgentExecutionPath.EMPTY
+        ),
         runId = runId,
         prompt = prompt,
         model = ModelInfo.fromString(model),

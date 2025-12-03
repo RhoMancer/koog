@@ -161,8 +161,7 @@ public class Debugger(public val port: Int, public val awaitInitialConnectionTim
             pipeline.interceptAgentStarting(this) intercept@{ eventContext ->
 
                 val event = AgentStartingEvent(
-                    id = eventContext.id,
-                    parentId = eventContext.parentId,
+                    executionInfo = eventContext.executionInfo,
                     agentId = eventContext.agent.id,
                     runId = eventContext.runId,
                     timestamp = pipeline.clock.now().toEpochMilliseconds()
@@ -172,9 +171,7 @@ public class Debugger(public val port: Int, public val awaitInitialConnectionTim
 
             pipeline.interceptAgentCompleted(this) intercept@{ eventContext ->
                 val event = AgentCompletedEvent(
-                    id = eventContext.id,
-                    parentId = eventContext.parentId,
-                    executionPath = eventContext.executionPath,
+                    executionInfo = eventContext.executionInfo,
                     agentId = eventContext.agentId,
                     runId = eventContext.runId,
                     result = eventContext.result?.toString(),
@@ -185,9 +182,7 @@ public class Debugger(public val port: Int, public val awaitInitialConnectionTim
 
             pipeline.interceptAgentExecutionFailed(this) intercept@{ eventContext ->
                 val event = AgentExecutionFailedEvent(
-                    id = eventContext.id,
-                    parentId = eventContext.parentId,
-                    executionPath = eventContext.executionPath,
+                    executionInfo = eventContext.executionInfo,
                     agentId = eventContext.agentId,
                     runId = eventContext.runId,
                     error = eventContext.exception?.toAgentError(),
@@ -198,9 +193,7 @@ public class Debugger(public val port: Int, public val awaitInitialConnectionTim
 
             pipeline.interceptAgentClosing(this) intercept@{ eventContext ->
                 val event = AgentClosingEvent(
-                    id = eventContext.id,
-                    parentId = eventContext.parentId,
-                    executionPath = eventContext.executionPath,
+                    executionInfo = eventContext.executionInfo,
                     agentId = eventContext.agentId,
                     timestamp = pipeline.clock.now().toEpochMilliseconds()
                 )
@@ -217,9 +210,7 @@ public class Debugger(public val port: Int, public val awaitInitialConnectionTim
 
                 @OptIn(InternalAgentsApi::class)
                 val event = GraphStrategyStartingEvent(
-                    id = eventContext.id,
-                    parentId = eventContext.parentId,
-                    executionPath = eventContext.executionPath,
+                    executionInfo = eventContext.executionInfo,
                     runId = eventContext.context.runId,
                     strategyName = eventContext.strategy.name,
                     graph = strategy.startNodeToGraph(),
@@ -230,9 +221,7 @@ public class Debugger(public val port: Int, public val awaitInitialConnectionTim
 
             pipeline.interceptStrategyCompleted(this) intercept@{ eventContext ->
                 val event = StrategyCompletedEvent(
-                    id = eventContext.id,
-                    parentId = eventContext.parentId,
-                    executionPath = eventContext.executionPath,
+                    executionInfo = eventContext.executionInfo,
                     runId = eventContext.context.runId,
                     strategyName = eventContext.strategy.name,
                     result = eventContext.result?.toString(),
@@ -247,8 +236,7 @@ public class Debugger(public val port: Int, public val awaitInitialConnectionTim
 
             pipeline.interceptLLMCallStarting(this) intercept@{ eventContext ->
                 val event = LLMCallStartingEvent(
-                    id = eventContext.id,
-                    parentId = eventContext.parentId,
+                    executionInfo = eventContext.executionInfo,
                     runId = eventContext.runId,
                     prompt = eventContext.prompt,
                     model = eventContext.model.toModelInfo(),
@@ -260,8 +248,7 @@ public class Debugger(public val port: Int, public val awaitInitialConnectionTim
 
             pipeline.interceptLLMCallCompleted(this) intercept@{ eventContext ->
                 val event = LLMCallCompletedEvent(
-                    id = eventContext.id,
-                    parentId = eventContext.parentId,
+                    executionInfo = eventContext.executionInfo,
                     runId = eventContext.runId,
                     prompt = eventContext.prompt,
                     model = eventContext.model.toModelInfo(),
@@ -278,8 +265,7 @@ public class Debugger(public val port: Int, public val awaitInitialConnectionTim
 
             pipeline.interceptLLMStreamingStarting(this) intercept@{ eventContext ->
                 val event = LLMStreamingStartingEvent(
-                    id = eventContext.id,
-                    parentId = eventContext.parentId,
+                    executionInfo = eventContext.executionInfo,
                     runId = eventContext.runId,
                     prompt = eventContext.prompt,
                     model = eventContext.model.toModelInfo(),
@@ -291,8 +277,7 @@ public class Debugger(public val port: Int, public val awaitInitialConnectionTim
 
             pipeline.interceptLLMStreamingFrameReceived(this) intercept@{ eventContext ->
                 val event = LLMStreamingFrameReceivedEvent(
-                    id = eventContext.id,
-                    parentId = eventContext.parentId,
+                    executionInfo = eventContext.executionInfo,
                     runId = eventContext.runId,
                     prompt = eventContext.prompt,
                     model = eventContext.model.toModelInfo(),
@@ -304,8 +289,7 @@ public class Debugger(public val port: Int, public val awaitInitialConnectionTim
 
             pipeline.interceptLLMStreamingFailed(this) intercept@{ eventContext ->
                 val event = LLMStreamingFailedEvent(
-                    id = eventContext.id,
-                    parentId = eventContext.parentId,
+                    executionInfo = eventContext.executionInfo,
                     runId = eventContext.runId,
                     prompt = eventContext.prompt,
                     model = eventContext.model.toModelInfo(),
@@ -317,8 +301,7 @@ public class Debugger(public val port: Int, public val awaitInitialConnectionTim
 
             pipeline.interceptLLMStreamingCompleted(this) intercept@{ eventContext ->
                 val event = LLMStreamingCompletedEvent(
-                    id = eventContext.id,
-                    parentId = eventContext.parentId,
+                    executionInfo = eventContext.executionInfo,
                     runId = eventContext.runId,
                     prompt = eventContext.prompt,
                     model = eventContext.model.toModelInfo(),
@@ -334,8 +317,7 @@ public class Debugger(public val port: Int, public val awaitInitialConnectionTim
 
             pipeline.interceptToolCallStarting(this) intercept@{ eventContext ->
                 val event = ToolCallStartingEvent(
-                    id = eventContext.id,
-                    parentId = eventContext.parentId,
+                    executionInfo = eventContext.executionInfo,
                     runId = eventContext.runId,
                     toolCallId = eventContext.toolCallId,
                     toolName = eventContext.toolName,
@@ -347,8 +329,7 @@ public class Debugger(public val port: Int, public val awaitInitialConnectionTim
 
             pipeline.interceptToolValidationFailed(this) intercept@{ eventContext ->
                 val event = ToolValidationFailedEvent(
-                    id = eventContext.id,
-                    parentId = eventContext.parentId,
+                    executionInfo = eventContext.executionInfo,
                     runId = eventContext.runId,
                     toolCallId = eventContext.toolCallId,
                     toolName = eventContext.toolName,
@@ -362,8 +343,7 @@ public class Debugger(public val port: Int, public val awaitInitialConnectionTim
 
             pipeline.interceptToolCallFailed(this) intercept@{ eventContext ->
                 val event = ToolCallFailedEvent(
-                    id = eventContext.id,
-                    parentId = eventContext.parentId,
+                    executionInfo = eventContext.executionInfo,
                     runId = eventContext.runId,
                     toolCallId = eventContext.toolCallId,
                     toolName = eventContext.toolName,
@@ -376,8 +356,7 @@ public class Debugger(public val port: Int, public val awaitInitialConnectionTim
 
             pipeline.interceptToolCallCompleted(this) intercept@{ eventContext ->
                 val event = ToolCallCompletedEvent(
-                    id = eventContext.id,
-                    parentId = eventContext.parentId,
+                    executionInfo = eventContext.executionInfo,
                     runId = eventContext.runId,
                     toolCallId = eventContext.toolCallId,
                     toolName = eventContext.toolName,
@@ -401,8 +380,7 @@ public class Debugger(public val port: Int, public val awaitInitialConnectionTim
 
             pipeline.interceptNodeExecutionStarting(this) intercept@{ eventContext ->
                 val event = NodeExecutionStartingEvent(
-                    id = eventContext.id,
-                    parentId = eventContext.parentId,
+                    executionInfo = eventContext.executionInfo,
                     runId = eventContext.context.runId,
                     nodeName = eventContext.node.name,
                     input = nodeDataToJsonElement(eventContext.input, eventContext.inputType),
@@ -414,8 +392,7 @@ public class Debugger(public val port: Int, public val awaitInitialConnectionTim
             pipeline.interceptNodeExecutionCompleted(this) intercept@{ eventContext ->
 
                 val event = NodeExecutionCompletedEvent(
-                    id = eventContext.id,
-                    parentId = eventContext.parentId,
+                    executionInfo = eventContext.executionInfo,
                     runId = eventContext.context.runId,
                     nodeName = eventContext.node.name,
                     input = nodeDataToJsonElement(eventContext.input, eventContext.inputType),
@@ -427,8 +404,7 @@ public class Debugger(public val port: Int, public val awaitInitialConnectionTim
 
             pipeline.interceptNodeExecutionFailed(this) intercept@{ eventContext ->
                 val event = NodeExecutionFailedEvent(
-                    id = eventContext.id,
-                    parentId = eventContext.parentId,
+                    executionInfo = eventContext.executionInfo,
                     runId = eventContext.context.runId,
                     nodeName = eventContext.node.name,
                     input = nodeDataToJsonElement(eventContext.input, eventContext.inputType),
@@ -444,8 +420,7 @@ public class Debugger(public val port: Int, public val awaitInitialConnectionTim
 
             pipeline.interceptSubgraphExecutionStarting(this) intercept@{ eventContext ->
                 val event = SubgraphExecutionStartingEvent(
-                    id = eventContext.id,
-                    parentId = eventContext.parentId,
+                    executionInfo = eventContext.executionInfo,
                     runId = eventContext.context.runId,
                     subgraphName = eventContext.subgraph.name,
                     input = nodeDataToJsonElement(eventContext.input, eventContext.inputType),
@@ -456,8 +431,7 @@ public class Debugger(public val port: Int, public val awaitInitialConnectionTim
 
             pipeline.interceptSubgraphExecutionCompleted(this) intercept@{ eventContext ->
                 val event = SubgraphExecutionCompletedEvent(
-                    id = eventContext.id,
-                    parentId = eventContext.parentId,
+                    executionInfo = eventContext.executionInfo,
                     runId = eventContext.context.runId,
                     subgraphName = eventContext.subgraph.name,
                     input = nodeDataToJsonElement(eventContext.input, eventContext.inputType),
@@ -469,8 +443,7 @@ public class Debugger(public val port: Int, public val awaitInitialConnectionTim
 
             pipeline.interceptSubgraphExecutionFailed(this) intercept@{ eventContext ->
                 val event = SubgraphExecutionFailedEvent(
-                    id = eventContext.id,
-                    parentId = eventContext.parentId,
+                    executionInfo = eventContext.executionInfo,
                     runId = eventContext.context.runId,
                     subgraphName = eventContext.subgraph.name,
                     input = nodeDataToJsonElement(eventContext.input, eventContext.inputType),

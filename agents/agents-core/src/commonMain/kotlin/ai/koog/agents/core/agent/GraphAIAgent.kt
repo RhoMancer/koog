@@ -170,8 +170,7 @@ public open class GraphAIAgent<Input, Output>(
         //   (ex: testing feature transforms it into a MockEnvironment with mocked tools)
         val preparedEnvironment =
             pipeline.onAgentEnvironmentTransforming(
-                id = executionInfo.id,
-                parentId = executionInfo.parentId,
+                executionInfo = executionInfo,
                 strategy = strategy,
                 agent = this,
                 baseEnvironment = baseEnvironment

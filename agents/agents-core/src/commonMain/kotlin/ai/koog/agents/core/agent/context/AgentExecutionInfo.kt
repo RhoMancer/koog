@@ -1,5 +1,6 @@
 package ai.koog.agents.core.agent.context
 
+import kotlinx.serialization.Serializable
 import kotlin.uuid.ExperimentalUuidApi
 import kotlin.uuid.Uuid
 
@@ -9,6 +10,7 @@ import kotlin.uuid.Uuid
  * @property id A unique identifier for the current context.
  * @property parentId An optional identifier that links this context to its parent if applicable.
  */
+@Serializable
 public data class AgentExecutionInfo(
     var id: String,
     var parentId: String? = null,
@@ -21,7 +23,7 @@ public data class AgentExecutionInfo(
 public suspend fun <T> withParent(
     context: AIAgentContext,
     partName: String,
-    block: suspend (parentId: String?, id: String) -> T
+    block: suspend (executionInfo: AgentExecutionInfo) -> T
 ): T {
     val originalParentId = context.executionInfo.parentId
     val originalId = context.executionInfo.id
@@ -34,7 +36,7 @@ public suspend fun <T> withParent(
     context.executionInfo.path.append(partName)
 
     try {
-        return block(originalId, id)
+        return block(context.executionInfo)
     } finally {
         context.executionInfo.id = originalId
         context.executionInfo.parentId = originalParentId

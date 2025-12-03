@@ -31,8 +31,6 @@ public data class LLMCallStartingContext(
     val tools: List<ToolDescriptor>,
 ) : LLMCallEventContext {
     override val eventType: AgentLifecycleEventType = AgentLifecycleEventType.LLMCallStarting
-    override val id: String get() = executionInfo.id
-    override val parentId: String? get() = executionInfo.parentId
 }
 
 /**
@@ -56,6 +54,4 @@ public data class LLMCallCompletedContext(
     val moderationResponse: ModerationResult?
 ) : LLMCallEventContext {
     override val eventType: AgentLifecycleEventType = AgentLifecycleEventType.LLMCallCompleted
-    override val id: String get() = executionInfo.id
-    override val parentId: String? get() = executionInfo.parentId
 }

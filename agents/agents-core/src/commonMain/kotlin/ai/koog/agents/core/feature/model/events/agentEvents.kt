@@ -1,5 +1,6 @@
 package ai.koog.agents.core.feature.model.events
 
+import ai.koog.agents.core.agent.context.AgentExecutionInfo
 import ai.koog.agents.core.agent.context.AgentExecutionPath
 import ai.koog.agents.core.feature.model.AIAgentError
 import kotlinx.datetime.Clock
@@ -11,17 +12,14 @@ import kotlinx.serialization.Serializable
  * This event provides details about the agent's strategy, making it useful for
  * monitoring, debugging, and tracking the lifecycle of AI agents within the system.
  *
- * @property id A unique identifier for the group of events associated with the agent execution event.
- * @property parentId The unique identifier of the parent event, if applicable.
+ * @property executionInfo Provides contextual information about the execution associated with this event.
  * @property agentId The unique identifier of the AI agent;
  * @property runId The unique identifier of the AI agen run;
  * @property timestamp The timestamp of the event, in milliseconds since the Unix epoch.
  */
 @Serializable
 public data class AgentStartingEvent(
-    override val id: String,
-    override val parentId: String?,
-    override val executionPath: AgentExecutionPath,
+    override val executionInfo: AgentExecutionInfo,
     val agentId: String,
     val runId: String,
     override val timestamp: Long = Clock.System.now().toEpochMilliseconds(),
@@ -29,19 +27,21 @@ public data class AgentStartingEvent(
 
     /**
      * @deprecated. Creates an instance of [AgentStartingEvent].
-     * Note! Do not relay on [id] and [parentId] parameters with this constructor.
+     * Note! Do not relay on [executionInfo] parameter in this constructor.
      */
     @Deprecated(
-        message = "Please use constructor with id and parentId parameters",
-        replaceWith = ReplaceWith("AgentStartingEvent(id, parentId, agentId, runId)")
+        message = "Please use constructor with executionInfo parameter",
+        replaceWith = ReplaceWith("AgentStartingEvent(executionInfo, agentId, runId)")
     )
     public constructor(
         agentId: String,
         runId: String
     ) : this(
-        id = AgentStartingEvent::class.simpleName.toString(),
-        parentId = null,
-        executionPath = AgentExecutionPath.EMPTY,
+        executionInfo = AgentExecutionInfo(
+            id = AgentStartingEvent::class.simpleName.toString(),
+            parentId = null,
+            path = AgentExecutionPath.EMPTY
+        ),
         agentId = agentId,
         runId = runId
     )
@@ -54,8 +54,7 @@ public data class AgentStartingEvent(
  * information about the strategy and its result. It can be used for logging, tracing,
  * or monitoring the outcomes of agent operations.
  *
- * @property id A unique identifier for the group of events associated with the agent execution event.
- * @property parentId The unique identifier of the parent event, if applicable.
+ * @property executionInfo Provides contextual information about the execution associated with this event.
  * @property agentId The unique identifier of the AI agent;
  * @property runId The unique identifier of the AI agen run;
  * @property result The result of the strategy execution, or null if unavailable;
@@ -63,9 +62,7 @@ public data class AgentStartingEvent(
  */
 @Serializable
 public data class AgentCompletedEvent(
-    override val id: String,
-    override val parentId: String?,
-    override val executionPath: AgentExecutionPath,
+    override val executionInfo: AgentExecutionInfo,
     val agentId: String,
     val runId: String,
     val result: String?,
@@ -74,20 +71,22 @@ public data class AgentCompletedEvent(
 
     /**
      * @deprecated. Creates an instance of [AgentCompletedEvent].
-     * Note! Do not relay on [id] and [parentId] parameters with this constructor.
+     * Note! Do not relay on [executionInfo] parameter in this constructor.
      */
     @Deprecated(
-        message = "Please use constructor with id and parentId parameters",
-        replaceWith = ReplaceWith("AgentCompletedEvent(id, parentId, agentId, runId, result)")
+        message = "Please use constructor with executionInfo parameter",
+        replaceWith = ReplaceWith("AgentCompletedEvent(executionInfo, agentId, runId, result)")
     )
     public constructor(
         agentId: String,
         runId: String,
         result: String?
     ) : this(
-        id = AgentCompletedEvent::class.simpleName.toString(),
-        parentId = null,
-        executionPath = AgentExecutionPath.EMPTY,
+        executionInfo = AgentExecutionInfo(
+            id = AgentCompletedEvent::class.simpleName.toString(),
+            parentId = null,
+            path = AgentExecutionPath.EMPTY
+        ),
         agentId = agentId,
         runId = runId,
         result = result
@@ -100,8 +99,7 @@ public data class AgentCompletedEvent(
  * This event is used to capture error information during the execution of an AI agent
  * strategy, including details of the strategy and the encountered error.
  *
- * @property id A unique identifier for the group of events associated with the agent execution event.
- * @property parentId The unique identifier of the parent event, if applicable.
+ * @property executionInfo Provides contextual information about the execution associated with this event.
  * @property agentId The unique identifier of the AI agent;
  * @property runId The unique identifier of the AI agen run;
  * @property error The [AIAgentError] instance encapsulating details about the encountered error,
@@ -110,9 +108,7 @@ public data class AgentCompletedEvent(
  */
 @Serializable
 public data class AgentExecutionFailedEvent(
-    override val id: String,
-    override val parentId: String?,
-    override val executionPath: AgentExecutionPath,
+    override val executionInfo: AgentExecutionInfo,
     val agentId: String,
     val runId: String,
     val error: AIAgentError?,
@@ -121,20 +117,22 @@ public data class AgentExecutionFailedEvent(
 
     /**
      * @deprecated. Creates an instance of [AgentExecutionFailedEvent].
-     * Note! Do not relay on [id] and [parentId] parameters with this constructor.
+     * Note! Do not relay on [executionInfo] parameter in this constructor.
      */
     @Deprecated(
-        message = "Please use constructor with id and parentId parameters",
-        replaceWith = ReplaceWith("AgentExecutionFailedEvent(id, parentId, agentId, runId, error)")
+        message = "Please use constructor with executionInfo parameter",
+        replaceWith = ReplaceWith("AgentExecutionFailedEvent(executionInfo, agentId, runId, error)")
     )
     public constructor(
         agentId: String,
         runId: String,
         error: AIAgentError
     ) : this(
-        id = AgentExecutionFailedEvent::class.simpleName.toString(),
-        parentId = null,
-        executionPath = AgentExecutionPath.EMPTY,
+        executionInfo = AgentExecutionInfo(
+            id = AgentExecutionFailedEvent::class.simpleName.toString(),
+            parentId = null,
+            path = AgentExecutionPath.EMPTY
+        ),
         agentId = agentId,
         runId = runId,
         error = error
@@ -145,34 +143,33 @@ public data class AgentExecutionFailedEvent(
  * Represents an event that signifies the closure or termination of an AI agent identified
  * by a unique `agentId`.
  *
- * @property id A unique identifier for the group of events associated with the agent execution event.
- * @property parentId The unique identifier of the parent event, if applicable.
+ * @property executionInfo Provides contextual information about the execution associated with this event.
  * @property agentId The unique identifier of the AI agent;
  * @property timestamp The timestamp of the event, in milliseconds since the Unix epoch.
  */
 @Serializable
 public data class AgentClosingEvent(
-    override val id: String,
-    override val parentId: String?,
-    override val executionPath: AgentExecutionPath,
+    override val executionInfo: AgentExecutionInfo,
     val agentId: String,
     override val timestamp: Long = Clock.System.now().toEpochMilliseconds(),
 ) : DefinedFeatureEvent() {
 
     /**
      * @deprecated. Creates an instance of [AgentClosingEvent].
-     * Note! Do not relay on [id] and [parentId] parameters with this constructor.
+     * Note! Do not relay on [executionInfo] parameter in this constructor.
      */
     @Deprecated(
-        message = "Please use constructor with id and parentId parameters",
-        replaceWith = ReplaceWith("AgentClosingEvent(id, parentId, agentId)")
+        message = "Please use constructor with executionInfo parameter",
+        replaceWith = ReplaceWith("AgentClosingEvent(executionInfo, agentId)")
     )
     public constructor(
         agentId: String
     ) : this(
-        id = AgentClosingEvent::class.simpleName.toString(),
-        parentId = null,
-        executionPath = AgentExecutionPath.EMPTY,
+        executionInfo = AgentExecutionInfo(
+            id = AgentClosingEvent::class.simpleName.toString(),
+            parentId = null,
+            path = AgentExecutionPath.EMPTY
+        ),
         agentId = agentId
     )
 }

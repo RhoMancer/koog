@@ -29,8 +29,6 @@ public data class ToolCallStartingContext(
     val toolArgs: JsonObject
 ) : ToolCallEventContext {
     override val eventType: AgentLifecycleEventType = AgentLifecycleEventType.ToolCallStarting
-    override val id: String get() = executionInfo.id
-    override val parentId: String? get() = executionInfo.parentId
 }
 
 /**
@@ -53,8 +51,6 @@ public data class ToolValidationFailedContext(
     val error: ToolException
 ) : ToolCallEventContext {
     override val eventType: AgentLifecycleEventType = AgentLifecycleEventType.ToolValidationFailed
-    override val id: String get() = executionInfo.id
-    override val parentId: String? get() = executionInfo.parentId
 }
 
 /**
@@ -78,8 +74,6 @@ public data class ToolCallFailedContext(
     val exception: Throwable?
 ) : ToolCallEventContext {
     override val eventType: AgentLifecycleEventType = AgentLifecycleEventType.ToolCallFailed
-    override val id: String get() = executionInfo.id
-    override val parentId: String? get() = executionInfo.parentId
 }
 
 /**
@@ -101,6 +95,4 @@ public data class ToolCallCompletedContext(
     val toolResult: JsonElement?
 ) : ToolCallEventContext {
     override val eventType: AgentLifecycleEventType = AgentLifecycleEventType.ToolCallCompleted
-    override val id: String get() = executionInfo.id
-    override val parentId: String? get() = executionInfo.parentId
 }

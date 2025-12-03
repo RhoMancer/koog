@@ -31,8 +31,6 @@ public data class LLMStreamingStartingContext(
     val tools: List<ToolDescriptor>,
 ) : LLMStreamingEventContext {
     override val eventType: AgentLifecycleEventType = AgentLifecycleEventType.LLMStreamingStarting
-    override val id: String get() = executionInfo.id
-    override val parentId: String? get() = executionInfo.parentId
 }
 
 /**
@@ -53,8 +51,6 @@ public data class LLMStreamingFrameReceivedContext(
     val streamFrame: StreamFrame,
 ) : LLMStreamingEventContext {
     override val eventType: AgentLifecycleEventType = AgentLifecycleEventType.LLMStreamingFrameReceived
-    override val id: String get() = executionInfo.id
-    override val parentId: String? get() = executionInfo.parentId
 }
 
 /**
@@ -75,8 +71,6 @@ public data class LLMStreamingFailedContext(
     val exception: Throwable
 ) : LLMStreamingEventContext {
     override val eventType: AgentLifecycleEventType = AgentLifecycleEventType.LLMStreamingFailed
-    override val id: String get() = executionInfo.id
-    override val parentId: String? get() = executionInfo.parentId
 }
 
 /**
@@ -97,6 +91,4 @@ public data class LLMStreamingCompletedContext(
     val tools: List<ToolDescriptor>
 ) : LLMStreamingEventContext {
     override val eventType: AgentLifecycleEventType = AgentLifecycleEventType.LLMStreamingCompleted
-    override val id: String get() = executionInfo.id
-    override val parentId: String? get() = executionInfo.parentId
 }

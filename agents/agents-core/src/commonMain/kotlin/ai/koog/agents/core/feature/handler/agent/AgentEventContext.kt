@@ -34,8 +34,6 @@ public data class AgentStartingContext(
     public val context: AIAgentContext,
 ) : AgentEventContext {
     override val eventType: AgentLifecycleEventType = AgentLifecycleEventType.AgentStarting
-    override val id: String get() = executionInfo.id
-    override val parentId: String? get() = executionInfo.parentId
 }
 
 /**
@@ -53,8 +51,6 @@ public data class AgentCompletedContext(
     public val result: Any?,
 ) : AgentEventContext {
     override val eventType: AgentLifecycleEventType = AgentLifecycleEventType.AgentCompleted
-    override val id: String get() = executionInfo.id
-    override val parentId: String? get() = executionInfo.parentId
 }
 
 /**
@@ -72,8 +68,6 @@ public data class AgentExecutionFailedContext(
     val exception: Throwable?
 ) : AgentEventContext {
     override val eventType: AgentLifecycleEventType = AgentLifecycleEventType.AgentExecutionFailed
-    override val id: String get() = executionInfo.id
-    override val parentId: String? get() = executionInfo.parentId
 }
 
 /**
@@ -87,8 +81,6 @@ public data class AgentClosingContext(
     val agentId: String,
 ) : AgentEventContext {
     override val eventType: AgentLifecycleEventType = AgentLifecycleEventType.AgentClosing
-    override val id: String get() = executionInfo.id
-    override val parentId: String? get() = executionInfo.parentId
 }
 
 /**
@@ -104,6 +96,4 @@ public class AgentEnvironmentTransformingContext(
     public val agent: GraphAIAgent<*, *>,
 ) : AgentEventContext {
     override val eventType: AgentLifecycleEventType = AgentLifecycleEventType.AgentEnvironmentTransforming
-    override val id: String get() = executionInfo.id
-    override val parentId: String? get() = executionInfo.parentId
 }

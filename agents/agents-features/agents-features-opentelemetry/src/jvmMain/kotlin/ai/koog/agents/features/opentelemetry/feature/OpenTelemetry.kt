@@ -314,12 +314,10 @@ public class OpenTelemetry {
 
                 // Get current NodeExecuteSpan
 
-                val id = eventContext.runId
-                val parentId = eventContext.parentId
-                val path = eventContext.executionInfo.path
+                val path = eventContext.executionInfo
 
                 val nodeExecuteSpanId = NodeExecuteSpan.createId(
-                    agentId = agentRunInfoElement.agentId,
+                    agentId = eventContext.agentId,
                     runId = agentRunInfoElement.runId,
                     nodeId = nodeInfoElement.id,
                     nodeName = nodeInfoElement.name,

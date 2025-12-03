@@ -37,14 +37,14 @@ public class PromptExecutorProxy(
     }
 
     override suspend fun execute(prompt: Prompt, model: LLModel, tools: List<ToolDescriptor>): List<Message.Response> =
-        withParent(context, "TODO: SD -- ") { parentId, id ->
+        withParent(context, "TODO: SD -- ") { executionInfo ->
             logger.debug { "Executing LLM call (prompt: $prompt, tools: [${tools.joinToString { it.name }}])" }
-            pipeline.onLLMCallStarting(id, parentId, runId, prompt, model, tools)
+            pipeline.onLLMCallStarting(executionInfo, runId, prompt, model, tools)
 
             val responses = executor.execute(prompt, model, tools)
 
             logger.trace { "Finished LLM call with responses: [${responses.joinToString { "${it.role}: ${it.content}" }}]" }
-            pipeline.onLLMCallCompleted(id, parentId, runId, prompt, model, tools, responses)
+            pipeline.onLLMCallCompleted(executionInfo, runId, prompt, model, tools, responses)
 
             responses
         }
@@ -70,28 +70,28 @@ public class PromptExecutorProxy(
         logger.debug { "Executing LLM streaming call (prompt: $prompt, tools: [${tools.joinToString { it.name }}])" }
         return executor.executeStreaming(prompt, model, tools)
             .onStart {
-                withParent(context, "TODO: SD -- ") { parentId, id ->
+                withParent(context, "TODO: SD -- ") { executionInfo ->
                     logger.debug { "Starting LLM streaming call" }
-                    pipeline.onLLMStreamingStarting(id, parentId, runId, prompt, model, tools)
+                    pipeline.onLLMStreamingStarting(executionInfo, runId, prompt, model, tools)
                 }
             }
             .onEach { frame ->
-                withParent(context, "TODO: SD -- ") { parentId, id ->
+                withParent(context, "TODO: SD -- ") { executionInfo ->
                     logger.debug { "Received frame from LLM streaming call: $frame" }
-                    pipeline.onLLMStreamingFrameReceived(id, parentId, runId, prompt, model, frame)
+                    pipeline.onLLMStreamingFrameReceived(executionInfo, runId, prompt, model, frame)
                 }
             }
             .catch { exception ->
-                withParent(context, "TODO: SD -- ") { parentId, id ->
+                withParent(context, "TODO: SD -- ") { executionInfo ->
                     logger.debug(exception) { "Error in LLM streaming call" }
-                    pipeline.onLLMStreamingFailed(id, parentId, runId, prompt, model, exception)
+                    pipeline.onLLMStreamingFailed(executionInfo, runId, prompt, model, exception)
                     throw exception
                 }
             }
             .onCompletion { error ->
-                withParent(context, "TODO: SD -- ") { parentId, id ->
+                withParent(context, "TODO: SD -- ") { executionInfo ->
                     logger.debug(error) { "Finished LLM streaming call" }
-                    pipeline.onLLMStreamingCompleted(id, parentId, runId, prompt, model, tools)
+                    pipeline.onLLMStreamingCompleted(executionInfo, runId, prompt, model, tools)
                 }
             }
     }
@@ -125,14 +125,14 @@ public class PromptExecutorProxy(
     override suspend fun moderate(
         prompt: Prompt,
         model: LLModel
-    ): ModerationResult = withParent(context, "TODO: SD -- ") { parentId, id ->
+    ): ModerationResult = withParent(context, "TODO: SD -- ") { executionInfo ->
         logger.debug { "Executing moderation LLM request (prompt: $prompt)" }
-        pipeline.onLLMCallStarting(id, parentId, runId, prompt, model, tools = emptyList())
+        pipeline.onLLMCallStarting(executionInfo, runId, prompt, model, tools = emptyList())
 
         val result = executor.moderate(prompt, model)
 
         logger.trace { "Finished moderation LLM request with response: $result" }
-        pipeline.onLLMCallCompleted(id, parentId, runId, prompt, model, tools = emptyList(), responses = emptyList(), moderationResponse = result)
+        pipeline.onLLMCallCompleted(executionInfo, runId, prompt, model, tools = emptyList(), responses = emptyList(), moderationResponse = result)
 
         result
     }

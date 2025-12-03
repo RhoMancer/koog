@@ -27,8 +27,6 @@ public class StrategyStartingContext(
     public val context: AIAgentContext,
 ) : StrategyEventContext {
     override val eventType: AgentLifecycleEventType = AgentLifecycleEventType.StrategyStarting
-    override val id: String get() = executionInfo.id
-    override val parentId: String? get() = executionInfo.parentId
 
     /**
      * The unique identifier for this run.
@@ -59,8 +57,6 @@ public class StrategyCompletedContext(
     public val resultType: KType,
 ) : StrategyEventContext {
     override val eventType: AgentLifecycleEventType = AgentLifecycleEventType.StrategyCompleted
-    override val id: String get() = executionInfo.id
-    override val parentId: String? get() = executionInfo.parentId
 
     /**
      * The unique identifier for this run.

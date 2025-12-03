@@ -33,10 +33,10 @@ public class AIAgentFunctionalStrategy<TInput, TOutput>(
     override suspend fun execute(
         context: AIAgentFunctionalContext,
         input: TInput
-    ): TOutput = withParent(context = context, partName = name) { parentId, id ->
-        context.pipeline.onStrategyStarting(id, parentId, this@AIAgentFunctionalStrategy, context)
+    ): TOutput = withParent(context = context, partName = name) { executionInfo ->
+        context.pipeline.onStrategyStarting(executionInfo, this@AIAgentFunctionalStrategy, context)
         val result = context.func(input)
-        context.pipeline.onStrategyCompleted(id, parentId, this@AIAgentFunctionalStrategy, context, result, typeOf<Any?>())
+        context.pipeline.onStrategyCompleted(executionInfo, this@AIAgentFunctionalStrategy, context, result, typeOf<Any?>())
 
         logger.debug { "Finished executing strategy (name: $name) with result: $result" }
         result

@@ -1,6 +1,6 @@
 package ai.koog.agents.core.model.message
 
-import ai.koog.agents.core.environment.ToolResultType
+import ai.koog.agents.core.environment.ToolResultKind
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 
@@ -21,6 +21,6 @@ public data class AIAgentEnvironmentToolResultToAgentContent(
     override val toolArgs: JsonObject,
     override val agentId: String,
     override val message: String,
-    val toolResultType: ToolResultType,
+    val toolResultKind: ToolResultKind,
     val toolResult: JsonElement? = null
 ) : EnvironmentToolResultToAgentContent()

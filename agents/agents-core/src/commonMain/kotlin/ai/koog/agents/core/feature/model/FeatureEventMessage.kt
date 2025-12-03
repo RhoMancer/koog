@@ -1,5 +1,6 @@
 package ai.koog.agents.core.feature.model
 
+import ai.koog.agents.core.agent.context.AgentExecutionInfo
 import ai.koog.agents.core.feature.message.FeatureEvent
 import ai.koog.agents.core.feature.message.FeatureMessage
 import kotlinx.datetime.Clock
@@ -21,8 +22,7 @@ import kotlinx.serialization.Serializable
  */
 @Serializable
 public data class FeatureEventMessage(
-    override val id: String,
-    override val parentId: String?,
+    override val executionInfo: AgentExecutionInfo,
     override val timestamp: Long = Clock.System.now().toEpochMilliseconds()
 ) : FeatureEvent {
 

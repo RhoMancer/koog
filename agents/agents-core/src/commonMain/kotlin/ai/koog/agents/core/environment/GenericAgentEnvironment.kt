@@ -82,7 +82,7 @@ internal class GenericAgentEnvironment(
         toolArgs: JsonObject,
         agentId: String,
         message: String,
-        resultType: ToolResultType,
+        toolResultKind: ToolResultKind,
         result: JsonElement?
     ): EnvironmentToolResultToAgentContent = AIAgentEnvironmentToolResultToAgentContent(
         toolCallId = toolCallId,
@@ -90,7 +90,7 @@ internal class GenericAgentEnvironment(
         toolArgs = toolArgs,
         agentId = agentId,
         message = message,
-        toolResultType = resultType,
+        toolResultKind = toolResultKind,
         toolResult = result
     )
 
@@ -108,7 +108,7 @@ internal class GenericAgentEnvironment(
                     toolName = toolCallContent.toolName,
                     toolArgs = toolCallContent.toolArgs,
                     agentId = agentId,
-                    resultType = ToolResultType.Failure(null),
+                    toolResultKind = ToolResultKind.Failure(null),
                     result = null
                 )
             }
@@ -123,7 +123,7 @@ internal class GenericAgentEnvironment(
                 toolName = toolCallContent.toolName,
                 toolArgs = toolCallContent.toolArgs,
                 agentId = agentId,
-                resultType = ToolResultType.Failure(e),
+                toolResultKind = ToolResultKind.Failure(e),
                 result = null
             )
         }
@@ -138,7 +138,7 @@ internal class GenericAgentEnvironment(
                 toolName = toolCallContent.toolName,
                 toolArgs = toolCallContent.toolArgs,
                 agentId = agentId,
-                resultType = ToolResultType.ValidationError(e),
+                toolResultKind = ToolResultKind.ValidationError(e),
                 result = null
             )
         } catch (e: Exception) {
@@ -149,7 +149,7 @@ internal class GenericAgentEnvironment(
                 toolName = toolCallContent.toolName,
                 toolArgs = toolCallContent.toolArgs,
                 agentId = agentId,
-                resultType = ToolResultType.Failure(e),
+                toolResultKind = ToolResultKind.Failure(e),
                 result = null
             )
         }
@@ -161,7 +161,7 @@ internal class GenericAgentEnvironment(
             toolArgs = toolCallContent.toolArgs,
             agentId = agentId,
             message = tool.encodeResultToStringUnsafe(toolResult),
-            resultType = ToolResultType.Success,
+            toolResultKind = ToolResultKind.Success,
             result = tool.encodeResult(toolResult)
         )
     }

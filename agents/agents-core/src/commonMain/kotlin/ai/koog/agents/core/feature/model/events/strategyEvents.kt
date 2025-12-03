@@ -1,5 +1,6 @@
 package ai.koog.agents.core.feature.model.events
 
+import ai.koog.agents.core.agent.context.AgentExecutionInfo
 import ai.koog.agents.core.agent.context.AgentExecutionPath
 import ai.koog.agents.core.agent.entity.AIAgentGraphStrategy
 import ai.koog.agents.core.annotation.InternalAgentsApi
@@ -28,8 +29,7 @@ public abstract class StrategyStartingEvent : DefinedFeatureEvent() {
  * Represents an event triggered at the start of an AI agent strategy execution that involves
  * the use of a graph-based operational model.
  *
- * @property id A unique identifier for the group of events associated with the strategy events;
- * @property parentId The unique identifier of the parent event, if applicable;
+ * @property executionInfo Provides contextual information about the execution associated with this event.
  * @property runId A unique identifier representing the specific run or instance of the strategy execution;
  * @property strategyName The name of the graph-based strategy being executed;
  * @property graph The graph structure representing the strategy's execution workflow, encompassing nodes and their directed relationships;
@@ -37,9 +37,7 @@ public abstract class StrategyStartingEvent : DefinedFeatureEvent() {
  */
 @Serializable
 public data class GraphStrategyStartingEvent(
-    override val id: String,
-    override val parentId: String?,
-    override val executionPath: AgentExecutionPath,
+    override val executionInfo: AgentExecutionInfo,
     override val runId: String,
     override val strategyName: String,
     val graph: StrategyEventGraph,
@@ -47,11 +45,11 @@ public data class GraphStrategyStartingEvent(
 ) : StrategyStartingEvent() {
 
     /**
-     * @deprecated Use constructor with [id] and [parentId] parameters
+     * @deprecated Use constructor with [executionInfo] parameter
      */
     @Deprecated(
-        message = "Use constructor with id, parentId parameters",
-        replaceWith = ReplaceWith("GraphStrategyStartingEvent(id, parentId, executionPath, runId, strategyName, graph, timestamp)")
+        message = "Use constructor with executionInfo parameter",
+        replaceWith = ReplaceWith("GraphStrategyStartingEvent(executionInfo, runId, strategyName, graph, timestamp)")
     )
     public constructor(
         runId: String,
@@ -59,9 +57,11 @@ public data class GraphStrategyStartingEvent(
         graph: StrategyEventGraph,
         timestamp: Long = Clock.System.now().toEpochMilliseconds()
     ) : this(
-        id = GraphStrategyStartingEvent::class.simpleName.toString(),
-        parentId = null,
-        executionPath = AgentExecutionPath.EMPTY,
+        executionInfo = AgentExecutionInfo(
+            id = GraphStrategyStartingEvent::class.simpleName.toString(),
+            parentId = null,
+            path = AgentExecutionPath.EMPTY
+        ),
         runId = runId,
         strategyName = strategyName,
         graph = graph,
@@ -72,37 +72,36 @@ public data class GraphStrategyStartingEvent(
 /**
  * Represents an event triggered at the start of executing a functional strategy by an AI agent.
  *
- * @property id A unique identifier for the group of events associated with the strategy events;
- * @property parentId The unique identifier of the parent event, if applicable;
+ * @property executionInfo Provides contextual information about the execution associated with this event.
  * @property runId A unique identifier representing the specific run or instance of the strategy execution;
  * @property strategyName The name of the functional-based strategy being executed;
  * @property timestamp The timestamp of the event, in milliseconds since the Unix epoch.
  */
 @Serializable
 public data class FunctionalStrategyStartingEvent(
-    override val id: String,
-    override val parentId: String?,
-    override val executionPath: AgentExecutionPath,
+    override val executionInfo: AgentExecutionInfo,
     override val runId: String,
     override val strategyName: String,
     override val timestamp: Long = Clock.System.now().toEpochMilliseconds(),
 ) : StrategyStartingEvent() {
 
     /**
-     * @deprecated Use constructor with [id] and [parentId] parameters
+     * @deprecated Use constructor with [executionInfo] parameter
      */
     @Deprecated(
-        message = "Use constructor with id, parentId parameters",
-        replaceWith = ReplaceWith("FunctionalStrategyStartingEvent(id, parentId, executionPath, runId, strategyName, timestamp)")
+        message = "Use constructor with executionInfo parameter",
+        replaceWith = ReplaceWith("FunctionalStrategyStartingEvent(executionInfo, runId, strategyName, timestamp)")
     )
     public constructor(
         runId: String,
         strategyName: String,
         timestamp: Long = Clock.System.now().toEpochMilliseconds()
     ) : this(
-        id = FunctionalStrategyStartingEvent::class.simpleName.toString(),
-        parentId = null,
-        executionPath = AgentExecutionPath.EMPTY,
+        executionInfo = AgentExecutionInfo(
+            id = FunctionalStrategyStartingEvent::class.simpleName.toString(),
+            parentId = null,
+            path = AgentExecutionPath.EMPTY
+        ),
         runId = runId,
         strategyName = strategyName,
         timestamp = timestamp
@@ -115,8 +114,7 @@ public data class FunctionalStrategyStartingEvent(
  * This event captures information about the strategy that was executed and the result of its execution.
  * It is used to notify the system or consumers about the conclusion of a specific strategy.
  *
- * @property id A unique identifier for the group of events associated with the strategy events;
- * @property parentId The unique identifier of the parent event, if applicable;
+ * @property executionInfo Provides contextual information about the execution associated with this event.
  * @property runId A unique identifier representing the specific run or instance of the strategy execution;
  * @property strategyName The name of the strategy that was executed;
  * @property result The result of the strategy execution, providing details such as success, failure, or other status descriptions;
@@ -124,9 +122,7 @@ public data class FunctionalStrategyStartingEvent(
  */
 @Serializable
 public data class StrategyCompletedEvent(
-    override val id: String,
-    override val parentId: String?,
-    override val executionPath: AgentExecutionPath,
+    override val executionInfo: AgentExecutionInfo,
     val runId: String,
     val strategyName: String,
     val result: String?,
@@ -134,11 +130,11 @@ public data class StrategyCompletedEvent(
 ) : DefinedFeatureEvent() {
 
     /**
-     * @deprecated Use constructor with [id] and [parentId] parameters
+     * @deprecated Use constructor with [executionInfo] parameter
      */
     @Deprecated(
-        message = "Use constructor with [id] and [parentId] parameters",
-        replaceWith = ReplaceWith("StrategyCompletedEvent(id, parentId, executionPath, runId, strategyName, result, timestamp)")
+        message = "Use constructor with executionInfo parameter",
+        replaceWith = ReplaceWith("StrategyCompletedEvent(executionInfo, runId, strategyName, result, timestamp)")
     )
     public constructor(
         runId: String,
@@ -146,9 +142,11 @@ public data class StrategyCompletedEvent(
         result: String?,
         timestamp: Long = Clock.System.now().toEpochMilliseconds()
     ) : this(
-        id = StrategyCompletedEvent::class.simpleName.toString(),
-        parentId = null,
-        executionPath = AgentExecutionPath.EMPTY,
+        executionInfo = AgentExecutionInfo(
+            id = StrategyCompletedEvent::class.simpleName.toString(),
+            parentId = null,
+            path = AgentExecutionPath.EMPTY
+        ),
         runId = runId,
         strategyName = strategyName,
         result = result,

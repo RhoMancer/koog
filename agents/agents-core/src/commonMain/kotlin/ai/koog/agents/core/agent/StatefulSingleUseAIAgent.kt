@@ -3,6 +3,8 @@ package ai.koog.agents.core.agent
 import ai.koog.agents.core.agent.AIAgent.Companion.State
 import ai.koog.agents.core.agent.AIAgent.Companion.State.NotStarted
 import ai.koog.agents.core.agent.context.AIAgentContext
+import ai.koog.agents.core.agent.context.AgentExecutionInfo
+import ai.koog.agents.core.agent.context.AgentExecutionPath
 import ai.koog.agents.core.agent.context.withParent
 import ai.koog.agents.core.agent.entity.AIAgentStrategy
 import ai.koog.agents.core.feature.AIAgentFeature
@@ -90,27 +92,27 @@ public abstract class StatefulSingleUseAIAgent<Input, Output, TContext : AIAgent
         return pipeline.withPreparedPipeline {
 
             // Agent
-            withParent(context, runId) { parentId, id ->
+            withParent(context, runId) { executionInfo ->
                 agentStateMutex.withLock {
                     state = State.Running(context)
                 }
 
                 logger.debug { formatLog(this@StatefulSingleUseAIAgent.id, runId, "Starting agent execution") }
-                pipeline.onAgentStarting<Input, Output>(id, parentId, runId, this@StatefulSingleUseAIAgent, context)
+                pipeline.onAgentStarting<Input, Output>(executionInfo, runId, this@StatefulSingleUseAIAgent, context)
 
                 // Strategy
                 val result = try {
                     strategy.execute(context = context, input = agentInput)
                 } catch (e: Throwable) {
                     logger.error(e) { "Execution exception reported by server!" }
-                    pipeline.onAgentExecutionFailed(id, parentId, this@StatefulSingleUseAIAgent.id, runId, e)
+                    pipeline.onAgentExecutionFailed(executionInfo, this@StatefulSingleUseAIAgent.id, runId, e)
 
                     agentStateMutex.withLock { state = State.Failed(e) }
                     throw e
                 }
 
                 logger.debug { formatLog(this@StatefulSingleUseAIAgent.id, runId, "Finished agent execution") }
-                pipeline.onAgentCompleted(id, parentId, this@StatefulSingleUseAIAgent.id, runId, result)
+                pipeline.onAgentCompleted(executionInfo, this@StatefulSingleUseAIAgent.id, runId, result)
 
                 agentStateMutex.withLock {
                     state = if (result != null) {
@@ -186,7 +188,11 @@ public abstract class StatefulSingleUseAIAgent<Input, Output, TContext : AIAgent
             prepareFeatures()
             block.invoke()
         } finally {
-            onAgentClosing(id = id, parentId = null, agentId = id)
+            onAgentClosing(
+                executionInfo = AgentExecutionInfo(id, null, AgentExecutionPath.EMPTY),
+                agentId = id
+            )
+
             closeAllFeaturesMessageProcessors()
         }
 }

@@ -1,5 +1,6 @@
 package ai.koog.agents.core.feature.model.events
 
+import ai.koog.agents.core.agent.context.AgentExecutionInfo
 import ai.koog.agents.core.agent.context.AgentExecutionPath
 import ai.koog.agents.core.feature.model.AIAgentError
 import kotlinx.datetime.Clock
@@ -13,8 +14,7 @@ import kotlinx.serialization.json.JsonElement
  * such as the unique run identifier, the name of the subgraph, and the input data
  * provided to the subgraph.
  *
- * @property id A unique identifier for the group of events associated with the subgraph execution events;
- * @property parentId The unique identifier of the parent event, if applicable;
+ * @property executionInfo Provides contextual information about the execution associated with this event.
  * @property runId Unique identifier for the subgraph run;
  * @property subgraphName The name of the subgraph being executed;
  * @property input The input data provided to the subgraph;
@@ -22,9 +22,7 @@ import kotlinx.serialization.json.JsonElement
  */
 @Serializable
 public data class SubgraphExecutionStartingEvent(
-    override val id: String,
-    override val parentId: String?,
-    override val executionPath: AgentExecutionPath,
+    override val executionInfo: AgentExecutionInfo,
     val runId: String,
     val subgraphName: String,
     val input: JsonElement?,
@@ -32,11 +30,11 @@ public data class SubgraphExecutionStartingEvent(
 ) : DefinedFeatureEvent() {
 
     /**
-     * @deprecated Use constructor with [id] and [parentId] parameters
+     * @deprecated Use constructor with [executionInfo] parameter
      */
     @Deprecated(
-        message = "Use constructor with id and parentId parameters",
-        replaceWith = ReplaceWith("SubgraphExecutionStartingEvent(id, parentId, executionPath, runId, subgraphName, input, timestamp)")
+        message = "Use constructor with executionInfo parameter",
+        replaceWith = ReplaceWith("SubgraphExecutionStartingEvent(executionInfo, runId, subgraphName, input, timestamp)")
     )
     public constructor(
         runId: String,
@@ -44,9 +42,11 @@ public data class SubgraphExecutionStartingEvent(
         input: JsonElement?,
         timestamp: Long = Clock.System.now().toEpochMilliseconds()
     ) : this(
-        id = SubgraphExecutionStartingEvent::class.simpleName.toString(),
-        parentId = null,
-        executionPath = AgentExecutionPath.EMPTY,
+        executionInfo = AgentExecutionInfo(
+            id = SubgraphExecutionStartingEvent::class.simpleName.toString(),
+            parentId = null,
+            path = AgentExecutionPath.EMPTY
+        ),
         runId = runId,
         subgraphName = subgraphName,
         input = input,
@@ -57,8 +57,7 @@ public data class SubgraphExecutionStartingEvent(
 /**
  * Represents an event triggered when the execution of a specific subgraph completes.
  *
- * @property id A unique identifier for the group of events associated with the subgraph execution events;
- * @property parentId The unique identifier of the parent event, if applicable;
+ * @property executionInfo Provides contextual information about the execution associated with this event.
  * @property runId Unique identifier for the subgraph run;
  * @property subgraphName The name of the subgraph being executed;
  * @property input The input data provided to the subgraph;
@@ -67,9 +66,7 @@ public data class SubgraphExecutionStartingEvent(
  */
 @Serializable
 public data class SubgraphExecutionCompletedEvent(
-    override val id: String,
-    override val parentId: String?,
-    override val executionPath: AgentExecutionPath,
+    override val executionInfo: AgentExecutionInfo,
     val runId: String,
     val subgraphName: String,
     val input: JsonElement?,
@@ -78,11 +75,11 @@ public data class SubgraphExecutionCompletedEvent(
 ) : DefinedFeatureEvent() {
 
     /**
-     * @deprecated Use constructor with [id] and [parentId] parameters
+     * @deprecated Use constructor with [executionInfo] parameter
      */
     @Deprecated(
-        message = "Use constructor with id and parentId parameters",
-        replaceWith = ReplaceWith("SubgraphExecutionCompletedEvent(id, parentId, executionPath, runId, subgraphName, input, output, timestamp)")
+        message = "Use constructor with executionInfo parameter",
+        replaceWith = ReplaceWith("SubgraphExecutionCompletedEvent(executionInfo, runId, subgraphName, input, output, timestamp)")
     )
     public constructor(
         runId: String,
@@ -91,9 +88,11 @@ public data class SubgraphExecutionCompletedEvent(
         output: JsonElement?,
         timestamp: Long = Clock.System.now().toEpochMilliseconds()
     ) : this(
-        id = SubgraphExecutionCompletedEvent::class.simpleName.toString(),
-        parentId = null,
-        executionPath = AgentExecutionPath.EMPTY,
+        executionInfo = AgentExecutionInfo(
+            id = SubgraphExecutionCompletedEvent::class.simpleName.toString(),
+            parentId = null,
+            path = AgentExecutionPath.EMPTY
+        ),
         runId = runId,
         subgraphName = subgraphName,
         input = input,
@@ -105,8 +104,7 @@ public data class SubgraphExecutionCompletedEvent(
 /**
  * Represents an event triggered when the execution of a specific subgraph fails.
  *
- * @property id A unique identifier for the group of events associated with the subgraph execution events;
- * @property parentId The unique identifier of the parent event, if applicable;
+ * @property executionInfo Provides contextual information about the execution associated with this event.
  * @property runId Unique identifier for the subgraph run;
  * @property subgraphName The name of the subgraph being executed;
  * @property input The input data provided to the subgraph;
@@ -115,9 +113,7 @@ public data class SubgraphExecutionCompletedEvent(
  */
 @Serializable
 public data class SubgraphExecutionFailedEvent(
-    override val id: String,
-    override val parentId: String?,
-    override val executionPath: AgentExecutionPath,
+    override val executionInfo: AgentExecutionInfo,
     val runId: String,
     val subgraphName: String,
     val input: JsonElement?,
@@ -126,11 +122,11 @@ public data class SubgraphExecutionFailedEvent(
 ) : DefinedFeatureEvent() {
 
     /**
-     * @deprecated Use constructor with [id] and [parentId] parameters
+     * @deprecated Use constructor with [executionInfo] parameter
      */
     @Deprecated(
-        message = "Use constructor with id and parentId parameters",
-        replaceWith = ReplaceWith("SubgraphExecutionFailedEvent(id, parentId, executionPath, runId, subgraphName, input, error, timestamp)")
+        message = "Use constructor with executionInfo parameter",
+        replaceWith = ReplaceWith("SubgraphExecutionFailedEvent(executionInfo, runId, subgraphName, input, error, timestamp)")
     )
     public constructor(
         runId: String,
@@ -139,9 +135,11 @@ public data class SubgraphExecutionFailedEvent(
         error: AIAgentError,
         timestamp: Long = Clock.System.now().toEpochMilliseconds()
     ) : this(
-        id = SubgraphExecutionFailedEvent::class.simpleName.toString(),
-        parentId = null,
-        executionPath = AgentExecutionPath.EMPTY,
+        executionInfo = AgentExecutionInfo(
+            id = SubgraphExecutionFailedEvent::class.simpleName.toString(),
+            parentId = null,
+            path = AgentExecutionPath.EMPTY
+        ),
         runId = runId,
         subgraphName = subgraphName,
         input = input,

@@ -16,7 +16,9 @@ import kotlinx.serialization.json.JsonObject
  *
  * @property id An optional identifier for the tool result.
  * @property tool The name or type of the tool that generated the result.
+ * @property toolArgs The arguments provided to the tool during execution.
  * @property content The main content or message associated with the tool result.
+ * @property resultKind The kind of result produced by the tool, indicating success, failure, or validation error.
  * @property result The detailed result produced by the tool, implementing the [ToolResult] interface.
  */
 @Serializable
@@ -25,7 +27,7 @@ public data class ReceivedToolResult(
     val tool: String,
     val toolArgs: JsonObject,
     val content: String,
-    val resultType: ToolResultType,
+    val resultKind: ToolResultKind,
     val result: JsonElement?
 ) {
     /**
@@ -69,7 +71,7 @@ public fun AIAgentEnvironmentToolResultToAgentContent.toResult(): ReceivedToolRe
     tool = toolName,
     toolArgs = toolArgs,
     content = message,
-    resultType = toolResultType,
+    resultKind = toolResultKind,
     result = toolResult
 )
 

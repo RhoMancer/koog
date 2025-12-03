@@ -28,8 +28,6 @@ public data class SubgraphExecutionStartingContext(
     val input: Any?,
     val inputType: KType,
 ) : SubgraphExecutionEventContext {
-    override val id: String get() = executionInfo.id
-    override val parentId: String? get() = executionInfo.parentId
     override val eventType: AgentLifecycleEventType = AgentLifecycleEventType.SubgraphExecutionStarting
 }
 
@@ -53,8 +51,6 @@ public data class SubgraphExecutionCompletedContext(
     val inputType: KType,
     val outputType: KType,
 ) : SubgraphExecutionEventContext {
-    override val id: String get() = executionInfo.id
-    override val parentId: String? get() = executionInfo.parentId
     override val eventType: AgentLifecycleEventType = AgentLifecycleEventType.SubgraphExecutionCompleted
 }
 
@@ -76,7 +72,5 @@ public data class SubgraphExecutionFailedContext(
     val inputType: KType,
     val throwable: Throwable
 ) : SubgraphExecutionEventContext {
-    override val id: String get() = executionInfo.id
-    override val parentId: String? get() = executionInfo.parentId
     override val eventType: AgentLifecycleEventType = AgentLifecycleEventType.SubgraphExecutionFailed
 }

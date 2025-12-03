@@ -29,8 +29,6 @@ public data class NodeExecutionStartingContext(
     val inputType: KType,
 ) : NodeExecutionEventContext {
     override val eventType: AgentLifecycleEventType = AgentLifecycleEventType.NodeExecutionStarting
-    override val id: String get() = executionInfo.id
-    override val parentId: String? get() = executionInfo.parentId
 }
 
 /**
@@ -54,8 +52,6 @@ public data class NodeExecutionCompletedContext(
     val outputType: KType,
 ) : NodeExecutionEventContext {
     override val eventType: AgentLifecycleEventType = AgentLifecycleEventType.NodeExecutionCompleted
-    override val id: String get() = executionInfo.id
-    override val parentId: String? get() = executionInfo.parentId
 }
 
 /**
@@ -77,6 +73,4 @@ public data class NodeExecutionFailedContext(
     val throwable: Throwable
 ) : NodeExecutionEventContext {
     override val eventType: AgentLifecycleEventType = AgentLifecycleEventType.NodeExecutionFailed
-    override val id: String get() = executionInfo.id
-    override val parentId: String? get() = executionInfo.parentId
 }
