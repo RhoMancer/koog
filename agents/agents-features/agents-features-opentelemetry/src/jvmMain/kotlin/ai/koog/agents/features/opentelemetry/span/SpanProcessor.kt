@@ -49,7 +49,7 @@ internal class SpanProcessor(
         }
 
         val spanKind = span.kind
-        val parentContext = span.parent?.context ?: Context.current()
+        val parentContext = span.parentSpan?.context ?: Context.current()
 
         val spanBuilder = tracer.spanBuilder(span.name)
             .setStartTimestamp(instant ?: Instant.now())

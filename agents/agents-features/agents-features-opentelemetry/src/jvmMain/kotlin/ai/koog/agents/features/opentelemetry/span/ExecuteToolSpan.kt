@@ -7,28 +7,13 @@ import io.opentelemetry.api.trace.SpanKind
  * Tool Call Span
  */
 internal class ExecuteToolSpan(
-    parent: NodeExecuteSpan,
+    override val spanId: String,
+    override val parentSpan: NodeExecuteSpan,
     val toolName: String,
     val toolDescription: String,
     val toolArgs: String?,
     val toolCallId: String?,
-) : GenAIAgentSpan(parent) {
-
-    companion object {
-        fun createId(agentId: String, runId: String, nodeName: String, nodeId: String, toolName: String, toolArgs: String): String =
-            createIdFromParent(
-                parentId = NodeExecuteSpan.createId(agentId, runId, nodeName, nodeId),
-                toolName = toolName,
-                toolArgs = toolArgs
-            )
-
-        private fun createIdFromParent(parentId: String, toolName: String, toolArgs: String?): String =
-            // TODO: Replace sha256base64() with unique event id for the Tool Call event
-            "$parentId.tool.$toolName.args.${toolArgs?.sha256base64()}"
-    }
-
-    override val spanId: String =
-        createIdFromParent(parentId = parent.spanId, toolName = toolName, toolArgs = toolArgs)
+) : GenAIAgentSpan() {
 
     override val kind: SpanKind = SpanKind.INTERNAL
 
