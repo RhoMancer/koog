@@ -2,8 +2,6 @@ package ai.koog.agents.ext.tool.file
 
 import ai.koog.agents.core.tools.Tool
 import ai.koog.agents.core.tools.ToolException
-import ai.koog.agents.core.tools.ToolResult
-import ai.koog.agents.core.tools.ToolResultUtils
 import ai.koog.agents.core.tools.annotations.LLMDescription
 import ai.koog.agents.core.tools.validate
 import ai.koog.agents.core.tools.validateNotNull
@@ -53,24 +51,14 @@ public class ReadFileTool<Path>(private val fs: FileSystemProvider.ReadOnly<Path
      * @property file the file entry containing metadata and content
      */
     @Serializable
-    public data class Result(val file: FileSystemEntry.File) : ToolResult.TextSerializable() {
-        /**
-         * Converts the result to a structured text representation.
-         *
-         * Renders the file information in the following format:
-         * - File path with metadata in parentheses (size, line count if available, "hidden" if the file is hidden)
-         * - Content section with either:
-         *     - Full text for complete file reads
-         *     - Excerpt with line ranges for partial reads
-         *     - No content section if content is [FileSystemEntry.File.Content.None]
-         *
-         * @return formatted text representation of the file
-         */
-        override fun textForLLM(): String = text { file(file) }
-    }
+    public data class Result(
+        val file: FileSystemEntry.File,
+        val warningMessage: String? = null,
+    )
 
     override val argsSerializer: KSerializer<Args> = Args.serializer()
-    override val resultSerializer: KSerializer<Result> = ToolResultUtils.toTextSerializer()
+    override val resultSerializer: KSerializer<Result> = Result.serializer()
+
     override val name: String = "__read_file__"
     override val description: String = """
         Reads a text file (throws if non-text) with optional line range selection. TEXT-ONLY - never reads binary files.
@@ -91,8 +79,11 @@ public class ReadFileTool<Path>(private val fs: FileSystemProvider.ReadOnly<Path
      * - Confirms the path points to a file
      * - Confirms the file is a text file
      *
+     * If the requested `endLine` exceeds the file's line count, it will be clamped to the available lines
+     * and a warning will be included in the result.
+     *
      * @param args arguments specifying the file path and optional line range
-     * @return [Result] containing the file with its content and metadata
+     * @return [Result] containing the file with its content, metadata, and optional warning
      * @throws [ToolException.ValidationFailure] if the file doesn't exist, is a directory, or is not a text file, or
      *          if line range parameters are invalid
      */
@@ -106,6 +97,8 @@ public class ReadFileTool<Path>(private val fs: FileSystemProvider.ReadOnly<Path
         validate(type == FileMetadata.FileContentType.Text) { "File is not a text file: ${args.path}" }
 
         return runCatching {
+            var warningMessage: String? = null
+
             Result(
                 buildTextFileEntry(
                     fs = fs,
@@ -113,7 +106,12 @@ public class ReadFileTool<Path>(private val fs: FileSystemProvider.ReadOnly<Path
                     metadata = metadata,
                     startLine = args.startLine,
                     endLine = args.endLine,
-                )
+                    onEndLineExceedsFileLength = { endLine, fileLineCount ->
+                        warningMessage = "endLine=$endLine exceeds file length ($fileLineCount lines). " +
+                            "Clamped to available lines ${args.startLine}-$fileLineCount."
+                    }
+                ),
+                warningMessage
             )
         }.onFailure { e ->
             if (e is IllegalArgumentException) {
@@ -122,5 +120,15 @@ public class ReadFileTool<Path>(private val fs: FileSystemProvider.ReadOnly<Path
                 )
             }
         }.getOrThrow()
+    }
+
+    override fun encodeResultToString(result: Result): String = with(result) {
+        text {
+            warningMessage?.let {
+                +"Warning: $it"
+                +""
+            }
+            file(file)
+        }
     }
 }

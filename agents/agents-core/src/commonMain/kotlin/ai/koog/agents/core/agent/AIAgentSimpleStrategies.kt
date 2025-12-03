@@ -30,7 +30,7 @@ import ai.koog.agents.core.dsl.extension.onToolCall
  *                - SingleRunMode.PARALLEL: Executes multiple tool calls in parallel.
  * @return An instance of AIAgentStrategy configured according to the specified single-run mode.
  */
-public fun singleRunStrategy(runMode: ToolCalls = ToolCalls.SINGLE_RUN_SEQUENTIAL): AIAgentGraphStrategy<String, String> =
+public fun singleRunStrategy(runMode: ToolCalls = ToolCalls.SEQUENTIAL): AIAgentGraphStrategy<String, String> =
     when (runMode) {
         ToolCalls.SEQUENTIAL -> singleRunWithParallelAbility(false)
         ToolCalls.PARALLEL -> singleRunWithParallelAbility(true)
@@ -52,13 +52,13 @@ private fun singleRunWithParallelAbility(parallelTools: Boolean) = strategy("sin
 
     edge(nodeExecuteTool forwardTo nodeSendToolResult)
 
+    edge(nodeSendToolResult forwardTo nodeExecuteTool onMultipleToolCalls { true })
+
     edge(
         nodeSendToolResult forwardTo nodeFinish
             onMultipleAssistantMessages { true }
             transformed { it.joinToString("\n") { message -> message.content } }
     )
-
-    edge(nodeSendToolResult forwardTo nodeExecuteTool onMultipleToolCalls { true })
 }
 
 private fun singleRunModeStrategy() = strategy("single_run") {
