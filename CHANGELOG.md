@@ -1,8 +1,9 @@
 # 0.5.4
-> Published 02 December 2025
+> Published 03 December 2025
 
 ## Improvements
-- LLM clients: better error reporting (#1149). Possible **breaking change**: LLM clients now throw `LLMClientException` instead of `IllegalStateException` ([KG-552](https://youtrack.jetbrains.com/issue/KG-552))
+- LLM clients: better error reporting (#1149). Potential **breaking change**: LLM clients now throw `LLMClientException` instead of `IllegalStateException` ([KG-552](https://youtrack.jetbrains.com/issue/KG-552))
+- Add support for **OpenAI** **GPT-5.1** and **GPT-5 pro** (#1121) and (#1113) and **Anthropic** **Claude Opus 4.5** (#1199)
 - Add Bedrock support in Ktor for configuring and initializing Bedrock LLM clients. (#1141)
 - Improve Bedrock moderation implementation (#1105)
 - Add handler for `GooglePart.InlineData` in `GoogleLLMClient` (#1094) ([KG-487](https://youtrack.jetbrains.com/issue/KG-487))
