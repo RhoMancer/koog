@@ -1,5 +1,6 @@
 package ai.koog.agents.features.opentelemetry.feature
 
+import ai.koog.agents.core.agent.context.AIAgentContext
 import ai.koog.agents.core.agent.entity.AIAgentStorageKey
 import ai.koog.agents.core.annotation.InternalAgentsApi
 import ai.koog.agents.core.feature.AIAgentGraphFeature
@@ -57,20 +58,6 @@ public class OpenTelemetry {
             val spanProcessor = SpanProcessor(tracer = tracer, verbose = config.isVerbose)
             val spanAdapter = config.spanAdapter
 
-            // Stop all unfinished spans on a process finish to report them
-            Runtime.getRuntime().addShutdownHook(
-                Thread {
-                    if (spanProcessor.spansCount > 1) {
-                        logger.warn { "Unfinished spans detected. Please check your code for unclosed spans." }
-                    }
-
-                    logger.debug {
-                        "Closing unended OpenTelemetry spans on process shutdown (size: ${spanProcessor.spansCount})"
-                    }
-                    spanProcessor.endUnfinishedSpans()
-                }
-            )
-
             //region Agent
 
             pipeline.interceptAgentStarting(this) intercept@{ eventContext ->
@@ -106,12 +93,6 @@ public class OpenTelemetry {
             pipeline.interceptAgentCompleted(this) intercept@{ eventContext ->
                 logger.debug { "Execute OpenTelemetry agent finished handler" }
 
-                // Make sure all spans inside InvokeAgentSpan are finished
-                spanProcessor.endUnfinishedInvokeAgentSpans(
-                    agentId = eventContext.agentId,
-                    runId = eventContext.runId
-                )
-
                 // Find current InvokeAgentSpan
                 val invokeAgentSpan = spanProcessor.getSpanCatching<InvokeAgentSpan>(eventContext.executionInfo.id)
                     ?: return@intercept
@@ -122,12 +103,6 @@ public class OpenTelemetry {
 
             pipeline.interceptAgentExecutionFailed(this) intercept@{ eventContext ->
                 logger.debug { "Execute OpenTelemetry agent run error handler" }
-
-                // Make sure all spans inside InvokeAgentSpan are finished
-                spanProcessor.endUnfinishedInvokeAgentSpans(
-                    agentId = eventContext.agentId,
-                    runId = eventContext.runId
-                )
 
                 // Finish current InvokeAgentSpan
                 val invokeAgentSpan = spanProcessor.getSpanCatching<InvokeAgentSpan>(eventContext.executionInfo.id)
@@ -149,11 +124,18 @@ public class OpenTelemetry {
             pipeline.interceptAgentClosing(this) intercept@{ eventContext ->
                 logger.debug { "Execute OpenTelemetry before agent closed handler" }
 
+                // Stop all unfinished spans except the current agent create span
+                spanProcessor.endUnfinishedSpans { span -> span.spanId != eventContext.agentId }
+
+                // Stop agent create span
                 val agentSpan = spanProcessor.getSpanCatching<CreateAgentSpan>(eventContext.agentId)
                     ?: return@intercept
 
                 spanAdapter?.onBeforeSpanFinished(agentSpan)
                 spanProcessor.endSpan(span = agentSpan)
+
+                // Just in case we miss some spans, stop them as well
+                spanProcessor.endUnfinishedSpans()
             }
 
             //endregion Agent
@@ -163,8 +145,11 @@ public class OpenTelemetry {
             pipeline.interceptNodeExecutionStarting(this) intercept@{ eventContext ->
                 logger.debug { "Execute OpenTelemetry before node handler" }
 
-                // Get parent span (node or agent)
-                val parentSpan = getNodeParentSpan(spanProcessor) ?: return@intercept
+                val parentId =
+
+                // Get parent span (node or agent invoke)
+                spanProcessor.getSpanCatching<GenAIAgentSpan>(eventContext.executionInfo.parentId) ?: return@intercept
+
 
                 // Create NodeExecuteSpan
                 val nodeExecuteSpan = NodeExecuteSpan(
@@ -535,9 +520,19 @@ public class OpenTelemetry {
             return SerializationUtils.encodeDataToStringOrDefault(data, dataType)
         }
 
-        private suspend fun getNodeParentSpan(spanProcessor: SpanProcessor): GenAIAgentSpan? =
+        private suspend fun getNodeParentSpan(spanProcessor: SpanProcessor, context: AIAgentContext): GenAIAgentSpan? {
+
+            val eventParentId = context.executionInfo.parentId ?: return null
+
+            spanProcessor.getSpan<GenAIAgentSpan>(context.executionInfo.parentId)
+
             getNodeExecuteSpan(spanProcessor)
                 ?: getInvokeAgentSpan(spanProcessor)
+        }
+
+
+
+
 
         private suspend fun getNodeExecuteSpan(spanProcessor: SpanProcessor): NodeExecuteSpan? {
             val agentRunInfoElement = getAgentRunInfoElementCatching() ?: return null

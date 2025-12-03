@@ -92,7 +92,7 @@ public abstract class StatefulSingleUseAIAgent<Input, Output, TContext : AIAgent
         return pipeline.withPreparedPipeline {
 
             // Agent
-            withParent(context, runId) { executionInfo ->
+            withParent(context, partName = runId) { executionInfo ->
                 agentStateMutex.withLock {
                     state = State.Running(context)
                 }

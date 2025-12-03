@@ -129,13 +129,6 @@ internal class SpanProcessor(
             }
     }
 
-    fun endUnfinishedInvokeAgentSpans(agentId: String, runId: String) {
-        val agentRunSpanId = InvokeAgentSpan.createId(agentId, runId)
-        val agentSpanId = CreateAgentSpan.createId(agentId)
-
-        endUnfinishedSpans(filter = { span -> span.spanId != agentSpanId && span.spanId != agentRunSpanId })
-    }
-
     //region Private Methods
 
     private fun addSpan(span: GenAIAgentSpan) {

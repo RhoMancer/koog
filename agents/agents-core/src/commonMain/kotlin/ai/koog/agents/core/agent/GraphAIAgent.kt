@@ -101,7 +101,7 @@ public open class GraphAIAgent<Input, Output>(
         val storage = AIAgentStorage()
 
         val executionPath = AgentExecutionPath(id)
-        val executionInfo = AgentExecutionInfo(id = id, parentId = null, path = executionPath)
+        val executionInfo = AgentExecutionInfo(id = id, parent = null, path = executionPath)
         val preparedEnvironment = prepareEnvironment(executionInfo)
 
         val initialAgentLLMContext = AIAgentLLMContext(

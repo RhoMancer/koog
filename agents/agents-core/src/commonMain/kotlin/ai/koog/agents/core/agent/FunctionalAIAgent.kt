@@ -99,8 +99,8 @@ public class FunctionalAIAgent<Input, Output>(
         )
 
 
-        val executionPath = AgentExecutionPath(id, runId)
-        val executionInfo = AgentExecutionInfo(id = runId, parentId = id, path = executionPath)
+        val executionPath = AgentExecutionPath(id)
+        val executionInfo = AgentExecutionInfo(id = id, parent = null, path = executionPath)
         val preparedEnvironment = prepareEnvironment()
 
         // Context
