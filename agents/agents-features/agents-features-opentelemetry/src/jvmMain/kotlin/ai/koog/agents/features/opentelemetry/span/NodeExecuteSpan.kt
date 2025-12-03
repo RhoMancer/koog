@@ -25,7 +25,7 @@ internal class NodeExecuteSpan(
      * Add the necessary attributes for the Node Execute Span:
      *
      * Note: Node Execute Span is not defined in the Open Telemetry Semantic Convention.
-     *       It is a custom span used to show a structure of Koog events
+     *       It is a custom span used to support Koog events hierarchy
      */
     init {
         addAttribute(SpanAttributes.Conversation.Id(runId))

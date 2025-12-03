@@ -140,6 +140,18 @@ public class OpenTelemetry {
 
             //endregion Agent
 
+            //region Strategy
+
+            pipeline.interceptStrategyStarting(this) intercept@{ eventContext ->
+                StrategySpan
+            }
+
+            pipeline.interceptStrategyCompleted(this) intercept@{ eventContext ->
+                StrategySpan
+            }
+
+            //endregion Strategy
+
             //region Node
 
             pipeline.interceptNodeExecutionStarting(this) intercept@{ eventContext ->
