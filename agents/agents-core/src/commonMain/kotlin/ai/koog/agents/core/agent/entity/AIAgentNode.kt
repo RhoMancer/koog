@@ -38,7 +38,7 @@ public abstract class AIAgentNodeBase<TInput, TOutput> internal constructor() {
     /**
      * Represents the unique identifier of the AI agent node.
      */
-    public val id: String get() = name // Uuid.random().toString()
+    public val id: String get() = name
 
     /**
      * Represents the directed edges connecting the current node in the AI agent strategy graph
@@ -153,7 +153,7 @@ public open class AIAgentNode<TInput, TOutput> internal constructor(
 
     @InternalAgentsApi
     @OptIn(ExperimentalUuidApi::class)
-    override suspend fun execute(context: AIAgentGraphContextBase, input: TInput): TOutput = withParent(context, name) { executionInfo ->
+    override suspend fun execute(context: AIAgentGraphContextBase, input: TInput): TOutput = withParent(context, partName = id) { executionInfo ->
 
         logger.debug { "Start executing node (name: $name)" }
         context.pipeline.onNodeExecutionStarting(executionInfo, this@AIAgentNode, context, input, inputType)

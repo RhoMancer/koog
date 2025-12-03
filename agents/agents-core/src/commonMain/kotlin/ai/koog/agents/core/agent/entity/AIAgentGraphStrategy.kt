@@ -53,7 +53,7 @@ public class AIAgentGraphStrategy<TInput, TOutput>(
     public lateinit var metadata: SubgraphMetadata
 
     @OptIn(InternalAgentsApi::class, ExperimentalUuidApi::class)
-    override suspend fun execute(context: AIAgentGraphContextBase, input: TInput): TOutput? = withParent(context = context, partName = id) { executionInfo ->
+    override suspend fun execute(context: AIAgentGraphContextBase, input: TInput): TOutput? = withParent(context, partName = id) { executionInfo ->
         runCatchingCancellable {
             context.pipeline.onStrategyStarting(executionInfo, this@AIAgentGraphStrategy, context)
             restoreStateIfNeeded(context)

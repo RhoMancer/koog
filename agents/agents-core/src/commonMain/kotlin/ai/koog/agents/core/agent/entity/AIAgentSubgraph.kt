@@ -153,7 +153,7 @@ public open class AIAgentSubgraph<TInput, TOutput>(
      * @return The output of the AI agent execution, generated after processing the input.
      */
     @OptIn(InternalAgentsApi::class, DetachedPromptExecutorAPI::class, ExperimentalUuidApi::class)
-    override suspend fun execute(context: AIAgentGraphContextBase, input: TInput): TOutput? = withParent(context, id) { executionInfo ->
+    override suspend fun execute(context: AIAgentGraphContextBase, input: TInput): TOutput? = withParent(context, partName = id) { executionInfo ->
         val newTools = selectTools(context)
 
         // Copy inner context with new tools, model and LLM params.

@@ -16,7 +16,7 @@ internal class GenericAgentEnvironmentProxy(
     }
 
     override suspend fun executeTool(toolCall: Message.Tool.Call): ReceivedToolResult =
-        withParent(context, toolCall.tool) { executionInfo ->
+        withParent(context, partName = toolCall.tool) { executionInfo ->
             logger.trace { "Executing tool call (run id: ${context.runId}, tool call id: ${toolCall.id}, tool: ${toolCall.tool}, args: ${toolCall.contentJson})" }
 
             context.pipeline.onToolCallStarting(
@@ -58,7 +58,6 @@ internal class GenericAgentEnvironmentProxy(
                     executionInfo, context.runId, toolResult.id, toolResult.tool, toolResult.toolArgs, toolResult.content, toolResultKind.exception
                 )
             }
-
         }
     }
 
