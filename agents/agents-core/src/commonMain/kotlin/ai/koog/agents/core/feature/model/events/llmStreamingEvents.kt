@@ -1,5 +1,6 @@
 package ai.koog.agents.core.feature.model.events
 
+import ai.koog.agents.core.agent.context.AgentExecutionPath
 import ai.koog.agents.core.feature.model.AIAgentError
 import ai.koog.agents.utils.ModelInfo
 import ai.koog.prompt.dsl.Prompt
@@ -25,6 +26,7 @@ import kotlinx.serialization.Serializable
 public data class LLMStreamingStartingEvent(
     override val id: String,
     override val parentId: String?,
+    override val executionPath: AgentExecutionPath,
     val runId: String,
     val prompt: Prompt,
     val model: ModelInfo,
@@ -34,11 +36,11 @@ public data class LLMStreamingStartingEvent(
 
     /**
      * @deprecated Use constructor with id, parentId parameters, and model parameter of type [ModelInfo]:
-     *             LLMStreamingStartingEvent(id, parentId, runId, callId, prompt, model, tools, timestamp)
+     *             LLMStreamingStartingEvent(id, parentId, executionPath, runId, prompt, model, tools, timestamp)
      */
     @Deprecated(
-        message = "Please use constructor with id, parentId parameters, and model parameter of type [ModelInfo]: LLMStreamingStartingEvent(id, parentId, runId, callId, prompt, model, tools, timestamp)",
-        replaceWith = ReplaceWith("LLMStreamingStartingEvent(id, parentId, runId, callId, prompt, model, tools, timestamp)")
+        message = "Please use constructor with id, parentId parameters, and model parameter of type [ModelInfo]: LLMStreamingStartingEvent(id, parentId, executionPath, runId, prompt, model, tools, timestamp)",
+        replaceWith = ReplaceWith("LLMStreamingStartingEvent(id, parentId, executionPath, runId, prompt, model, tools, timestamp)")
     )
     public constructor(
         runId: String,
@@ -46,7 +48,16 @@ public data class LLMStreamingStartingEvent(
         model: String,
         tools: List<String>,
         timestamp: Long = Clock.System.now().toEpochMilliseconds()
-    ) : this(LLMStreamingStartingEvent::class.simpleName.toString(), null, runId, prompt, ModelInfo.fromString(model), tools, timestamp)
+    ) : this(
+        id = LLMStreamingStartingEvent::class.simpleName.toString(),
+        parentId = null,
+        executionPath = AgentExecutionPath.EMPTY,
+        runId = runId,
+        prompt = prompt,
+        model = ModelInfo.fromString(model),
+        tools = tools,
+        timestamp = timestamp
+    )
 }
 
 /**
@@ -67,7 +78,10 @@ public data class LLMStreamingStartingEvent(
 public data class LLMStreamingFrameReceivedEvent(
     override val id: String,
     override val parentId: String?,
+    override val executionPath: AgentExecutionPath,
     val runId: String,
+    val prompt: Prompt,
+    val model: ModelInfo,
     val frame: StreamFrame,
     override val timestamp: Long = Clock.System.now().toEpochMilliseconds(),
 ) : DefinedFeatureEvent() {
@@ -76,14 +90,23 @@ public data class LLMStreamingFrameReceivedEvent(
      * @deprecated Use constructor with [id] and [parentId] parameters
      */
     @Deprecated(
-        message = "Please use constructor with id and parentId parameters: LLMStreamingStartingEvent(id, parentId, runId, callId, prompt, model, tools, timestamp)",
-        replaceWith = ReplaceWith("LLMStreamingFrameReceivedEvent(id, parentId, runId, frame, timestamp)")
+        message = "Please use constructor with id and parentId parameters: LLMStreamingFrameReceivedEvent(id, parentId, executionPath, runId, prompt, model, frame, timestamp)",
+        replaceWith = ReplaceWith("LLMStreamingFrameReceivedEvent(id, parentId, executionPath, runId, prompt, model, frame, timestamp)")
     )
     public constructor(
         runId: String,
         frame: StreamFrame,
         timestamp: Long = Clock.System.now().toEpochMilliseconds()
-    ) : this(LLMStreamingFrameReceivedEvent::class.simpleName.toString(), null, runId, frame, timestamp)
+    ) : this(
+        id = LLMStreamingFrameReceivedEvent::class.simpleName.toString(),
+        parentId = null,
+        executionPath = AgentExecutionPath.EMPTY,
+        runId = runId,
+        prompt = Prompt(emptyList(), ""),
+        model = ModelInfo("", ""),
+        frame = frame,
+        timestamp = timestamp
+    )
 }
 
 /**
@@ -104,7 +127,10 @@ public data class LLMStreamingFrameReceivedEvent(
 public data class LLMStreamingFailedEvent(
     override val id: String,
     override val parentId: String?,
+    override val executionPath: AgentExecutionPath,
     val runId: String,
+    val prompt: Prompt,
+    val model: ModelInfo,
     val error: AIAgentError,
     override val timestamp: Long = Clock.System.now().toEpochMilliseconds(),
 ) : DefinedFeatureEvent() {
@@ -113,14 +139,23 @@ public data class LLMStreamingFailedEvent(
      * @deprecated Use constructor with [id] and [parentId] parameters
      */
     @Deprecated(
-        message = "Please use constructor with id and parentId parameters: LLMStreamingFailedEvent(id, parentId, runId, error, timestamp)",
-        replaceWith = ReplaceWith("LLMStreamingFailedEvent(id, parentId, runId, error, timestamp)")
+        message = "Please use constructor with id and parentId parameters: LLMStreamingFailedEvent(id, parentId, executionPath, runId, prompt, model, error, timestamp)",
+        replaceWith = ReplaceWith("LLMStreamingFailedEvent(id, parentId, executionPath, runId, prompt, model, error, timestamp)")
     )
     public constructor(
         runId: String,
         error: AIAgentError,
         timestamp: Long = Clock.System.now().toEpochMilliseconds()
-    ) : this(LLMStreamingFailedEvent::class.simpleName.toString(), null, runId, error, timestamp)
+    ) : this(
+        id = LLMStreamingFailedEvent::class.simpleName.toString(),
+        parentId = null,
+        executionPath = AgentExecutionPath.EMPTY,
+        runId = runId,
+        prompt = Prompt(emptyList(), ""),
+        model = ModelInfo("", ""),
+        error = error,
+        timestamp = timestamp
+    )
 }
 
 /**
@@ -138,6 +173,7 @@ public data class LLMStreamingFailedEvent(
 public data class LLMStreamingCompletedEvent(
     override val id: String,
     override val parentId: String?,
+    override val executionPath: AgentExecutionPath,
     val runId: String,
     val prompt: Prompt,
     val model: ModelInfo,
@@ -147,11 +183,11 @@ public data class LLMStreamingCompletedEvent(
 
     /**
      * @deprecated Use constructor with id, parentId parameters, and model parameter of type [ModelInfo]:
-     *             LLMStreamingCompletedEvent(id, parentId, runId, callId, prompt, model, tools, timestamp)
+     *             LLMStreamingCompletedEvent(id, parentId, executionPath, runId, prompt, model, tools, timestamp)
      */
     @Deprecated(
-        message = "Please use constructor with id, parentId parameters, and model parameter of type [ModelInfo]: LLMStreamingCompletedEvent(id, parentId, runId, callId, prompt, model, tools, timestamp)",
-        replaceWith = ReplaceWith("LLMStreamingCompletedEvent(id, parentId, runId, callId, prompt, model, tools, timestamp)")
+        message = "Please use constructor with id, parentId parameters, and model parameter of type [ModelInfo]: LLMStreamingCompletedEvent(id, parentId, executionPath, runId, prompt, model, tools, timestamp)",
+        replaceWith = ReplaceWith("LLMStreamingCompletedEvent(id, parentId, executionPath, runId, prompt, model, tools, timestamp)")
     )
     public constructor(
         runId: String,
@@ -159,5 +195,14 @@ public data class LLMStreamingCompletedEvent(
         model: String,
         tools: List<String>,
         timestamp: Long = Clock.System.now().toEpochMilliseconds()
-    ) : this(runId, null, runId, prompt, ModelInfo.fromString(model), tools, timestamp)
+    ) : this(
+        id = LLMStreamingCompletedEvent::class.simpleName.toString(),
+        parentId = null,
+        executionPath = AgentExecutionPath.EMPTY,
+        runId = runId,
+        prompt = prompt,
+        model = ModelInfo.fromString(model),
+        tools = tools,
+        timestamp = timestamp
+    )
 }

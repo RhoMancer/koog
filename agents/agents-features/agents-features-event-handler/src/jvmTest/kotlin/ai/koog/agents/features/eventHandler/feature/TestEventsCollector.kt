@@ -169,7 +169,7 @@ class TestEventsCollector {
         onLLMStreamingFailed { eventContext ->
             updateRunId(eventContext.runId)
             _collectedEvents.add(
-                "OnLLMStreamingFailed (run id: ${eventContext.runId}, error: ${eventContext.throwable.message})"
+                "OnLLMStreamingFailed (run id: ${eventContext.runId}, error: ${eventContext.exception.message})"
             )
         }
 

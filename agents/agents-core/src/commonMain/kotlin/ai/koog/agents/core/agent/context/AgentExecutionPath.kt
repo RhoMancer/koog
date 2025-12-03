@@ -1,12 +1,23 @@
 package ai.koog.agents.core.agent.context
 
+import kotlinx.serialization.Serializable
+
 /**
  * TODO: SD --
  */
-public class AgentExecutionPath(public val separator: CharSequence = defaultSeparator) {
+@Serializable
+public data class AgentExecutionPath(public val separator: CharSequence = defaultSeparator) {
 
-    private companion object {
+    /**
+     * TODO: SD --
+     */
+    public companion object {
         private val defaultSeparator: CharSequence = "."
+
+        /**
+         * TODO: SD --
+         */
+        public val EMPTY: AgentExecutionPath = AgentExecutionPath()
     }
 
     /**

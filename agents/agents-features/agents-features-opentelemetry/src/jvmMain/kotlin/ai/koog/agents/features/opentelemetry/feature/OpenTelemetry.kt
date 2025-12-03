@@ -1,9 +1,5 @@
 package ai.koog.agents.features.opentelemetry.feature
 
-import ai.koog.agents.core.agent.context.element.AgentRunInfoContextElement
-import ai.koog.agents.core.agent.context.element.NodeInfoContextElement
-import ai.koog.agents.core.agent.context.element.getAgentRunInfoElement
-import ai.koog.agents.core.agent.context.element.getNodeInfoElement
 import ai.koog.agents.core.agent.entity.AIAgentStorageKey
 import ai.koog.agents.core.annotation.InternalAgentsApi
 import ai.koog.agents.core.feature.AIAgentGraphFeature
@@ -154,7 +150,7 @@ public class OpenTelemetry {
                 spanAdapter?.onBeforeSpanFinished(invokeAgentSpan)
                 spanProcessor.endSpan(
                     span = invokeAgentSpan,
-                    spanEndStatus = SpanEndStatus(code = StatusCode.ERROR, description = eventContext.exception.message)
+                    spanEndStatus = SpanEndStatus(code = StatusCode.ERROR, description = eventContext.exception?.message)
                 )
             }
 
@@ -317,8 +313,10 @@ public class OpenTelemetry {
                 logger.debug { "Execute OpenTelemetry before LLM call handler" }
 
                 // Get current NodeExecuteSpan
-                val agentRunInfoElement = getAgentRunInfoElementCatching() ?: return@intercept
-                val nodeInfoElement = getNodeInfoElementCatching() ?: return@intercept
+
+                val id = eventContext.runId
+                val parentId = eventContext.parentId
+                val path = eventContext.executionInfo.path
 
                 val nodeExecuteSpanId = NodeExecuteSpan.createId(
                     agentId = agentRunInfoElement.agentId,
@@ -646,18 +644,6 @@ public class OpenTelemetry {
 
             return spanProcessor.getSpan<InvokeAgentSpan>(invokeAgentSpanId)
         }
-
-        private suspend fun getAgentRunInfoElementCatching(): AgentRunInfoContextElement? =
-            getAgentRunInfoElement() ?: run {
-                logger.debug { "Unable to get AgentRunInfoContextElement" }
-                null
-            }
-
-        private suspend fun getNodeInfoElementCatching(): NodeInfoContextElement? =
-            getNodeInfoElement() ?: run {
-                logger.debug { "Unable to get NodeInfoContextElement" }
-                null
-            }
 
         //endregion Private Methods
     }

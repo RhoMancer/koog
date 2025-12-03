@@ -1,6 +1,7 @@
 package ai.koog.agents.core.feature.handler.node
 
 import ai.koog.agents.core.agent.context.AIAgentGraphContextBase
+import ai.koog.agents.core.agent.context.AgentExecutionInfo
 import ai.koog.agents.core.agent.entity.AIAgentNodeBase
 import ai.koog.agents.core.feature.handler.AgentLifecycleEventContext
 import ai.koog.agents.core.feature.handler.AgentLifecycleEventType
@@ -14,25 +15,28 @@ public interface NodeExecutionEventContext : AgentLifecycleEventContext
 /**
  * Represents the context for handling a before node execution event.
  *
+ * @property executionInfo The execution information containing id, parentId, and execution path.
  * @property node The node that is about to be executed.
  * @property context The stage context in which the node is being executed.
  * @property input The input data for the node execution.
  * @property inputType [KType] representing the type of the [input].
  */
 public data class NodeExecutionStartingContext(
-    override val id: String,
-    override val parentId: String?,
+    override val executionInfo: AgentExecutionInfo,
     val node: AIAgentNodeBase<*, *>,
     val context: AIAgentGraphContextBase,
     val input: Any?,
     val inputType: KType,
 ) : NodeExecutionEventContext {
     override val eventType: AgentLifecycleEventType = AgentLifecycleEventType.NodeExecutionStarting
+    override val id: String get() = executionInfo.id
+    override val parentId: String? get() = executionInfo.parentId
 }
 
 /**
  * Represents the context for handling an after node execution event.
  *
+ * @property executionInfo The execution information containing id, parentId, and execution path.
  * @property node The node that was executed.
  * @property context The stage context in which the node was executed.
  * @property input The input data that was provided to the node.
@@ -41,8 +45,7 @@ public data class NodeExecutionStartingContext(
  * @property outputType [KType] representing the type of the [output].
  */
 public data class NodeExecutionCompletedContext(
-    override val id: String,
-    override val parentId: String?,
+    override val executionInfo: AgentExecutionInfo,
     val node: AIAgentNodeBase<*, *>,
     val context: AIAgentGraphContextBase,
     val input: Any?,
@@ -51,11 +54,14 @@ public data class NodeExecutionCompletedContext(
     val outputType: KType,
 ) : NodeExecutionEventContext {
     override val eventType: AgentLifecycleEventType = AgentLifecycleEventType.NodeExecutionCompleted
+    override val id: String get() = executionInfo.id
+    override val parentId: String? get() = executionInfo.parentId
 }
 
 /**
  * Represents the context for handling errors during the execution of a node.
  *
+ * @property executionInfo The execution information containing id, parentId, and execution path.
  * @property node The node where the error occurred.
  * @property context The stage context in which the node experienced the error.
  * @property input The input data for the node execution.
@@ -63,8 +69,7 @@ public data class NodeExecutionCompletedContext(
  * @property throwable The exception or error that occurred during node execution.
  */
 public data class NodeExecutionFailedContext(
-    override val id: String,
-    override val parentId: String?,
+    override val executionInfo: AgentExecutionInfo,
     val node: AIAgentNodeBase<*, *>,
     val context: AIAgentGraphContextBase,
     val input: Any?,
@@ -72,4 +77,6 @@ public data class NodeExecutionFailedContext(
     val throwable: Throwable
 ) : NodeExecutionEventContext {
     override val eventType: AgentLifecycleEventType = AgentLifecycleEventType.NodeExecutionFailed
+    override val id: String get() = executionInfo.id
+    override val parentId: String? get() = executionInfo.parentId
 }

@@ -1,5 +1,6 @@
 package ai.koog.agents.core.feature.model.events
 
+import ai.koog.agents.core.agent.context.AgentExecutionPath
 import ai.koog.agents.core.feature.model.AIAgentError
 import kotlinx.datetime.Clock
 import kotlinx.serialization.Serializable
@@ -20,6 +21,7 @@ import kotlinx.serialization.Serializable
 public data class AgentStartingEvent(
     override val id: String,
     override val parentId: String?,
+    override val executionPath: AgentExecutionPath,
     val agentId: String,
     val runId: String,
     override val timestamp: Long = Clock.System.now().toEpochMilliseconds(),
@@ -36,7 +38,13 @@ public data class AgentStartingEvent(
     public constructor(
         agentId: String,
         runId: String
-    ) : this(AgentStartingEvent::class.simpleName.toString(), null, agentId, runId)
+    ) : this(
+        id = AgentStartingEvent::class.simpleName.toString(),
+        parentId = null,
+        executionPath = AgentExecutionPath.EMPTY,
+        agentId = agentId,
+        runId = runId
+    )
 }
 
 /**
@@ -57,6 +65,7 @@ public data class AgentStartingEvent(
 public data class AgentCompletedEvent(
     override val id: String,
     override val parentId: String?,
+    override val executionPath: AgentExecutionPath,
     val agentId: String,
     val runId: String,
     val result: String?,
@@ -75,7 +84,14 @@ public data class AgentCompletedEvent(
         agentId: String,
         runId: String,
         result: String?
-    ) : this(AgentCompletedEvent::class.simpleName.toString(), null, agentId, runId, result)
+    ) : this(
+        id = AgentCompletedEvent::class.simpleName.toString(),
+        parentId = null,
+        executionPath = AgentExecutionPath.EMPTY,
+        agentId = agentId,
+        runId = runId,
+        result = result
+    )
 }
 
 /**
@@ -96,6 +112,7 @@ public data class AgentCompletedEvent(
 public data class AgentExecutionFailedEvent(
     override val id: String,
     override val parentId: String?,
+    override val executionPath: AgentExecutionPath,
     val agentId: String,
     val runId: String,
     val error: AIAgentError?,
@@ -114,7 +131,14 @@ public data class AgentExecutionFailedEvent(
         agentId: String,
         runId: String,
         error: AIAgentError
-    ) : this(AgentExecutionFailedEvent::class.simpleName.toString(), null, agentId, runId, error)
+    ) : this(
+        id = AgentExecutionFailedEvent::class.simpleName.toString(),
+        parentId = null,
+        executionPath = AgentExecutionPath.EMPTY,
+        agentId = agentId,
+        runId = runId,
+        error = error
+    )
 }
 
 /**
@@ -130,6 +154,7 @@ public data class AgentExecutionFailedEvent(
 public data class AgentClosingEvent(
     override val id: String,
     override val parentId: String?,
+    override val executionPath: AgentExecutionPath,
     val agentId: String,
     override val timestamp: Long = Clock.System.now().toEpochMilliseconds(),
 ) : DefinedFeatureEvent() {
@@ -144,7 +169,12 @@ public data class AgentClosingEvent(
     )
     public constructor(
         agentId: String
-    ) : this(AgentClosingEvent::class.simpleName.toString(), null, agentId)
+    ) : this(
+        id = AgentClosingEvent::class.simpleName.toString(),
+        parentId = null,
+        executionPath = AgentExecutionPath.EMPTY,
+        agentId = agentId
+    )
 }
 
 //region Deprecated

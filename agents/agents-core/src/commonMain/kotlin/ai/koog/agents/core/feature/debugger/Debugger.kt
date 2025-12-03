@@ -174,6 +174,7 @@ public class Debugger(public val port: Int, public val awaitInitialConnectionTim
                 val event = AgentCompletedEvent(
                     id = eventContext.id,
                     parentId = eventContext.parentId,
+                    executionPath = eventContext.executionPath,
                     agentId = eventContext.agentId,
                     runId = eventContext.runId,
                     result = eventContext.result?.toString(),
@@ -186,6 +187,7 @@ public class Debugger(public val port: Int, public val awaitInitialConnectionTim
                 val event = AgentExecutionFailedEvent(
                     id = eventContext.id,
                     parentId = eventContext.parentId,
+                    executionPath = eventContext.executionPath,
                     agentId = eventContext.agentId,
                     runId = eventContext.runId,
                     error = eventContext.exception?.toAgentError(),
@@ -198,6 +200,7 @@ public class Debugger(public val port: Int, public val awaitInitialConnectionTim
                 val event = AgentClosingEvent(
                     id = eventContext.id,
                     parentId = eventContext.parentId,
+                    executionPath = eventContext.executionPath,
                     agentId = eventContext.agentId,
                     timestamp = pipeline.clock.now().toEpochMilliseconds()
                 )
@@ -216,6 +219,7 @@ public class Debugger(public val port: Int, public val awaitInitialConnectionTim
                 val event = GraphStrategyStartingEvent(
                     id = eventContext.id,
                     parentId = eventContext.parentId,
+                    executionPath = eventContext.executionPath,
                     runId = eventContext.context.runId,
                     strategyName = eventContext.strategy.name,
                     graph = strategy.startNodeToGraph(),
@@ -228,6 +232,7 @@ public class Debugger(public val port: Int, public val awaitInitialConnectionTim
                 val event = StrategyCompletedEvent(
                     id = eventContext.id,
                     parentId = eventContext.parentId,
+                    executionPath = eventContext.executionPath,
                     runId = eventContext.context.runId,
                     strategyName = eventContext.strategy.name,
                     result = eventContext.result?.toString(),
@@ -289,6 +294,8 @@ public class Debugger(public val port: Int, public val awaitInitialConnectionTim
                     id = eventContext.id,
                     parentId = eventContext.parentId,
                     runId = eventContext.runId,
+                    prompt = eventContext.prompt,
+                    model = eventContext.model.toModelInfo(),
                     frame = eventContext.streamFrame,
                     timestamp = pipeline.clock.now().toEpochMilliseconds()
                 )
@@ -300,7 +307,9 @@ public class Debugger(public val port: Int, public val awaitInitialConnectionTim
                     id = eventContext.id,
                     parentId = eventContext.parentId,
                     runId = eventContext.runId,
-                    error = eventContext.throwable.toAgentError(),
+                    prompt = eventContext.prompt,
+                    model = eventContext.model.toModelInfo(),
+                    error = eventContext.exception.toAgentError(),
                     timestamp = pipeline.clock.now().toEpochMilliseconds()
                 )
                 writer.onMessage(event)

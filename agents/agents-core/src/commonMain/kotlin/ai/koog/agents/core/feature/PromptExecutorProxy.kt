@@ -78,14 +78,14 @@ public class PromptExecutorProxy(
             .onEach { frame ->
                 withParent(context, "TODO: SD -- ") { parentId, id ->
                     logger.debug { "Received frame from LLM streaming call: $frame" }
-                    pipeline.onLLMStreamingFrameReceived(id, parentId, runId, frame)
+                    pipeline.onLLMStreamingFrameReceived(id, parentId, runId, prompt, model, frame)
                 }
             }
-            .catch { error ->
+            .catch { exception ->
                 withParent(context, "TODO: SD -- ") { parentId, id ->
-                    logger.debug(error) { "Error in LLM streaming call" }
-                    pipeline.onLLMStreamingFailed(id, parentId, runId, error)
-                    throw error
+                    logger.debug(exception) { "Error in LLM streaming call" }
+                    pipeline.onLLMStreamingFailed(id, parentId, runId, prompt, model, exception)
+                    throw exception
                 }
             }
             .onCompletion { error ->

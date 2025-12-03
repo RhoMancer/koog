@@ -1,5 +1,6 @@
 package ai.koog.agents.core.feature.model.events
 
+import ai.koog.agents.core.agent.context.AgentExecutionPath
 import ai.koog.agents.core.feature.model.AIAgentError
 import kotlinx.datetime.Clock
 import kotlinx.serialization.Serializable
@@ -27,6 +28,7 @@ import kotlinx.serialization.json.JsonPrimitive
 public data class ToolCallStartingEvent(
     override val id: String,
     override val parentId: String?,
+    override val executionPath: AgentExecutionPath,
     val runId: String,
     val toolCallId: String?,
     val toolName: String,
@@ -39,7 +41,7 @@ public data class ToolCallStartingEvent(
      */
     @Deprecated(
         message = "Use constructor with id, parentId parameters",
-        replaceWith = ReplaceWith("ToolCallStartingEvent(id, parentId, runId, toolCallId, toolName, toolArgs, timestamp)")
+        replaceWith = ReplaceWith("ToolCallStartingEvent(id, parentId, executionPath, runId, toolCallId, toolName, toolArgs, timestamp)")
     )
     public constructor(
         runId: String,
@@ -47,7 +49,16 @@ public data class ToolCallStartingEvent(
         toolName: String,
         toolArgs: JsonObject,
         timestamp: Long = Clock.System.now().toEpochMilliseconds()
-    ) : this(ToolCallStartingEvent::class.simpleName.toString(), null, runId, toolCallId, toolName, toolArgs, timestamp)
+    ) : this(
+        id = ToolCallStartingEvent::class.simpleName.toString(),
+        parentId = null,
+        executionPath = AgentExecutionPath.EMPTY,
+        runId = runId,
+        toolCallId = toolCallId,
+        toolName = toolName,
+        toolArgs = toolArgs,
+        timestamp = timestamp
+    )
 }
 
 /**
@@ -69,6 +80,7 @@ public data class ToolCallStartingEvent(
 public data class ToolValidationFailedEvent(
     override val id: String,
     override val parentId: String?,
+    override val executionPath: AgentExecutionPath,
     val runId: String,
     val toolCallId: String?,
     val toolName: String,
@@ -83,7 +95,7 @@ public data class ToolValidationFailedEvent(
      */
     @Deprecated(
         message = "Use constructor with id and parentId parameters",
-        replaceWith = ReplaceWith("ToolValidationFailedEvent(id, parentId, runId, toolCallId, toolName, toolArgs, error, timestamp)")
+        replaceWith = ReplaceWith("ToolValidationFailedEvent(id, parentId, executionPath, runId, toolCallId, toolName, toolArgs, message, error, timestamp)")
     )
     public constructor(
         runId: String,
@@ -95,6 +107,7 @@ public data class ToolValidationFailedEvent(
     ) : this(
         id = ToolValidationFailedEvent::class.simpleName.toString(),
         parentId = null,
+        executionPath = AgentExecutionPath.EMPTY,
         runId = runId,
         toolCallId = toolCallId,
         toolName = toolName,
@@ -124,6 +137,7 @@ public data class ToolValidationFailedEvent(
 public data class ToolCallFailedEvent(
     override val id: String,
     override val parentId: String?,
+    override val executionPath: AgentExecutionPath,
     val runId: String,
     val toolCallId: String?,
     val toolName: String,
@@ -137,7 +151,7 @@ public data class ToolCallFailedEvent(
      */
     @Deprecated(
         message = "Use constructor with id and parentId parameters",
-        replaceWith = ReplaceWith("ToolCallFailedEvent(id, parentId, runId, toolCallId, toolName, toolArgs, error, timestamp)")
+        replaceWith = ReplaceWith("ToolCallFailedEvent(id, parentId, executionPath, runId, toolCallId, toolName, toolArgs, error, timestamp)")
     )
     public constructor(
         runId: String,
@@ -146,7 +160,17 @@ public data class ToolCallFailedEvent(
         toolArgs: JsonObject,
         error: AIAgentError,
         timestamp: Long = Clock.System.now().toEpochMilliseconds()
-    ) : this(ToolCallFailedEvent::class.simpleName.toString(), null, runId, toolCallId, toolName, toolArgs, error, timestamp)
+    ) : this(
+        id = ToolCallFailedEvent::class.simpleName.toString(),
+        parentId = null,
+        executionPath = AgentExecutionPath.EMPTY,
+        runId = runId,
+        toolCallId = toolCallId,
+        toolName = toolName,
+        toolArgs = toolArgs,
+        error = error,
+        timestamp = timestamp
+    )
 }
 
 /**
@@ -169,6 +193,7 @@ public data class ToolCallFailedEvent(
 public data class ToolCallCompletedEvent(
     override val id: String,
     override val parentId: String?,
+    override val executionPath: AgentExecutionPath,
     val runId: String,
     val toolCallId: String?,
     val toolName: String,
@@ -182,7 +207,7 @@ public data class ToolCallCompletedEvent(
      */
     @Deprecated(
         message = "Use constructor with [id] and [parentId] parameters",
-        replaceWith = ReplaceWith("ToolCallCompletedEvent(id, parentId, runId, toolCallId, toolName, toolArgs, result, timestamp)")
+        replaceWith = ReplaceWith("ToolCallCompletedEvent(id, parentId, executionPath, runId, toolCallId, toolName, toolArgs, result, timestamp)")
     )
     public constructor(
         runId: String,
@@ -194,6 +219,7 @@ public data class ToolCallCompletedEvent(
     ) : this(
         id = ToolCallCompletedEvent::class.simpleName.toString(),
         parentId = null,
+        executionPath = AgentExecutionPath.EMPTY,
         runId = runId,
         toolCallId = toolCallId,
         toolName = toolName,

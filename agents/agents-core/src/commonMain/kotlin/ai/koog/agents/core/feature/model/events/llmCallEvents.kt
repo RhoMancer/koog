@@ -1,5 +1,6 @@
 package ai.koog.agents.core.feature.model.events
 
+import ai.koog.agents.core.agent.context.AgentExecutionPath
 import ai.koog.agents.utils.ModelInfo
 import ai.koog.prompt.dsl.ModerationResult
 import ai.koog.prompt.dsl.Prompt
@@ -28,6 +29,7 @@ import kotlinx.serialization.Serializable
 public data class LLMCallStartingEvent(
     override val id: String,
     override val parentId: String?,
+    override val executionPath: AgentExecutionPath,
     val runId: String,
     val prompt: Prompt,
     val model: ModelInfo,
@@ -37,11 +39,11 @@ public data class LLMCallStartingEvent(
 
     /**
      * @deprecated Use constructor with model parameter of type [ModelInfo]:
-     *             LLMCallStartingEvent(runId, prompt, model, tools, timestamp)
+     *             LLMCallStartingEvent(id, parentId, executionPath, runId, prompt, model, tools, timestamp)
      */
     @Deprecated(
-        message = "Please use constructor with id, parentId parameters, and model parameter of type [ModelInfo]: LLMCallStartingEvent(id, parentId, runId, callId, prompt, model, tools, timestamp)",
-        replaceWith = ReplaceWith("LLMCallStartingEvent(id, parentId, runId, callId, prompt, model, tools, timestamp)")
+        message = "Please use constructor with id, parentId, executionPath parameters, and model parameter of type [ModelInfo]: LLMCallStartingEvent(id, parentId, executionPath, runId, prompt, model, tools, timestamp)",
+        replaceWith = ReplaceWith("LLMCallStartingEvent(id, parentId, executionPath, runId, prompt, model, tools, timestamp)")
     )
     public constructor(
         runId: String,
@@ -50,7 +52,16 @@ public data class LLMCallStartingEvent(
         tools: List<String>,
         eventId: String = LLMCallStartingEvent::class.simpleName!!,
         timestamp: Long = Clock.System.now().toEpochMilliseconds()
-    ) : this(eventId, null, runId, prompt, ModelInfo.fromString(model), tools, timestamp)
+    ) : this(
+        id = eventId,
+        parentId = null,
+        executionPath = AgentExecutionPath.EMPTY,
+        runId = runId,
+        prompt = prompt,
+        model = ModelInfo.fromString(model),
+        tools = tools,
+        timestamp = timestamp
+    )
 
     /**
      * @deprecated Use model.eventString instead
@@ -83,6 +94,7 @@ public data class LLMCallStartingEvent(
 public data class LLMCallCompletedEvent(
     override val id: String,
     override val parentId: String?,
+    override val executionPath: AgentExecutionPath,
     val runId: String,
     val prompt: Prompt,
     val model: ModelInfo,
@@ -93,11 +105,11 @@ public data class LLMCallCompletedEvent(
 
     /**
      * @deprecated Use constructor with model parameter of type [ModelInfo]:
-     *             LLMCallCompletedEvent(runId, prompt, model, responses, moderationResponse, timestamp)
+     *             LLMCallCompletedEvent(id, parentId, executionPath, runId, prompt, model, responses, moderationResponse, timestamp)
      */
     @Deprecated(
-        message = "Please use constructor with id, parentId parameters, and model parameter of type [ModelInfo]: LLMCallCompletedEvent(id, parentId, runId, callId, prompt, model, responses, moderationResponse, timestamp)",
-        replaceWith = ReplaceWith("LLMCallCompletedEvent(id, parentId, runId, callId, prompt, model, responses, moderationResponse, timestamp)")
+        message = "Please use constructor with id, parentId, executionPath parameters, and model parameter of type [ModelInfo]: LLMCallCompletedEvent(id, parentId, executionPath, runId, prompt, model, responses, moderationResponse, timestamp)",
+        replaceWith = ReplaceWith("LLMCallCompletedEvent(id, parentId, executionPath, runId, prompt, model, responses, moderationResponse, timestamp)")
     )
     public constructor(
         runId: String,
@@ -107,7 +119,17 @@ public data class LLMCallCompletedEvent(
         moderationResponse: ModerationResult? = null,
         eventId: String = LLMCallCompletedEvent::class.simpleName!!,
         timestamp: Long = Clock.System.now().toEpochMilliseconds()
-    ) : this(eventId, null, runId, prompt, ModelInfo.fromString(model), responses, moderationResponse, timestamp)
+    ) : this(
+        id = eventId,
+        parentId = null,
+        executionPath = AgentExecutionPath.EMPTY,
+        runId = runId,
+        prompt = prompt,
+        model = ModelInfo.fromString(model),
+        responses = responses,
+        moderationResponse = moderationResponse,
+        timestamp = timestamp
+    )
 
     /**
      * @deprecated Use model.eventString instead

@@ -27,7 +27,6 @@ internal class GenericAgentEnvironment(
     override suspend fun executeTool(toolCall: Message.Tool.Call): ReceivedToolResult {
 
         val message = AgentToolCallsToEnvironmentMessage(
-            runId = runId,
             content = AgentToolCallToEnvironmentContent(
                 toolCallId = toolCall.id,
                 toolName = toolCall.tool,
@@ -39,7 +38,7 @@ internal class GenericAgentEnvironment(
     }
 
     override suspend fun reportProblem(exception: Throwable) {
-        logger.error(exception) { formatLog(runId, "Reporting problem: ${exception.message}") }
+        logger.error(exception) { formatLog(agentId, "Reporting problem: ${exception.message}") }
         throw exception
     }
 
@@ -50,7 +49,6 @@ internal class GenericAgentEnvironment(
 
         val toolCallEnvironmentMessages = toolCalls.map { call ->
             AgentToolCallsToEnvironmentMessage(
-                runId = runId,
                 content = AgentToolCallToEnvironmentContent(
                     toolCallId = call.id,
                     toolName = call.tool,
@@ -187,8 +185,8 @@ internal class GenericAgentEnvironment(
         )
     }
 
-    private fun formatLog(runId: String, message: String): String =
-        "[run id: $runId] $message"
+    private fun formatLog(agentId: String, message: String): String =
+        "[agent id: $agentId] $message"
 
     //endregion Private Methods
 }

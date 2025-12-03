@@ -1,5 +1,6 @@
 package ai.koog.agents.core.feature.model.events
 
+import ai.koog.agents.core.agent.context.AgentExecutionPath
 import ai.koog.agents.core.agent.entity.AIAgentGraphStrategy
 import ai.koog.agents.core.annotation.InternalAgentsApi
 import kotlinx.datetime.Clock
@@ -38,6 +39,7 @@ public abstract class StrategyStartingEvent : DefinedFeatureEvent() {
 public data class GraphStrategyStartingEvent(
     override val id: String,
     override val parentId: String?,
+    override val executionPath: AgentExecutionPath,
     override val runId: String,
     override val strategyName: String,
     val graph: StrategyEventGraph,
@@ -49,14 +51,22 @@ public data class GraphStrategyStartingEvent(
      */
     @Deprecated(
         message = "Use constructor with id, parentId parameters",
-        replaceWith = ReplaceWith("GraphStrategyStartingEvent(id, parentId, runId, strategyName, graph, timestamp)")
+        replaceWith = ReplaceWith("GraphStrategyStartingEvent(id, parentId, executionPath, runId, strategyName, graph, timestamp)")
     )
     public constructor(
         runId: String,
         strategyName: String,
         graph: StrategyEventGraph,
         timestamp: Long = Clock.System.now().toEpochMilliseconds()
-    ) : this(GraphStrategyStartingEvent::class.simpleName.toString(), null, runId, strategyName, graph, timestamp)
+    ) : this(
+        id = GraphStrategyStartingEvent::class.simpleName.toString(),
+        parentId = null,
+        executionPath = AgentExecutionPath.EMPTY,
+        runId = runId,
+        strategyName = strategyName,
+        graph = graph,
+        timestamp = timestamp
+    )
 }
 
 /**
@@ -72,6 +82,7 @@ public data class GraphStrategyStartingEvent(
 public data class FunctionalStrategyStartingEvent(
     override val id: String,
     override val parentId: String?,
+    override val executionPath: AgentExecutionPath,
     override val runId: String,
     override val strategyName: String,
     override val timestamp: Long = Clock.System.now().toEpochMilliseconds(),
@@ -82,14 +93,20 @@ public data class FunctionalStrategyStartingEvent(
      */
     @Deprecated(
         message = "Use constructor with id, parentId parameters",
-        replaceWith = ReplaceWith("FunctionalStrategyStartingEvent(id, parentId, runId, strategyName, timestamp)")
+        replaceWith = ReplaceWith("FunctionalStrategyStartingEvent(id, parentId, executionPath, runId, strategyName, timestamp)")
     )
     public constructor(
         runId: String,
         strategyName: String,
-        graph: StrategyEventGraph,
         timestamp: Long = Clock.System.now().toEpochMilliseconds()
-    ) : this(FunctionalStrategyStartingEvent::class.simpleName.toString(), null, runId, strategyName, timestamp)
+    ) : this(
+        id = FunctionalStrategyStartingEvent::class.simpleName.toString(),
+        parentId = null,
+        executionPath = AgentExecutionPath.EMPTY,
+        runId = runId,
+        strategyName = strategyName,
+        timestamp = timestamp
+    )
 }
 
 /**
@@ -109,6 +126,7 @@ public data class FunctionalStrategyStartingEvent(
 public data class StrategyCompletedEvent(
     override val id: String,
     override val parentId: String?,
+    override val executionPath: AgentExecutionPath,
     val runId: String,
     val strategyName: String,
     val result: String?,
@@ -120,14 +138,22 @@ public data class StrategyCompletedEvent(
      */
     @Deprecated(
         message = "Use constructor with [id] and [parentId] parameters",
-        replaceWith = ReplaceWith("StrategyCompletedEvent(id, parentId, runId, strategyName, result, timestamp)")
+        replaceWith = ReplaceWith("StrategyCompletedEvent(id, parentId, executionPath, runId, strategyName, result, timestamp)")
     )
     public constructor(
         runId: String,
         strategyName: String,
         result: String?,
         timestamp: Long = Clock.System.now().toEpochMilliseconds()
-    ) : this(StrategyCompletedEvent::class.simpleName.toString(), null, runId, strategyName, result, timestamp)
+    ) : this(
+        id = StrategyCompletedEvent::class.simpleName.toString(),
+        parentId = null,
+        executionPath = AgentExecutionPath.EMPTY,
+        runId = runId,
+        strategyName = strategyName,
+        result = result,
+        timestamp = timestamp
+    )
 }
 
 /**

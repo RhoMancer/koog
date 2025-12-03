@@ -1,6 +1,6 @@
 package ai.koog.agents.core.feature.handler
 
-import ai.koog.agents.core.agent.context.AgentExecutionPath
+import ai.koog.agents.core.agent.context.AgentExecutionInfo
 
 /**
  * Represents the context in which event handlers operate, providing a foundational
@@ -25,6 +25,12 @@ public interface AgentLifecycleEventContext {
      * If no parent context exists, the value will be null.
      */
     public val parentId: String?
+
+    /**
+     * Holds execution-specific context information to support observability and tracing
+     * during the lifecycle of an agent.
+     */
+    public val executionInfo: AgentExecutionInfo
 
     /**
      * Represents the specific type of event handled within the event handler context,

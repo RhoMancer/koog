@@ -1,5 +1,6 @@
 package ai.koog.agents.core.feature.model.events
 
+import ai.koog.agents.core.agent.context.AgentExecutionPath
 import ai.koog.agents.core.annotation.InternalAgentsApi
 import ai.koog.agents.core.feature.model.AIAgentError
 import ai.koog.agents.core.utils.SerializationUtils
@@ -29,6 +30,7 @@ import kotlinx.serialization.json.JsonElement
 public data class NodeExecutionStartingEvent(
     override val id: String,
     override val parentId: String?,
+    override val executionPath: AgentExecutionPath,
     val runId: String,
     val nodeName: String,
     val input: JsonElement?,
@@ -41,7 +43,10 @@ public data class NodeExecutionStartingEvent(
      * This constructor is deprecated and should be replaced with the constructor
      * that accepts [id] and [parentId] parameters, and an input parameter of type [JsonElement].
      */
-    @Deprecated("Use constructor with id, parentId parameters, and input parameter of type [JsonElement]")
+    @Deprecated(
+        message = "Use constructor with id, parentId parameters, and input parameter of type [JsonElement]",
+        replaceWith = ReplaceWith("NodeExecutionStartingEvent(id, parentId, executionPath, runId, nodeName, input, timestamp)")
+    )
     public constructor(
         runId: String,
         nodeName: String,
@@ -50,6 +55,7 @@ public data class NodeExecutionStartingEvent(
     ) : this(
         id = NodeExecutionStartingEvent::class.simpleName.toString(),
         parentId = null,
+        executionPath = AgentExecutionPath.EMPTY,
         runId = runId,
         nodeName = nodeName,
         input = @OptIn(InternalAgentsApi::class) SerializationUtils.parseDataToJsonElementOrDefault(input),
@@ -75,6 +81,7 @@ public data class NodeExecutionStartingEvent(
 public data class NodeExecutionCompletedEvent(
     override val id: String,
     override val parentId: String?,
+    override val executionPath: AgentExecutionPath,
     val runId: String,
     val nodeName: String,
     val input: JsonElement?,
@@ -88,7 +95,10 @@ public data class NodeExecutionCompletedEvent(
      * This constructor is deprecated and should be replaced with the constructor
      * that accepts [id], [parentId] parameters, and [input] and [output] parameters of type [JsonElement].
      */
-    @Deprecated("Use constructor with id, parentId parameters, and input and output parameters of type [JsonElement]")
+    @Deprecated(
+        message = "Use constructor with id, parentId parameters, and input and output parameters of type [JsonElement]",
+        replaceWith = ReplaceWith("NodeExecutionCompletedEvent(id, parentId, executionPath, runId, nodeName, input, output, timestamp)")
+    )
     public constructor(
         runId: String,
         nodeName: String,
@@ -98,6 +108,7 @@ public data class NodeExecutionCompletedEvent(
     ) : this(
         id = NodeExecutionCompletedEvent::class.simpleName.toString(),
         parentId = null,
+        executionPath = AgentExecutionPath.EMPTY,
         runId = runId,
         nodeName = nodeName,
         input = @OptIn(InternalAgentsApi::class) SerializationUtils.parseDataToJsonElementOrDefault(input),
@@ -122,6 +133,7 @@ public data class NodeExecutionCompletedEvent(
 public data class NodeExecutionFailedEvent(
     override val id: String,
     override val parentId: String?,
+    override val executionPath: AgentExecutionPath,
     val runId: String,
     val nodeName: String,
     val input: JsonElement?,
@@ -135,7 +147,10 @@ public data class NodeExecutionFailedEvent(
      * This constructor is deprecated and should be replaced with the constructor
      * that accepts [id], [parentId] parameters, and an input parameter of type [JsonElement].
      */
-    @Deprecated("Use constructor with id, parentId parameters, and input parameter of type [JsonElement]")
+    @Deprecated(
+        message = "Use constructor with id, parentId parameters, and input parameter of type [JsonElement]",
+        replaceWith = ReplaceWith("NodeExecutionFailedEvent(id, parentId, executionPath, runId, nodeName, input, error, timestamp)")
+    )
     public constructor(
         runId: String,
         nodeName: String,
@@ -144,6 +159,7 @@ public data class NodeExecutionFailedEvent(
     ) : this(
         id = NodeExecutionFailedEvent::class.simpleName.toString(),
         parentId = null,
+        executionPath = AgentExecutionPath.EMPTY,
         runId = runId,
         nodeName = nodeName,
         input = null,

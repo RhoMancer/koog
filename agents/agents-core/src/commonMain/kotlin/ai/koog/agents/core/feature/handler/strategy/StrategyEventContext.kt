@@ -1,6 +1,7 @@
 package ai.koog.agents.core.feature.handler.strategy
 
 import ai.koog.agents.core.agent.context.AIAgentContext
+import ai.koog.agents.core.agent.context.AgentExecutionInfo
 import ai.koog.agents.core.agent.entity.AIAgentStrategy
 import ai.koog.agents.core.feature.handler.AgentLifecycleEventContext
 import ai.koog.agents.core.feature.handler.AgentLifecycleEventType
@@ -16,16 +17,18 @@ public interface StrategyEventContext : AgentLifecycleEventContext
 /**
  * Represents the context for updating AI agent strategies during execution.
  *
+ * @property executionInfo The execution information containing id, parentId, and execution path.
  * @property strategy The strategy being updated, encapsulating the AI agent's workflow logic.
  * @property context The context associated with the strategy's execution.
  */
 public class StrategyStartingContext(
-    override val id: String,
-    override val parentId: String?,
+    override val executionInfo: AgentExecutionInfo,
     public val strategy: AIAgentStrategy<*, *, *>,
     public val context: AIAgentContext,
 ) : StrategyEventContext {
     override val eventType: AgentLifecycleEventType = AgentLifecycleEventType.StrategyStarting
+    override val id: String get() = executionInfo.id
+    override val parentId: String? get() = executionInfo.parentId
 
     /**
      * The unique identifier for this run.
@@ -42,20 +45,22 @@ public class StrategyStartingContext(
 /**
  * Represents the context associated with the completion of an AI agent strategy execution.
  *
+ * @property executionInfo The execution information containing id, parentId, and execution path.
  * @property strategy The strategy being updated, encapsulating the AI agent's workflow logic.
  * @property context The context associated with the strategy's execution.
  * @property result Strategy result.
  * @property resultType [KType] representing the type of the [result]
  */
 public class StrategyCompletedContext(
-    override val id: String,
-    override val parentId: String?,
+    override val executionInfo: AgentExecutionInfo,
     public val strategy: AIAgentStrategy<*, *, *>,
     public val context: AIAgentContext,
     public val result: Any?,
     public val resultType: KType,
 ) : StrategyEventContext {
     override val eventType: AgentLifecycleEventType = AgentLifecycleEventType.StrategyCompleted
+    override val id: String get() = executionInfo.id
+    override val parentId: String? get() = executionInfo.parentId
 
     /**
      * The unique identifier for this run.

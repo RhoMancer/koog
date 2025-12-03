@@ -151,7 +151,7 @@ public class Tracing {
                     parentId = eventContext.parentId,
                     agentId = eventContext.agentId,
                     runId = eventContext.runId,
-                    error = eventContext.exception.toAgentError(),
+                    error = eventContext.exception?.toAgentError(),
                     timestamp = pipeline.clock.now().toEpochMilliseconds()
                 )
                 processMessage(config, event)
@@ -348,6 +348,8 @@ public class Tracing {
                     id = eventContext.id,
                     parentId = eventContext.parentId,
                     runId = eventContext.runId,
+                    prompt = eventContext.prompt,
+                    model = eventContext.model.toModelInfo(),
                     frame = eventContext.streamFrame,
                     timestamp = pipeline.clock.now().toEpochMilliseconds()
                 )
@@ -359,7 +361,9 @@ public class Tracing {
                     id = eventContext.id,
                     parentId = eventContext.parentId,
                     runId = eventContext.runId,
-                    error = eventContext.throwable.toAgentError(),
+                    prompt = eventContext.prompt,
+                    model = eventContext.model.toModelInfo(),
+                    error = eventContext.exception.toAgentError(),
                     timestamp = pipeline.clock.now().toEpochMilliseconds()
                 )
                 processMessage(config, event)
@@ -390,7 +394,8 @@ public class Tracing {
                     toolCallId = eventContext.toolCallId,
                     toolName = eventContext.toolName,
                     toolArgs = eventContext.toolArgs,
-                    error = eventContext.error,
+                    message = eventContext.message,
+                    error = eventContext.error.toAgentError(),
                     timestamp = pipeline.clock.now().toEpochMilliseconds()
                 )
                 processMessage(config, event)
@@ -404,7 +409,7 @@ public class Tracing {
                     toolCallId = eventContext.toolCallId,
                     toolName = eventContext.toolName,
                     toolArgs = eventContext.toolArgs,
-                    error = eventContext.exception.toAgentError(),
+                    error = eventContext.exception?.toAgentError(),
                     timestamp = pipeline.clock.now().toEpochMilliseconds()
                 )
                 processMessage(config, event)
@@ -418,7 +423,7 @@ public class Tracing {
                     toolCallId = eventContext.toolCallId,
                     toolName = eventContext.toolName,
                     toolArgs = eventContext.toolArgs,
-                    result = eventContext.toolResult?.let { result -> eventContext.tool.encodeResultToStringUnsafe(result) },
+                    result = eventContext.toolResult,
                     timestamp = pipeline.clock.now().toEpochMilliseconds()
                 )
                 processMessage(config, event)
