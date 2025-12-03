@@ -9,6 +9,7 @@ import ai.koog.prompt.message.RequestMetaInfo
 import kotlinx.datetime.Clock
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonObject
 
 /**
  * Represents the result or response received from a tool operation.
@@ -22,7 +23,7 @@ import kotlinx.serialization.json.JsonElement
 public data class ReceivedToolResult(
     val id: String?,
     val tool: String,
-    val toolArgs: JsonElement,
+    val toolArgs: JsonObject,
     val content: String,
     val resultType: ToolResultType,
     val result: JsonElement?

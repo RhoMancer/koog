@@ -215,7 +215,7 @@ class AIAgentMultipleLLMIntegrationTest : AIAgentTestBase() {
                     install(EventHandler) {
                         onAgentExecutionFailed { eventContext ->
                             println(
-                                "error: ${eventContext.throwable.javaClass.simpleName}(${eventContext.throwable.message})\n${eventContext.throwable.stackTraceToString()}"
+                                "error: ${eventContext.exception.javaClass.simpleName}(${eventContext.exception.message})\n${eventContext.exception.stackTraceToString()}"
                             )
                         }
                         onToolCallStarting { eventContext ->

@@ -146,7 +146,7 @@ public abstract class EnvironmentToolResultToAgentContent : EnvironmentToAgentCo
      * key-value pairs that define the parameters and configurations used in the tool's
      * execution.
      */
-    public abstract val toolArgs: JsonElement
+    public abstract val toolArgs: JsonObject
     abstract override val agentId: String
     abstract override val message: String
 }

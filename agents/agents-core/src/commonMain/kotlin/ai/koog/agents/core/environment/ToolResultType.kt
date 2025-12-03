@@ -17,14 +17,14 @@ public sealed class ToolResultType {
     /**
      * Represents a failure result in the context of a tool operation.
      *
-     * @property error The [Exception] that caused the failure. It can be null if no specific throwable information is available.
+     * @property exception The [Throwable] that caused the failure. It can be null if no specific throwable information is available.
      */
-    public data class Failure(public val error: Exception?) : ToolResultType()
+    public data class Failure(public val exception: Throwable?) : ToolResultType()
 
     /**
      * Represents a validation error result in the context of a tool operation.
      *
-     * @property error The specific tool exception that describes the details of the validation failure.
+     * @property exception The specific tool exception that describes the details of the validation failure.
      */
-    public data class ValidationError(public val error: ToolException) : ToolResultType()
+    public data class ValidationError(public val exception: ToolException) : ToolResultType()
 }

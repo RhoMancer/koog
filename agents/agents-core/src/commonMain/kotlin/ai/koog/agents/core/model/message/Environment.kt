@@ -2,6 +2,7 @@ package ai.koog.agents.core.model.message
 
 import ai.koog.agents.core.environment.ToolResultType
 import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonObject
 
 /**
  * Represents the content of tool result messages sent to an agent after a tool call is executed within
@@ -17,7 +18,7 @@ import kotlinx.serialization.json.JsonElement
 public data class AIAgentEnvironmentToolResultToAgentContent(
     override val toolCallId: String?,
     override val toolName: String,
-    override val toolArgs: JsonElement,
+    override val toolArgs: JsonObject,
     override val agentId: String,
     override val message: String,
     val toolResultType: ToolResultType,

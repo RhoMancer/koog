@@ -154,7 +154,7 @@ public class OpenTelemetry {
                 spanAdapter?.onBeforeSpanFinished(invokeAgentSpan)
                 spanProcessor.endSpan(
                     span = invokeAgentSpan,
-                    spanEndStatus = SpanEndStatus(code = StatusCode.ERROR, description = eventContext.throwable.message)
+                    spanEndStatus = SpanEndStatus(code = StatusCode.ERROR, description = eventContext.exception.message)
                 )
             }
 
@@ -484,7 +484,7 @@ public class OpenTelemetry {
 
                 val executeToolSpan = ExecuteToolSpan(
                     parent = nodeExecuteSpan,
-                    toolName = eventContext.tool.name,
+                    toolName = eventContext.toolName,
                     toolDescription = eventContext.tool.description,
                     toolArgs = eventContext.tool.encodeArgsToStringUnsafe(eventContext.toolArgs),
                     toolCallId = eventContext.toolCallId,
@@ -506,7 +506,7 @@ public class OpenTelemetry {
                     runId = agentRunInfoElement.runId,
                     nodeId = nodeInfoElement.id,
                     nodeName = nodeInfoElement.name,
-                    toolName = eventContext.tool.name,
+                    toolName = eventContext.toolName,
                     toolArgs = eventContext.tool.encodeArgsToStringUnsafe(eventContext.toolArgs),
                 )
 
@@ -540,7 +540,7 @@ public class OpenTelemetry {
                     runId = agentRunInfoElement.runId,
                     nodeId = nodeInfoElement.id,
                     nodeName = nodeInfoElement.name,
-                    toolName = eventContext.tool.name,
+                    toolName = eventContext.toolName,
                     toolArgs = eventContext.tool.encodeArgsToStringUnsafe(eventContext.toolArgs),
                 )
 
@@ -548,14 +548,14 @@ public class OpenTelemetry {
                     ?: return@intercept
 
                 executeToolSpan.addAttribute(
-                    attribute = CommonAttributes.Error.Type(eventContext.throwable.message ?: "Unknown tool call error")
+                    attribute = CommonAttributes.Error.Type(eventContext.exception.message ?: "Unknown tool call error")
                 )
 
                 // End the ExecuteToolSpan span
                 spanAdapter?.onBeforeSpanFinished(executeToolSpan)
                 spanProcessor.endSpan(
                     span = executeToolSpan,
-                    spanEndStatus = SpanEndStatus(code = StatusCode.ERROR, description = eventContext.throwable.message)
+                    spanEndStatus = SpanEndStatus(code = StatusCode.ERROR, description = eventContext.exception.message)
                 )
             }
 
@@ -571,7 +571,7 @@ public class OpenTelemetry {
                     runId = agentRunInfoElement.runId,
                     nodeId = nodeInfoElement.id,
                     nodeName = nodeInfoElement.name,
-                    toolName = eventContext.tool.name,
+                    toolName = eventContext.toolName,
                     toolArgs = eventContext.toolArgs.toString(),
                 )
 

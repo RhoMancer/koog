@@ -188,7 +188,7 @@ public class Debugger(public val port: Int, public val awaitInitialConnectionTim
                     parentId = eventContext.parentId,
                     agentId = eventContext.agentId,
                     runId = eventContext.runId,
-                    error = eventContext.throwable.toAgentError(),
+                    error = eventContext.exception?.toAgentError(),
                     timestamp = pipeline.clock.now().toEpochMilliseconds()
                 )
                 writer.onMessage(event)
@@ -300,7 +300,7 @@ public class Debugger(public val port: Int, public val awaitInitialConnectionTim
                     id = eventContext.id,
                     parentId = eventContext.parentId,
                     runId = eventContext.runId,
-                    error = eventContext.error.toAgentError(),
+                    error = eventContext.throwable.toAgentError(),
                     timestamp = pipeline.clock.now().toEpochMilliseconds()
                 )
                 writer.onMessage(event)
@@ -357,9 +357,9 @@ public class Debugger(public val port: Int, public val awaitInitialConnectionTim
                     parentId = eventContext.parentId,
                     runId = eventContext.runId,
                     toolCallId = eventContext.toolCallId,
-                    toolName = eventContext.tool.name,
-                    toolArgs = eventContext.tool.encodeArgsUnsafe(eventContext.toolArgs),
-                    error = eventContext.throwable.toAgentError(),
+                    toolName = eventContext.toolName,
+                    toolArgs = eventContext.toolArgs,
+                    error = eventContext.exception?.toAgentError(),
                     timestamp = pipeline.clock.now().toEpochMilliseconds()
                 )
                 writer.onMessage(event)
@@ -371,9 +371,9 @@ public class Debugger(public val port: Int, public val awaitInitialConnectionTim
                     parentId = eventContext.parentId,
                     runId = eventContext.runId,
                     toolCallId = eventContext.toolCallId,
-                    toolName = eventContext.tool.name,
-                    toolArgs = eventContext.tool.encodeArgsUnsafe(eventContext.toolArgs),
-                    result = eventContext.toolResult?.let { result -> eventContext.tool.encodeResultToStringUnsafe(result) },
+                    toolName = eventContext.toolName,
+                    toolArgs = eventContext.toolArgs,
+                    result = eventContext.toolResult,
                     timestamp = pipeline.clock.now().toEpochMilliseconds()
                 )
                 writer.onMessage(event)

@@ -5,6 +5,7 @@ import kotlinx.datetime.Clock
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
 
 /**
  * Represents an event triggered when a tool is called within the system.
@@ -29,7 +30,7 @@ public data class ToolCallStartingEvent(
     val runId: String,
     val toolCallId: String?,
     val toolName: String,
-    val toolArgs: JsonElement?,
+    val toolArgs: JsonObject,
     override val timestamp: Long = Clock.System.now().toEpochMilliseconds(),
 ) : DefinedFeatureEvent() {
 
@@ -71,7 +72,7 @@ public data class ToolValidationFailedEvent(
     val runId: String,
     val toolCallId: String?,
     val toolName: String,
-    val toolArgs: JsonElement?,
+    val toolArgs: JsonObject,
     val message: String?,
     val error: AIAgentError,
     override val timestamp: Long = Clock.System.now().toEpochMilliseconds(),
@@ -91,7 +92,16 @@ public data class ToolValidationFailedEvent(
         toolArgs: JsonObject,
         error: String,
         timestamp: Long = Clock.System.now().toEpochMilliseconds()
-    ) : this(ToolValidationFailedEvent::class.simpleName.toString(), null, runId, toolCallId, toolName, toolArgs, error, timestamp)
+    ) : this(
+        id = ToolValidationFailedEvent::class.simpleName.toString(),
+        parentId = null,
+        runId = runId,
+        toolCallId = toolCallId,
+        toolName = toolName,
+        toolArgs = toolArgs,
+        message = error,
+        error = AIAgentError(error, "", null)
+    )
 }
 
 /**
@@ -118,7 +128,7 @@ public data class ToolCallFailedEvent(
     val toolCallId: String?,
     val toolName: String,
     val toolArgs: JsonObject,
-    val error: AIAgentError,
+    val error: AIAgentError?,
     override val timestamp: Long = Clock.System.now().toEpochMilliseconds(),
 ) : DefinedFeatureEvent() {
 
@@ -163,7 +173,7 @@ public data class ToolCallCompletedEvent(
     val toolCallId: String?,
     val toolName: String,
     val toolArgs: JsonObject,
-    val result: String?,
+    val result: JsonElement?,
     override val timestamp: Long = Clock.System.now().toEpochMilliseconds(),
 ) : DefinedFeatureEvent() {
 
@@ -181,7 +191,16 @@ public data class ToolCallCompletedEvent(
         toolArgs: JsonObject,
         result: String?,
         timestamp: Long = Clock.System.now().toEpochMilliseconds()
-    ) : this(ToolCallCompletedEvent::class.simpleName.toString(), null, runId, toolCallId, toolName, toolArgs, result, timestamp)
+    ) : this(
+        id = ToolCallCompletedEvent::class.simpleName.toString(),
+        parentId = null,
+        runId = runId,
+        toolCallId = toolCallId,
+        toolName = toolName,
+        toolArgs = toolArgs,
+        result = JsonPrimitive(result),
+        timestamp = timestamp
+    )
 }
 
 //region Deprecated

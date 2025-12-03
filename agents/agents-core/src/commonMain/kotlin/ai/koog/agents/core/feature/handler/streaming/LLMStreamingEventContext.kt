@@ -59,13 +59,13 @@ public data class LLMStreamingFrameReceivedContext(
  * @property id The unique identifier for the group of events associated with the streaming call.
  * @property parentId The unique identifier for the parent event, if applicable.
  * @property runId The unique identifier for this streaming session.
- * @property error The exception or error that occurred during streaming.
+ * @property throwable The exception or error that occurred during streaming.
  */
 public data class LLMStreamingFailedContext(
     override val id: String,
     override val parentId: String?,
     val runId: String,
-    val error: Throwable
+    val throwable: Throwable
 ) : LLMStreamingEventContext {
     override val eventType: AgentLifecycleEventType = AgentLifecycleEventType.LLMStreamingFailed
 }

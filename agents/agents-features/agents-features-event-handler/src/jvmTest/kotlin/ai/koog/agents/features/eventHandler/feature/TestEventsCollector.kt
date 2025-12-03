@@ -34,7 +34,7 @@ class TestEventsCollector {
         onAgentExecutionFailed { eventContext ->
             updateRunId(eventContext.runId)
             _collectedEvents.add(
-                "OnAgentExecutionFailed (agent id: ${eventContext.agentId}, run id: ${eventContext.runId}, error: ${eventContext.throwable.message})"
+                "OnAgentExecutionFailed (agent id: ${eventContext.agentId}, run id: ${eventContext.runId}, error: ${eventContext.exception.message})"
             )
         }
 
@@ -139,7 +139,7 @@ class TestEventsCollector {
         onToolCallFailed { eventContext ->
             updateRunId(eventContext.runId)
             _collectedEvents.add(
-                "OnToolCallFailed (run id: ${eventContext.runId}, tool: ${eventContext.tool.name}, args: ${eventContext.toolArgs}, throwable: ${eventContext.throwable.message})"
+                "OnToolCallFailed (run id: ${eventContext.runId}, tool: ${eventContext.tool.name}, args: ${eventContext.toolArgs}, throwable: ${eventContext.exception.message})"
             )
         }
 
@@ -169,7 +169,7 @@ class TestEventsCollector {
         onLLMStreamingFailed { eventContext ->
             updateRunId(eventContext.runId)
             _collectedEvents.add(
-                "OnLLMStreamingFailed (run id: ${eventContext.runId}, error: ${eventContext.error.message})"
+                "OnLLMStreamingFailed (run id: ${eventContext.runId}, error: ${eventContext.throwable.message})"
             )
         }
 

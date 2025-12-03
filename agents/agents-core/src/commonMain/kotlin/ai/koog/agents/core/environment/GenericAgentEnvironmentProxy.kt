@@ -40,9 +40,7 @@ internal class GenericAgentEnvironmentProxy(
         parentId: String?,
         toolResult: ReceivedToolResult
     ) {
-        val toolResultType = toolResult.resultType
-
-        when (toolResultType) {
+        when (val toolResultType = toolResult.resultType) {
             is ToolResultType.Success -> {
                 context.pipeline.onToolCallCompleted(
                     id, parentId, context.runId, toolResult.id, toolResult.tool, toolResult.toolArgs, toolResult.result
@@ -51,13 +49,13 @@ internal class GenericAgentEnvironmentProxy(
 
             is ToolResultType.Failure -> {
                 context.pipeline.onToolCallFailed(
-                    id, parentId, context.runId, toolResult.id, toolResult.tool, toolResult.toolArgs, toolResult.content, toolResultType.error
+                    id, parentId, context.runId, toolResult.id, toolResult.tool, toolResult.toolArgs, toolResult.content, toolResultType.exception
                 )
             }
 
             is ToolResultType.ValidationError -> {
                 context.pipeline.onToolValidationFailed(
-                    id, parentId, context.runId, toolResult.id, toolResult.tool, toolResult.toolArgs, toolResult.content, toolResultType.error
+                    id, parentId, context.runId, toolResult.id, toolResult.tool, toolResult.toolArgs, toolResult.content, toolResultType.exception
                 )
             }
 

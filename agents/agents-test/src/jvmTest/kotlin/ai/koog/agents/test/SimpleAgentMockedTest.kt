@@ -74,7 +74,7 @@ class SimpleAgentMockedTest {
         }
 
         onAgentExecutionFailed { eventContext ->
-            errors.add(eventContext.throwable)
+            errors.add(eventContext.exception)
         }
 
         onToolCallStarting { eventContext ->
@@ -84,9 +84,9 @@ class SimpleAgentMockedTest {
 
         onToolCallFailed { eventContext ->
             println(
-                "Tool call failure: tool ${eventContext.tool.name}, args ${eventContext.toolArgs}, error=${eventContext.throwable.message}"
+                "Tool call failure: tool ${eventContext.tool.name}, args ${eventContext.toolArgs}, error=${eventContext.exception.message}"
             )
-            errors.add(eventContext.throwable)
+            errors.add(eventContext.exception)
         }
 
         onAgentCompleted { eventContext ->

@@ -98,7 +98,7 @@ public data class AgentExecutionFailedEvent(
     override val parentId: String?,
     val agentId: String,
     val runId: String,
-    val error: AIAgentError,
+    val error: AIAgentError?,
     override val timestamp: Long = Clock.System.now().toEpochMilliseconds(),
 ) : DefinedFeatureEvent() {
 

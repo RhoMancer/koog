@@ -119,7 +119,7 @@ open class AIAgentTestBase {
                 }
 
                 onAgentExecutionFailed { eventContext ->
-                    errors.add(eventContext.throwable)
+                    errors.add(eventContext.exception)
                 }
 
                 onLLMCallStarting { eventContext ->

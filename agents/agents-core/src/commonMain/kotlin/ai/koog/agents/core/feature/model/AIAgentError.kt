@@ -44,4 +44,4 @@ public data class AIAgentError(
  *
  * @return The generated [AIAgentError] containing detailed information about the [Throwable].
  */
-public fun Exception.toAgentError(): AIAgentError = AIAgentError(this)
+public fun Throwable.toAgentError(): AIAgentError = AIAgentError(this)

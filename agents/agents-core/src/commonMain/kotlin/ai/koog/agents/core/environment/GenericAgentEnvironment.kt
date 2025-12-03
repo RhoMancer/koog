@@ -16,6 +16,7 @@ import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.supervisorScope
 import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonObject
 
 internal class GenericAgentEnvironment(
     private val agentId: String,
@@ -80,7 +81,7 @@ internal class GenericAgentEnvironment(
     private fun toolResult(
         toolCallId: String?,
         toolName: String,
-        toolArgs: JsonElement,
+        toolArgs: JsonObject,
         agentId: String,
         message: String,
         resultType: ToolResultType,
