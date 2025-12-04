@@ -117,7 +117,7 @@ public sealed interface EnvironmentToolResultToAgentMessage : EnvironmentToAgent
  *
  * @property agentId Identifier for the agent receiving the message.
  * @property message Tool output
- * @property toolCallId Id to identify tool call when calling multiple tools at once.
+ * @property toolCallId The unique id to identify tool call when calling multiple tools at once.
  */
 @Serializable
 public abstract class EnvironmentToolResultToAgentContent : EnvironmentToAgentContent {
@@ -147,7 +147,14 @@ public abstract class EnvironmentToolResultToAgentContent : EnvironmentToAgentCo
      * execution.
      */
     public abstract val toolArgs: JsonObject
+
+    /**
+     * Provides an optional textual description of the tool's behavior, purpose, or other relevant details.
+     */
+    public abstract val toolDescription: String?
+
     abstract override val agentId: String
+
     abstract override val message: String
 }
 

@@ -39,7 +39,7 @@ public data class AgentStartingEvent(
     ) : this(
         executionInfo = AgentExecutionInfo(
             id = AgentStartingEvent::class.simpleName.toString(),
-            parentId = null,
+            parent = null,
             path = AgentExecutionPath.EMPTY
         ),
         agentId = agentId,
@@ -84,7 +84,7 @@ public data class AgentCompletedEvent(
     ) : this(
         executionInfo = AgentExecutionInfo(
             id = AgentCompletedEvent::class.simpleName.toString(),
-            parentId = null,
+            parent = null,
             path = AgentExecutionPath.EMPTY
         ),
         agentId = agentId,
@@ -130,7 +130,7 @@ public data class AgentExecutionFailedEvent(
     ) : this(
         executionInfo = AgentExecutionInfo(
             id = AgentExecutionFailedEvent::class.simpleName.toString(),
-            parentId = null,
+            parent = null,
             path = AgentExecutionPath.EMPTY
         ),
         agentId = agentId,
@@ -167,7 +167,7 @@ public data class AgentClosingEvent(
     ) : this(
         executionInfo = AgentExecutionInfo(
             id = AgentClosingEvent::class.simpleName.toString(),
-            parentId = null,
+            parent = null,
             path = AgentExecutionPath.EMPTY
         ),
         agentId = agentId

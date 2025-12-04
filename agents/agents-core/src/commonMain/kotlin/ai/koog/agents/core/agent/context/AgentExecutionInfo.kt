@@ -30,13 +30,13 @@ public suspend fun <T> withParent(
     val originalParent = context.executionInfo.parent
     val originalId = context.executionInfo.id
 
-    // Current
-    val currentParent = AgentExecutionInfo(originalId, originalParent, context.executionInfo.path)
+    // New
+    val newParent = AgentExecutionInfo(originalId, originalParent, context.executionInfo.path)
     @OptIn(ExperimentalUuidApi::class)
-    val currentId = Uuid.random().toString()
+    val newId = Uuid.random().toString()
 
-    context.executionInfo.parent = currentParent
-    context.executionInfo.id = currentId
+    context.executionInfo.parent = newParent
+    context.executionInfo.id = newId
     context.executionInfo.path.append(partName)
 
     try {

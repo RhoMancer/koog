@@ -606,6 +606,7 @@ internal suspend inline fun <reified Output, reified OutputTransformed> AIAgentC
         toolArgs = toolCall.contentJson,
         content = toolCall.content,
         resultKind = ToolResultKind.Success,
+        toolDescription = finishTool.description,
         result = encodedResult
     )
 }

@@ -471,12 +471,14 @@ public abstract class AIAgentPipeline(public val clock: Clock) {
     /**
      * Notifies all registered tool handlers when a validation error occurs during a tool call.
      *
-     * @param executionInfo The execution information for the tool call event
-     * @param runId The unique identifier for the current run.
-     * @param toolCallId The unique identifier for the current tool call.
-     * @param toolName The name of the tool for which validation failed
-     * @param toolArgs The arguments that failed validation
-     * @param error The validation error message
+     * @param executionInfo The execution information for the tool call event;
+     * @param runId The unique identifier for the current run;
+     * @param toolCallId The unique identifier for the current tool call;
+     * @param toolName The name of the tool for which validation failed;
+     * @param toolArgs The arguments that failed validation;
+     * @param toolDescription The description of the tool that was called;
+     * @param message The validation error message;
+     * @param error The validation error message.
      */
     public suspend fun onToolValidationFailed(
         executionInfo: AgentExecutionInfo,
@@ -484,10 +486,11 @@ public abstract class AIAgentPipeline(public val clock: Clock) {
         toolCallId: String?,
         toolName: String,
         toolArgs: JsonObject,
+        toolDescription: String?,
         message: String,
         error: ToolException,
     ) {
-        val eventContext = ToolValidationFailedContext(executionInfo, runId, toolCallId, toolName, toolArgs, message, error)
+        val eventContext = ToolValidationFailedContext(executionInfo, runId, toolCallId, toolName, toolArgs, toolDescription, message, error)
         toolCallEventHandlers.values.forEach { handler -> handler.toolValidationErrorHandler.handle(eventContext) }
     }
 
@@ -499,6 +502,8 @@ public abstract class AIAgentPipeline(public val clock: Clock) {
      * @param toolCallId The unique identifier for the current tool call;
      * @param toolName The tool name that was called;
      * @param toolArgs The arguments provided to the tool;
+     * @param toolDescription The description of the tool that was called;
+     * @param message A message describing the failure.
      * @param exception The [Throwable] that caused the failure.
      */
     public suspend fun onToolCallFailed(
@@ -507,10 +512,11 @@ public abstract class AIAgentPipeline(public val clock: Clock) {
         toolCallId: String?,
         toolName: String,
         toolArgs: JsonObject,
+        toolDescription: String?,
         message: String,
         exception: Throwable?
     ) {
-        val eventContext = ToolCallFailedContext(executionInfo, runId, toolCallId, toolName, toolArgs, message, exception)
+        val eventContext = ToolCallFailedContext(executionInfo, runId, toolCallId, toolName, toolArgs, toolDescription, message, exception)
         toolCallEventHandlers.values.forEach { handler -> handler.toolCallFailureHandler.handle(eventContext) }
     }
 
@@ -522,6 +528,7 @@ public abstract class AIAgentPipeline(public val clock: Clock) {
      * @param toolCallId The unique identifier for the current tool call;
      * @param toolName The tool name that was called;
      * @param toolArgs The arguments that were provided to the tool;
+     * @param toolDescription The description of the tool that was called;
      * @param toolResult The result produced by the tool, or null if no result was produced.
      */
     public suspend fun onToolCallCompleted(
@@ -530,9 +537,10 @@ public abstract class AIAgentPipeline(public val clock: Clock) {
         toolCallId: String?,
         toolName: String,
         toolArgs: JsonObject,
+        toolDescription: String?,
         toolResult: JsonElement?
     ) {
-        val eventContext = ToolCallCompletedContext(executionInfo, runId, toolCallId, toolName, toolArgs, toolResult)
+        val eventContext = ToolCallCompletedContext(executionInfo, runId, toolCallId, toolName, toolArgs, toolDescription, toolResult)
         toolCallEventHandlers.values.forEach { handler -> handler.toolCallResultHandler.handle(eventContext) }
     }
 

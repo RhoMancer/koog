@@ -49,7 +49,7 @@ public data class LLMStreamingStartingEvent(
     ) : this(
         executionInfo = AgentExecutionInfo(
             id = LLMStreamingStartingEvent::class.simpleName.toString(),
-            parentId = null,
+            parent = null,
             path = AgentExecutionPath.EMPTY
         ),
         runId = runId,
@@ -97,7 +97,7 @@ public data class LLMStreamingFrameReceivedEvent(
     ) : this(
         executionInfo = AgentExecutionInfo(
             id = LLMStreamingFrameReceivedEvent::class.simpleName.toString(),
-            parentId = null,
+            parent = null,
             path = AgentExecutionPath.EMPTY
         ),
         runId = runId,
@@ -145,7 +145,7 @@ public data class LLMStreamingFailedEvent(
     ) : this(
         executionInfo = AgentExecutionInfo(
             id = LLMStreamingFailedEvent::class.simpleName.toString(),
-            parentId = null,
+            parent = null,
             path = AgentExecutionPath.EMPTY
         ),
         runId = runId,
@@ -193,7 +193,7 @@ public data class LLMStreamingCompletedEvent(
     ) : this(
         executionInfo = AgentExecutionInfo(
             id = LLMStreamingCompletedEvent::class.simpleName.toString(),
-            parentId = null,
+            parent = null,
             path = AgentExecutionPath.EMPTY
         ),
         runId = runId,

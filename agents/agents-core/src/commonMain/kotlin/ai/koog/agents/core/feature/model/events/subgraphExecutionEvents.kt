@@ -44,7 +44,7 @@ public data class SubgraphExecutionStartingEvent(
     ) : this(
         executionInfo = AgentExecutionInfo(
             id = SubgraphExecutionStartingEvent::class.simpleName.toString(),
-            parentId = null,
+            parent = null,
             path = AgentExecutionPath.EMPTY
         ),
         runId = runId,
@@ -90,7 +90,7 @@ public data class SubgraphExecutionCompletedEvent(
     ) : this(
         executionInfo = AgentExecutionInfo(
             id = SubgraphExecutionCompletedEvent::class.simpleName.toString(),
-            parentId = null,
+            parent = null,
             path = AgentExecutionPath.EMPTY
         ),
         runId = runId,
@@ -137,7 +137,7 @@ public data class SubgraphExecutionFailedEvent(
     ) : this(
         executionInfo = AgentExecutionInfo(
             id = SubgraphExecutionFailedEvent::class.simpleName.toString(),
-            parentId = null,
+            parent = null,
             path = AgentExecutionPath.EMPTY
         ),
         runId = runId,

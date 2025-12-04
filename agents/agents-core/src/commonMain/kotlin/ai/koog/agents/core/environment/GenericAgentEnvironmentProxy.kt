@@ -43,19 +43,19 @@ internal class GenericAgentEnvironmentProxy(
         when (val toolResultKind = toolResult.resultKind) {
             is ToolResultKind.Success -> {
                 context.pipeline.onToolCallCompleted(
-                    executionInfo, context.runId, toolResult.id, toolResult.tool, toolResult.toolArgs, toolResult.result
+                    executionInfo, context.runId, toolResult.id, toolResult.tool, toolResult.toolArgs, toolResult.toolDescription, toolResult.result
                 )
             }
 
             is ToolResultKind.Failure -> {
                 context.pipeline.onToolCallFailed(
-                    executionInfo, context.runId, toolResult.id, toolResult.tool, toolResult.toolArgs, toolResult.content, toolResultKind.exception
+                    executionInfo, context.runId, toolResult.id, toolResult.tool, toolResult.toolArgs, toolResult.toolDescription,toolResult.content, toolResultKind.exception
                 )
             }
 
             is ToolResultKind.ValidationError -> {
                 context.pipeline.onToolValidationFailed(
-                    executionInfo, context.runId, toolResult.id, toolResult.tool, toolResult.toolArgs, toolResult.content, toolResultKind.exception
+                    executionInfo, context.runId, toolResult.id, toolResult.tool, toolResult.toolArgs, toolResult.toolDescription, toolResult.content, toolResultKind.exception
                 )
             }
         }

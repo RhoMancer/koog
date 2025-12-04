@@ -53,7 +53,7 @@ public data class NodeExecutionStartingEvent(
     ) : this(
         executionInfo = AgentExecutionInfo(
             id = NodeExecutionStartingEvent::class.simpleName.toString(),
-            parentId = null,
+            parent = null,
             path = AgentExecutionPath.EMPTY
         ),
         runId = runId,
@@ -105,7 +105,7 @@ public data class NodeExecutionCompletedEvent(
     ) : this(
         executionInfo = AgentExecutionInfo(
             id = NodeExecutionCompletedEvent::class.simpleName.toString(),
-            parentId = null,
+            parent = null,
             path = AgentExecutionPath.EMPTY
         ),
         runId = runId,
@@ -155,7 +155,7 @@ public data class NodeExecutionFailedEvent(
     ) : this(
         executionInfo = AgentExecutionInfo(
             id = NodeExecutionFailedEvent::class.simpleName.toString(),
-            parentId = null,
+            parent = null,
             path = AgentExecutionPath.EMPTY
         ),
         runId = runId,

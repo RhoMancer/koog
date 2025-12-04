@@ -50,7 +50,7 @@ public data class ToolCallStartingEvent(
     ) : this(
         executionInfo = AgentExecutionInfo(
             id = ToolCallStartingEvent::class.simpleName.toString(),
-            parentId = null,
+            parent = null,
             path = AgentExecutionPath.EMPTY
         ),
         runId = runId,
@@ -72,6 +72,7 @@ public data class ToolCallStartingEvent(
  * @property toolCallId A unique identifier for the tool call that encountered the validation error;
  * @property toolName The name of the tool that encountered the validation error;
  * @property toolArgs The arguments associated with the tool at the time of validation failure;
+ * @property toolDescription A description of the tool that encountered the validation error;
  * @property error A message describing the validation error encountered;
  * @property timestamp The timestamp of the event, in milliseconds since the Unix epoch.
  */
@@ -82,6 +83,7 @@ public data class ToolValidationFailedEvent(
     val toolCallId: String?,
     val toolName: String,
     val toolArgs: JsonObject,
+    val toolDescription: String?,
     val message: String?,
     val error: AIAgentError,
     override val timestamp: Long = Clock.System.now().toEpochMilliseconds(),
@@ -104,13 +106,14 @@ public data class ToolValidationFailedEvent(
     ) : this(
         executionInfo = AgentExecutionInfo(
             id = ToolValidationFailedEvent::class.simpleName.toString(),
-            parentId = null,
+            parent = null,
             path = AgentExecutionPath.EMPTY
         ),
         runId = runId,
         toolCallId = toolCallId,
         toolName = toolName,
         toolArgs = toolArgs,
+        toolDescription = null,
         message = error,
         error = AIAgentError(error, "", null)
     )
@@ -128,6 +131,7 @@ public data class ToolValidationFailedEvent(
  * @property toolCallId A unique identifier for the tool call that failed;
  * @property toolName The name of the tool that failed;
  * @property toolArgs The arguments passed to the tool during the failed execution;
+ * @property toolDescription A description of the tool that failed;
  * @property error The error encountered during the tool's execution;
  * @property timestamp The timestamp of the event, in milliseconds since the Unix epoch.
  */
@@ -138,6 +142,7 @@ public data class ToolCallFailedEvent(
     val toolCallId: String?,
     val toolName: String,
     val toolArgs: JsonObject,
+    val toolDescription: String?,
     val error: AIAgentError?,
     override val timestamp: Long = Clock.System.now().toEpochMilliseconds(),
 ) : DefinedFeatureEvent() {
@@ -159,13 +164,14 @@ public data class ToolCallFailedEvent(
     ) : this(
         executionInfo = AgentExecutionInfo(
             id = ToolCallFailedEvent::class.simpleName.toString(),
-            parentId = null,
+            parent = null,
             path = AgentExecutionPath.EMPTY
         ),
         runId = runId,
         toolCallId = toolCallId,
         toolName = toolName,
         toolArgs = toolArgs,
+        toolDescription = null,
         error = error,
         timestamp = timestamp
     )
@@ -183,6 +189,7 @@ public data class ToolCallFailedEvent(
  * @property toolCallId A unique identifier for the tool call that was executed;
  * @property toolName The name of the tool that was executed;
  * @property toolArgs The arguments used for executing the tool;
+ * @property toolDescription A description of the tool that was executed;
  * @property result The result of the tool execution, which may be null if no result was produced or an error occurred;
  * @property timestamp The timestamp of the event, in milliseconds since the Unix epoch.
  */
@@ -193,6 +200,7 @@ public data class ToolCallCompletedEvent(
     val toolCallId: String?,
     val toolName: String,
     val toolArgs: JsonObject,
+    val toolDescription: String?,
     val result: JsonElement?,
     override val timestamp: Long = Clock.System.now().toEpochMilliseconds(),
 ) : DefinedFeatureEvent() {
@@ -214,13 +222,14 @@ public data class ToolCallCompletedEvent(
     ) : this(
         executionInfo = AgentExecutionInfo(
             id = ToolCallCompletedEvent::class.simpleName.toString(),
-            parentId = null,
+            parent = null,
             path = AgentExecutionPath.EMPTY
         ),
         runId = runId,
         toolCallId = toolCallId,
         toolName = toolName,
         toolArgs = toolArgs,
+        toolDescription = null,
         result = JsonPrimitive(result),
         timestamp = timestamp
     )

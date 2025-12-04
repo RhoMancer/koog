@@ -216,8 +216,9 @@ class SpanProcessorTest {
         val agentId = "test-agent"
         val runId = "test-run"
 
-        val agentSpanId = CreateAgentSpan.createId(agentId)
-        val agentRunSpanId = InvokeAgentSpan.createId(agentId, runId)
+        val agentSpanId = agentId
+        val agentRunSpanId = runId
+
         val nodeSpanId = "agent.$agentId.run.$runId.node.testNode"
         val toolSpanId = "agent.$agentId.run.$runId.node.testNode.tool.testTool"
 
@@ -245,7 +246,7 @@ class SpanProcessorTest {
         assertFalse(toolSpan.isEnded)
 
         // End unfinished agent run spans
-        spanProcessor.endUnfinishedInvokeAgentSpans(agentId, runId)
+        spanProcessor.endUnfinishedSpans()
 
         // Verify that node and tool spans are ended, but agent and agent run spans are not
         assertTrue(agentSpan.isStarted)

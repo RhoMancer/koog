@@ -59,7 +59,7 @@ public data class GraphStrategyStartingEvent(
     ) : this(
         executionInfo = AgentExecutionInfo(
             id = GraphStrategyStartingEvent::class.simpleName.toString(),
-            parentId = null,
+            parent = null,
             path = AgentExecutionPath.EMPTY
         ),
         runId = runId,
@@ -99,7 +99,7 @@ public data class FunctionalStrategyStartingEvent(
     ) : this(
         executionInfo = AgentExecutionInfo(
             id = FunctionalStrategyStartingEvent::class.simpleName.toString(),
-            parentId = null,
+            parent = null,
             path = AgentExecutionPath.EMPTY
         ),
         runId = runId,
@@ -144,7 +144,7 @@ public data class StrategyCompletedEvent(
     ) : this(
         executionInfo = AgentExecutionInfo(
             id = StrategyCompletedEvent::class.simpleName.toString(),
-            parentId = null,
+            parent = null,
             path = AgentExecutionPath.EMPTY
         ),
         runId = runId,

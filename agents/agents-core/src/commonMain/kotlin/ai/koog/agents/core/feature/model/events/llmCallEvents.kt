@@ -53,7 +53,7 @@ public data class LLMCallStartingEvent(
     ) : this(
         executionInfo = AgentExecutionInfo(
             id = eventId,
-            parentId = null,
+            parent = null,
             path = AgentExecutionPath.EMPTY
         ),
         runId = runId,
@@ -119,7 +119,7 @@ public data class LLMCallCompletedEvent(
     ) : this(
         executionInfo = AgentExecutionInfo(
             id = eventId,
-            parentId = null,
+            parent = null,
             path = AgentExecutionPath.EMPTY
         ),
         runId = runId,

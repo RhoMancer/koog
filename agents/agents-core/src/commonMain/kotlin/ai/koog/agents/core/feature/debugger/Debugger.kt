@@ -334,6 +334,7 @@ public class Debugger(public val port: Int, public val awaitInitialConnectionTim
                     toolCallId = eventContext.toolCallId,
                     toolName = eventContext.toolName,
                     toolArgs = eventContext.toolArgs,
+                    toolDescription = eventContext.toolDescription,
                     message = eventContext.message,
                     error = eventContext.error.toAgentError(),
                     timestamp = pipeline.clock.now().toEpochMilliseconds()
@@ -348,6 +349,7 @@ public class Debugger(public val port: Int, public val awaitInitialConnectionTim
                     toolCallId = eventContext.toolCallId,
                     toolName = eventContext.toolName,
                     toolArgs = eventContext.toolArgs,
+                    toolDescription = eventContext.toolDescription,
                     error = eventContext.exception?.toAgentError(),
                     timestamp = pipeline.clock.now().toEpochMilliseconds()
                 )
@@ -361,6 +363,7 @@ public class Debugger(public val port: Int, public val awaitInitialConnectionTim
                     toolCallId = eventContext.toolCallId,
                     toolName = eventContext.toolName,
                     toolArgs = eventContext.toolArgs,
+                    toolDescription = eventContext.toolDescription,
                     result = eventContext.toolResult,
                     timestamp = pipeline.clock.now().toEpochMilliseconds()
                 )

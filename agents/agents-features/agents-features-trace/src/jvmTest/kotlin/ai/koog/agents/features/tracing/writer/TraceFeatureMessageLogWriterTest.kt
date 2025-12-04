@@ -1,5 +1,6 @@
 package ai.koog.agents.features.tracing.writer
 
+import ai.koog.agents.core.agent.context.AgentExecutionInfo
 import ai.koog.agents.core.annotation.InternalAgentsApi
 import ai.koog.agents.core.dsl.builder.forwardTo
 import ai.koog.agents.core.dsl.builder.strategy
@@ -273,7 +274,11 @@ class TraceFeatureMessageLogWriterTest {
 
         val actualMessages = listOf(
             FeatureStringMessage("Test string message"),
-            AgentStartingEvent(id = id, parentId = parentId, agentId = agentId, runId = runId)
+            AgentStartingEvent(
+                executionInfo = AgentExecutionInfo(id),
+                agentId = agentId,
+                runId = runId
+            )
         )
 
         val expectedMessages = listOf(

@@ -1,5 +1,6 @@
 package ai.koog.agents.features.tracing.writer
 
+import ai.koog.agents.core.agent.context.AgentExecutionInfo
 import ai.koog.agents.core.annotation.InternalAgentsApi
 import ai.koog.agents.core.dsl.builder.forwardTo
 import ai.koog.agents.core.dsl.builder.strategy
@@ -201,7 +202,14 @@ class TraceFeatureMessageRemoteWriterTest {
             messages = expectedPrompt.messages + listOf(
                 userMessage(content = userPrompt),
                 toolCallMessage(dummyTool.name, content = """{"dummy":"test"}"""),
-                receivedToolResult("0", dummyTool.name, dummyTool.result, dummyTool.encodeResult(dummyTool.result)).toMessage(clock = testClock)
+                receivedToolResult(
+                    toolCallId = "0",
+                    toolName = dummyTool.name,
+                    toolArgs = dummyTool.encodeArgs(DummyTool.Args("test")),
+                    toolDescription = dummyTool.description,
+                    content = dummyTool.encodeResultToString(dummyTool.result),
+                    result = dummyTool.encodeResult(dummyTool.result)
+                ).toMessage(clock = testClock)
             )
         )
 
@@ -315,15 +323,13 @@ class TraceFeatureMessageRemoteWriterTest {
                 expectedClientEvents.addAll(
                     listOf(
                         AgentStartingEvent(
-                            id = actualAgentStartingEvent.id,
-                            parentId = null,
+                            executionInfo = actualAgentStartingEvent.executionInfo,
                             agentId = agentId,
                             runId = runId,
                             timestamp = testClock.now().toEpochMilliseconds()
                         ),
                         GraphStrategyStartingEvent(
-                            id = actualStrategyStartingEvent.id,
-                            parentId = actualAgentStartingEvent.id,
+                            executionInfo = actualAgentStartingEvent.executionInfo,
                             runId = runId,
                             strategyName = strategyName,
                             graph = StrategyEventGraph(
@@ -358,8 +364,7 @@ class TraceFeatureMessageRemoteWriterTest {
                             timestamp = testClock.now().toEpochMilliseconds()
                         ),
                         NodeExecutionStartingEvent(
-                            id = actualNodeStartEvent.id,
-                            parentId = actualStrategyStartingEvent.id,
+                            executionInfo = actualAgentStartingEvent.executionInfo,
                             runId = runId,
                             nodeName = "__start__",
                             input = @OptIn(InternalAgentsApi::class)
@@ -370,8 +375,7 @@ class TraceFeatureMessageRemoteWriterTest {
                             timestamp = testClock.now().toEpochMilliseconds()
                         ),
                         NodeExecutionCompletedEvent(
-                            id = actualNodeStartEvent.id,
-                            parentId = actualStrategyStartingEvent.id,
+                            executionInfo = actualAgentStartingEvent.executionInfo,
                             runId = runId,
                             nodeName = "__start__",
                             input = @OptIn(InternalAgentsApi::class)
@@ -387,8 +391,7 @@ class TraceFeatureMessageRemoteWriterTest {
                             timestamp = testClock.now().toEpochMilliseconds()
                         ),
                         NodeExecutionStartingEvent(
-                            id = actualNodeLLMCallEvent.id,
-                            parentId = actualStrategyStartingEvent.id,
+                            executionInfo = actualAgentStartingEvent.executionInfo,
                             runId = runId,
                             nodeName = "test-llm-call",
                             input = @OptIn(InternalAgentsApi::class)
@@ -399,8 +402,7 @@ class TraceFeatureMessageRemoteWriterTest {
                             timestamp = testClock.now().toEpochMilliseconds()
                         ),
                         LLMCallStartingEvent(
-                            id = actualLLMCallEvent.id,
-                            parentId = actualNodeLLMCallEvent.id,
+                            executionInfo = actualAgentStartingEvent.executionInfo,
                             runId = runId,
                             prompt = expectedLLMCallPrompt,
                             model = testModel.toModelInfo(),
@@ -408,8 +410,7 @@ class TraceFeatureMessageRemoteWriterTest {
                             timestamp = testClock.now().toEpochMilliseconds()
                         ),
                         LLMCallCompletedEvent(
-                            id = actualLLMCallEvent.id,
-                            parentId = actualNodeLLMCallEvent.id,
+                            executionInfo = actualAgentStartingEvent.executionInfo,
                             runId = runId,
                             prompt = expectedLLMCallPrompt,
                             model = testModel.toModelInfo(),
@@ -417,8 +418,7 @@ class TraceFeatureMessageRemoteWriterTest {
                             timestamp = testClock.now().toEpochMilliseconds()
                         ),
                         NodeExecutionCompletedEvent(
-                            id = actualNodeLLMCallEvent.id,
-                            parentId = actualStrategyStartingEvent.id,
+                            executionInfo = actualAgentStartingEvent.executionInfo,
                             runId = runId,
                             nodeName = "test-llm-call",
                             // TODO: KG-485. Update to include serialized [ReceivedToolResult] when it became a serializable type.
@@ -431,8 +431,7 @@ class TraceFeatureMessageRemoteWriterTest {
                             timestamp = testClock.now().toEpochMilliseconds()
                         ),
                         NodeExecutionStartingEvent(
-                            id = actualNodeToolCallEvent.id,
-                            parentId = actualStrategyStartingEvent.id,
+                            executionInfo = actualAgentStartingEvent.executionInfo,
                             runId = runId,
                             nodeName = "test-tool-call",
                             input = @OptIn(InternalAgentsApi::class)
@@ -443,8 +442,7 @@ class TraceFeatureMessageRemoteWriterTest {
                             timestamp = testClock.now().toEpochMilliseconds()
                         ),
                         ToolCallStartingEvent(
-                            id = actualToolCallStartingEvent.id,
-                            parentId = actualNodeToolCallEvent.id,
+                            executionInfo = actualAgentStartingEvent.executionInfo,
                             runId = runId,
                             toolCallId = "0",
                             toolName = dummyTool.name,
@@ -452,18 +450,17 @@ class TraceFeatureMessageRemoteWriterTest {
                             timestamp = testClock.now().toEpochMilliseconds()
                         ),
                         ToolCallCompletedEvent(
-                            id = actualToolCallStartingEvent.id,
-                            parentId = actualNodeToolCallEvent.id,
+                            executionInfo = actualAgentStartingEvent.executionInfo,
                             runId = runId,
                             toolCallId = "0",
                             toolName = dummyTool.name,
                             toolArgs = dummyTool.encodeArgs(DummyTool.Args("test")),
-                            result = dummyTool.result,
+                            toolDescription = dummyTool.description,
+                            result = dummyTool.encodeResult(dummyTool.result),
                             timestamp = testClock.now().toEpochMilliseconds()
                         ),
                         NodeExecutionCompletedEvent(
-                            id = actualNodeToolCallEvent.id,
-                            parentId = actualStrategyStartingEvent.id,
+                            executionInfo = actualAgentStartingEvent.executionInfo,
                             runId = runId,
                             nodeName = "test-tool-call",
                             input = @OptIn(InternalAgentsApi::class)
@@ -483,8 +480,7 @@ class TraceFeatureMessageRemoteWriterTest {
                             )
                         ),
                         NodeExecutionStartingEvent(
-                            id = actualNodeSendToolResultEvent.id,
-                            parentId = actualStrategyStartingEvent.id,
+                            executionInfo = actualAgentStartingEvent.executionInfo,
                             runId = runId,
                             nodeName = "test-node-llm-send-tool-result",
                             input = kotlinx.serialization.json.JsonObject(
@@ -498,8 +494,7 @@ class TraceFeatureMessageRemoteWriterTest {
                             timestamp = testClock.now().toEpochMilliseconds()
                         ),
                         LLMCallStartingEvent(
-                            id = actualLLMSendToolResultEvent.id,
-                            parentId = actualNodeSendToolResultEvent.id,
+                            executionInfo = actualAgentStartingEvent.executionInfo,
                             runId = runId,
                             prompt = expectedLLMCallWithToolsPrompt,
                             model = testModel.toModelInfo(),
@@ -507,8 +502,7 @@ class TraceFeatureMessageRemoteWriterTest {
                             timestamp = testClock.now().toEpochMilliseconds()
                         ),
                         LLMCallCompletedEvent(
-                            id = actualLLMSendToolResultEvent.id,
-                            parentId = actualNodeSendToolResultEvent.id,
+                            executionInfo = actualAgentStartingEvent.executionInfo,
                             runId = runId,
                             prompt = expectedLLMCallWithToolsPrompt,
                             model = testModel.toModelInfo(),
@@ -516,8 +510,7 @@ class TraceFeatureMessageRemoteWriterTest {
                             timestamp = testClock.now().toEpochMilliseconds()
                         ),
                         NodeExecutionCompletedEvent(
-                            id = actualNodeSendToolResultEvent.id,
-                            parentId = actualStrategyStartingEvent.id,
+                            executionInfo = actualAgentStartingEvent.executionInfo,
                             runId = runId,
                             nodeName = "test-node-llm-send-tool-result",
                             input = kotlinx.serialization.json.JsonObject(
@@ -536,8 +529,7 @@ class TraceFeatureMessageRemoteWriterTest {
                             timestamp = testClock.now().toEpochMilliseconds()
                         ),
                         NodeExecutionStartingEvent(
-                            id = actualNodeFinishEvent.id,
-                            parentId = actualStrategyStartingEvent.id,
+                            executionInfo = actualAgentStartingEvent.executionInfo,
                             runId = runId,
                             nodeName = "__finish__",
                             input = @OptIn(InternalAgentsApi::class)
@@ -548,8 +540,7 @@ class TraceFeatureMessageRemoteWriterTest {
                             timestamp = testClock.now().toEpochMilliseconds()
                         ),
                         NodeExecutionCompletedEvent(
-                            id = actualNodeFinishEvent.id,
-                            parentId = actualStrategyStartingEvent.id,
+                            executionInfo = actualAgentStartingEvent.executionInfo,
                             runId = runId,
                             nodeName = "__finish__",
                             input = @OptIn(InternalAgentsApi::class)
@@ -565,24 +556,21 @@ class TraceFeatureMessageRemoteWriterTest {
                             timestamp = testClock.now().toEpochMilliseconds()
                         ),
                         StrategyCompletedEvent(
-                            id = actualStrategyStartingEvent.id,
-                            parentId = actualAgentStartingEvent.id,
+                            executionInfo = actualAgentStartingEvent.executionInfo,
                             runId = runId,
                             strategyName = strategyName,
                             result = mockResponse,
                             timestamp = testClock.now().toEpochMilliseconds()
                         ),
                         AgentCompletedEvent(
-                            id = actualAgentStartingEvent.id,
-                            parentId = null,
+                            executionInfo = actualAgentStartingEvent.executionInfo,
                             agentId = agentId,
                             runId = runId,
                             result = mockResponse,
                             timestamp = testClock.now().toEpochMilliseconds()
                         ),
                         AgentClosingEvent(
-                            id = actualAgentClosingEvent.id,
-                            parentId = null,
+                            executionInfo = actualAgentStartingEvent.executionInfo,
                             agentId = agentId,
                             timestamp = testClock.now().toEpochMilliseconds()
                         )
@@ -756,7 +744,14 @@ class TraceFeatureMessageRemoteWriterTest {
             messages = expectedPrompt.messages + listOf(
                 userMessage(content = userPrompt),
                 toolCallMessage(dummyTool.name, content = """{"dummy":"test"}"""),
-                receivedToolResult("0", dummyTool.name, dummyTool.result, dummyTool.encodeResult(dummyTool.result)).toMessage(clock = testClock)
+                receivedToolResult(
+                    toolCallId = "0",
+                    toolName = dummyTool.name,
+                    toolArgs = dummyTool.encodeArgs(DummyTool.Args("test")),
+                    toolDescription = dummyTool.description,
+                    content = dummyTool.encodeResultToString(dummyTool.result),
+                    result = dummyTool.encodeResult(dummyTool.result)
+                ).toMessage(clock = testClock)
             )
         )
 
@@ -849,9 +844,7 @@ class TraceFeatureMessageRemoteWriterTest {
                 expectedClientEvents.addAll(
                     listOf(
                         LLMCallStartingEvent(
-                            id = actualLLMCallEvent.id,
-                            // We test filter and not able to receive node events to verify the 'parentId' field
-                            parentId = actualLLMCallEvent.parentId,
+                            executionInfo = actualLLMCallEvent.executionInfo,
                             runId = runId,
                             prompt = expectedLLMCallPrompt,
                             model = testModel.toModelInfo(),
@@ -859,9 +852,7 @@ class TraceFeatureMessageRemoteWriterTest {
                             timestamp = testClock.now().toEpochMilliseconds()
                         ),
                         LLMCallCompletedEvent(
-                            id = actualLLMCallEvent.id,
-                            // We test filter and not able to receive node events to verify the 'parentId' field
-                            parentId = actualLLMCallEvent.parentId,
+                            executionInfo = actualLLMCallEvent.executionInfo,
                             runId = runId,
                             prompt = expectedLLMCallPrompt,
                             model = testModel.toModelInfo(),
@@ -869,9 +860,7 @@ class TraceFeatureMessageRemoteWriterTest {
                             timestamp = testClock.now().toEpochMilliseconds()
                         ),
                         LLMCallStartingEvent(
-                            id = actualLLMSendToolResultEvent.id,
-                            // We test filter and not able to receive node events to verify the 'parentId' field
-                            parentId = actualLLMSendToolResultEvent.parentId,
+                            executionInfo = actualLLMCallEvent.executionInfo,
                             runId = runId,
                             prompt = expectedLLMCallWithToolsPrompt,
                             model = testModel.toModelInfo(),
@@ -879,9 +868,7 @@ class TraceFeatureMessageRemoteWriterTest {
                             timestamp = testClock.now().toEpochMilliseconds()
                         ),
                         LLMCallCompletedEvent(
-                            id = actualLLMSendToolResultEvent.id,
-                            // We test filter and not able to receive node events to verify the 'parentId' field
-                            parentId = actualLLMSendToolResultEvent.parentId,
+                            executionInfo = actualLLMCallEvent.executionInfo,
                             runId = runId,
                             prompt = expectedLLMCallWithToolsPrompt,
                             model = testModel.toModelInfo(),

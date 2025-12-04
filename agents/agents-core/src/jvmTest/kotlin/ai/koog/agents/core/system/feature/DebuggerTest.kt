@@ -235,7 +235,7 @@ class DebuggerTest {
                     listOf(
                         AgentStartingEvent(
                             id = actualAgentStartingEvent.id,
-                            parentId = null,
+                            parent = null,
                             agentId = agentId,
                             runId = clientEventsCollector.runId,
                             timestamp = testClock.now().toEpochMilliseconds()
@@ -512,7 +512,7 @@ class DebuggerTest {
                         ),
                         AgentCompletedEvent(
                             id = actualAgentStartingEvent.id,
-                            parentId = null,
+                            parent = null,
                             agentId = agentId,
                             runId = clientEventsCollector.runId,
                             result = mockResponse,
@@ -520,7 +520,7 @@ class DebuggerTest {
                         ),
                         AgentClosingEvent(
                             id = actualAgentClosingEvent.id,
-                            parentId = null,
+                            parent = null,
                             agentId = agentId,
                             timestamp = testClock.now().toEpochMilliseconds()
                         ),

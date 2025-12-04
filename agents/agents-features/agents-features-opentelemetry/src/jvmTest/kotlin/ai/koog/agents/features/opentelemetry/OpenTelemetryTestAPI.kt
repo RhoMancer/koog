@@ -261,11 +261,11 @@ internal object OpenTelemetryTestAPI {
         val nodesInfo = mutableListOf<NodeInfo>()
         install(EventHandler.Feature) {
             onNodeExecutionStarting { eventContext ->
-                nodesInfo.add(NodeInfo(nodeName = eventContext.node.name, nodeId = eventContext.id))
+                nodesInfo.add(NodeInfo(nodeName = eventContext.node.name, nodeId = eventContext.node.id))
             }
 
             onSubgraphExecutionStarting { eventContext ->
-                nodesInfo.add(NodeInfo(nodeName = eventContext.subgraph.name, nodeId = eventContext.id))
+                nodesInfo.add(NodeInfo(nodeName = eventContext.subgraph.name, nodeId = eventContext.subgraph.id))
             }
         }
         return nodesInfo

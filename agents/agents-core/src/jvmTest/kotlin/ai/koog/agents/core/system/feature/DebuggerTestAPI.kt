@@ -138,7 +138,7 @@ internal object DebuggerTestAPI {
                     listOf(
                         AgentStartingEvent(
                             id = actualAgentStartingEvent.id,
-                            parentId = null,
+                            parent = null,
                             agentId = agentId,
                             runId = clientEventsCollector.runId,
                             timestamp = testClock.now().toEpochMilliseconds()
@@ -227,7 +227,7 @@ internal object DebuggerTestAPI {
                         ),
                         AgentCompletedEvent(
                             id = actualAgentStartingEvent.id,
-                            parentId = null,
+                            parent = null,
                             agentId = agentId,
                             runId = clientEventsCollector.runId,
                             result = userPrompt,
@@ -235,7 +235,7 @@ internal object DebuggerTestAPI {
                         ),
                         AgentClosingEvent(
                             id = actualAgentClosingEvent.id,
-                            parentId = null,
+                            parent = null,
                             agentId = agentId,
                             timestamp = testClock.now().toEpochMilliseconds()
                         ),

@@ -24,7 +24,7 @@ public sealed interface AgentToolCallToEnvironmentMessage : AgentToEnvironmentMe
  *
  * @property toolName Name of the tool to call.
  * @property toolArgs Arguments for the called tool.
- * @property toolCallId Id to identify tool call when calling multiple tools at once.
+ * @property toolCallId The unique id to identify tool call when calling multiple tools at once.
  * Not all implementations support it, it will be `null` in this case.
  */
 @Serializable
