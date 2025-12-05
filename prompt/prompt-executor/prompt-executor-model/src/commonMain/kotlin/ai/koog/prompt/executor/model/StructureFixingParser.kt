@@ -51,7 +51,7 @@ public class StructureFixingParser(
     ): StructuredResponse<T> {
         var attempt = 0
         var currentResponse: StructuredResponse<T> = response
-        while (!response.isSuccess && ++attempt <= retries) {
+        while (!currentResponse.isSuccess && ++attempt <= retries) {
             logger.debug { "$attempt/$retries: Try to fix LLM structured response:\n$currentResponse" }
 
             currentResponse = executeFixStructure(

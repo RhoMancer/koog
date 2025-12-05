@@ -5,6 +5,7 @@ version = rootProject.version
 
 plugins {
     id("ai.kotlin.multiplatform")
+    alias(libs.plugins.kotlin.serialization)
 }
 
 kotlin {
@@ -22,6 +23,12 @@ kotlin {
         jvmMain {
             dependencies {
                 api(libs.kotlinx.coroutines.jdk8)
+            }
+        }
+
+        jvmTest {
+            dependencies {
+                implementation(kotlin("test-junit5"))
             }
         }
 

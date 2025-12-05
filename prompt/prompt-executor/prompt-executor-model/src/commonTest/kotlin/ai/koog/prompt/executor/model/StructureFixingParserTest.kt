@@ -151,7 +151,12 @@ class StructureFixingParserTest {
             mockLLMAnswer(fixedContent) onRequestContains "unquotedKey"
         }
 
-        val result = parser.parse(mockExecutor, structure, invalidContent).getOrThrow()
+        val response = StructuredResponse.Failure<DataWithWildcard>(
+            message = buildMessage(invalidContent),
+            exception = Exception("Failed to parse")
+        )
+
+        val result = parser.parse(mockExecutor, structure, response).getOrThrow().data
 
         assertEquals("test-id", result.id)
         assertTrue(result.payload is JsonObject)
