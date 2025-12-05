@@ -9,6 +9,7 @@ import ai.koog.prompt.dsl.Prompt
 import ai.koog.prompt.executor.model.PromptExecutor
 import ai.koog.prompt.executor.model.StructureFixingParser
 import ai.koog.prompt.executor.model.executeStructured
+import ai.koog.prompt.executor.model.fixStructuredResponse
 import ai.koog.prompt.llm.LLModel
 import ai.koog.prompt.message.LLMChoice
 import ai.koog.prompt.message.Message
@@ -16,6 +17,7 @@ import ai.koog.prompt.params.LLMParams
 import ai.koog.prompt.streaming.StreamFrame
 import ai.koog.prompt.structure.StructuredRequestConfig
 import ai.koog.prompt.structure.StructuredResponse
+import ai.koog.prompt.structure.parseStructuredResponse
 import kotlinx.coroutines.flow.Flow
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.serializer
@@ -365,8 +367,8 @@ public sealed class AIAgentLLMSession(
         config: StructuredRequestConfig<T>,
         fixingParser: StructureFixingParser? = null
     ): StructuredResponse<T> {
-        TODO("")
-//        executor.parseResponseToStructuredResponse(response, config, model, fixingParser)
+        val response = parseStructuredResponse(config.structure(model), listOf(response))
+        return executor.fixStructuredResponse(response, config, fixingParser)
     }
 
     /**

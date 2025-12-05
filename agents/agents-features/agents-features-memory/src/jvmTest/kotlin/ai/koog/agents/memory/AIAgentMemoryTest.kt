@@ -8,6 +8,8 @@ import ai.koog.agents.core.tools.ToolRegistry
 import ai.koog.agents.memory.config.MemoryScopeType
 import ai.koog.agents.memory.config.MemoryScopesProfile
 import ai.koog.agents.memory.feature.AgentMemory
+import ai.koog.agents.memory.feature.FactListStructure
+import ai.koog.agents.memory.feature.FactStructure
 import ai.koog.agents.memory.model.Concept
 import ai.koog.agents.memory.model.Fact
 import ai.koog.agents.memory.model.FactType
@@ -27,6 +29,8 @@ import ai.koog.prompt.executor.model.PromptExecutor
 import ai.koog.prompt.llm.LLMProvider
 import ai.koog.prompt.llm.LLModel
 import ai.koog.prompt.message.Message
+import ai.koog.prompt.message.ResponseMetaInfo
+import ai.koog.prompt.structure.StructuredResponse
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.every
@@ -89,12 +93,15 @@ class AIAgentMemoryTest {
         val memoryProvider = mockk<AgentMemoryProvider>()
         val promptExecutor = mockk<PromptExecutor>()
 
-        val response = mockk<Message.Response>()
-        every { response.content } returns "Test fact"
-
         coEvery {
-            promptExecutor.execute(any(), any(), any())
-        } returns listOf(response)
+            promptExecutor.executeStructured<FactStructure>(any(), any(), any())
+        } returns StructuredResponse.Success(
+            data = FactStructure("Test fact"),
+            message = Message.Assistant(
+                content = "Test fact",
+                metaInfo = ResponseMetaInfo(testClock.now())
+            )
+        )
 
         coEvery {
             memoryProvider.save(any(), any(), any())
@@ -280,11 +287,15 @@ class AIAgentMemoryTest {
         val savedFacts = mutableListOf<SingleFact>()
 
         // Mock LLM response
-        val response = mockk<Message.Response>()
-        every { response.content } returns "Test fact"
         coEvery {
-            promptExecutor.execute(any(), any(), any())
-        } returns listOf(response)
+            promptExecutor.executeStructured<FactStructure>(any(), any(), any())
+        } returns StructuredResponse.Success(
+            data = FactStructure("Test fact"),
+            message = Message.Assistant(
+                content = "Test fact",
+                metaInfo = ResponseMetaInfo(testClock.now())
+            )
+        )
 
         // Mock memory feature to capture saved facts
         coEvery {
@@ -358,13 +369,17 @@ class AIAgentMemoryTest {
         val savedScopes = mutableListOf<MemoryScope>()
         val fact = "Custom model extracted fact"
 
-        val response = mockk<Message.Response>()
-        every { response.content } returns """{"fact": "$fact"}"""
-
         val capturedModels = mutableListOf<LLModel>()
+
         coEvery {
-            promptExecutor.execute(any(), capture(capturedModels), any())
-        } returns listOf(response)
+            promptExecutor.executeStructured<FactStructure>(any(), capture(capturedModels), any())
+        } returns StructuredResponse.Success(
+            data = FactStructure(fact),
+            message = Message.Assistant(
+                content = "Test fact",
+                metaInfo = ResponseMetaInfo(testClock.now())
+            )
+        )
 
         coEvery {
             memoryProvider.save(capture(savedFacts), capture(savedSubjects), capture(savedScopes))
@@ -422,7 +437,7 @@ class AIAgentMemoryTest {
         }
 
         coVerify(exactly = 1) {
-            promptExecutor.execute(any(), customModel, any())
+            promptExecutor.executeStructured<FactStructure>(any(), customModel, any())
         }
     }
 
@@ -435,23 +450,17 @@ class AIAgentMemoryTest {
         val expectedFacts = listOf("Java for backend services", "Python for data analysis", "JavaScript for frontend")
         val testScopeName = "test"
 
-        val response = mockk<Message.Response>()
-        every {
-            response.content
-        } returns """
-            {
-                "facts": [
-                    {"fact": "Java for backend services"},
-                    {"fact": "Python for data analysis"},
-                    {"fact": "JavaScript for frontend"}
-                ]
-            }
-        """.trimIndent()
-
         val capturedModels = mutableListOf<LLModel>()
+
         coEvery {
-            promptExecutor.execute(any(), capture(capturedModels), any())
-        } returns listOf(response)
+            promptExecutor.executeStructured<FactListStructure>(any(), capture(capturedModels), any())
+        } returns StructuredResponse.Success(
+            data = FactListStructure(expectedFacts.map { FactStructure(it) }),
+            message = Message.Assistant(
+                content = "Facts saved successfully",
+                metaInfo = ResponseMetaInfo(testClock.now())
+            )
+        )
 
         coEvery {
             memoryProvider.save(capture(savedFacts), any(), any())

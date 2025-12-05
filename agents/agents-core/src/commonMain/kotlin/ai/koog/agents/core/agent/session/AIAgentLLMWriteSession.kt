@@ -19,6 +19,7 @@ import ai.koog.prompt.streaming.StreamFrame
 import ai.koog.prompt.structure.StructureDefinition
 import ai.koog.prompt.structure.StructuredRequestConfig
 import ai.koog.prompt.structure.StructuredResponse
+import ai.koog.prompt.structure.onSuccess
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flatMapMerge
 import kotlinx.coroutines.flow.flow
@@ -459,7 +460,7 @@ public class AIAgentLLMWriteSession internal constructor(
         fixingParser: StructureFixingParser?
     ): StructuredResponse<T> {
         return super.requestLLMStructured(config, fixingParser).also { response ->
-            if (response.isSuccess) {
+            response.onSuccess {
                 appendPrompt {
                     response.message?.let { message(it) }
                 }

@@ -21,7 +21,7 @@ public suspend fun <T> PromptExecutor.executeStructured(
         structuredRequest = config.structuredRequest(model),
     )
 
-    return parseResponseToStructuredResponse(
+    return fixStructuredResponse(
         response,
         config,
         fixingParser
@@ -65,14 +65,14 @@ public suspend fun <T> PromptExecutor.executeStructured(
         structuredRequest = request,
     )
 
-    return parseResponseToStructuredResponse(
+    return fixStructuredResponse(
         response,
         StructuredRequestConfig(default = request),
         fixingParser
     )
 }
 
-public suspend fun <T> PromptExecutor.parseResponseToStructuredResponse(
+public suspend fun <T> PromptExecutor.fixStructuredResponse(
     response: StructuredResponse<T>,
     config: StructuredRequestConfig<T>,
     fixingParser: StructureFixingParser? = null,

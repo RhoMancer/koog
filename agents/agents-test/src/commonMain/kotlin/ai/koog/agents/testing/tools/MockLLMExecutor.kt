@@ -4,12 +4,15 @@ import ai.koog.agents.core.tools.ToolDescriptor
 import ai.koog.agents.core.tools.ToolRegistry
 import ai.koog.prompt.dsl.ModerationResult
 import ai.koog.prompt.dsl.Prompt
+import ai.koog.prompt.executor.model.LLMStructuredParsingError
 import ai.koog.prompt.executor.model.PromptExecutor
 import ai.koog.prompt.llm.LLModel
 import ai.koog.prompt.message.Message
 import ai.koog.prompt.message.ResponseMetaInfo
 import ai.koog.prompt.streaming.StreamFrame
 import ai.koog.prompt.streaming.toStreamFrame
+import ai.koog.prompt.structure.StructuredRequest
+import ai.koog.prompt.structure.StructuredResponse
 import ai.koog.prompt.tokenizer.Tokenizer
 import io.github.oshai.kotlinlogging.KLogger
 import io.github.oshai.kotlinlogging.KotlinLogging
@@ -100,6 +103,32 @@ internal class MockLLMExecutor(
     ): Flow<StreamFrame> = flow {
         execute(prompt = prompt, model = model).forEach {
             emit(it.toStreamFrame())
+        }
+    }
+
+    override suspend fun <T> executeStructured(
+        prompt: Prompt,
+        model: LLModel,
+        structuredRequest: StructuredRequest<T>
+    ): StructuredResponse<T> {
+        val response = execute(prompt, model)
+        val assistantMessage = response.filterIsInstance<Message.Assistant>().firstOrNull()
+            ?: return StructuredResponse.Failure<T>(
+                message = null,
+                exception = LLMStructuredParsingError(message = "No assistant message found in response", cause = null)
+            )
+
+        try {
+            val structuredData = structuredRequest.structure.parse(assistantMessage.content)
+            return StructuredResponse.Success(
+                message = assistantMessage,
+                data = structuredData
+            )
+        } catch (exception: Exception) {
+            return StructuredResponse.Failure(
+                message = null,
+                exception = LLMStructuredParsingError(message = "Failed to parse assistant message", cause = exception)
+            )
         }
     }
 

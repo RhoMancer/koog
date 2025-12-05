@@ -14,9 +14,13 @@ import ai.koog.agents.core.tools.ToolRegistry
 import ai.koog.prompt.dsl.prompt
 import ai.koog.prompt.executor.clients.openai.OpenAIModels
 import ai.koog.prompt.executor.model.PromptExecutor
+import ai.koog.prompt.executor.model.executeStructured
 import ai.koog.prompt.llm.OllamaModels
 import ai.koog.prompt.message.Message
 import ai.koog.prompt.message.ResponseMetaInfo
+import ai.koog.prompt.structure.StructuredResponse
+import ai.koog.prompt.structure.json.generator.BasicJsonSchemaGenerator
+import ai.koog.prompt.structure.json.generator.StandardJsonSchemaGenerator
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.mockk
@@ -97,15 +101,23 @@ class LLMAsJudgeNodeTest {
             task = CRITIC_TASK
         )
 
-        coEvery { mockPromptExecutor.execute(any(), any(), any()) } returns listOf(
-            Message.Assistant(
-                content = Json.encodeToString(
-                    CriticResultFromLLM.serializer(),
-                    CriticResultFromLLM(isCorrect = true, feedback = "All good")
+        coEvery { mockPromptExecutor.getStandardJsonSchemaGenerator(any()) } returns StandardJsonSchemaGenerator
+        coEvery { mockPromptExecutor.getBasicJsonSchemaGenerator(any()) } returns BasicJsonSchemaGenerator
+
+        coEvery { mockPromptExecutor.executeStructured<CriticResultFromLLM>(any(), any(), any()) } returns
+            StructuredResponse.Success(
+                data = CriticResultFromLLM(
+                    isCorrect = true,
+                    feedback = "All good"
                 ),
-                metaInfo = ResponseMetaInfo.create(testClock),
+                message = Message.Assistant(
+                    content = Json.encodeToString(
+                        CriticResultFromLLM.serializer(),
+                        CriticResultFromLLM(isCorrect = true, feedback = "All good")
+                    ),
+                    metaInfo = ResponseMetaInfo.create(testClock),
+                )
             )
-        )
 
         llmJudgeNode.execute(context, input = -200)
 
@@ -139,7 +151,7 @@ class LLMAsJudgeNodeTest {
         """.trimIndent()
 
         coVerify {
-            mockPromptExecutor.execute(
+            mockPromptExecutor.executeStructured<CriticResultFromLLM>(
                 prompt = match {
                     (it.messages.size == 2) &&
                         (it.messages.first().role == Message.Role.System && it.messages.first().content == CRITIC_TASK) &&
@@ -149,7 +161,7 @@ class LLMAsJudgeNodeTest {
                 model = match {
                     it == anotherModel
                 },
-                tools = any()
+                structuredRequest = any()
             )
         }
 

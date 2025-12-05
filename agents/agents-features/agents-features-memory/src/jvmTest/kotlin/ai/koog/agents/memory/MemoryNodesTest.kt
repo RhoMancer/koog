@@ -9,6 +9,7 @@ import ai.koog.agents.core.dsl.builder.strategy
 import ai.koog.agents.core.tools.ToolRegistry
 import ai.koog.agents.memory.config.MemoryScopeType
 import ai.koog.agents.memory.feature.AgentMemory
+import ai.koog.agents.memory.feature.FactStructure
 import ai.koog.agents.memory.feature.nodes.nodeLoadAllFactsFromMemory
 import ai.koog.agents.memory.feature.nodes.nodeSaveToMemory
 import ai.koog.agents.memory.feature.nodes.nodeSaveToMemoryAutoDetectFacts
@@ -30,9 +31,12 @@ import ai.koog.prompt.dsl.prompt
 import ai.koog.prompt.executor.clients.anthropic.AnthropicModels
 import ai.koog.prompt.executor.clients.openai.OpenAIModels
 import ai.koog.prompt.llm.OllamaModels
+import ai.koog.prompt.structure.StructuredRequest
+import ai.koog.prompt.structure.json.JsonStructure
 import ai.koog.rag.base.files.JVMFileSystemProvider
 import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.Json
 import org.junit.jupiter.api.io.TempDir
 import java.nio.file.Path
 import kotlin.test.Test
@@ -282,9 +286,17 @@ class MemoryNodesTest {
         val memory = TestMemoryProvider()
 
         val testExecutor = getMockExecutor {
-            mockLLMAnswer("Custom model extracted fact") onRequestContains "test-concept-custom"
+            mockLLMAnswer(Json.encodeToString(FactStructure("Custom model extracted fact"))) onRequestContains "test-concept-custom"
             mockLLMAnswer("Default test response").asDefaultResponse
         }
+
+        val response = testExecutor.executeStructured(
+            prompt = prompt("structured") { user("test-concept-custom") },
+            model = customModel,
+            StructuredRequest.Manual(JsonStructure.create<FactStructure>())
+        )
+
+        assertTrue(response.isSuccess, "The structured response should be successfully mocked")
 
         val strategy = strategy<String, String>("test-agent") {
             val save by nodeSaveToMemory<Unit>(

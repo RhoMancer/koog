@@ -37,6 +37,7 @@ import ai.koog.prompt.executor.model.PromptExecutor
 import ai.koog.prompt.llm.LLModel
 import ai.koog.prompt.message.Message
 import ai.koog.prompt.message.RequestMetaInfo
+import ai.koog.prompt.structure.getOrThrow
 import ai.koog.prompt.tokenizer.SimpleRegexBasedTokenizer
 import ai.koog.utils.io.use
 import io.opentelemetry.sdk.trace.export.SpanExporter

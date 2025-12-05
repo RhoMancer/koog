@@ -4,10 +4,10 @@ import ai.koog.prompt.dsl.PromptBuilder
 import ai.koog.prompt.dsl.prompt
 import ai.koog.prompt.llm.LLModel
 import ai.koog.prompt.markdown.markdown
-import ai.koog.prompt.message.Message
 import ai.koog.prompt.params.LLMParams
 import ai.koog.prompt.structure.Structure
 import ai.koog.prompt.structure.StructuredResponse
+import ai.koog.prompt.structure.parseStructuredResponse
 import io.github.oshai.kotlinlogging.KotlinLogging
 import kotlinx.serialization.SerializationException
 
@@ -91,21 +91,8 @@ public class StructureFixingParser(
             prompt(this, response.message?.content, structure, response.exception)
         }
 
-        val message = executor.execute(prompt = prompt, model = model).single()
-        try {
-            require(message is Message.Assistant) { "Response for fixing structure must be an assistant message, got ${message::class.simpleName} instead" }
-            val structuredResult = structure.parse(message.content)
-            return StructuredResponse.Success(
-                message = message,
-                data = structuredResult
-            )
-        } catch (e: Exception) {
-            logger.error(e) { "Failed to fix structure: ${response.message?.content}" }
-            return StructuredResponse.Failure(
-                message = message as? Message.Assistant,
-                exception = e
-            )
-        }
+        val message = executor.execute(prompt = prompt, model = model)
+        return parseStructuredResponse(structure, message)
     }
 
     /**

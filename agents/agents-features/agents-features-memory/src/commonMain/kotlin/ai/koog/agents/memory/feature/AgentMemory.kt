@@ -435,6 +435,18 @@ public class AgentMemory(
     }
 }
 
+@Serializable
+@LLMDescription("Fact text")
+internal data class FactStructure(
+    val fact: String
+)
+
+@Serializable
+@LLMDescription("Facts list")
+internal data class FactListStructure(
+    val facts: List<FactStructure>
+)
+
 /**
  * Extracts facts about a specific concept from the LLM chat history.
  *
@@ -453,18 +465,6 @@ public suspend fun AIAgentLLMWriteSession.retrieveFactsFromHistory(
     concept: Concept,
     clock: Clock = Clock.System,
 ): Fact {
-    @Serializable
-    @LLMDescription("Fact text")
-    data class FactStructure(
-        val fact: String
-    )
-
-    @Serializable
-    @LLMDescription("Facts list")
-    data class FactListStructure(
-        val facts: List<FactStructure>
-    )
-
     // Add a message asking to retrieve facts about the concept
     val promptForCompression = when (concept.factType) {
         FactType.SINGLE -> MemoryPrompts.singleFactPrompt(concept)
@@ -490,6 +490,7 @@ public suspend fun AIAgentLLMWriteSession.retrieveFactsFromHistory(
                     is Message.Tool.Call -> append(
                         "<tool_call tool=${message.tool}>\n${message.content}\n</tool_call>\n"
                     )
+
                     is Message.Tool.Result -> append(
                         "<tool_result tool=${message.tool}>\n${message.content}\n</tool_result>\n"
                     )
@@ -512,7 +513,9 @@ public suspend fun AIAgentLLMWriteSession.retrieveFactsFromHistory(
     val facts = when (concept.factType) {
         FactType.SINGLE -> {
             val response = requestLLMStructured(
-                config = StructuredRequestConfig(default = StructuredRequest.Manual(JsonStructure.create<FactStructure>()))
+                config = StructuredRequestConfig(
+                    default = StructuredRequest.Manual(JsonStructure.create<FactStructure>())
+                )
             )
 
             SingleFact(
@@ -524,7 +527,9 @@ public suspend fun AIAgentLLMWriteSession.retrieveFactsFromHistory(
 
         FactType.MULTIPLE -> {
             val response = requestLLMStructured(
-                config = StructuredRequestConfig(default = StructuredRequest.Manual(JsonStructure.create<FactListStructure>()))
+                config = StructuredRequestConfig(
+                    default = StructuredRequest.Manual(JsonStructure.create<FactListStructure>())
+                )
             )
             val factsList = response.getOrNull()?.data?.facts ?: emptyList()
             MultipleFacts(concept = concept, values = factsList.map { it.fact }, timestamp = timestamp)

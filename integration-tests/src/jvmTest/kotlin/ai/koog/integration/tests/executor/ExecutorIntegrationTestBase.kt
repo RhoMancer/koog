@@ -17,10 +17,8 @@ import ai.koog.integration.tests.utils.getLLMClientForProvider
 import ai.koog.integration.tests.utils.structuredOutput.Country
 import ai.koog.integration.tests.utils.structuredOutput.checkWeatherStructuredOutputResponse
 import ai.koog.integration.tests.utils.structuredOutput.countryStructuredOutputPrompt
-import ai.koog.integration.tests.utils.structuredOutput.getConfigFixingParserManual
-import ai.koog.integration.tests.utils.structuredOutput.getConfigFixingParserNative
-import ai.koog.integration.tests.utils.structuredOutput.getConfigNoFixingParserManual
-import ai.koog.integration.tests.utils.structuredOutput.getConfigNoFixingParserNative
+import ai.koog.integration.tests.utils.structuredOutput.getManualStructuredRequestConfig
+import ai.koog.integration.tests.utils.structuredOutput.getNativeStructuredRequestConfig
 import ai.koog.integration.tests.utils.structuredOutput.parseMarkdownStreamToCountries
 import ai.koog.integration.tests.utils.structuredOutput.weatherStructuredOutputPrompt
 import ai.koog.integration.tests.utils.tools.CalculatorTool
@@ -49,6 +47,8 @@ import ai.koog.prompt.executor.clients.openai.models.OpenAIInclude
 import ai.koog.prompt.executor.clients.openai.models.ReasoningConfig
 import ai.koog.prompt.executor.clients.openai.models.ReasoningSummary
 import ai.koog.prompt.executor.model.PromptExecutor
+import ai.koog.prompt.executor.model.StructureFixingParser
+import ai.koog.prompt.executor.model.executeStructured
 import ai.koog.prompt.llm.LLMCapability
 import ai.koog.prompt.llm.LLMProvider
 import ai.koog.prompt.llm.LLModel
@@ -60,7 +60,6 @@ import ai.koog.prompt.message.ResponseMetaInfo
 import ai.koog.prompt.params.LLMParams
 import ai.koog.prompt.params.LLMParams.ToolChoice
 import ai.koog.prompt.streaming.StreamFrame
-import ai.koog.prompt.structure.executeStructured
 import io.kotest.assertions.withClue
 import io.kotest.inspectors.shouldForAll
 import io.kotest.inspectors.shouldForAny
@@ -686,7 +685,7 @@ abstract class ExecutorIntegrationTestBase {
                 getExecutor(model).executeStructured(
                     prompt = weatherStructuredOutputPrompt,
                     model = model,
-                    config = getConfigNoFixingParserNative(model)
+                    config = getNativeStructuredRequestConfig()
                 )
             ) {
                 isSuccess.shouldBeTrue()
@@ -706,7 +705,11 @@ abstract class ExecutorIntegrationTestBase {
                 getExecutor(model).executeStructured(
                     prompt = weatherStructuredOutputPrompt,
                     model = model,
-                    config = getConfigFixingParserNative(model)
+                    config = getNativeStructuredRequestConfig(),
+                    fixingParser = StructureFixingParser(
+                        model = model,
+                        retries = 3
+                    )
                 )
             ) {
                 isSuccess.shouldBeTrue()
@@ -732,7 +735,7 @@ abstract class ExecutorIntegrationTestBase {
                 getExecutor(model).executeStructured(
                     prompt = weatherStructuredOutputPrompt,
                     model = model,
-                    config = getConfigNoFixingParserManual(model)
+                    config = getManualStructuredRequestConfig()
                 )
             ) {
                 isSuccess.shouldBeTrue()
@@ -752,7 +755,11 @@ abstract class ExecutorIntegrationTestBase {
                 getExecutor(model).executeStructured(
                     prompt = weatherStructuredOutputPrompt,
                     model = model,
-                    config = getConfigFixingParserManual(model)
+                    config = getManualStructuredRequestConfig(),
+                    fixingParser = StructureFixingParser(
+                        model = model,
+                        retries = 3
+                    )
                 )
             ) {
                 isSuccess.shouldBeTrue()

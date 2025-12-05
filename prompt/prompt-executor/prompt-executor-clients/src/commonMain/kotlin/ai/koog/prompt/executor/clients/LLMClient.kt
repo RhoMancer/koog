@@ -13,6 +13,7 @@ import ai.koog.prompt.structure.StructuredRequest
 import ai.koog.prompt.structure.StructuredResponse
 import ai.koog.prompt.structure.json.generator.BasicJsonSchemaGenerator
 import ai.koog.prompt.structure.json.generator.StandardJsonSchemaGenerator
+import ai.koog.prompt.structure.parseStructuredResponse
 import kotlinx.coroutines.flow.Flow
 
 /**
@@ -131,22 +132,8 @@ public interface LLMClient : AutoCloseable {
         structuredRequest: StructuredRequest<T>,
     ): StructuredResponse<T> {
         val updatedPrompt = appendStructuredOutputInstructions(prompt, structuredRequest)
-        val message = this.execute(prompt = updatedPrompt, model = model)
-            .filterIsInstance<Message.Assistant>()
-            .firstOrNull()
-
-        try {
-            requireNotNull(message) { "Response for structured output must be an assistant message" }
-            return StructuredResponse.Success(
-                message = message,
-                data = structuredRequest.structure.parse(message.content),
-            )
-        } catch (e: Exception) {
-            return StructuredResponse.Failure(
-                message = message,
-                exception = e,
-            )
-        }
+        val response = this.execute(prompt = updatedPrompt, model = model)
+        return parseStructuredResponse(structuredRequest.structure, response)
     }
 
     /**

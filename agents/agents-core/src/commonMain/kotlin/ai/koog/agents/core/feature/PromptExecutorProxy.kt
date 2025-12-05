@@ -9,6 +9,8 @@ import ai.koog.prompt.llm.LLModel
 import ai.koog.prompt.message.LLMChoice
 import ai.koog.prompt.message.Message
 import ai.koog.prompt.streaming.StreamFrame
+import ai.koog.prompt.structure.StructuredRequest
+import ai.koog.prompt.structure.StructuredResponse
 import io.github.oshai.kotlinlogging.KotlinLogging
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.catch
@@ -87,6 +89,18 @@ public class PromptExecutorProxy(
                 logger.debug(error) { "Finished LLM streaming call" }
                 pipeline.onLLMStreamingCompleted(runId, callId, prompt, model, tools)
             }
+    }
+
+    override suspend fun <T> executeStructured(
+        prompt: Prompt,
+        model: LLModel,
+        structuredRequest: StructuredRequest<T>
+    ): StructuredResponse<T> {
+        logger.debug { "Executing LLM structured call (prompt: $prompt, model: $model, structuredRequest: $structuredRequest)" }
+        val response = executor.executeStructured(prompt, model, structuredRequest)
+        logger.debug { "Finished LLM structured call with responses: [$response]" }
+
+        return response
     }
 
     override suspend fun executeMultipleChoices(
