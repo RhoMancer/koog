@@ -32,7 +32,9 @@ object CalculatorChatExecutor : PromptExecutor {
 
     override suspend fun execute(prompt: Prompt, model: LLModel, tools: List<ToolDescriptor>): List<Message.Response> {
         val input = prompt.messages.filterIsInstance<Message.User>().joinToString("\n") { it.content }
-        val numbers = input.split(Regex("[^0-9.]")).filter { it.isNotEmpty() }.map { it.toFloat() }
+        val numbers = input.split(Regex("[^0-9.]")).filter { it.isNotEmpty() }.mapNotNull {
+            it.toFloatOrNull()
+        }
         val result = when {
             plusAliases.any { it in input } && tools.contains(CalculatorTools.PlusTool.descriptor) -> {
                 Message.Tool.Call(
