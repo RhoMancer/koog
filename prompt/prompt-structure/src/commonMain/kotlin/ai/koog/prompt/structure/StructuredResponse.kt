@@ -14,24 +14,22 @@ import ai.koog.prompt.message.Message
  */
 public sealed interface StructuredResponse<T> {
     public val message: Message.Assistant?
+
     public val isSuccess: Boolean
+        get() = this is Success
+
     public val isFailure: Boolean
+        get() = this is Failure
 
     public data class Success<T>(
         override val message: Message.Assistant,
         val data: T,
-    ) : StructuredResponse<T> {
-        override val isSuccess: Boolean = true
-        override val isFailure: Boolean = false
-    }
+    ) : StructuredResponse<T>
 
     public data class Failure<T>(
         override val message: Message.Assistant?,
         val exception: Exception,
-    ) : StructuredResponse<T> {
-        override val isSuccess: Boolean = false
-        override val isFailure: Boolean = true
-    }
+    ) : StructuredResponse<T>
 }
 
 /**

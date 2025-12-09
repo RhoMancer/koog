@@ -462,7 +462,7 @@ public class AIAgentLLMWriteSession internal constructor(
         return super.requestLLMStructured(config, fixingParser).also { response ->
             response.onSuccess {
                 appendPrompt {
-                    response.message?.let { message(it) }
+                    message(it.message)
                 }
             }
         }
@@ -488,9 +488,9 @@ public class AIAgentLLMWriteSession internal constructor(
         fixingParser: StructureFixingParser?
     ): StructuredResponse<T> {
         return super.requestLLMStructured(serializer, examples, fixingParser).also { response ->
-            if (response.isSuccess) {
+            response.onSuccess {
                 appendPrompt {
-                    response.message?.let { message(it) }
+                    message(it.message)
                 }
             }
         }

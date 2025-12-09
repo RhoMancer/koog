@@ -1,5 +1,6 @@
+package ai.koog.prompt.executor.clients
+
 import ai.koog.prompt.dsl.Prompt
-import ai.koog.prompt.executor.clients.LLMClient
 import ai.koog.prompt.llm.LLModel
 import ai.koog.prompt.structure.StructuredResponse
 import ai.koog.prompt.structure.buildStructuredRequest

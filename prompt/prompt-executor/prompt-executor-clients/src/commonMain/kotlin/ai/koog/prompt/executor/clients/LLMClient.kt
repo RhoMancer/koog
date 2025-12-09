@@ -14,6 +14,7 @@ import ai.koog.prompt.structure.StructuredResponse
 import ai.koog.prompt.structure.json.generator.BasicJsonSchemaGenerator
 import ai.koog.prompt.structure.json.generator.StandardJsonSchemaGenerator
 import ai.koog.prompt.structure.parseStructuredResponse
+import ai.koog.prompt.structure.requireStructuredOutputCapabilities
 import kotlinx.coroutines.flow.Flow
 
 /**
@@ -131,6 +132,8 @@ public interface LLMClient : AutoCloseable {
         model: LLModel,
         structuredRequest: StructuredRequest<T>,
     ): StructuredResponse<T> {
+        requireStructuredOutputCapabilities(model, structuredRequest)
+
         val updatedPrompt = appendStructuredOutputInstructions(prompt, structuredRequest)
         val response = this.execute(prompt = updatedPrompt, model = model)
         return parseStructuredResponse(structuredRequest.structure, response)

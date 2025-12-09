@@ -9,6 +9,8 @@ import ai.koog.prompt.llm.LLModel
 import ai.koog.prompt.message.LLMChoice
 import ai.koog.prompt.message.Message
 import ai.koog.prompt.streaming.StreamFrame
+import ai.koog.prompt.structure.StructuredRequest
+import ai.koog.prompt.structure.StructuredResponse
 import io.github.oshai.kotlinlogging.KotlinLogging
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.delay
@@ -105,6 +107,14 @@ public class RetryingLLMClient(
         tools: List<ToolDescriptor>
     ): List<LLMChoice> = withRetry("executeMultipleChoices") {
         delegate.executeMultipleChoices(prompt, model, tools)
+    }
+
+    override suspend fun <T> executeStructured(
+        prompt: Prompt,
+        model: LLModel,
+        structuredRequest: StructuredRequest<T>
+    ): StructuredResponse<T> = withRetry("executeMultipleChoices") {
+        delegate.executeStructured(prompt, model, structuredRequest)
     }
 
     override suspend fun moderate(

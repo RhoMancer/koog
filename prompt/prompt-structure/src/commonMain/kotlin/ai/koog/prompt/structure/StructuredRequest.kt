@@ -143,3 +143,10 @@ public data class StructuredRequestConfig<T>(
             ?: throw IllegalArgumentException("No structure found for provider ${model.provider}")
     }
 }
+
+public fun requireStructuredOutputCapabilities(model: LLModel, request: StructuredRequest<*>) {
+    if (request is StructuredRequest.Manual) return
+    require(model.capabilities.any { it == LLMCapability.Schema.JSON.Standard || it == LLMCapability.Schema.JSON.Basic }) {
+        "Model ${model.id} does not support structured output"
+    }
+}
