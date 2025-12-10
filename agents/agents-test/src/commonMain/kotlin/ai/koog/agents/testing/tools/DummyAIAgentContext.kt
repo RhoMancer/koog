@@ -99,8 +99,9 @@ public class DummyAIAgentContext(
     override val pipeline: AIAgentGraphPipeline
         get() = _pipeline
 
-    override val executionInfo: AgentExecutionInfo
+    override var executionInfo: AgentExecutionInfo
         get() = _executionInfo ?: throw NotImplementedError("Execution info is not mocked")
+        set(value) { _executionInfo = value }
 
     override fun store(key: AIAgentStorageKey<*>, value: Any) {
         throw NotImplementedError("store() is not supported for mock")

@@ -7,6 +7,7 @@ import ai.koog.agents.core.agent.context.element.NodeInfoContextElement
 import ai.koog.agents.core.agent.context.element.getNodeInfoElement
 import ai.koog.agents.core.agent.context.getAgentContextData
 import ai.koog.agents.core.agent.context.store
+import ai.koog.agents.core.agent.context.with
 import ai.koog.agents.core.agent.exception.AIAgentMaxNumberOfIterationsReachedException
 import ai.koog.agents.core.agent.exception.AIAgentStuckInTheNodeException
 import ai.koog.agents.core.annotation.InternalAgentsApi
@@ -160,55 +161,57 @@ public open class AIAgentSubgraph<TInput, TOutput>(
      */
     @OptIn(InternalAgentsApi::class, DetachedPromptExecutorAPI::class, ExperimentalUuidApi::class)
     override suspend fun execute(context: AIAgentGraphContextBase, input: TInput): TOutput? =
-        withContext(NodeInfoContextElement(Uuid.random().toString(), getNodeInfoElement()?.id, name, input, inputType)) {
-            val newTools = selectTools(context)
+        context.with(id) { executionInfo ->
+            withContext(NodeInfoContextElement(Uuid.random().toString(), getNodeInfoElement()?.id, name, input, inputType)) {
+                val newTools = selectTools(context)
 
-            // Copy inner context with new tools, model and LLM params.
-            val innerContext = with(context) {
-                copy(
-                    llm = llm.copy(
-                        tools = newTools,
-                        model = llmModel ?: llm.model,
-                        prompt = llm.prompt.copy(params = llmParams ?: llm.prompt.params),
-                        responseProcessor = responseProcessor
+                // Copy inner context with new tools, model and LLM params.
+                val innerContext = with(context) {
+                    copy(
+                        llm = llm.copy(
+                            tools = newTools,
+                            model = llmModel ?: llm.model,
+                            prompt = llm.prompt.copy(params = llmParams ?: llm.prompt.params),
+                            responseProcessor = responseProcessor
+                        )
                     )
-                )
-            }
-
-            runIfNonRootContext(context) {
-                pipeline.onSubgraphExecutionStarting(this@AIAgentSubgraph, innerContext, input, inputType)
-            }
-
-            // Execute the subgraph with an inner context and get the result and updated prompt.
-            val result = try {
-                executeWithInnerContext(innerContext, input)
-            } catch (e: CancellationException) {
-                throw e
-            } catch (e: Exception) {
-                logger.error(e) { "Exception during executing subgraph '$name': ${e.message}" }
-                runIfNonRootContext(context) {
-                    pipeline.onSubgraphExecutionFailed(this@AIAgentSubgraph, context, input, inputType, e)
                 }
-                throw e
+
+                runIfNonRootContext(context) {
+                    pipeline.onSubgraphExecutionStarting(executionInfo, this@AIAgentSubgraph, innerContext, input, inputType)
+                }
+
+                // Execute the subgraph with an inner context and get the result and updated prompt.
+                val result = try {
+                    executeWithInnerContext(innerContext, input)
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (e: Exception) {
+                    logger.error(e) { "Exception during executing subgraph '$name': ${e.message}" }
+                    runIfNonRootContext(context) {
+                        pipeline.onSubgraphExecutionFailed(executionInfo, this@AIAgentSubgraph, context, input, inputType, e)
+                    }
+                    throw e
+                }
+
+                // Restore original LLM params on the new prompt.
+                val newPrompt = innerContext.llm.readSession {
+                    prompt.copy(params = context.llm.prompt.params)
+                }
+                context.llm.writeSession { prompt = newPrompt }
+
+                val innerForcedData = innerContext.getAgentContextData()
+
+                if (innerForcedData != null) {
+                    context.store(innerForcedData)
+                }
+
+                runIfNonRootContext(context) {
+                    pipeline.onSubgraphExecutionCompleted(executionInfo, this@AIAgentSubgraph, innerContext, input, inputType, result, outputType)
+                }
+
+                result
             }
-
-            // Restore original LLM params on the new prompt.
-            val newPrompt = innerContext.llm.readSession {
-                prompt.copy(params = context.llm.prompt.params)
-            }
-            context.llm.writeSession { prompt = newPrompt }
-
-            val innerForcedData = innerContext.getAgentContextData()
-
-            if (innerForcedData != null) {
-                context.store(innerForcedData)
-            }
-
-            runIfNonRootContext(context) {
-                pipeline.onSubgraphExecutionCompleted(this@AIAgentSubgraph, innerContext, input, inputType, result, outputType)
-            }
-
-            result
         }
 
     @OptIn(InternalAgentsApi::class)

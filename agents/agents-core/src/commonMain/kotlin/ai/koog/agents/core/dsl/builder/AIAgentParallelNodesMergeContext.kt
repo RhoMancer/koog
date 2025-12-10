@@ -31,7 +31,7 @@ public class AIAgentParallelNodesMergeContext<Input, Output>(
     public val results: List<ParallelResult<Input, Output>>,
 ) : AIAgentGraphContextBase {
     override val parentContext: AIAgentGraphContextBase = underlyingContextBase
-    override val executionInfo: AgentExecutionInfo = underlyingContextBase.executionInfo
+    override var executionInfo: AgentExecutionInfo = underlyingContextBase.executionInfo
 
     // Delegate all properties to the underlying context
     override val environment: AIAgentEnvironment get() = underlyingContextBase.environment
