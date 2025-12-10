@@ -237,3 +237,6 @@ extra:
     - icon: fontawesome/brands/slack
       link: https://docs.koog.ai/koog-slack-channel/
       name: Koog on Slack
+
+hooks:
+  - process-api-links.py
