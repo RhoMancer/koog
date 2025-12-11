@@ -1,3 +1,5 @@
+@file:Suppress("EXPECT_ACTUAL_CLASSIFIERS_ARE_IN_BETA_WARNING")
+
 package ai.koog.agents.core.feature.pipeline
 
 import ai.koog.agents.core.agent.AIAgent
@@ -7,55 +9,28 @@ import ai.koog.agents.core.agent.context.AIAgentGraphContextBase
 import ai.koog.agents.core.agent.context.AgentExecutionInfo
 import ai.koog.agents.core.agent.entity.AIAgentStorageKey
 import ai.koog.agents.core.agent.entity.AIAgentStrategy
-import ai.koog.agents.core.annotation.ExperimentalAgentsApi
 import ai.koog.agents.core.annotation.InternalAgentsApi
 import ai.koog.agents.core.environment.AIAgentEnvironment
 import ai.koog.agents.core.feature.AIAgentFeature
 import ai.koog.agents.core.feature.config.FeatureConfig
-import ai.koog.agents.core.feature.config.FeatureSystemVariables
-import ai.koog.agents.core.feature.debugger.Debugger
 import ai.koog.agents.core.feature.handler.AgentLifecycleEventContext
 import ai.koog.agents.core.feature.handler.agent.AgentClosingContext
-import ai.koog.agents.core.feature.handler.agent.AgentClosingHandler
 import ai.koog.agents.core.feature.handler.agent.AgentCompletedContext
-import ai.koog.agents.core.feature.handler.agent.AgentCompletedHandler
 import ai.koog.agents.core.feature.handler.agent.AgentEnvironmentTransformingContext
-import ai.koog.agents.core.feature.handler.agent.AgentEnvironmentTransformingHandler
-import ai.koog.agents.core.feature.handler.agent.AgentEventHandler
 import ai.koog.agents.core.feature.handler.agent.AgentExecutionFailedContext
-import ai.koog.agents.core.feature.handler.agent.AgentExecutionFailedHandler
 import ai.koog.agents.core.feature.handler.agent.AgentStartingContext
-import ai.koog.agents.core.feature.handler.agent.AgentStartingHandler
 import ai.koog.agents.core.feature.handler.llm.LLMCallCompletedContext
-import ai.koog.agents.core.feature.handler.llm.LLMCallCompletedHandler
-import ai.koog.agents.core.feature.handler.llm.LLMCallEventHandler
 import ai.koog.agents.core.feature.handler.llm.LLMCallStartingContext
-import ai.koog.agents.core.feature.handler.llm.LLMCallStartingHandler
 import ai.koog.agents.core.feature.handler.strategy.StrategyCompletedContext
-import ai.koog.agents.core.feature.handler.strategy.StrategyCompletedHandler
-import ai.koog.agents.core.feature.handler.strategy.StrategyEventHandler
 import ai.koog.agents.core.feature.handler.strategy.StrategyStartingContext
-import ai.koog.agents.core.feature.handler.strategy.StrategyStartingHandler
 import ai.koog.agents.core.feature.handler.streaming.LLMStreamingCompletedContext
-import ai.koog.agents.core.feature.handler.streaming.LLMStreamingCompletedHandler
-import ai.koog.agents.core.feature.handler.streaming.LLMStreamingEventHandler
 import ai.koog.agents.core.feature.handler.streaming.LLMStreamingFailedContext
-import ai.koog.agents.core.feature.handler.streaming.LLMStreamingFailedHandler
 import ai.koog.agents.core.feature.handler.streaming.LLMStreamingFrameReceivedContext
-import ai.koog.agents.core.feature.handler.streaming.LLMStreamingFrameReceivedHandler
 import ai.koog.agents.core.feature.handler.streaming.LLMStreamingStartingContext
-import ai.koog.agents.core.feature.handler.streaming.LLMStreamingStartingHandler
 import ai.koog.agents.core.feature.handler.tool.ToolCallCompletedContext
-import ai.koog.agents.core.feature.handler.tool.ToolCallEventHandler
 import ai.koog.agents.core.feature.handler.tool.ToolCallFailedContext
-import ai.koog.agents.core.feature.handler.tool.ToolCallFailureHandler
-import ai.koog.agents.core.feature.handler.tool.ToolCallHandler
-import ai.koog.agents.core.feature.handler.tool.ToolCallResultHandler
 import ai.koog.agents.core.feature.handler.tool.ToolCallStartingContext
-import ai.koog.agents.core.feature.handler.tool.ToolValidationErrorHandler
 import ai.koog.agents.core.feature.handler.tool.ToolValidationFailedContext
-import ai.koog.agents.core.system.getEnvironmentVariableOrNull
-import ai.koog.agents.core.system.getVMOptionOrNull
 import ai.koog.agents.core.tools.ToolDescriptor
 import ai.koog.agents.core.tools.ToolException
 import ai.koog.prompt.dsl.ModerationResult
@@ -63,13 +38,11 @@ import ai.koog.prompt.dsl.Prompt
 import ai.koog.prompt.llm.LLModel
 import ai.koog.prompt.message.Message
 import ai.koog.prompt.streaming.StreamFrame
-import io.github.oshai.kotlinlogging.KotlinLogging
 import kotlinx.datetime.Clock
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import kotlin.reflect.KClass
 import kotlin.reflect.KType
-import kotlin.reflect.safeCast
 
 /**
  * Pipeline for AI agent features that provides interception points for various agent lifecycle events.
@@ -88,78 +61,13 @@ import kotlin.reflect.safeCast
  *
  * @property clock Clock instance for time-related operations
  */
-// TODO: JAVA
-public expect abstract class AIAgentPipeline(public val clock: Clock) {
-
-    // Notes on suppressed warnings used in this class:
-    // - Some members are annotated with @Suppress to satisfy explicit API requirements
-    //   (e.g., explicit public visibility) or to keep implementation details concise.
-    //   These suppressions are intentional and safe.
-
+public expect abstract class AIAgentPipeline(clock: Clock) {
     /**
-     * Companion object for the AIAgentPipeline class.
+     * Provides access to a `Clock` instance representing the current system time.
+     * The `Clock` can be used to retrieve the current time, create date-time instances,
+     * or perform operations based on a specific moment in time.
      */
-    private companion object {
-        /**
-         * Logger instance for the AIAgentPipeline class.
-         */
-        private val logger = KotlinLogging.logger { }
-    }
-
-    /**
-     * Represents configured and installed agent feature implementation along with its configuration.
-     * @param featureImpl The feature implementation
-     * @param featureConfig The feature configuration
-     */
-    @Suppress("RedundantVisibilityModifier") // have to put public here, explicitApi requires it
-    private class RegisteredFeature(
-        public val featureImpl: Any,
-        public val featureConfig: FeatureConfig
-    )
-
-    /**
-     * Map of registered features and their configurations.
-     * Keys are feature storage keys, values are feature configurations.
-     */
-    private val registeredFeatures: MutableMap<AIAgentStorageKey<*>, RegisteredFeature> = mutableMapOf()
-
-    /**
-     * Set of system features that are always defined by the framework.
-     */
-    @OptIn(ExperimentalAgentsApi::class)
-    private val systemFeatures: Set<AIAgentStorageKey<*>> = setOf(
-        Debugger.key
-    )
-
-    /**
-     * Map of agent handlers registered for different features.
-     * Keys are feature storage keys, values are agent handlers.
-     */
-    protected val agentEventHandlers: MutableMap<AIAgentStorageKey<*>, AgentEventHandler> = mutableMapOf()
-
-    /**
-     * Map of strategy handlers registered for different features.
-     * Keys are feature storage keys, values are strategy handlers.
-     */
-    protected val strategyEventHandlers: MutableMap<AIAgentStorageKey<*>, StrategyEventHandler> = mutableMapOf()
-
-    /**
-     * Map of tool execution handlers registered for different features.
-     * Keys are feature storage keys, values are tool execution handlers.
-     */
-    protected val toolCallEventHandlers: MutableMap<AIAgentStorageKey<*>, ToolCallEventHandler> = mutableMapOf()
-
-    /**
-     * Map of LLM execution handlers registered for different features.
-     * Keys are feature storage keys, values are LLM execution handlers.
-     */
-    protected val llmCallEventHandlers: MutableMap<AIAgentStorageKey<*>, LLMCallEventHandler> = mutableMapOf()
-
-    /**
-     * Map of feature storage keys to their stream handlers.
-     * These handlers manage the streaming lifecycle events (before, during, and after streaming).
-     */
-    protected val llmStreamingEventHandlers: MutableMap<AIAgentStorageKey<*>, LLMStreamingEventHandler> = mutableMapOf()
+    public open val clock: Clock
 
     /**
      * Retrieves a feature implementation from the current pipeline using the specified [feature], if it is registered.
@@ -170,93 +78,20 @@ public expect abstract class AIAgentPipeline(public val clock: Clock) {
      * @return The feature associated with the provided key, or null if no matching feature is found.
      * @throws IllegalArgumentException if the specified [featureClass] does not correspond to a registered feature.
      */
-    public fun <TFeature : Any> feature(
+    public open fun <TFeature : Any> feature(
         featureClass: KClass<TFeature>,
         feature: AIAgentFeature<*, TFeature>
-    ): TFeature? {
-        val featureImpl = registeredFeatures[feature.key]?.featureImpl ?: return null
+    ): TFeature?
 
-        return featureClass.safeCast(featureImpl)
-            ?: throw IllegalArgumentException(
-                "Feature ${feature.key} is found, but it is not of the expected type.\n" +
-                    "Expected type: ${featureClass.simpleName}\n" +
-                    "Actual type: ${featureImpl::class.simpleName}"
-            )
-    }
-
-    protected fun <TConfig : FeatureConfig, TFeatureImpl : Any> install(
+    protected open fun <TConfig : FeatureConfig, TFeatureImpl : Any> install(
         featureKey: AIAgentStorageKey<TFeatureImpl>,
         featureConfig: TConfig,
         featureImpl: TFeatureImpl,
-    ) {
-        registeredFeatures[featureKey] = RegisteredFeature(featureImpl, featureConfig)
-    }
+    )
 
-    protected suspend fun uninstall(
+    protected open suspend fun uninstall(
         featureKey: AIAgentStorageKey<*>
-    ) {
-        registeredFeatures
-            .filter { (key, _) -> key == featureKey }
-            .forEach { (key, registeredFeature) ->
-                registeredFeature.featureConfig.messageProcessors.forEach { provider -> provider.close() }
-                registeredFeatures.remove(key)
-            }
-    }
-
-    //region Internal Handlers
-
-    /**
-     * Prepares the feature by initializing all the associated message processors defined in the feature configuration.
-     *
-     * @param featureConfig The configuration object containing the list of message processors to be initialized.
-     */
-    internal suspend fun prepareFeature(featureConfig: FeatureConfig) {
-        featureConfig.messageProcessors.forEach { processor ->
-            logger.debug { "Start preparing processor: ${processor::class.simpleName}" }
-            processor.initialize()
-            logger.debug { "Finished preparing processor: ${processor::class.simpleName}" }
-        }
-    }
-
-    /**
-     * Prepares features by initializing their respective message processors.
-     */
-    internal suspend fun prepareFeatures() {
-        // Install system features (if exist)
-        installFeaturesFromSystemConfig()
-
-        // Prepare features
-        registeredFeatures.values.forEach { featureConfig ->
-            prepareFeature(featureConfig.featureConfig)
-        }
-    }
-
-    /**
-     * Closes all message processors associated with the provided feature by feature configuration.
-     *
-     * @param featureConfig The configuration object containing the message processors to be closed.
-     */
-    internal suspend fun closeFeatureMessageProcessors(featureConfig: FeatureConfig) {
-        featureConfig.messageProcessors.forEach { provider ->
-            logger.trace { "Start closing feature processor: ${featureConfig::class.simpleName}" }
-            provider.close()
-            logger.trace { "Finished closing feature processor: ${featureConfig::class.simpleName}" }
-        }
-    }
-
-    /**
-     * Closes all feature stream providers.
-     *
-     * This internal method properly shuts down all message processors of registered features,
-     * ensuring resources are released appropriately.
-     */
-    internal suspend fun closeAllFeaturesMessageProcessors() {
-        registeredFeatures.values.forEach { registerFeature ->
-            closeFeatureMessageProcessors(registerFeature.featureConfig)
-        }
-    }
-
-    //endregion Internal Handlers
+    )
 
     //region Trigger Agent Handlers
 
@@ -269,17 +104,12 @@ public expect abstract class AIAgentPipeline(public val clock: Clock) {
      * @param context The context of the agent execution, providing access to the agent environment and context features
      */
     @OptIn(InternalAgentsApi::class)
-    public suspend fun <TInput, TOutput> onAgentStarting(
+    public open suspend fun <TInput, TOutput> onAgentStarting(
         executionInfo: AgentExecutionInfo,
         runId: String,
         agent: AIAgent<*, *>,
         context: AIAgentContext
-    ) {
-        val eventContext = AgentStartingContext(executionInfo, agent, runId, context)
-        agentEventHandlers.values.forEach { handler ->
-            handler.handleAgentStarting(eventContext)
-        }
-    }
+    )
 
     /**
      * Notifies all registered handlers that an agent has finished execution.
@@ -289,15 +119,12 @@ public expect abstract class AIAgentPipeline(public val clock: Clock) {
      * @param runId The unique identifier of the agent run
      * @param result The result produced by the agent, or null if no result was produced
      */
-    public suspend fun onAgentCompleted(
+    public open suspend fun onAgentCompleted(
         executionInfo: AgentExecutionInfo,
         agentId: String,
         runId: String,
         result: Any?
-    ) {
-        val eventContext = AgentCompletedContext(executionInfo, agentId, runId, result)
-        agentEventHandlers.values.forEach { handler -> handler.agentCompletedHandler.handle(eventContext) }
-    }
+    )
 
     /**
      * Notifies all registered handlers about an error that occurred during agent execution.
@@ -307,15 +134,12 @@ public expect abstract class AIAgentPipeline(public val clock: Clock) {
      * @param runId The unique identifier of the agent run
      * @param exception The [Throwable] exception instance that was thrown during agent execution
      */
-    public suspend fun onAgentExecutionFailed(
+    public open suspend fun onAgentExecutionFailed(
         executionInfo: AgentExecutionInfo,
         agentId: String,
         runId: String,
         exception: Throwable?
-    ) {
-        val eventContext = AgentExecutionFailedContext(executionInfo, agentId, runId, exception)
-        agentEventHandlers.values.forEach { handler -> handler.agentExecutionFailedHandler.handle(eventContext) }
-    }
+    )
 
     /**
      * Invoked before an agent is closed to perform necessary pre-closure operations.
@@ -323,13 +147,10 @@ public expect abstract class AIAgentPipeline(public val clock: Clock) {
      * @param executionInfo The execution information for the agent environment transformation event
      * @param agentId The unique identifier of the agent that will be closed.
      */
-    public suspend fun onAgentClosing(
+    public open suspend fun onAgentClosing(
         executionInfo: AgentExecutionInfo,
         agentId: String
-    ) {
-        val eventContext = AgentClosingContext(executionInfo, agentId)
-        agentEventHandlers.values.forEach { handler -> handler.agentClosingHandler.handle(eventContext) }
-    }
+    )
 
     /**
      * Transforms the agent environment by applying all registered environment transformers.
@@ -343,17 +164,12 @@ public expect abstract class AIAgentPipeline(public val clock: Clock) {
      * @param baseEnvironment The initial environment to be transformed
      * @return The transformed environment after all handlers have been applied
      */
-    public suspend fun onAgentEnvironmentTransforming(
+    public open suspend fun onAgentEnvironmentTransforming(
         executionInfo: AgentExecutionInfo,
         strategy: AIAgentStrategy<*, *, AIAgentGraphContextBase>,
         agent: GraphAIAgent<*, *>,
         baseEnvironment: AIAgentEnvironment
-    ): AIAgentEnvironment {
-        val eventContext = AgentEnvironmentTransformingContext(executionInfo, strategy, agent)
-        return agentEventHandlers.values.fold(baseEnvironment) { environment, handler ->
-            handler.transformEnvironment(eventContext, environment)
-        }
-    }
+    ): AIAgentEnvironment
 
     //endregion Trigger Agent Handlers
 
@@ -367,14 +183,11 @@ public expect abstract class AIAgentPipeline(public val clock: Clock) {
      * @param context The context of the strategy execution
      */
     @OptIn(InternalAgentsApi::class)
-    public suspend fun onStrategyStarting(
+    public open suspend fun onStrategyStarting(
         executionInfo: AgentExecutionInfo,
         strategy: AIAgentStrategy<*, *, *>,
         context: AIAgentContext
-    ) {
-        val eventContext = StrategyStartingContext(executionInfo, strategy, context)
-        strategyEventHandlers.values.forEach { handler -> handler.handleStrategyStarting(eventContext) }
-    }
+    )
 
     /**
      * Notifies all registered strategy handlers that a strategy has finished execution.
@@ -385,17 +198,13 @@ public expect abstract class AIAgentPipeline(public val clock: Clock) {
      * @param result The result produced by the strategy execution
      */
     @OptIn(InternalAgentsApi::class)
-    public suspend fun onStrategyCompleted(
+    public open suspend fun onStrategyCompleted(
         executionInfo: AgentExecutionInfo,
         strategy: AIAgentStrategy<*, *, *>,
         context: AIAgentContext,
         result: Any?,
         resultType: KType,
-    ) {
-        val eventContext =
-            StrategyCompletedContext(executionInfo, strategy, context, result, resultType)
-        strategyEventHandlers.values.forEach { handler -> handler.handleStrategyCompleted(eventContext) }
-    }
+    )
 
     //endregion Trigger Strategy Handlers
 
@@ -410,16 +219,13 @@ public expect abstract class AIAgentPipeline(public val clock: Clock) {
      * @param model The language model instance that will process the request
      * @param tools The list of tool descriptors available for the LLM call
      */
-    public suspend fun onLLMCallStarting(
+    public open suspend fun onLLMCallStarting(
         executionInfo: AgentExecutionInfo,
         runId: String,
         prompt: Prompt,
         model: LLModel,
         tools: List<ToolDescriptor>
-    ) {
-        val eventContext = LLMCallStartingContext(executionInfo, runId, prompt, model, tools)
-        llmCallEventHandlers.values.forEach { handler -> handler.llmCallStartingHandler.handle(eventContext) }
-    }
+    )
 
     /**
      * Notifies all registered LLM handlers after a language model call has completed.
@@ -432,7 +238,7 @@ public expect abstract class AIAgentPipeline(public val clock: Clock) {
      * @param responses The response messages received from the language model
      * @param moderationResponse The moderation response, if any, received from the language model
      */
-    public suspend fun onLLMCallCompleted(
+    public open suspend fun onLLMCallCompleted(
         executionInfo: AgentExecutionInfo,
         runId: String,
         prompt: Prompt,
@@ -440,10 +246,7 @@ public expect abstract class AIAgentPipeline(public val clock: Clock) {
         tools: List<ToolDescriptor>,
         responses: List<Message.Response>,
         moderationResponse: ModerationResult? = null,
-    ) {
-        val eventContext = LLMCallCompletedContext(executionInfo, runId, prompt, model, tools, responses, moderationResponse)
-        llmCallEventHandlers.values.forEach { handler -> handler.llmCallCompletedHandler.handle(eventContext) }
-    }
+    )
 
     //endregion Trigger LLM Call Handlers
 
@@ -458,16 +261,13 @@ public expect abstract class AIAgentPipeline(public val clock: Clock) {
      * @param toolName The tool name that is being called
      * @param toolArgs The arguments provided to the tool
      */
-    public suspend fun onToolCallStarting(
+    public open suspend fun onToolCallStarting(
         executionInfo: AgentExecutionInfo,
         runId: String,
         toolCallId: String?,
         toolName: String,
         toolArgs: JsonObject,
-    ) {
-        val eventContext = ToolCallStartingContext(executionInfo, runId, toolCallId, toolName, toolArgs)
-        toolCallEventHandlers.values.forEach { handler -> handler.toolCallHandler.handle(eventContext) }
-    }
+    )
 
     /**
      * Notifies all registered tool handlers when a validation error occurs during a tool call.
@@ -481,7 +281,7 @@ public expect abstract class AIAgentPipeline(public val clock: Clock) {
      * @param message The validation error message;
      * @param error The validation error message.
      */
-    public suspend fun onToolValidationFailed(
+    public open suspend fun onToolValidationFailed(
         executionInfo: AgentExecutionInfo,
         runId: String,
         toolCallId: String?,
@@ -490,10 +290,7 @@ public expect abstract class AIAgentPipeline(public val clock: Clock) {
         toolDescription: String?,
         message: String,
         error: ToolException,
-    ) {
-        val eventContext = ToolValidationFailedContext(executionInfo, runId, toolCallId, toolName, toolArgs, toolDescription, message, error)
-        toolCallEventHandlers.values.forEach { handler -> handler.toolValidationErrorHandler.handle(eventContext) }
-    }
+    )
 
     /**
      * Notifies all registered tool handlers when a tool call fails with an exception.
@@ -507,7 +304,7 @@ public expect abstract class AIAgentPipeline(public val clock: Clock) {
      * @param message A message describing the failure.
      * @param exception The [Throwable] that caused the failure.
      */
-    public suspend fun onToolCallFailed(
+    public open suspend fun onToolCallFailed(
         executionInfo: AgentExecutionInfo,
         runId: String,
         toolCallId: String?,
@@ -516,10 +313,7 @@ public expect abstract class AIAgentPipeline(public val clock: Clock) {
         toolDescription: String?,
         message: String,
         exception: Throwable?
-    ) {
-        val eventContext = ToolCallFailedContext(executionInfo, runId, toolCallId, toolName, toolArgs, toolDescription, message, exception)
-        toolCallEventHandlers.values.forEach { handler -> handler.toolCallFailureHandler.handle(eventContext) }
-    }
+    )
 
     /**
      * Notifies all registered tool handlers about the result of a tool call.
@@ -532,7 +326,7 @@ public expect abstract class AIAgentPipeline(public val clock: Clock) {
      * @param toolDescription The description of the tool that was called;
      * @param toolResult The result produced by the tool, or null if no result was produced.
      */
-    public suspend fun onToolCallCompleted(
+    public open suspend fun onToolCallCompleted(
         executionInfo: AgentExecutionInfo,
         runId: String,
         toolCallId: String?,
@@ -540,10 +334,7 @@ public expect abstract class AIAgentPipeline(public val clock: Clock) {
         toolArgs: JsonObject,
         toolDescription: String?,
         toolResult: JsonElement?
-    ) {
-        val eventContext = ToolCallCompletedContext(executionInfo, runId, toolCallId, toolName, toolArgs, toolDescription, toolResult)
-        toolCallEventHandlers.values.forEach { handler -> handler.toolCallResultHandler.handle(eventContext) }
-    }
+    )
 
     //endregion Trigger Tool Call Handlers
 
@@ -561,17 +352,13 @@ public expect abstract class AIAgentPipeline(public val clock: Clock) {
      * @param model The language model being used for streaming;
      * @param tools The list of available tool descriptors for this streaming session.
      */
-    public suspend fun onLLMStreamingStarting(
+    public open suspend fun onLLMStreamingStarting(
         executionInfo: AgentExecutionInfo,
         runId: String,
         prompt: Prompt,
         model: LLModel,
         tools: List<ToolDescriptor>
-    ) {
-        val eventContext =
-            LLMStreamingStartingContext(executionInfo, runId, prompt, model, tools)
-        llmStreamingEventHandlers.values.forEach { handler -> handler.llmStreamingStartingHandler.handle(eventContext) }
-    }
+    )
 
     /**
      * Invoked when a stream frame is received during the streaming process.
@@ -583,16 +370,13 @@ public expect abstract class AIAgentPipeline(public val clock: Clock) {
      * @param runId The unique identifier for this streaming session;
      * @param streamFrame The individual stream frame containing partial response data.
      */
-    public suspend fun onLLMStreamingFrameReceived(
+    public open suspend fun onLLMStreamingFrameReceived(
         executionInfo: AgentExecutionInfo,
         runId: String,
         prompt: Prompt,
         model: LLModel,
         streamFrame: StreamFrame
-    ) {
-        val eventContext = LLMStreamingFrameReceivedContext(executionInfo, runId, prompt, model, streamFrame)
-        llmStreamingEventHandlers.values.forEach { handler -> handler.llmStreamingFrameReceivedHandler.handle(eventContext) }
-    }
+    )
 
     /**
      * Invoked if an error occurs during the streaming process.
@@ -604,17 +388,13 @@ public expect abstract class AIAgentPipeline(public val clock: Clock) {
      * @param runId The unique identifier for this streaming session;
      * @param exception The exception that occurred during streaming if applicable.
      */
-    public suspend fun onLLMStreamingFailed(
+    public open suspend fun onLLMStreamingFailed(
         executionInfo: AgentExecutionInfo,
         runId: String,
         prompt: Prompt,
         model: LLModel,
         exception: Throwable
-    ) {
-        val eventContext =
-            LLMStreamingFailedContext(executionInfo, runId, prompt, model, exception)
-        llmStreamingEventHandlers.values.forEach { handler -> handler.llmStreamingFailedHandler.handle(eventContext) }
-    }
+    )
 
     /**
      * Invoked after streaming from a language model completes.
@@ -628,17 +408,13 @@ public expect abstract class AIAgentPipeline(public val clock: Clock) {
      * @param model The language model that was used for streaming
      * @param tools The list of tool descriptors that were available for this streaming session
      */
-    public suspend fun onLLMStreamingCompleted(
+    public open suspend fun onLLMStreamingCompleted(
         executionInfo: AgentExecutionInfo,
         runId: String,
         prompt: Prompt,
         model: LLModel,
         tools: List<ToolDescriptor>
-    ) {
-        val eventContext =
-            LLMStreamingCompletedContext(executionInfo, runId, prompt, model, tools)
-        llmStreamingEventHandlers.values.forEach { handler -> handler.llmStreamingCompletedHandler.handle(eventContext) }
-    }
+    )
 
     //endregion Trigger LLM Streaming
 
@@ -662,16 +438,10 @@ public expect abstract class AIAgentPipeline(public val clock: Clock) {
      * }
      * ```
      */
-    public fun interceptEnvironmentCreated(
+    public open fun interceptEnvironmentCreated(
         feature: AIAgentFeature<*, *>,
         transform: suspend AgentEnvironmentTransformingContext.(AIAgentEnvironment) -> AIAgentEnvironment
-    ) {
-        val handler: AgentEventHandler = agentEventHandlers.getOrPut(feature.key) { AgentEventHandler() }
-
-        handler.agentEnvironmentTransformingHandler = AgentEnvironmentTransformingHandler(
-            function = createConditionalHandler(feature, transform)
-        )
-    }
+    )
 
     /**
      * Intercepts on before an agent started to modify or enhance the agent.
@@ -687,16 +457,10 @@ public expect abstract class AIAgentPipeline(public val clock: Clock) {
      * }
      * ```
      */
-    public fun interceptAgentStarting(
+    public open fun interceptAgentStarting(
         feature: AIAgentFeature<*, *>,
         handle: suspend (AgentStartingContext) -> Unit
-    ) {
-        val handler: AgentEventHandler = agentEventHandlers.getOrPut(feature.key) { AgentEventHandler() }
-
-        handler.agentStartingHandler = AgentStartingHandler(
-            function = createConditionalHandler(feature, handle)
-        )
-    }
+    )
 
     /**
      * Intercepts the completion of an agent's operation and assigns a custom handler to process the result.
@@ -710,16 +474,10 @@ public expect abstract class AIAgentPipeline(public val clock: Clock) {
      * }
      * ```
      */
-    public fun interceptAgentCompleted(
+    public open fun interceptAgentCompleted(
         feature: AIAgentFeature<*, *>,
         handle: suspend (eventContext: AgentCompletedContext) -> Unit
-    ) {
-        val handler = agentEventHandlers.getOrPut(feature.key) { AgentEventHandler() }
-
-        handler.agentCompletedHandler = AgentCompletedHandler(
-            function = createConditionalHandler(feature, handle)
-        )
-    }
+    )
 
     /**
      * Intercepts and handles errors occurring during the execution of an AI agent's strategy.
@@ -733,16 +491,10 @@ public expect abstract class AIAgentPipeline(public val clock: Clock) {
      * }
      * ```
      */
-    public fun interceptAgentExecutionFailed(
+    public open fun interceptAgentExecutionFailed(
         feature: AIAgentFeature<*, *>,
         handle: suspend (eventContext: AgentExecutionFailedContext) -> Unit
-    ) {
-        val handler = agentEventHandlers.getOrPut(feature.key) { AgentEventHandler() }
-
-        handler.agentExecutionFailedHandler = AgentExecutionFailedHandler(
-            function = createConditionalHandler(feature, handle)
-        )
-    }
+    )
 
     /**
      * Intercepts and sets a handler to be invoked before an agent is closed.
@@ -757,16 +509,10 @@ public expect abstract class AIAgentPipeline(public val clock: Clock) {
      * }
      * ```
      */
-    public fun interceptAgentClosing(
+    public open fun interceptAgentClosing(
         feature: AIAgentFeature<*, *>,
         handle: suspend (eventContext: AgentClosingContext) -> Unit
-    ) {
-        val handler = agentEventHandlers.getOrPut(feature.key) { AgentEventHandler() }
-
-        handler.agentClosingHandler = AgentClosingHandler(
-            function = createConditionalHandler(feature, handle)
-        )
-    }
+    )
 
     /**
      * Intercepts strategy started event to perform actions when an agent strategy begins execution.
@@ -782,16 +528,10 @@ public expect abstract class AIAgentPipeline(public val clock: Clock) {
      * }
      * ```
      */
-    public fun interceptStrategyStarting(
+    public open fun interceptStrategyStarting(
         feature: AIAgentFeature<*, *>,
         handle: suspend (StrategyStartingContext) -> Unit
-    ) {
-        val handler = strategyEventHandlers.getOrPut(feature.key) { StrategyEventHandler() }
-
-        handler.strategyStartingHandler = StrategyStartingHandler(
-            function = createConditionalHandler(feature, handle)
-        )
-    }
+    )
 
     /**
      * Sets up an interceptor to handle the completion of a strategy for the given feature.
@@ -806,16 +546,10 @@ public expect abstract class AIAgentPipeline(public val clock: Clock) {
      * }
      * ```
      */
-    public fun interceptStrategyCompleted(
+    public open fun interceptStrategyCompleted(
         feature: AIAgentFeature<*, *>,
         handle: suspend (StrategyCompletedContext) -> Unit
-    ) {
-        val handler = strategyEventHandlers.getOrPut(feature.key) { StrategyEventHandler() }
-
-        handler.strategyCompletedHandler = StrategyCompletedHandler(
-            function = createConditionalHandler(feature, handle)
-        )
-    }
+    )
 
     /**
      * Intercepts LLM calls before they are made to modify or log the prompt.
@@ -830,16 +564,10 @@ public expect abstract class AIAgentPipeline(public val clock: Clock) {
      * }
      * ```
      */
-    public fun interceptLLMCallStarting(
+    public open fun interceptLLMCallStarting(
         feature: AIAgentFeature<*, *>,
         handle: suspend (eventContext: LLMCallStartingContext) -> Unit
-    ) {
-        val handler = llmCallEventHandlers.getOrPut(feature.key) { LLMCallEventHandler() }
-
-        handler.llmCallStartingHandler = LLMCallStartingHandler(
-            function = createConditionalHandler(feature, handle)
-        )
-    }
+    )
 
     /**
      * Intercepts LLM calls after they are made to process or log the response.
@@ -854,16 +582,10 @@ public expect abstract class AIAgentPipeline(public val clock: Clock) {
      * }
      * ```
      */
-    public fun interceptLLMCallCompleted(
+    public open fun interceptLLMCallCompleted(
         feature: AIAgentFeature<*, *>,
         handle: suspend (eventContext: LLMCallCompletedContext) -> Unit
-    ) {
-        val handler = llmCallEventHandlers.getOrPut(feature.key) { LLMCallEventHandler() }
-
-        handler.llmCallCompletedHandler = LLMCallCompletedHandler(
-            function = createConditionalHandler(feature, handle)
-        )
-    }
+    )
 
     /**
      * Intercepts streaming operations before they begin to modify or log the streaming request.
@@ -881,16 +603,10 @@ public expect abstract class AIAgentPipeline(public val clock: Clock) {
      * }
      * ```
      */
-    public fun interceptLLMStreamingStarting(
+    public open fun interceptLLMStreamingStarting(
         feature: AIAgentFeature<*, *>,
         handle: suspend (eventContext: LLMStreamingStartingContext) -> Unit
-    ) {
-        val handler = llmStreamingEventHandlers.getOrPut(feature.key) { LLMStreamingEventHandler() }
-
-        handler.llmStreamingStartingHandler = LLMStreamingStartingHandler(
-            function = createConditionalHandler(feature, handle)
-        )
-    }
+    )
 
     /**
      * Intercepts stream frames as they are received during the streaming process.
@@ -908,16 +624,10 @@ public expect abstract class AIAgentPipeline(public val clock: Clock) {
      * }
      * ```
      */
-    public fun interceptLLMStreamingFrameReceived(
+    public open fun interceptLLMStreamingFrameReceived(
         feature: AIAgentFeature<*, *>,
         handle: suspend (eventContext: LLMStreamingFrameReceivedContext) -> Unit
-    ) {
-        val handler = llmStreamingEventHandlers.getOrPut(feature.key) { LLMStreamingEventHandler() }
-
-        handler.llmStreamingFrameReceivedHandler = LLMStreamingFrameReceivedHandler(
-            function = createConditionalHandler(feature, handle)
-        )
-    }
+    )
 
     /**
      * Intercepts errors during the streaming process.
@@ -925,16 +635,10 @@ public expect abstract class AIAgentPipeline(public val clock: Clock) {
      * @param feature The feature associated with this handler.
      * @param handle The handler that processes stream errors
      */
-    public fun interceptLLMStreamingFailed(
+    public open fun interceptLLMStreamingFailed(
         feature: AIAgentFeature<*, *>,
         handle: suspend (eventContext: LLMStreamingFailedContext) -> Unit
-    ) {
-        val handler = llmStreamingEventHandlers.getOrPut(feature.key) { LLMStreamingEventHandler() }
-
-        handler.llmStreamingFailedHandler = LLMStreamingFailedHandler(
-            function = createConditionalHandler(feature, handle)
-        )
-    }
+    )
 
     /**
      * Intercepts streaming operations after they complete to perform post-processing or cleanup.
@@ -952,16 +656,10 @@ public expect abstract class AIAgentPipeline(public val clock: Clock) {
      * }
      * ```
      */
-    public fun interceptLLMStreamingCompleted(
+    public open fun interceptLLMStreamingCompleted(
         feature: AIAgentFeature<*, *>,
         handle: suspend (eventContext: LLMStreamingCompletedContext) -> Unit
-    ) {
-        val handler = llmStreamingEventHandlers.getOrPut(feature.key) { LLMStreamingEventHandler() }
-
-        handler.llmStreamingCompletedHandler = LLMStreamingCompletedHandler(
-            function = createConditionalHandler(feature, handle)
-        )
-    }
+    )
 
     /**
      * Intercepts and handles tool calls for the specified feature.
@@ -976,16 +674,10 @@ public expect abstract class AIAgentPipeline(public val clock: Clock) {
      * }
      * ```
      */
-    public fun interceptToolCallStarting(
+    public open fun interceptToolCallStarting(
         feature: AIAgentFeature<*, *>,
         handle: suspend (eventContext: ToolCallStartingContext) -> Unit
-    ) {
-        val handler = toolCallEventHandlers.getOrPut(feature.key) { ToolCallEventHandler() }
-
-        handler.toolCallHandler = ToolCallHandler(
-            function = createConditionalHandler(feature, handle)
-        )
-    }
+    )
 
     /**
      * Intercepts validation errors encountered during the execution of tools associated with the specified feature.
@@ -1000,16 +692,10 @@ public expect abstract class AIAgentPipeline(public val clock: Clock) {
      * }
      * ```
      */
-    public fun interceptToolValidationFailed(
+    public open fun interceptToolValidationFailed(
         feature: AIAgentFeature<*, *>,
         handle: suspend (eventContext: ToolValidationFailedContext) -> Unit
-    ) {
-        val handler = toolCallEventHandlers.getOrPut(feature.key) { ToolCallEventHandler() }
-
-        handler.toolValidationErrorHandler = ToolValidationErrorHandler(
-            function = createConditionalHandler(feature, handle)
-        )
-    }
+    )
 
     /**
      * Sets up an interception mechanism to handle tool call failures for a specific feature.
@@ -1024,16 +710,10 @@ public expect abstract class AIAgentPipeline(public val clock: Clock) {
      * }
      * ```
      */
-    public fun interceptToolCallFailed(
+    public open fun interceptToolCallFailed(
         feature: AIAgentFeature<*, *>,
         handle: suspend (eventContext: ToolCallFailedContext) -> Unit
-    ) {
-        val handler = toolCallEventHandlers.getOrPut(feature.key) { ToolCallEventHandler() }
-
-        handler.toolCallFailureHandler = ToolCallFailureHandler(
-            function = createConditionalHandler(feature, handle)
-        )
-    }
+    )
 
     /**
      * Intercepts the result of a tool call with a custom handler for a specific feature.
@@ -1048,16 +728,10 @@ public expect abstract class AIAgentPipeline(public val clock: Clock) {
      * }
      * ```
      */
-    public fun interceptToolCallCompleted(
+    public open fun interceptToolCallCompleted(
         feature: AIAgentFeature<*, *>,
         handle: suspend (eventContext: ToolCallCompletedContext) -> Unit
-    ) {
-        val handler = toolCallEventHandlers.getOrPut(feature.key) { ToolCallEventHandler() }
-
-        handler.toolCallResultHandler = ToolCallResultHandler(
-            function = createConditionalHandler(feature, handle)
-        )
-    }
+    )
 
     //endregion Interceptors
 
@@ -1073,12 +747,10 @@ public expect abstract class AIAgentPipeline(public val clock: Clock) {
             imports = arrayOf("ai.koog.agents.core.feature.handler.agent.AgentStartingContext")
         )
     )
-    public fun interceptBeforeAgentStarted(
+    public open fun interceptBeforeAgentStarted(
         feature: AIAgentFeature<*, *>,
         handle: suspend (AgentStartingContext) -> Unit
-    ) {
-        interceptAgentStarting(feature, handle)
-    }
+    )
 
     /**
      * Intercepts the completion of an agent's operation and assigns a custom handler to process the result.
@@ -1092,12 +764,10 @@ public expect abstract class AIAgentPipeline(public val clock: Clock) {
             )
         )
     )
-    public fun interceptAgentFinished(
+    public open fun interceptAgentFinished(
         feature: AIAgentFeature<*, *>,
         handle: suspend (eventContext: AgentCompletedContext) -> Unit
-    ) {
-        interceptAgentCompleted(feature, handle)
-    }
+    )
 
     /**
      * Intercepts and handles errors occurring during the execution of an AI agent's strategy.
@@ -1111,12 +781,10 @@ public expect abstract class AIAgentPipeline(public val clock: Clock) {
             )
         )
     )
-    public fun interceptAgentRunError(
+    public open fun interceptAgentRunError(
         feature: AIAgentFeature<*, *>,
         handle: suspend (AgentExecutionFailedContext) -> Unit
-    ) {
-        interceptAgentExecutionFailed(feature, handle)
-    }
+    )
 
     /**
      * Intercepts and sets a handler to be invoked before an agent is closed.
@@ -1130,12 +798,10 @@ public expect abstract class AIAgentPipeline(public val clock: Clock) {
             )
         )
     )
-    public fun interceptAgentBeforeClose(
+    public open fun interceptAgentBeforeClose(
         feature: AIAgentFeature<*, *>,
         handle: suspend (AgentClosingContext) -> Unit
-    ) {
-        interceptAgentClosing(feature, handle)
-    }
+    )
 
     /**
      * Intercepts strategy started event to perform actions when an agent strategy begins execution.
@@ -1149,12 +815,10 @@ public expect abstract class AIAgentPipeline(public val clock: Clock) {
             )
         )
     )
-    public fun interceptStrategyStart(
+    public open fun interceptStrategyStart(
         feature: AIAgentFeature<*, *>,
         handle: suspend (StrategyStartingContext) -> Unit
-    ) {
-        interceptStrategyStarting(feature, handle)
-    }
+    )
 
     /**
      * Sets up an interceptor to handle the completion of a strategy for the given feature.
@@ -1168,12 +832,10 @@ public expect abstract class AIAgentPipeline(public val clock: Clock) {
             )
         )
     )
-    public fun interceptStrategyFinished(
+    public open fun interceptStrategyFinished(
         feature: AIAgentFeature<*, *>,
         handle: suspend (StrategyCompletedContext) -> Unit
-    ) {
-        interceptStrategyCompleted(feature, handle)
-    }
+    )
 
     /**
      * Intercepts LLM calls before they are made (deprecated name).
@@ -1187,12 +849,10 @@ public expect abstract class AIAgentPipeline(public val clock: Clock) {
             )
         )
     )
-    public fun interceptBeforeLLMCall(
+    public open fun interceptBeforeLLMCall(
         feature: AIAgentFeature<*, *>,
         handle: suspend (eventContext: LLMCallStartingContext) -> Unit
-    ) {
-        interceptLLMCallStarting(feature, handle)
-    }
+    )
 
     /**
      * Intercepts LLM calls after they are made to process or log the response.
@@ -1206,12 +866,10 @@ public expect abstract class AIAgentPipeline(public val clock: Clock) {
             )
         )
     )
-    public fun interceptAfterLLMCall(
+    public open fun interceptAfterLLMCall(
         feature: AIAgentFeature<*, *>,
         handle: suspend (eventContext: LLMCallCompletedContext) -> Unit
-    ) {
-        interceptLLMCallCompleted(feature, handle)
-    }
+    )
 
     /**
      * Intercepts and handles tool calls for the specified feature and its implementation.
@@ -1226,12 +884,10 @@ public expect abstract class AIAgentPipeline(public val clock: Clock) {
             )
         )
     )
-    public fun interceptToolCall(
+    public open fun interceptToolCall(
         feature: AIAgentFeature<*, *>,
         handle: suspend (eventContext: ToolCallStartingContext) -> Unit
-    ) {
-        interceptToolCallStarting(feature, handle)
-    }
+    )
 
     /**
      * Intercepts the result of a tool call with a custom handler for a specific feature.
@@ -1245,12 +901,10 @@ public expect abstract class AIAgentPipeline(public val clock: Clock) {
             )
         )
     )
-    public fun interceptToolCallResult(
+    public open fun interceptToolCallResult(
         feature: AIAgentFeature<*, *>,
         handle: suspend (eventContext: ToolCallCompletedContext) -> Unit
-    ) {
-        interceptToolCallCompleted(feature, handle)
-    }
+    )
 
     /**
      * Sets up an interception mechanism to handle tool call failures for a specific feature.
@@ -1264,12 +918,10 @@ public expect abstract class AIAgentPipeline(public val clock: Clock) {
             )
         )
     )
-    public fun interceptToolCallFailure(
+    public open fun interceptToolCallFailure(
         feature: AIAgentFeature<*, *>,
         handle: suspend (eventContext: ToolCallFailedContext) -> Unit
-    ) {
-        interceptToolCallFailed(feature, handle)
-    }
+    )
 
     /**
      * Intercepts validation errors encountered during the execution of tools associated with the specified feature.
@@ -1283,149 +935,28 @@ public expect abstract class AIAgentPipeline(public val clock: Clock) {
             )
         )
     )
-    public fun interceptToolValidationError(
+    public open fun interceptToolValidationError(
         feature: AIAgentFeature<*, *>,
         handle: suspend (eventContext: ToolValidationFailedContext) -> Unit
-    ) {
-        interceptToolValidationFailed(feature, handle)
-    }
+    )
 
     //endregion Deprecated Interceptors
 
-    //region Private Methods
-
-    private fun installFeaturesFromSystemConfig() {
-        val featuresFromSystemConfig = readFeatureKeysFromSystemVariables()
-        val filteredSystemFeaturesToInstall = filterSystemFeaturesToInstall(featuresFromSystemConfig)
-
-        filteredSystemFeaturesToInstall.forEach { systemFeatureKey ->
-            installSystemFeature(systemFeatureKey)
-        }
-    }
-
-    /**
-     * Read feature keys from system variables.
-     *
-     * @return List of feature keys as a string.
-     *         For example, ["debugger", "tracing"]
-     */
-    private fun readFeatureKeysFromSystemVariables(): List<String> {
-        val collectedFeaturesKeys = mutableListOf<String>()
-
-        @OptIn(ExperimentalAgentsApi::class)
-        getEnvironmentVariableOrNull(FeatureSystemVariables.KOOG_FEATURES_ENV_VAR_NAME)
-            ?.let { featuresString ->
-                featuresString.split(",").forEach { featureString ->
-                    collectedFeaturesKeys.add(featureString.trim())
-                }
-            }
-
-        @OptIn(ExperimentalAgentsApi::class)
-        getVMOptionOrNull(FeatureSystemVariables.KOOG_FEATURES_VM_OPTION_NAME)
-            ?.let { featuresString ->
-                featuresString.split(",").forEach { featureString ->
-                    collectedFeaturesKeys.add(featureString.trim())
-                }
-            }
-
-        return collectedFeaturesKeys.toList()
-    }
-
-    /**
-     * Filter system features to install based on the provided feature keys.
-     *
-     * @return List of [AIAgentStorageKey]s with filtered system features to install.
-     *         For example, [AIAgentStorageKey("debugger")]
-     */
-    private fun filterSystemFeaturesToInstall(featureKeys: List<String>): List<AIAgentStorageKey<*>> {
-        val filteredSystemFeaturesToInstall = mutableListOf<AIAgentStorageKey<*>>()
-
-        // Check config features exist in the system features list
-        featureKeys.forEach { configFeatureKey ->
-            val systemFeatureKey = systemFeatures.find { systemFeature -> systemFeature.name == configFeatureKey }
-
-            // Check requested feature is in the known system features list
-            if (systemFeatureKey == null) {
-                logger.warn {
-                    "Feature with key '$configFeatureKey' does not exist in the known system features list:\n" +
-                        systemFeatures.joinToString("\n") { " - ${it.name}" }
-                }
-                return@forEach
-            }
-
-            // Ignore system features if already installed by a user
-            if (registeredFeatures.keys.any { registerFeatureKey -> registerFeatureKey.name == configFeatureKey }) {
-                logger.debug {
-                    "Feature with key '$configFeatureKey' has already been registered. " +
-                        "Skipping system feature from config registration."
-                }
-                return@forEach
-            }
-
-            filteredSystemFeaturesToInstall.add(systemFeatureKey)
-        }
-
-        return filteredSystemFeaturesToInstall.toList()
-    }
-
-    @OptIn(ExperimentalAgentsApi::class)
-    private fun installSystemFeature(featureKey: AIAgentStorageKey<*>) {
-        logger.debug { "Installing system feature: ${featureKey.name}" }
-        when (featureKey) {
-            Debugger.key -> {
-                when (this) {
-                    is AIAgentGraphPipeline -> {
-                        this.install(Debugger) {
-                            // Use default configuration
-                        }
-                    }
-                    is AIAgentFunctionalPipeline -> {
-                        this.install(Debugger) {
-                            // Use default configuration
-                        }
-                    }
-                }
-            }
-            else -> {
-                error(
-                    "Unsupported system feature key: ${featureKey.name}. " +
-                        "Please make sure all system features are registered in the systemFeatures list.\n" +
-                        "Current system features list:\n${systemFeatures.joinToString("\n") { " - ${it.name}" }}"
-                )
-            }
-        }
-    }
-
-    protected fun <TContext : AgentLifecycleEventContext> createConditionalHandler(
+    //region Protected and Internal Methods
+    protected open fun <TContext : AgentLifecycleEventContext> createConditionalHandler(
         feature: AIAgentFeature<*, *>,
         handle: suspend (TContext) -> Unit
-    ): suspend (TContext) -> Unit = handler@{ eventContext ->
-        val featureConfig = registeredFeatures[feature.key]?.featureConfig
+    ): suspend (TContext) -> Unit
 
-        if (featureConfig != null && !featureConfig.isAccepted(eventContext)) {
-            return@handler
-        }
-
-        handle(eventContext)
-    }
-
-    protected fun createConditionalHandler(
+    protected open fun createConditionalHandler(
         feature: AIAgentFeature<*, *>,
         handle: suspend AgentEnvironmentTransformingContext.(AIAgentEnvironment) -> AIAgentEnvironment
-    ): suspend (AgentEnvironmentTransformingContext, AIAgentEnvironment) -> AIAgentEnvironment =
-        handler@{ eventContext, env ->
-            val featureConfig = registeredFeatures[feature.key]?.featureConfig
+    ): suspend (AgentEnvironmentTransformingContext, AIAgentEnvironment) -> AIAgentEnvironment
 
-            if (featureConfig != null && !featureConfig.isAccepted(eventContext)) {
-                return@handler env
-            }
+    protected open fun FeatureConfig.isAccepted(eventContext: AgentLifecycleEventContext): Boolean
 
-            eventContext.handle(env)
-        }
+    internal open suspend fun prepareFeatures()
 
-    protected fun FeatureConfig.isAccepted(eventContext: AgentLifecycleEventContext): Boolean {
-        return this.eventFilter.invoke(eventContext)
-    }
-
-    //endregion Private Methods
+    internal open suspend fun closeAllFeaturesMessageProcessors()
+    //endregion Protected and Internal Methods
 }

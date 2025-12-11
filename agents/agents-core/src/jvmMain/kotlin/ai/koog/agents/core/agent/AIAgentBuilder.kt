@@ -18,6 +18,7 @@ import ai.koog.prompt.llm.LLModel
 import kotlinx.datetime.Clock
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.ExecutorService
+import java.util.function.BiFunction
 import kotlin.reflect.typeOf
 
 public actual open class AIAgentBuilder internal actual constructor() {
@@ -85,11 +86,11 @@ public actual open class AIAgentBuilder internal actual constructor() {
     @JvmOverloads
     public fun <Input, Output> functionalStrategy(
         name: String = "funStrategy",
-        strategy: AIAgentFunctionalStrategyAction<Input, Output>
+        strategy: BiFunction<AIAgentFunctionalContext, Input, Output>
     ): FunctionalAgentBuilder<Input, Output> = functionalStrategy(
-        object : AIAgentAsyncFunctionalStrategy<Input, Output>(name) {
-            override fun executeAsync(context: AIAgentFunctionalContext, input: Input): Output =
-                strategy.execute(context, input)
+        object : NonSuspendAIAgentFunctionalStrategy<Input, Output>(name) {
+            override fun executeStrategy(context: AIAgentFunctionalContext, input: Input): Output =
+                strategy.apply(context, input)
         }
     )
 

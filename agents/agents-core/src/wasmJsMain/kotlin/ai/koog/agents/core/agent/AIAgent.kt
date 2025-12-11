@@ -43,7 +43,7 @@ public actual abstract class AIAgent<Input, Output> : Closeable {
             toolRegistry: ToolRegistry,
             id: String?,
             installFeatures: GraphAIAgent.FeatureContext.() -> Unit
-        ): AIAgent<String, String> = AIAgentHelper.invoke(
+        ): GraphAIAgent<String, String> = AIAgentHelper.invoke(
             promptExecutor,
             agentConfig,
             strategy,
@@ -71,8 +71,8 @@ public actual abstract class AIAgent<Input, Output> : Closeable {
             strategy: AIAgentGraphStrategy<String, String>,
             toolRegistry: ToolRegistry,
             id: String?,
-            systemPrompt: String,
-            temperature: Double,
+            systemPrompt: String?,
+            temperature: Double?,
             numberOfChoices: Int,
             maxIterations: Int,
             installFeatures: GraphAIAgent.FeatureContext.() -> Unit
@@ -97,8 +97,8 @@ public actual abstract class AIAgent<Input, Output> : Closeable {
             toolRegistry: ToolRegistry,
             id: String?,
             clock: Clock,
-            systemPrompt: String,
-            temperature: Double,
+            systemPrompt: String?,
+            temperature: Double?,
             numberOfChoices: Int,
             maxIterations: Int,
             noinline installFeatures: GraphAIAgent.FeatureContext.() -> Unit
@@ -122,8 +122,8 @@ public actual abstract class AIAgent<Input, Output> : Closeable {
             toolRegistry: ToolRegistry,
             strategy: AIAgentFunctionalStrategy<Input, Output>,
             id: String?,
-            systemPrompt: String,
-            temperature: Double,
+            systemPrompt: String?,
+            temperature: Double?,
             numberOfChoices: Int,
             maxIterations: Int,
             installFeatures: FunctionalAIAgent.FeatureContext.() -> Unit

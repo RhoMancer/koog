@@ -14,8 +14,20 @@ public actual interface AIAgentService<Input, Output, TAgent : AIAgent<Input, Ou
     public actual val promptExecutor: PromptExecutor
     public actual val agentConfig: AIAgentConfig
     public actual val toolRegistry: ToolRegistry
-    public actual suspend fun createAgent(id: String?, clock: Clock): TAgent
-    public actual suspend fun createAgentAndRun(agentInput: Input, id: String?, clock: Clock): Output
+    public actual suspend fun createAgent(
+        id: String?,
+        additionalToolRegistry: ToolRegistry,
+        agentConfig: AIAgentConfig,
+        clock: Clock
+    ): TAgent
+
+    public actual suspend fun createAgentAndRun(
+        agentInput: Input, id: String?,
+        additionalToolRegistry: ToolRegistry,
+        agentConfig: AIAgentConfig,
+        clock: Clock
+    ): Output
+
     public actual suspend fun removeAgent(agent: TAgent): Boolean
     public actual suspend fun removeAgentWithId(id: String): Boolean
     public actual suspend fun agentById(id: String): TAgent?
@@ -54,8 +66,8 @@ public actual interface AIAgentService<Input, Output, TAgent : AIAgent<Input, Ou
             llmModel: LLModel,
             strategy: AIAgentGraphStrategy<String, String>,
             toolRegistry: ToolRegistry,
-            systemPrompt: String,
-            temperature: Double,
+            systemPrompt: String?,
+            temperature: Double?,
             numberOfChoices: Int,
             maxIterations: Int,
             installFeatures: GraphAIAgent.FeatureContext.() -> Unit

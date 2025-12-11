@@ -4,26 +4,34 @@ package ai.koog.agents.core.agent.entity
 
 import ai.koog.agents.annotations.JavaAPI
 import ai.koog.agents.core.agent.context.AIAgentContext
+import ai.koog.agents.core.utils.submitToMainDispatcher
 
+/**
+ * [AIAgentStrategy] that is executed in non-suspend context using [java.util.concurrent.ExecutorService] provided in [ai.koog.agents.core.agent.config.AIAgentConfig].
+ *
+ * See [executeStrategy]
+ * */
 @JavaAPI
-public interface NonSuspendAIAgentStrategy<TInput, TOutput, TContext : AIAgentContext> :
+public abstract class NonSuspendAIAgentStrategy<TInput, TOutput, TContext : AIAgentContext> :
     AIAgentStrategy<TInput, TOutput, TContext> {
 
     /**
-     * Executes the AI agent's strategy asynchronously using the provided context and input.
+     * Executes the AI agent's strategy asynchronously using the provided [context] and [input].
      *
-     * This method processes the given input data within the specified context, leveraging the AI agent's
-     * internal logic and strategy to produce an output. The execution is performed asynchronously and returns
-     * a `CompletableFuture` immediately, allowing the calling thread to continue without waiting for the result.
+     * The strategy is executed on the main dispatcher that is either:
+     *  a) [ai.koog.agents.core.agent.config.AIAgentConfig.strategyExecutorService] from [AIAgentContext.config] of the provided [config]
+     *  b) [kotlinx.coroutines.Dispatchers.Default]
      *
      * @param context The execution context in which the AI agent operates. It provides access to the agent's
      * environment, configuration, lifecycle state, and other components required for processing.
      * @param input The input data to be processed by the AI agent's strategy. The type of the input is determined
      * by the implementation of the strategy and is used to derive an appropriate output.
-     * @return A `CompletableFuture` representing the asynchronous computation of the strategy's output.
-     * The output type is defined by the strategy's implementation and may be null if no output is generated.
+     * @return Result of the agent of [TOutput] type.
      */
-    public fun executeImpl(context: TContext, input: TInput, ): TOutput
+    public abstract fun executeStrategy(context: TContext, input: TInput): TOutput
 
-    override suspend fun execute(context: TContext, input: TInput): TOutput? = executeImpl(context, input)
+    final override suspend fun execute(context: TContext, input: TInput): TOutput? =
+        context.config.submitToMainDispatcher {
+            executeStrategy(context, input)
+        }
 }

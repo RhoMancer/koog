@@ -21,8 +21,8 @@ import ai.koog.agents.core.utils.runOnLLMDispatcher
 import ai.koog.agents.core.utils.runOnMainDispatcher
 import ai.koog.prompt.message.Message
 import ai.koog.prompt.streaming.StreamFrame
+import ai.koog.prompt.structure.StructureDefinition
 import ai.koog.prompt.structure.StructureFixingParser
-import ai.koog.prompt.structure.StructuredDataDefinition
 import ai.koog.prompt.structure.StructuredResponse
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -40,7 +40,6 @@ import kotlin.reflect.KClass
 public actual open class AIAgentFunctionalContext internal actual constructor(
     environment: AIAgentEnvironment,
     agentId: String,
-    pipeline: AIAgentFunctionalPipeline,
     runId: String,
     agentInput: Any?,
     config: AIAgentConfig,
@@ -48,6 +47,8 @@ public actual open class AIAgentFunctionalContext internal actual constructor(
     stateManager: AIAgentStateManager,
     storage: AIAgentStorage,
     strategyName: String,
+    pipeline: AIAgentFunctionalPipeline,
+    executionInfo: AgentExecutionInfo,
     parentContext: AIAgentContext?
 ) : AIAgentContext {
     @PublishedApi
@@ -62,7 +63,8 @@ public actual open class AIAgentFunctionalContext internal actual constructor(
         stateManager = stateManager,
         storage = storage,
         strategyName = strategyName,
-        parentContext = parentContext
+        parentContext = parentContext,
+        executionInfo = executionInfo,
     )
 
     actual override val environment: AIAgentEnvironment = delegate.environment
@@ -75,6 +77,7 @@ public actual open class AIAgentFunctionalContext internal actual constructor(
     actual override val stateManager: AIAgentStateManager = delegate.stateManager
     actual override val storage: AIAgentStorage = delegate.storage
     actual override val strategyName: String = delegate.strategyName
+    actual override val executionInfo: AgentExecutionInfo = delegate.executionInfo
 
     @InternalAgentsApi
     actual override val parentContext: AIAgentContext? = delegate.parentContext
@@ -144,16 +147,10 @@ public actual open class AIAgentFunctionalContext internal actual constructor(
         requestLLM(message, allowToolCalls)
     }
 
-
     public actual open fun onAssistantMessage(
         response: Message.Response,
         action: (Message.Assistant) -> Unit
     ): Unit = delegate.onAssistantMessage(response, action)
-
-
-    public actual open fun List<Message.Response>.containsToolCalls(): Boolean = with(delegate) {
-        this@containsToolCalls.containsToolCalls()
-    }
 
     public actual open fun Message.Response.asAssistantMessageOrNull(): Message.Assistant? = with(delegate) {
         this@asAssistantMessageOrNull.asAssistantMessageOrNull()
@@ -227,7 +224,7 @@ public actual open class AIAgentFunctionalContext internal actual constructor(
     @JvmOverloads
     public actual open suspend fun requestLLMStreaming(
         message: String,
-        structureDefinition: StructuredDataDefinition?
+        structureDefinition: StructureDefinition?
     ): Flow<StreamFrame> = delegate.requestLLMStreaming(message, structureDefinition)
 
     /**
@@ -242,7 +239,7 @@ public actual open class AIAgentFunctionalContext internal actual constructor(
     @JvmOverloads
     public fun requestLLMStreaming(
         message: String,
-        structureDefinition: StructuredDataDefinition?,
+        structureDefinition: StructureDefinition?,
         executorService: ExecutorService? = null
     ): Publisher<StreamFrame> = config.runOnLLMDispatcher(executorService) {
         // TODO: Use JavaRX instead of Publisher!
@@ -495,19 +492,5 @@ public actual open class AIAgentFunctionalContext internal actual constructor(
         executorService: ExecutorService? = null
     ): Unit = config.runOnLLMDispatcher(executorService) {
         compressHistory(strategy, preserveMemory)
-    }
-}
-
-private fun f() {
-    val strategy = object: NonSuspendAIAgentFunctionalStrategy<String, String>("") {
-        override fun executeImpl(
-            context: AIAgentFunctionalContext,
-            input: String
-        ): String {
-
-            val llmResult = context.requestLLM(input, executorService = null) // not suspend call
-
-            return llmResult.content
-        }
     }
 }

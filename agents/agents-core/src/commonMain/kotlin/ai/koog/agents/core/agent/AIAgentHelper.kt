@@ -89,7 +89,7 @@ internal object AIAgentHelper {
         toolRegistry: ToolRegistry = ToolRegistry.EMPTY,
         id: String? = null,
         installFeatures: FeatureContext.() -> Unit = {},
-    ): AIAgent<String, String> = GraphAIAgent(
+    ): GraphAIAgent<String, String> = GraphAIAgent(
         inputType = typeOf<String>(),
         outputType = typeOf<String>(),
         promptExecutor = promptExecutor,
@@ -156,8 +156,8 @@ internal object AIAgentHelper {
         strategy: AIAgentGraphStrategy<String, String> = singleRunStrategy(),
         toolRegistry: ToolRegistry = ToolRegistry.EMPTY,
         id: String? = null,
-        systemPrompt: String = "",
-        temperature: Double = 1.0,
+        systemPrompt: String? = null,
+        temperature: Double? = null,
         numberOfChoices: Int = 1,
         maxIterations: Int = 50,
         installFeatures: FeatureContext.() -> Unit = {}
@@ -173,7 +173,7 @@ internal object AIAgentHelper {
                     numberOfChoices = numberOfChoices
                 )
             ) {
-                system(systemPrompt)
+                systemPrompt?.let { system(it) }
             },
             model = llmModel,
             maxAgentIterations = maxIterations,
@@ -209,8 +209,8 @@ internal object AIAgentHelper {
         toolRegistry: ToolRegistry = ToolRegistry.EMPTY,
         id: String? = null,
         clock: Clock = Clock.System,
-        systemPrompt: String = "",
-        temperature: Double = 1.0,
+        systemPrompt: String? = null,
+        temperature: Double? = null,
         numberOfChoices: Int = 1,
         maxIterations: Int = 50,
         noinline installFeatures: FeatureContext.() -> Unit = {},
@@ -227,7 +227,7 @@ internal object AIAgentHelper {
                         numberOfChoices = numberOfChoices
                     )
                 ) {
-                    system(systemPrompt)
+                    systemPrompt?.let { system(it) }
                 },
                 model = llmModel,
                 maxAgentIterations = maxIterations,
@@ -259,8 +259,8 @@ internal object AIAgentHelper {
         toolRegistry: ToolRegistry = ToolRegistry.EMPTY,
         strategy: AIAgentFunctionalStrategy<Input, Output>,
         id: String? = null,
-        systemPrompt: String = "",
-        temperature: Double = 1.0,
+        systemPrompt: String? = null,
+        temperature: Double? = null,
         numberOfChoices: Int = 1,
         maxIterations: Int = 50,
         installFeatures: FunctionalAIAgent.FeatureContext.() -> Unit = {},
@@ -274,7 +274,7 @@ internal object AIAgentHelper {
                     numberOfChoices = numberOfChoices
                 )
             ) {
-                system(systemPrompt)
+                systemPrompt?.let { system(it) }
             },
             model = llmModel,
             maxAgentIterations = maxIterations,

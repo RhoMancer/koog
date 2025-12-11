@@ -13,13 +13,11 @@ import ai.koog.agents.core.environment.ReceivedToolResult
 import ai.koog.agents.core.environment.SafeTool
 import ai.koog.agents.core.feature.pipeline.AIAgentFunctionalPipeline
 import ai.koog.agents.core.tools.Tool
-import ai.koog.agents.core.tools.ToolArgs
 import ai.koog.agents.core.tools.ToolDescriptor
-import ai.koog.agents.core.tools.ToolResult
 import ai.koog.prompt.message.Message
 import ai.koog.prompt.streaming.StreamFrame
+import ai.koog.prompt.structure.StructureDefinition
 import ai.koog.prompt.structure.StructureFixingParser
-import ai.koog.prompt.structure.StructuredDataDefinition
 import ai.koog.prompt.structure.StructuredResponse
 import kotlinx.coroutines.flow.Flow
 
@@ -28,7 +26,6 @@ import kotlinx.coroutines.flow.Flow
 public actual open class AIAgentFunctionalContext internal actual constructor(
     environment: AIAgentEnvironment,
     agentId: String,
-    pipeline: AIAgentFunctionalPipeline,
     runId: String,
     agentInput: Any?,
     config: AIAgentConfig,
@@ -36,6 +33,8 @@ public actual open class AIAgentFunctionalContext internal actual constructor(
     stateManager: AIAgentStateManager,
     storage: AIAgentStorage,
     strategyName: String,
+    pipeline: AIAgentFunctionalPipeline,
+    executionInfo: AgentExecutionInfo,
     parentContext: AIAgentContext?
 ) : AIAgentContext {
     @PublishedApi
@@ -50,7 +49,8 @@ public actual open class AIAgentFunctionalContext internal actual constructor(
         stateManager = stateManager,
         storage = storage,
         strategyName = strategyName,
-        parentContext = parentContext
+        parentContext = parentContext,
+        executionInfo = executionInfo,
     )
 
     actual override val environment: AIAgentEnvironment = delegate.environment
@@ -63,6 +63,7 @@ public actual open class AIAgentFunctionalContext internal actual constructor(
     actual override val stateManager: AIAgentStateManager = delegate.stateManager
     actual override val storage: AIAgentStorage = delegate.storage
     actual override val strategyName: String = delegate.strategyName
+    actual override val executionInfo: AgentExecutionInfo = delegate.executionInfo
 
     @InternalAgentsApi
     actual override val parentContext: AIAgentContext? = delegate.parentContext
@@ -111,10 +112,6 @@ public actual open class AIAgentFunctionalContext internal actual constructor(
         action: (Message.Assistant) -> Unit
     ): Unit = delegate.onAssistantMessage(response, action)
 
-    public actual open fun List<Message.Response>.containsToolCalls(): Boolean = with(delegate) {
-        this@containsToolCalls.containsToolCalls()
-    }
-
     public actual open fun Message.Response.asAssistantMessageOrNull(): Message.Assistant? = with(delegate) {
         this@asAssistantMessageOrNull.asAssistantMessageOrNull()
     }
@@ -147,7 +144,7 @@ public actual open class AIAgentFunctionalContext internal actual constructor(
 
     public actual open suspend fun requestLLMStreaming(
         message: String,
-        structureDefinition: StructuredDataDefinition?
+        structureDefinition: StructureDefinition?
     ): Flow<StreamFrame> = delegate.requestLLMStreaming(message, structureDefinition)
 
     public actual open suspend fun requestLLMMultiple(message: String): List<Message.Response> =
@@ -191,5 +188,4 @@ public actual open class AIAgentFunctionalContext internal actual constructor(
         strategy: HistoryCompressionStrategy,
         preserveMemory: Boolean
     ): Unit = delegate.compressHistory(strategy, preserveMemory)
-
 }

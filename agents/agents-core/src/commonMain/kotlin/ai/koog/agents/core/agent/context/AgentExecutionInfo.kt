@@ -27,10 +27,10 @@ public data class AgentExecutionInfo(
  * @param block The suspend function to execute with the modified execution context.
  * @return The result of executing the provided block.
  */
-public suspend fun <T> withParent(
+public inline fun <T> withParent(
     context: AIAgentContext,
     partName: String,
-    block: suspend (executionInfo: AgentExecutionInfo) -> T
+    block: (executionInfo: AgentExecutionInfo) -> T
 ): T {
 
     // Original

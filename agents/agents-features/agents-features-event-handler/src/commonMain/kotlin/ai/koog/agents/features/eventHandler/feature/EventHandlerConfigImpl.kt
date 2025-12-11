@@ -1,6 +1,5 @@
 package ai.koog.agents.features.eventHandler.feature
 
-import ai.koog.agents.core.feature.config.FeatureConfig
 import ai.koog.agents.core.feature.handler.AfterLLMCallContext
 import ai.koog.agents.core.feature.handler.AgentBeforeCloseContext
 import ai.koog.agents.core.feature.handler.AgentFinishedContext
@@ -31,12 +30,38 @@ import ai.koog.agents.core.feature.handler.streaming.LLMStreamingCompletedContex
 import ai.koog.agents.core.feature.handler.streaming.LLMStreamingFailedContext
 import ai.koog.agents.core.feature.handler.streaming.LLMStreamingFrameReceivedContext
 import ai.koog.agents.core.feature.handler.streaming.LLMStreamingStartingContext
+import ai.koog.agents.core.feature.handler.subgraph.SubgraphExecutionCompletedContext
+import ai.koog.agents.core.feature.handler.subgraph.SubgraphExecutionFailedContext
+import ai.koog.agents.core.feature.handler.subgraph.SubgraphExecutionStartingContext
 import ai.koog.agents.core.feature.handler.tool.ToolCallCompletedContext
 import ai.koog.agents.core.feature.handler.tool.ToolCallFailedContext
 import ai.koog.agents.core.feature.handler.tool.ToolCallStartingContext
 import ai.koog.agents.core.feature.handler.tool.ToolValidationFailedContext
 
-internal class EventHandlerConfigImpl : EventHandlerConfig() {
+/**
+ * Configuration class for the EventHandler feature.
+ *
+ * This class provides a way to configure handlers for various events that occur during
+ * the execution of an agent. These events include agent lifecycle events, strategy events,
+ * node events, LLM call events, and tool call events.
+ *
+ * Each handler is a property that can be assigned a lambda function to be executed when
+ * the corresponding event occurs.
+ *
+ * Example usage:
+ * ```
+ * handleEvents {
+ *     onToolCallStarting { eventContext ->
+ *         println("Tool called: ${eventContext.toolName} with args ${eventContext.toolArgs}")
+ *     }
+ *
+ *     onAgentCompleted { eventContext ->
+ *         println("Agent finished with result: ${eventContext.result}")
+ *     }
+ * }
+ * ```
+ */
+public class EventHandlerConfigImpl : EventHandlerConfig() {
 
     //region Private Agent Handlers
 
@@ -67,6 +92,16 @@ internal class EventHandlerConfigImpl : EventHandlerConfig() {
     private var _onNodeExecutionFailed: suspend (eventHandler: NodeExecutionFailedContext) -> Unit = { _ -> }
 
     //endregion Private Node Handlers
+
+    //region Private Subgraph Handlers
+
+    private var _onSubgraphExecutionStarting: suspend (eventHandler: SubgraphExecutionStartingContext) -> Unit = { _ -> }
+
+    private var _onSubgraphExecutionCompleted: suspend (eventHandler: SubgraphExecutionCompletedContext) -> Unit = { _ -> }
+
+    private var _onSubgraphExecutionFailed: suspend (eventHandler: SubgraphExecutionFailedContext) -> Unit = { _ -> }
+
+    //endregion Private Subgraph Handlers
 
     //region Private LLM Call Handlers
 
@@ -211,6 +246,43 @@ internal class EventHandlerConfigImpl : EventHandlerConfig() {
     }
 
     //endregion Node Handlers
+
+    //region Subgraph Handlers
+
+    /**
+     * Append handler called before a subgraph in the agent's execution graph is processed.
+     */
+    public override fun onSubgraphExecutionStarting(handler: suspend (eventContext: SubgraphExecutionStartingContext) -> Unit) {
+        val originalHandler = this._onSubgraphExecutionStarting
+        this._onSubgraphExecutionStarting = { eventContext ->
+            originalHandler(eventContext)
+            handler.invoke(eventContext)
+        }
+    }
+
+    /**
+     * Append handler called after a subgraph in the agent's execution graph has been processed.
+     */
+    public override fun onSubgraphExecutionCompleted(handler: suspend (eventContext: SubgraphExecutionCompletedContext) -> Unit) {
+        val originalHandler = this._onSubgraphExecutionCompleted
+        this._onSubgraphExecutionCompleted = { eventContext ->
+            originalHandler(eventContext)
+            handler.invoke(eventContext)
+        }
+    }
+
+    /**
+     * Append handler called when an error occurs during the execution of a subgraph.
+     */
+    public override fun onSubgraphExecutionFailed(handler: suspend (eventContext: SubgraphExecutionFailedContext) -> Unit) {
+        val originalHandler = this._onSubgraphExecutionFailed
+        this._onSubgraphExecutionFailed = { eventContext ->
+            originalHandler(eventContext)
+            handler.invoke(eventContext)
+        }
+    }
+
+    //endregion Subgraph Handlers
 
     //region LLM Call Handlers
 
@@ -635,6 +707,31 @@ internal class EventHandlerConfigImpl : EventHandlerConfig() {
     }
 
     //endregion Invoke Node Handlers
+
+    //region Invoke Subgraph Handlers
+
+    /**
+     * Invoke handlers for before a subgraph in the agent's execution graph is processed event.
+     */
+    internal override suspend fun invokeOnSubgraphExecutionStarting(eventContext: SubgraphExecutionStartingContext) {
+        _onSubgraphExecutionStarting.invoke(eventContext)
+    }
+
+    /**
+     * Invoke handlers for after a subgraph in the agent's execution graph has been processed event.
+     */
+    internal override suspend fun invokeOnSubgraphExecutionCompleted(eventContext: SubgraphExecutionCompletedContext) {
+        _onSubgraphExecutionCompleted.invoke(eventContext)
+    }
+
+    /**
+     * Invokes the error handling logic for a subgraph execution error event.
+     */
+    internal override suspend fun invokeOnSubgraphExecutionFailed(interceptContext: SubgraphExecutionFailedContext) {
+        _onSubgraphExecutionFailed.invoke(interceptContext)
+    }
+
+    //endregion Invoke Subgraph Handlers
 
     //region Invoke LLM Call Handlers
 

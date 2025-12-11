@@ -31,6 +31,9 @@ import ai.koog.agents.core.feature.handler.streaming.LLMStreamingCompletedContex
 import ai.koog.agents.core.feature.handler.streaming.LLMStreamingFailedContext
 import ai.koog.agents.core.feature.handler.streaming.LLMStreamingFrameReceivedContext
 import ai.koog.agents.core.feature.handler.streaming.LLMStreamingStartingContext
+import ai.koog.agents.core.feature.handler.subgraph.SubgraphExecutionCompletedContext
+import ai.koog.agents.core.feature.handler.subgraph.SubgraphExecutionFailedContext
+import ai.koog.agents.core.feature.handler.subgraph.SubgraphExecutionStartingContext
 import ai.koog.agents.core.feature.handler.tool.ToolCallCompletedContext
 import ai.koog.agents.core.feature.handler.tool.ToolCallFailedContext
 import ai.koog.agents.core.feature.handler.tool.ToolCallStartingContext
@@ -118,7 +121,38 @@ public expect open class EventHandlerConfig constructor() : FeatureConfig {
      */
     public open fun onNodeExecutionFailed(handler: suspend (eventContext: NodeExecutionFailedContext) -> Unit)
 
+    internal open suspend fun invokeOnSubgraphExecutionStarting(eventContext: SubgraphExecutionStartingContext)
+
+    /**
+     * Invoke handlers for after a subgraph in the agent's execution graph has been processed event.
+     */
+    internal open suspend fun invokeOnSubgraphExecutionCompleted(eventContext: SubgraphExecutionCompletedContext)
+
+    /**
+     * Invokes the error handling logic for a subgraph execution error event.
+     */
+    internal open suspend fun invokeOnSubgraphExecutionFailed(interceptContext: SubgraphExecutionFailedContext)
+
     //endregion Node Handlers
+
+    //region Subgraph Handlers
+
+    /**
+     * Append handler called before a subgraph in the agent's execution graph is processed.
+     */
+    public open fun onSubgraphExecutionStarting(handler: suspend (eventContext: SubgraphExecutionStartingContext) -> Unit)
+
+    /**
+     * Append handler called after a subgraph in the agent's execution graph has been processed.
+     */
+    public open fun onSubgraphExecutionCompleted(handler: suspend (eventContext: SubgraphExecutionCompletedContext) -> Unit)
+
+    /**
+     * Append handler called when an error occurs during the execution of a subgraph.
+     */
+    public open fun onSubgraphExecutionFailed(handler: suspend (eventContext: SubgraphExecutionFailedContext) -> Unit)
+
+    //endregion Subgraph Handlers
 
     //region LLM Call Handlers
 

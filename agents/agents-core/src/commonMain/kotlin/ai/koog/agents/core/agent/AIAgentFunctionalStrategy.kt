@@ -3,10 +3,8 @@
 package ai.koog.agents.core.agent
 
 import ai.koog.agents.core.agent.context.AIAgentFunctionalContext
-import ai.koog.agents.core.agent.context.withParent
 import ai.koog.agents.core.agent.entity.AIAgentStrategy
 import io.github.oshai.kotlinlogging.KotlinLogging
-import kotlin.reflect.typeOf
 import kotlin.uuid.ExperimentalUuidApi
 
 /**
@@ -28,26 +26,6 @@ public interface AIAgentFunctionalStrategy<TInput, TOutput> :
     private companion object {
         private val logger = KotlinLogging.logger { }
     }
-
-    @OptIn(ExperimentalUuidApi::class)
-    // TODO: JAVA
-    override suspend fun executeNEW(
-        context: AIAgentFunctionalContext,
-        input: TInput
-    ): TOutput = withParent(context = context, partName = name) { executionInfo ->
-        context.pipeline.onStrategyStarting(executionInfo, this@AIAgentFunctionalStrategy, context)
-        val result = context.func(input)
-        context.pipeline.onStrategyCompleted(executionInfo, this@AIAgentFunctionalStrategy, context, result, typeOf<Any?>())
-
-        logger.debug { "Finished executing strategy (name: $name) with result: $result" }
-        result
-    }
-
-    @OptIn(ExperimentalUuidApi::class)
-    override suspend fun execute(
-        context: AIAgentFunctionalContext,
-        input: TInput
-    ): TOutput
 }
 
 /**

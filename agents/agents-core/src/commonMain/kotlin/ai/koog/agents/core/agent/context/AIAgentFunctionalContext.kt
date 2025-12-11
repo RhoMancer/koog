@@ -13,16 +13,13 @@ import ai.koog.agents.core.environment.ReceivedToolResult
 import ai.koog.agents.core.environment.SafeTool
 import ai.koog.agents.core.feature.pipeline.AIAgentFunctionalPipeline
 import ai.koog.agents.core.tools.Tool
-import ai.koog.agents.core.tools.ToolArgs
 import ai.koog.agents.core.tools.ToolDescriptor
-import ai.koog.agents.core.tools.ToolResult
 import ai.koog.prompt.message.Message
 import ai.koog.prompt.streaming.StreamFrame
+import ai.koog.prompt.structure.StructureDefinition
 import ai.koog.prompt.structure.StructureFixingParser
-import ai.koog.prompt.structure.StructuredDataDefinition
 import ai.koog.prompt.structure.StructuredResponse
 import kotlinx.coroutines.flow.Flow
-import kotlin.jvm.JvmOverloads
 
 /**
  * Represents the execution context for an AI agent operating in a loop.
@@ -49,7 +46,6 @@ import kotlin.jvm.JvmOverloads
 public expect open class AIAgentFunctionalContext internal constructor(
     environment: AIAgentEnvironment,
     agentId: String,
-    pipeline: AIAgentFunctionalPipeline,
     runId: String,
     agentInput: Any?,
     config: AIAgentConfig,
@@ -57,12 +53,15 @@ public expect open class AIAgentFunctionalContext internal constructor(
     stateManager: AIAgentStateManager,
     storage: AIAgentStorage,
     strategyName: String,
+    pipeline: AIAgentFunctionalPipeline,
+    executionInfo: AgentExecutionInfo,
     parentContext: AIAgentContext? = null
 ) : AIAgentContext {
 
     override val environment: AIAgentEnvironment
     override val agentId: String
     override val pipeline: AIAgentFunctionalPipeline
+    override val executionInfo: AgentExecutionInfo
     override val runId: String
     override val agentInput: Any?
     override val config: AIAgentConfig
@@ -137,15 +136,6 @@ public expect open class AIAgentFunctionalContext internal constructor(
         response: Message.Response,
         action: (Message.Assistant) -> Unit
     )
-
-    /**
-     * Checks if the list of `Message.Response` contains any instances
-     * of `Message.Tool.Call`.
-     *
-     * @receiver A list of `Message.Response` objects to evaluate.
-     * @return `true` if there is at least one `Message.Tool.Call` in the list, otherwise `false`.
-     */
-    public open fun List<Message.Response>.containsToolCalls(): Boolean
 
     /**
      * Attempts to cast a `Message.Response` instance to a `Message.Assistant` type.
@@ -234,7 +224,7 @@ public expect open class AIAgentFunctionalContext internal constructor(
      */
     public open suspend fun requestLLMStreaming(
         message: String,
-        structureDefinition: StructuredDataDefinition? = null
+        structureDefinition: StructureDefinition? = null
     ): Flow<StreamFrame>
 
     /**

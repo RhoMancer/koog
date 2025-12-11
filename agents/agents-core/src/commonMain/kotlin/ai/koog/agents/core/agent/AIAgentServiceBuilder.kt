@@ -32,7 +32,7 @@ public class AIAgentServiceBuilder internal constructor() {
     internal var toolRegistry: ToolRegistry = ToolRegistry.EMPTY
     internal var prompt: Prompt = Prompt.Empty
     internal var llmModel: LLModel? = null
-    internal var temperature: Double = 1.0
+    internal var temperature: Double? = null
     internal var numberOfChoices: Int = 1
     internal var maxIterations: Int = 50
     internal var clock: Clock = Clock.System
@@ -240,7 +240,7 @@ public class GraphAgentServiceBuilder<Input, Output> internal constructor(
     internal var toolRegistry: ToolRegistry = ToolRegistry.EMPTY,
     private var prompt: Prompt = Prompt.Empty,
     private var llmModel: LLModel? = null,
-    private var temperature: Double = 1.0,
+    private var temperature: Double? = null,
     private var numberOfChoices: Int = 1,
     private var maxIterations: Int = 50,
     private var missingToolsConversionStrategy: MissingToolsConversionStrategy = MissingToolsConversionStrategy.Missing(
@@ -434,7 +434,7 @@ public class FunctionalAgentServiceBuilder<Input, Output> internal constructor(
     internal var toolRegistry: ToolRegistry = ToolRegistry.EMPTY,
     private var prompt: Prompt = Prompt.Empty,
     private var llmModel: LLModel? = null,
-    private var temperature: Double = 1.0,
+    private var temperature: Double? = null,
     private var numberOfChoices: Int = 1,
     private var maxIterations: Int = 50,
     private var missingToolsConversionStrategy: MissingToolsConversionStrategy = MissingToolsConversionStrategy.Missing(

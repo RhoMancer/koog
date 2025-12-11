@@ -13,34 +13,59 @@ import ai.koog.prompt.llm.LLModel
 import kotlinx.datetime.Clock
 import java.util.concurrent.ExecutorService
 
-public actual interface AIAgentService<Input, Output, TAgent : AIAgent<Input, Output>> {
-    public actual val promptExecutor: PromptExecutor
-    public actual val agentConfig: AIAgentConfig
-    public actual val toolRegistry: ToolRegistry
-    public actual suspend fun createAgent(id: String?, clock: Clock): TAgent
-    public actual suspend fun createAgentAndRun(agentInput: Input, id: String?, clock: Clock): Output
-    public actual suspend fun removeAgent(agent: TAgent): Boolean
-    public actual suspend fun removeAgentWithId(id: String): Boolean
-    public actual suspend fun agentById(id: String): TAgent?
-    public actual suspend fun listAllAgents(): List<TAgent>
-    public actual suspend fun listActiveAgents(): List<TAgent>
-    public actual suspend fun listInactiveAgents(): List<TAgent>
-    public actual suspend fun listFinishedAgents(): List<TAgent>
-    public actual suspend fun closeAll()
+public actual abstract class AIAgentService<Input, Output, TAgent : AIAgent<Input, Output>> {
+    public actual abstract val promptExecutor: PromptExecutor
+    public actual abstract val agentConfig: AIAgentConfig
+    public actual abstract val toolRegistry: ToolRegistry
+    public actual abstract suspend fun createAgent(
+        id: String?,
+        additionalToolRegistry: ToolRegistry,
+        agentConfig: AIAgentConfig,
+        clock: Clock
+    ): TAgent
+
+    public actual abstract suspend fun createAgentAndRun(
+        agentInput: Input, id: String?,
+        additionalToolRegistry: ToolRegistry,
+        agentConfig: AIAgentConfig,
+        clock: Clock
+    ): Output
+
+    public actual abstract suspend fun removeAgent(agent: TAgent): Boolean
+    public actual abstract suspend fun removeAgentWithId(id: String): Boolean
+    public actual abstract suspend fun agentById(id: String): TAgent?
+    public actual abstract suspend fun listAllAgents(): List<TAgent>
+    public actual abstract suspend fun listActiveAgents(): List<TAgent>
+    public actual abstract suspend fun listInactiveAgents(): List<TAgent>
+    public actual abstract suspend fun listFinishedAgents(): List<TAgent>
+    public actual abstract suspend fun closeAll()
 
     @JavaAPI
-    public fun createAgent(id: String?, clock: Clock, executorService: ExecutorService? = null): TAgent =
-        agentConfig.runOnMainDispatcher(executorService) { createAgent(id, clock) }
+    @JvmOverloads
+    public fun createAgent(
+        id: String? = null,
+        additionalToolRegistry: ToolRegistry = ToolRegistry.EMPTY,
+        agentConfig: AIAgentConfig = this.agentConfig,
+        executorService: ExecutorService? = null,
+        clock: Clock = Clock.System
+    ): TAgent = agentConfig.runOnMainDispatcher(executorService) {
+        createAgent(id, additionalToolRegistry, agentConfig, clock)
+    }
 
     @JavaAPI
+    @JvmOverloads
     public fun createAgentAndRun(
         agentInput: Input,
         id: String?,
-        clock: Clock,
-        executorService: ExecutorService? = null
-    ): Output = createAgent(id, clock, executorService).run(agentInput, executorService)
+        additionalToolRegistry: ToolRegistry = ToolRegistry.EMPTY,
+        agentConfig: AIAgentConfig = this.agentConfig,
+        executorService: ExecutorService? = null,
+        clock: Clock
+    ): Output = createAgent(id, additionalToolRegistry, agentConfig, executorService, clock)
+        .run(agentInput, executorService)
 
     @JavaAPI
+    @JvmOverloads
     public fun removeAgent(
         agent: TAgent,
         executorService: ExecutorService? = null
@@ -49,6 +74,7 @@ public actual interface AIAgentService<Input, Output, TAgent : AIAgent<Input, Ou
     }
 
     @JavaAPI
+    @JvmOverloads
     public fun removeAgentWithId(
         id: String,
         executorService: ExecutorService? = null
@@ -57,6 +83,7 @@ public actual interface AIAgentService<Input, Output, TAgent : AIAgent<Input, Ou
     }
 
     @JavaAPI
+    @JvmOverloads
     public fun agentById(
         id: String,
         executorService: ExecutorService? = null
@@ -65,6 +92,7 @@ public actual interface AIAgentService<Input, Output, TAgent : AIAgent<Input, Ou
     }
 
     @JavaAPI
+    @JvmOverloads
     public fun listAllAgents(
         executorService: ExecutorService? = null
     ): List<TAgent> = agentConfig.runOnMainDispatcher(executorService) {
@@ -72,6 +100,7 @@ public actual interface AIAgentService<Input, Output, TAgent : AIAgent<Input, Ou
     }
 
     @JavaAPI
+    @JvmOverloads
     public fun listActiveAgents(
         executorService: ExecutorService? = null
     ): List<TAgent> = agentConfig.runOnMainDispatcher(executorService) {
@@ -79,6 +108,7 @@ public actual interface AIAgentService<Input, Output, TAgent : AIAgent<Input, Ou
     }
 
     @JavaAPI
+    @JvmOverloads
     public fun listInactiveAgents(
         executorService: ExecutorService? = null
     ): List<TAgent> = agentConfig.runOnMainDispatcher(executorService) {
@@ -86,6 +116,7 @@ public actual interface AIAgentService<Input, Output, TAgent : AIAgent<Input, Ou
     }
 
     @JavaAPI
+    @JvmOverloads
     public fun listFinishedAgents(
         executorService: ExecutorService? = null
     ): List<TAgent> = agentConfig.runOnMainDispatcher(executorService) {
@@ -93,6 +124,7 @@ public actual interface AIAgentService<Input, Output, TAgent : AIAgent<Input, Ou
     }
 
     @JavaAPI
+    @JvmOverloads
     public fun closeAll(
         executorService: ExecutorService? = null
     ) {
@@ -131,8 +163,8 @@ public actual interface AIAgentService<Input, Output, TAgent : AIAgent<Input, Ou
             llmModel: LLModel,
             strategy: AIAgentGraphStrategy<String, String>,
             toolRegistry: ToolRegistry,
-            systemPrompt: String,
-            temperature: Double,
+            systemPrompt: String?,
+            temperature: Double?,
             numberOfChoices: Int,
             maxIterations: Int,
             installFeatures: GraphAIAgent.FeatureContext.() -> Unit

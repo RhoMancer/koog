@@ -10,17 +10,14 @@ import ai.koog.agents.core.dsl.extension.replaceHistoryWithTLDR
 import ai.koog.agents.core.environment.AIAgentEnvironment
 import ai.koog.agents.core.environment.ReceivedToolResult
 import ai.koog.agents.core.environment.SafeTool
-import ai.koog.agents.core.environment.executeTool
 import ai.koog.agents.core.environment.result
 import ai.koog.agents.core.feature.pipeline.AIAgentFunctionalPipeline
 import ai.koog.agents.core.tools.Tool
-import ai.koog.agents.core.tools.ToolArgs
 import ai.koog.agents.core.tools.ToolDescriptor
-import ai.koog.agents.core.tools.ToolResult
 import ai.koog.prompt.message.Message
 import ai.koog.prompt.streaming.StreamFrame
+import ai.koog.prompt.structure.StructureDefinition
 import ai.koog.prompt.structure.StructureFixingParser
-import ai.koog.prompt.structure.StructuredDataDefinition
 import ai.koog.prompt.structure.StructuredResponse
 import kotlinx.coroutines.flow.Flow
 import kotlinx.serialization.KSerializer
@@ -40,6 +37,7 @@ internal class AIAgentFunctionalContextImpl(
     override val storage: AIAgentStorage,
     override val strategyName: String,
     override val pipeline: AIAgentFunctionalPipeline,
+    override val executionInfo: AgentExecutionInfo,
     override val parentContext: AIAgentContext? = null
 ) : AIAgentFunctionalContext(
     environment = environment,
@@ -52,7 +50,8 @@ internal class AIAgentFunctionalContextImpl(
     storage = storage,
     strategyName = strategyName,
     pipeline = pipeline,
-    parentContext = parentContext
+    parentContext = parentContext,
+    executionInfo = executionInfo
 ) {
 
     private val storeMap: MutableMap<AIAgentStorageKey<*>, Any> = mutableMapOf()
@@ -69,7 +68,26 @@ internal class AIAgentFunctionalContextImpl(
         return llm.readSession { prompt.messages }
     }
 
-    override fun copy(
+    /**
+     * Creates a copy of the current [AIAgentFunctionalContext], allowing for selective overriding of its properties.
+     * This method is particularly useful for creating modified contexts during agent execution without mutating
+     * the original context - perfect for when you need to experiment with different configurations or
+     * pass tweaked contexts down the execution pipeline while keeping the original pristine!
+     *
+     * @param environment The [AIAgentEnvironment] to be used in the new context, or retain the current playground if not specified.
+     * @param agentId The unique agent identifier, or keep the same identity if you're feeling attached.
+     * @param runId The run identifier for this execution adventure, or stick with the current journey.
+     * @param agentInput The input data for the agent - fresh data or the same trusty input, your choice!
+     * @param config The [AIAgentConfig] for the new context, or keep the current rulebook.
+     * @param llm The [AIAgentLLMContext] to be used, or maintain the current AI conversation partner.
+     * @param stateManager The [AIAgentStateManager] to be used, or preserve the current state keeper.
+     * @param storage The [AIAgentStorage] to be used, or stick with the current memory bank.
+     * @param strategyName The strategy name, or maintain the current game plan.
+     * @param pipeline The [AIAgentFunctionalPipeline] to be used, or keep the current execution superhighway.
+     * @param parentRootContext The parent root context, or maintain the current family tree.
+     * @return A shiny new [AIAgentFunctionalContext] with your desired modifications applied!
+     */
+    public override fun copy(
         environment: AIAgentEnvironment,
         agentId: String,
         runId: String,
@@ -80,8 +98,8 @@ internal class AIAgentFunctionalContextImpl(
         storage: AIAgentStorage,
         strategyName: String,
         pipeline: AIAgentFunctionalPipeline,
-        parentRootContext: AIAgentContext?
-    ): AIAgentFunctionalContextImpl {
+        parentRootContext: AIAgentContext?,
+    ): AIAgentFunctionalContext {
         val freshContext = AIAgentFunctionalContextImpl(
             environment = environment,
             agentId = agentId,
@@ -93,7 +111,8 @@ internal class AIAgentFunctionalContextImpl(
             storage = storage,
             strategyName = strategyName,
             pipeline = pipeline,
-            parentContext = parentRootContext
+            executionInfo = executionInfo,
+            parentContext = parentRootContext,
         )
 
         // Copy over the internal store map to preserve any stored values
@@ -141,15 +160,6 @@ internal class AIAgentFunctionalContextImpl(
             action(response)
         }
     }
-
-    /**
-     * Checks if the list of `Message.Response` contains any instances
-     * of `Message.Tool.Call`.
-     *
-     * @receiver A list of `Message.Response` objects to evaluate.
-     * @return `true` if there is at least one `Message.Tool.Call` in the list, otherwise `false`.
-     */
-    override fun List<Message.Response>.containsToolCalls(): Boolean = this.any { it is Message.Tool.Call }
 
     /**
      * Attempts to cast a `Message.Response` instance to a `Message.Assistant` type.
@@ -278,7 +288,7 @@ internal class AIAgentFunctionalContextImpl(
      */
     override suspend fun requestLLMStreaming(
         message: String,
-        structureDefinition: StructuredDataDefinition?
+        structureDefinition: StructureDefinition?
     ): Flow<StreamFrame> {
         return llm.writeSession {
             updatePrompt {

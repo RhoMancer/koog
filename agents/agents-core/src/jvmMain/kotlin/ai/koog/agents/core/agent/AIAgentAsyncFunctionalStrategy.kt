@@ -13,51 +13,15 @@ import kotlinx.coroutines.runBlocking
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.ExecutorService
 
+/**
+ * [AIAgentFunctionalStrategy] that operates in non-suspend context and is run on [ExecutorService] configured in [ai.koog.agents.core.agent.config.AIAgentConfig].
+ *
+ * See [ai.koog.agents.core.agent.NonSuspendAIAgentFunctionalStrategy.executeStrategy]
+ * */
 @JavaAPI
 public abstract class NonSuspendAIAgentFunctionalStrategy<TInput, TOutput> public constructor(
     override val name: String
-) : NonSuspendAIAgentStrategy<TInput, TOutput, AIAgentFunctionalContext>, AIAgentFunctionalStrategy<TInput, TOutput> {
+) : NonSuspendAIAgentStrategy<TInput, TOutput, AIAgentFunctionalContext>(), AIAgentFunctionalStrategy<TInput, TOutput> {
 
-    abstract override fun executeImpl(context: AIAgentFunctionalContext, input: TInput): TOutput
-
-    override suspend fun execute(
-        context: AIAgentFunctionalContext,
-        input: TInput
-    ): TOutput = execute(context, input)
+    abstract override fun executeStrategy(context: AIAgentFunctionalContext, input: TInput): TOutput
 }
-
-@JavaAPI
-public fun interface AIAgentFunctionalStrategyAction<TInput, TOutput> {
-    public fun execute(context: AIAgentFunctionalContext, input: TInput): TOutput
-}
-//
-//private fun f() {
-//    val str = AIAgentFunctionalStrategyAction<String, String> { ctx, input ->
-//        ctx.requestLLM(input, executorService = null)
-//            .thenApplyAsync { message ->
-//                if (message is Message.Tool.Call) {
-//                    ctx.executeTool(message, executorService = null)
-//                    ctx.sendToolResult(toolResul, executorService = null)
-//                } else {
-//
-//                }
-//            }
-//        ctx.executeTool()
-//
-//        ""
-//    }
-//
-//    val str2 = object: AIAgentFunctionalStrategy<String, String> {
-//        override suspend fun execute(
-//            context: AIAgentFunctionalContext,
-//            input: String
-//        ): String {
-//            context.requestLLM(input)
-//
-//            return ""
-//        }
-//
-//        override val name: String = "aaa"
-//
-//    }
-//}

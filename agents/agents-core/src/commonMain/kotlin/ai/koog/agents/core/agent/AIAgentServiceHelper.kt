@@ -94,8 +94,8 @@ internal object AIAgentServiceHelper {
         llmModel: LLModel,
         strategy: AIAgentGraphStrategy<String, String> = singleRunStrategy(),
         toolRegistry: ToolRegistry = ToolRegistry.EMPTY,
-        systemPrompt: String = "",
-        temperature: Double = 1.0,
+        systemPrompt: String? = null,
+        temperature: Double? = null,
         numberOfChoices: Int = 1,
         maxIterations: Int = 50,
         installFeatures: FeatureContext.() -> Unit = {}
@@ -110,7 +110,7 @@ internal object AIAgentServiceHelper {
                     numberOfChoices = numberOfChoices
                 )
             ) {
-                system(systemPrompt)
+                systemPrompt?.let { system(it) }
             },
             model = llmModel,
             maxAgentIterations = maxIterations,

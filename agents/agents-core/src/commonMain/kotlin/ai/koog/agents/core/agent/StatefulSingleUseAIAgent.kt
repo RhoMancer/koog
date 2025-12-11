@@ -2,13 +2,21 @@
 
 package ai.koog.agents.core.agent
 
+import ai.koog.agents.core.agent.AIAgentState.NotStarted
 import ai.koog.agents.core.agent.context.AIAgentContext
+import ai.koog.agents.core.agent.context.AgentExecutionInfo
+import ai.koog.agents.core.agent.context.AgentExecutionPath
+import ai.koog.agents.core.agent.context.withParent
 import ai.koog.agents.core.agent.entity.AIAgentStrategy
 import ai.koog.agents.core.feature.AIAgentFeature
 import ai.koog.agents.core.feature.pipeline.AIAgentPipeline
 import io.github.oshai.kotlinlogging.KLogger
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlin.reflect.KClass
+import kotlin.reflect.typeOf
 import kotlin.uuid.ExperimentalUuidApi
+import kotlin.uuid.Uuid
 
 /**
  * Abstract base class representing a single-use AI agent with state.
@@ -25,19 +33,29 @@ import kotlin.uuid.ExperimentalUuidApi
  * @property logger the logger used for logging execution details and errors.
  * @param id the unique identifier for the agent. Random UUID will be generated if set to null.
  */
-@OptIn(ExperimentalUuidApi::class)
-public expect abstract class StatefulSingleUseAIAgent<Input, Output, TContext : AIAgentContext> constructor(
+public abstract class StatefulSingleUseAIAgent<Input, Output, TContext : AIAgentContext> constructor(
     logger: KLogger,
     id: String? = null,
-) : AIAgent<Input, Output> {
+) : AIAgent<Input, Output>() {
     /**
      * Logger instance used for logging messages and events specific to this agent.
      */
-    protected open val logger: KLogger
+    internal open val logger: KLogger = logger
 
-    override suspend fun getState(): AIAgentState<Output>
+    /**
+     * A mutex used to synchronize access to the state of the agent. Ensures that only one coroutine
+     * can modify or read the shared state of the agent at a time, preventing data races and ensuring
+     * thread-safe operations.
+     */
+    private val agentStateMutex: Mutex = Mutex()
 
-    override val id: String
+    private var state: AIAgentState<Output> = NotStarted()
+
+    override suspend fun getState(): AIAgentState<Output> = agentStateMutex.withLock { state.copy() }
+
+
+    @OptIn(ExperimentalUuidApi::class)
+    final override val id: String by lazy { id ?: Uuid.random().toString() }
 
     /**
      * The execution strategy defining how the agent processes input and produces output.
@@ -52,7 +70,7 @@ public expect abstract class StatefulSingleUseAIAgent<Input, Output, TContext : 
      * executing workflows, handling inputs, and generating outputs in the
      * AI agent's functionality.
      */
-    protected abstract val pipeline: AIAgentPipeline
+    internal abstract val pipeline: AIAgentPipeline
 
     /**
      * Executes the agent's main functionality, coordinating with various components
@@ -66,7 +84,64 @@ public expect abstract class StatefulSingleUseAIAgent<Input, Output, TContext : 
      * @throws IllegalStateException if the agent was already started.
      * @throws Throwable if any exception occurs during the execution process.
      */
-    override suspend fun run(agentInput: Input): Output
+    @OptIn(ExperimentalUuidApi::class)
+    override suspend fun run(agentInput: Input): Output {
+        agentStateMutex.withLock {
+            if (state !is NotStarted) {
+                throw IllegalStateException(
+                    "Agent was already started. Please use AIAgentService.createAgentAndRun(agentInput) to run an agent multiple times."
+                )
+            }
+            state = AIAgentState.Starting()
+        }
+
+        val runId = Uuid.random().toString()
+        val context = prepareContext(agentInput, runId)
+
+        return pipeline.withPreparedPipeline {
+
+            // Agent
+            withParent(context, partName = runId) { executionInfo ->
+                agentStateMutex.withLock {
+                    state = AIAgentState.Running(context)
+                }
+
+                logger.debug { formatLog(this@StatefulSingleUseAIAgent.id, runId, "Starting agent execution") }
+                pipeline.onAgentStarting<Input, Output>(executionInfo, runId, this, context)
+
+                // Strategy
+                val result = try {
+                    withParent(context = context, partName = strategy.name) { executionInfo ->
+                        context.pipeline.onStrategyStarting(executionInfo, strategy, context)
+                        val result = strategy.execute(context = context, input = agentInput)
+                        context.pipeline.onStrategyCompleted(executionInfo, strategy, context, result, typeOf<Any?>())
+
+                        logger.debug { "Finished executing strategy (name: ${strategy.name}) with result: $result" }
+                        result
+                    }
+                } catch (e: Throwable) {
+                    logger.error(e) { "Execution exception reported by server!" }
+                    pipeline.onAgentExecutionFailed(executionInfo, this@StatefulSingleUseAIAgent.id, runId, e)
+
+                    agentStateMutex.withLock { state = AIAgentState.Failed(e) }
+                    throw e
+                }
+
+                logger.debug { formatLog(this@StatefulSingleUseAIAgent.id, runId, "Finished agent execution") }
+                pipeline.onAgentCompleted(executionInfo, this@StatefulSingleUseAIAgent.id, runId, result)
+
+                agentStateMutex.withLock {
+                    state = if (result != null) {
+                        AIAgentState.Finished(result)
+                    } else {
+                        AIAgentState.Failed(Exception("result is null"))
+                    }
+                }
+
+                result ?: error("result is null")
+            }
+        }
+    }
 
     /**
      * Closes the AI Agent and performs necessary cleanup operations.
@@ -77,7 +152,9 @@ public expect abstract class StatefulSingleUseAIAgent<Input, Output, TContext : 
      *
      * Overrides the `close` method to implement agent-specific shutdown logic.
      */
-    override suspend fun close()
+    override suspend fun close() {
+        // TODO: Delete Closeable interface from [AIAgent] declaration.
+    }
 
     /**
      * Prepares and initializes the agent context required to handle the given input and run ID.
@@ -100,7 +177,7 @@ public expect abstract class StatefulSingleUseAIAgent<Input, Output, TContext : 
     public open fun <TFeature : Any> feature(
         featureClass: KClass<TFeature>,
         feature: AIAgentFeature<*, TFeature>
-    ): TFeature?
+    ): TFeature? = pipeline.feature(featureClass, feature)
 
     /**
      * Formats a log message with the specified agent ID, run ID, and message content.
@@ -110,7 +187,23 @@ public expect abstract class StatefulSingleUseAIAgent<Input, Output, TContext : 
      * @param message The content of the log message to be formatted.
      * @return A formatted log string containing the agent ID, run ID, and the provided message.
      */
-    protected open fun formatLog(agentId: String, runId: String, message: String): String
+    protected open fun formatLog(agentId: String, runId: String, message: String): String =
+        "[agent id: $agentId, run id: $runId] $message"
+
+
+    private suspend fun <T> AIAgentPipeline.withPreparedPipeline(
+        block: suspend () -> T
+    ): T = try {
+        prepareFeatures()
+        block.invoke()
+    } finally {
+        onAgentClosing(
+            executionInfo = AgentExecutionInfo(id, null, AgentExecutionPath.EMPTY),
+            agentId = id
+        )
+
+        closeAllFeaturesMessageProcessors()
+    }
 }
 
 /**

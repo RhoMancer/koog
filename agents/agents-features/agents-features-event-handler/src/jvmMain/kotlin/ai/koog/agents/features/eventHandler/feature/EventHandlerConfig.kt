@@ -1,3 +1,5 @@
+@file:Suppress("MissingKDocForPublicAPI")
+
 package ai.koog.agents.features.eventHandler.feature
 
 import ai.koog.agents.annotations.JavaAPI
@@ -32,6 +34,9 @@ import ai.koog.agents.core.feature.handler.streaming.LLMStreamingCompletedContex
 import ai.koog.agents.core.feature.handler.streaming.LLMStreamingFailedContext
 import ai.koog.agents.core.feature.handler.streaming.LLMStreamingFrameReceivedContext
 import ai.koog.agents.core.feature.handler.streaming.LLMStreamingStartingContext
+import ai.koog.agents.core.feature.handler.subgraph.SubgraphExecutionCompletedContext
+import ai.koog.agents.core.feature.handler.subgraph.SubgraphExecutionFailedContext
+import ai.koog.agents.core.feature.handler.subgraph.SubgraphExecutionStartingContext
 import ai.koog.agents.core.feature.handler.tool.ToolCallCompletedContext
 import ai.koog.agents.core.feature.handler.tool.ToolCallFailedContext
 import ai.koog.agents.core.feature.handler.tool.ToolCallStartingContext
@@ -39,34 +44,46 @@ import ai.koog.agents.core.feature.handler.tool.ToolValidationFailedContext
 import ai.koog.agents.core.feature.pipeline.AsyncInterceptor
 import kotlinx.coroutines.future.await
 
-/**
- * Configuration class for the EventHandler feature.
- *
- * This class provides a way to configure handlers for various events that occur during
- * the execution of an agent. These events include agent lifecycle events, strategy events,
- * node events, LLM call events, and tool call events.
- *
- * Each handler is a property that can be assigned a lambda function to be executed when
- * the corresponding event occurs.
- *
- * Example usage:
- * ```
- * handleEvents {
- *     onToolCallStarting { eventContext ->
- *         println("Tool called: ${eventContext.tool.name} with args ${eventContext.toolArgs}")
- *     }
- *
- *     onAgentCompleted { eventContext ->
- *         println("Agent finished with result: ${eventContext.result}")
- *     }
- * }
- * ```
- */
 @Suppress("EXPECT_ACTUAL_CLASSIFIERS_ARE_IN_BETA_WARNING")
 public actual open class EventHandlerConfig actual constructor() : FeatureConfig() {
     private val delegate = EventHandlerConfigImpl()
 
     // Java Specific Handlers:
+
+    /**
+     * Registers a handler for the subgraph execution starting event. This method allows asynchronous
+     * interception of the event, enabling users to execute custom logic during the beginning of a
+     * subgraph execution.
+     *
+     * @param handler The asynchronous interceptor that processes the SubgraphExecutionStartingContext.
+     */
+    @JavaAPI
+    public fun onSubgraphExecutionStarting(handler: AsyncInterceptor<SubgraphExecutionStartingContext>) {
+        onSubgraphExecutionStarting { eventContext -> handler.intercept(eventContext).await() }
+    }
+
+    /**
+     * Registers a handler to be invoked when the execution of a subgraph is completed.
+     *
+     * @param handler An asynchronous interceptor that processes the subgraph execution
+     *                completion context. It provides a mechanism to inspect or modify
+     *                the context as needed before completion.
+     */
+    @JavaAPI
+    public fun onSubgraphExecutionCompleted(handler: AsyncInterceptor<SubgraphExecutionCompletedContext>) {
+        onSubgraphExecutionCompleted { eventContext -> handler.intercept(eventContext).await() }
+    }
+
+    /**
+     * Handles an event where the execution of a subgraph has failed.
+     *
+     * @param handler An asynchronous interceptor that processes the subgraph execution failure context.
+     */
+    @JavaAPI
+    public fun onSubgraphExecutionFailed(handler: AsyncInterceptor<SubgraphExecutionFailedContext>) {
+        onSubgraphExecutionFailed { eventContext -> handler.intercept(eventContext).await() }
+    }
+
     /**
      * Append handler called when an agent is started.
      */
@@ -693,4 +710,27 @@ public actual open class EventHandlerConfig actual constructor() : FeatureConfig
         delegate.invokeOnLLMStreamingCompleted(eventContext)
     }
 
+    internal actual open suspend fun invokeOnSubgraphExecutionStarting(eventContext: SubgraphExecutionStartingContext) {
+        delegate.invokeOnSubgraphExecutionStarting(eventContext)
+    }
+
+    internal actual open suspend fun invokeOnSubgraphExecutionCompleted(eventContext: SubgraphExecutionCompletedContext) {
+        delegate.invokeOnSubgraphExecutionCompleted(eventContext)
+    }
+
+    internal actual open suspend fun invokeOnSubgraphExecutionFailed(interceptContext: SubgraphExecutionFailedContext) {
+        delegate.invokeOnSubgraphExecutionFailed(interceptContext)
+    }
+
+    public actual open fun onSubgraphExecutionStarting(handler: suspend (SubgraphExecutionStartingContext) -> Unit) {
+        delegate.onSubgraphExecutionStarting(handler)
+    }
+
+    public actual open fun onSubgraphExecutionCompleted(handler: suspend (SubgraphExecutionCompletedContext) -> Unit) {
+        delegate.onSubgraphExecutionCompleted(handler)
+    }
+
+    public actual open fun onSubgraphExecutionFailed(handler: suspend (SubgraphExecutionFailedContext) -> Unit) {
+        delegate.onSubgraphExecutionFailed(handler)
+    }
 }

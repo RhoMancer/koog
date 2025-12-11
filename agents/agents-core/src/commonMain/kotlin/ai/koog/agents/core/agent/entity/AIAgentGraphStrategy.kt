@@ -53,9 +53,8 @@ public class AIAgentGraphStrategy<TInput, TOutput>(
     public lateinit var metadata: SubgraphMetadata
 
     @OptIn(InternalAgentsApi::class, ExperimentalUuidApi::class)
-    override suspend fun execute(context: AIAgentGraphContextBase, input: TInput): TOutput? = withParent(context, partName = id) { executionInfo ->
+    override suspend fun execute(context: AIAgentGraphContextBase, input: TInput): TOutput? =
         runCatchingCancellable {
-            context.pipeline.onStrategyStarting(executionInfo, this@AIAgentGraphStrategy, context)
             restoreStateIfNeeded(context)
 
             var result: TOutput? = super.execute(context = context, input = input)
@@ -65,14 +64,10 @@ public class AIAgentGraphStrategy<TInput, TOutput>(
                 result = super.execute(context = context, input = input)
             }
 
-            logger.trace { "Finished executing strategy (name: $name) with output: $result" }
-            context.pipeline.onStrategyCompleted(executionInfo, this@AIAgentGraphStrategy, context, result, outputType)
-
             result
         }.onFailure { e ->
             context.environment.reportProblem(exception = e)
         }.getOrThrow()
-    }
 
     @OptIn(InternalAgentsApi::class)
     private suspend fun restoreStateIfNeeded(
