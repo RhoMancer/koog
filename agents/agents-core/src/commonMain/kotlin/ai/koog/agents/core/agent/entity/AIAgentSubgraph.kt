@@ -10,6 +10,7 @@ import ai.koog.agents.core.agent.context.store
 import ai.koog.agents.core.agent.context.with
 import ai.koog.agents.core.agent.exception.AIAgentMaxNumberOfIterationsReachedException
 import ai.koog.agents.core.agent.exception.AIAgentStuckInTheNodeException
+import ai.koog.agents.core.agent.execution.AgentExecutionInfo
 import ai.koog.agents.core.annotation.InternalAgentsApi
 import ai.koog.agents.core.dsl.extension.replaceHistoryWithTLDR
 import ai.koog.agents.core.prompt.Prompts.selectRelevantTools
@@ -161,7 +162,7 @@ public open class AIAgentSubgraph<TInput, TOutput>(
      */
     @OptIn(InternalAgentsApi::class, DetachedPromptExecutorAPI::class, ExperimentalUuidApi::class)
     override suspend fun execute(context: AIAgentGraphContextBase, input: TInput): TOutput? =
-        context.with(id) { executionInfo ->
+        context.withCheckParentContext { executionInfo ->
             withContext(NodeInfoContextElement(Uuid.random().toString(), getNodeInfoElement()?.id, name, input, inputType)) {
                 val newTools = selectTools(context)
 
@@ -291,10 +292,23 @@ public open class AIAgentSubgraph<TInput, TOutput>(
      * effectively skipping execution for root contexts.
      */
     @OptIn(InternalAgentsApi::class)
-    private suspend fun runIfNonRootContext(context: AIAgentGraphContextBase, action: suspend AIAgentGraphContextBase.() -> Unit) {
+    private inline fun runIfNonRootContext(
+        context: AIAgentGraphContextBase,
+        action: AIAgentGraphContextBase.() -> Unit
+    ) {
         if (context.parentContext == null) return
         action(context)
     }
+
+    @OptIn(InternalAgentsApi::class)
+    private inline fun <T> AIAgentContext.withCheckParentContext(
+        block: (executionInfo: AgentExecutionInfo) -> T
+    ): T =
+        if (this.parentContext == null) {
+            block(this.executionInfo)
+        } else {
+            this.with(id) { block(it) }
+        }
 
     private fun formatLog(context: AIAgentContext, message: String): String =
         "$message [$name, ${context.strategyName}, ${context.runId}]"
