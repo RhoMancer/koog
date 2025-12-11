@@ -28,7 +28,7 @@ import kotlin.uuid.Uuid
  * @property context The [AIAgentContext] associated with the agent that is executing the prompt.
  */
 @OptIn(ExperimentalUuidApi::class)
-public class PromptExecutorProxy(
+public class ContextualPromptExecutor(
     private val executor: PromptExecutor,
     private val context: AIAgentContext,
 ) : PromptExecutor {
