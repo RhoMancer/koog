@@ -10,32 +10,32 @@ import ai.koog.prompt.executor.model.PromptExecutor
 import ai.koog.prompt.llm.LLModel
 import kotlinx.datetime.Clock
 
-public actual interface AIAgentService<Input, Output, TAgent : AIAgent<Input, Output>> {
-    public actual val promptExecutor: PromptExecutor
-    public actual val agentConfig: AIAgentConfig
-    public actual val toolRegistry: ToolRegistry
-    public actual suspend fun createAgent(
+public actual abstract class AIAgentService<Input, Output, TAgent : AIAgent<Input, Output>> actual constructor() {
+    public actual abstract val promptExecutor: PromptExecutor
+    public actual abstract val agentConfig: AIAgentConfig
+    public actual abstract val toolRegistry: ToolRegistry
+    public actual abstract suspend fun createAgent(
         id: String?,
         additionalToolRegistry: ToolRegistry,
         agentConfig: AIAgentConfig,
         clock: Clock
     ): TAgent
 
-    public actual suspend fun createAgentAndRun(
+    public actual abstract suspend fun createAgentAndRun(
         agentInput: Input, id: String?,
         additionalToolRegistry: ToolRegistry,
         agentConfig: AIAgentConfig,
         clock: Clock
     ): Output
 
-    public actual suspend fun removeAgent(agent: TAgent): Boolean
-    public actual suspend fun removeAgentWithId(id: String): Boolean
-    public actual suspend fun agentById(id: String): TAgent?
-    public actual suspend fun listAllAgents(): List<TAgent>
-    public actual suspend fun listActiveAgents(): List<TAgent>
-    public actual suspend fun listInactiveAgents(): List<TAgent>
-    public actual suspend fun listFinishedAgents(): List<TAgent>
-    public actual suspend fun closeAll()
+    public actual abstract suspend fun removeAgent(agent: TAgent): Boolean
+    public actual abstract suspend fun removeAgentWithId(id: String): Boolean
+    public actual abstract suspend fun agentById(id: String): TAgent?
+    public actual abstract suspend fun listAllAgents(): List<TAgent>
+    public actual abstract suspend fun listActiveAgents(): List<TAgent>
+    public actual abstract suspend fun listInactiveAgents(): List<TAgent>
+    public actual abstract suspend fun listFinishedAgents(): List<TAgent>
+    public actual abstract suspend fun closeAll()
 
     @Suppress("ACTUAL_ANNOTATIONS_NOT_MATCH_EXPECT")
     public actual companion object {
