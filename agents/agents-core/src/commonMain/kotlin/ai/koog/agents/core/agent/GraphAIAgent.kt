@@ -1,6 +1,7 @@
 package ai.koog.agents.core.agent
 
 import ai.koog.agents.core.agent.config.AIAgentConfig
+import ai.koog.agents.core.agent.context.AIAgentContext
 import ai.koog.agents.core.agent.context.AIAgentGraphContext
 import ai.koog.agents.core.agent.context.AIAgentGraphContextBase
 import ai.koog.agents.core.agent.context.AIAgentLLMContext
@@ -100,7 +101,7 @@ public open class GraphAIAgent<Input, Output>(
         val storage = AIAgentStorage()
 
         val executionInfo = AgentExecutionInfo(parent = null, partName = id)
-        val preparedEnvironment = prepareAgentEnvironment(executionInfo = executionInfo)
+        val initialEnvironment = prepareAgentEnvironment(executionInfo = executionInfo)
 
         // Initial
         val initialLLMContext = AIAgentLLMContext(
@@ -110,13 +111,13 @@ public open class GraphAIAgent<Input, Output>(
             model = agentConfig.model,
             responseProcessor = agentConfig.responseProcessor,
             promptExecutor = promptExecutor,
-            environment = preparedEnvironment,
+            environment = initialEnvironment,
             config = agentConfig,
             clock = clock
         )
 
         val initialAgentContext = AIAgentGraphContext(
-            environment = preparedEnvironment,
+            environment = initialEnvironment,
             agentId = id,
             agentInput = agentInput,
             agentInputType = inputType,
@@ -131,15 +132,25 @@ public open class GraphAIAgent<Input, Output>(
             parentContext = null,
         )
 
-        // Update
+        // Update: Create a mutable reference that will be updated
+        lateinit var updatedAgentContext: AIAgentGraphContextBase
+
         val contextualEnvironment = ContextualAgentEnvironment(
-            environment = preparedEnvironment,
-            context = initialAgentContext,
+            environment = initialEnvironment,
+            context = object : AIAgentContext by initialAgentContext {
+                override var executionInfo: AgentExecutionInfo
+                    get() = updatedAgentContext.executionInfo
+                    set(value) { updatedAgentContext.executionInfo = value }
+            },
         )
 
         val contextualPromptExecutor = ContextualPromptExecutor(
             executor = promptExecutor,
-            context = initialAgentContext,
+            context = object : AIAgentContext by initialAgentContext {
+                override var executionInfo: AgentExecutionInfo
+                    get() = updatedAgentContext.executionInfo
+                    set(value) { updatedAgentContext.executionInfo = value }
+            },
         )
 
         val updatedLLMContext = initialAgentContext.llm.copy(
@@ -147,7 +158,7 @@ public open class GraphAIAgent<Input, Output>(
             promptExecutor = contextualPromptExecutor,
         )
 
-        val updatedAgentContext = initialAgentContext.copy(
+        updatedAgentContext = initialAgentContext.copy(
             llm = updatedLLMContext,
             environment = contextualEnvironment,
             parentContext = initialAgentContext.parentContext, // Keep the original parent context

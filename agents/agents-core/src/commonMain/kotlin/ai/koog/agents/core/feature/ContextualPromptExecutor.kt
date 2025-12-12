@@ -167,8 +167,9 @@ public class ContextualPromptExecutor(
         prompt: Prompt,
         prefix: ExecutionPathPartPrefix,
         block: (executionInfo: AgentExecutionInfo) -> T
-    ): T = with(partName = "${prefix.id}:${prompt.messages.lastOrNull()?.content ?: prompt.id}") { executionInfo ->
-        block(executionInfo)
+    ): T {
+        val partName = "${prefix.id}:${prompt.messages.lastOrNull()?.content ?: prompt.id}"
+        return with(partName = partName) { executionInfo -> block(executionInfo) }
     }
 
     //endregion Private Methods
