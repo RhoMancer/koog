@@ -8,7 +8,7 @@ import ai.koog.prompt.executor.clients.openai.OpenAIModels
 import ai.koog.prompt.llm.LLModel
 
 public actual class AIAgentConfig actual constructor(
-    public actual override val prompt: Prompt,
+    public actual val prompt: Prompt,
     public actual val model: LLModel,
     public actual val maxAgentIterations: Int,
     public actual val missingToolsConversionStrategy: MissingToolsConversionStrategy

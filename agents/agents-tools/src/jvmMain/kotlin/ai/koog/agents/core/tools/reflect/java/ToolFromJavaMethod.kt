@@ -36,7 +36,7 @@ public class ToolFromJavaMethod(
     private val method: java.lang.reflect.Method,
     private val thisRef: Any? = null,
     override val descriptor: ToolDescriptor,
-    private val json: Json = Json,
+    override val json: Json = Json,
     override val resultSerializer: KSerializer<Any?>,
 ) : Tool<ToolFromJavaMethod.VarArgs, Any?>() {
 

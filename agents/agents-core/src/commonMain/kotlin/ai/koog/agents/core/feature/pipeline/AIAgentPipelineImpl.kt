@@ -251,7 +251,7 @@ internal class AIAgentPipelineImpl(clock: Clock) : AIAgentPipeline(clock) {
      * This internal method properly shuts down all message processors of registered features,
      * ensuring resources are released appropriately.
      */
-    internal suspend fun closeAllFeaturesMessageProcessors() {
+    override suspend fun closeAllFeaturesMessageProcessors() {
         registeredFeatures.values.forEach { registerFeature ->
             closeFeatureMessageProcessors(registerFeature.featureConfig)
         }
