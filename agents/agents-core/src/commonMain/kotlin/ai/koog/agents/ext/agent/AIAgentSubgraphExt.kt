@@ -26,8 +26,10 @@ import ai.koog.prompt.llm.LLModel
 import ai.koog.prompt.markdown.markdown
 import ai.koog.prompt.message.Message
 import ai.koog.prompt.params.LLMParams
+import kotlinx.serialization.InternalSerializationApi
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.serializer
+import kotlin.reflect.KClass
 
 /**
  * Utility object providing tools and methods for working with subgraphs and tasks in a controlled
@@ -144,6 +146,22 @@ internal inline fun <reified Output> identityTool(): Tool<Output, Output> = obje
     override val description: String = SubgraphWithTaskUtils.FINALIZE_SUBGRAPH_TOOL_DESCRIPTION
     override suspend fun execute(args: Output): Output = args
 }
+
+/**
+ * Creates an identity tool which performs no transformations, returning the input as the output.
+ *
+ * @return An instance of a Tool that processes input of type Output and returns the same input as output.
+ */
+@PublishedApi
+@OptIn(InternalAgentToolsApi::class, InternalSerializationApi::class)
+internal fun <Output : Any> identityTool(outputClass: KClass<Output>): Tool<Output, Output> =
+    object : Tool<Output, Output>() {
+        override val argsSerializer: KSerializer<Output> = outputClass.serializer()
+        override val resultSerializer: KSerializer<Output> = outputClass.serializer()
+        override val name: String = SubgraphWithTaskUtils.FINALIZE_SUBGRAPH_TOOL_NAME
+        override val description: String = SubgraphWithTaskUtils.FINALIZE_SUBGRAPH_TOOL_DESCRIPTION
+        override suspend fun execute(args: Output): Output = args
+    }
 
 //region Subgraph With Task
 
@@ -487,6 +505,7 @@ public inline fun <reified Input, reified Output, reified OutputTransformed> AIA
             ToolCalls.PARALLEL -> {
                 environment.executeTools(regularToolCalls)
             }
+
             ToolCalls.SEQUENTIAL,
             ToolCalls.SINGLE_RUN_SEQUENTIAL -> {
                 regularToolCalls.map { toolCall ->
@@ -579,7 +598,7 @@ public inline fun <reified Input, reified Output, reified OutputTransformed> AIA
 
 @PublishedApi
 @InternalAgentsApi
-internal suspend inline fun <reified Output, reified OutputTransformed> AIAgentContext.executeFinishTool(
+internal suspend fun <Output, OutputTransformed> AIAgentContext.executeFinishTool(
     toolCall: Message.Tool.Call,
     finishTool: Tool<Output, OutputTransformed>,
 ): ReceivedToolResult {

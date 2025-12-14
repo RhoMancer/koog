@@ -1,12 +1,15 @@
 @file:Suppress("MissingKDocForPublicAPI", "EXPECT_ACTUAL_CLASSIFIERS_ARE_IN_BETA_WARNING")
+@file:OptIn(InternalAgentsApi::class)
 
 package ai.koog.agents.core.feature.pipeline
 
 import ai.koog.agents.annotations.JavaAPI
+import ai.koog.agents.core.agent.config.AIAgentConfig
 import ai.koog.agents.core.agent.context.AIAgentGraphContextBase
 import ai.koog.agents.core.agent.context.AgentExecutionInfo
 import ai.koog.agents.core.agent.entity.AIAgentNodeBase
 import ai.koog.agents.core.agent.entity.AIAgentSubgraph
+import ai.koog.agents.core.annotation.InternalAgentsApi
 import ai.koog.agents.core.feature.AIAgentGraphFeature
 import ai.koog.agents.core.feature.config.FeatureConfig
 import ai.koog.agents.core.feature.handler.node.NodeExecutionCompletedContext
@@ -15,12 +18,15 @@ import ai.koog.agents.core.feature.handler.node.NodeExecutionStartingContext
 import ai.koog.agents.core.feature.handler.subgraph.SubgraphExecutionCompletedContext
 import ai.koog.agents.core.feature.handler.subgraph.SubgraphExecutionFailedContext
 import ai.koog.agents.core.feature.handler.subgraph.SubgraphExecutionStartingContext
-import kotlinx.coroutines.future.await
+import ai.koog.agents.core.utils.submitToMainDispatcher
 import kotlinx.datetime.Clock
 import kotlin.reflect.KType
 
-public actual open class AIAgentGraphPipeline actual constructor(clock: Clock) : AIAgentPipeline(clock) {
-    private val graphPipelineDelegate = AIAgentGraphPipelineImpl(clock)
+public actual open class AIAgentGraphPipeline actual constructor(
+    private val agentConfig: AIAgentConfig,
+    clock: Clock
+) : AIAgentPipeline(agentConfig, clock) {
+    private val graphPipelineDelegate = AIAgentGraphPipelineImpl(agentConfig, clock)
 
     /**
      * Intercepts node execution before it starts.
@@ -39,10 +45,12 @@ public actual open class AIAgentGraphPipeline actual constructor(clock: Clock) :
     @JavaAPI
     public fun interceptNodeExecutionStarting(
         feature: AIAgentGraphFeature<*, *>,
-        handle: AsyncInterceptor<NodeExecutionStartingContext>
+        handle: Interceptor<NodeExecutionStartingContext>
     ) {
         interceptNodeExecutionStarting(feature) {
-            handle.intercept(it).await()
+            agentConfig.submitToMainDispatcher {
+                handle.intercept(it)
+            }
         }
     }
 
@@ -63,10 +71,12 @@ public actual open class AIAgentGraphPipeline actual constructor(clock: Clock) :
     @JavaAPI
     public fun interceptNodeExecutionCompleted(
         feature: AIAgentGraphFeature<*, *>,
-        handle: AsyncInterceptor<NodeExecutionCompletedContext>
+        handle: Interceptor<NodeExecutionCompletedContext>
     ) {
         interceptNodeExecutionCompleted(feature) {
-            handle.intercept(it).await()
+            agentConfig.submitToMainDispatcher {
+                handle.intercept(it)
+            }
         }
     }
 
@@ -87,10 +97,12 @@ public actual open class AIAgentGraphPipeline actual constructor(clock: Clock) :
     @JavaAPI
     public fun interceptNodeExecutionFailed(
         feature: AIAgentGraphFeature<*, *>,
-        handle: AsyncInterceptor<NodeExecutionFailedContext>
+        handle: Interceptor<NodeExecutionFailedContext>
     ) {
         interceptNodeExecutionFailed(feature) {
-            handle.intercept(it).await()
+            agentConfig.submitToMainDispatcher {
+                handle.intercept(it)
+            }
         }
     }
 
@@ -111,10 +123,12 @@ public actual open class AIAgentGraphPipeline actual constructor(clock: Clock) :
     @JavaAPI
     public fun interceptSubgraphExecutionStarting(
         feature: AIAgentGraphFeature<*, *>,
-        handle: AsyncInterceptor<SubgraphExecutionStartingContext>
+        handle: Interceptor<SubgraphExecutionStartingContext>
     ) {
         interceptSubgraphExecutionStarting(feature) {
-            handle.intercept(it).await()
+            agentConfig.submitToMainDispatcher {
+                handle.intercept(it)
+            }
         }
     }
 
@@ -135,10 +149,12 @@ public actual open class AIAgentGraphPipeline actual constructor(clock: Clock) :
     @JavaAPI
     public fun interceptSubgraphExecutionCompleted(
         feature: AIAgentGraphFeature<*, *>,
-        handle: AsyncInterceptor<SubgraphExecutionCompletedContext>
+        handle: Interceptor<SubgraphExecutionCompletedContext>
     ) {
         interceptSubgraphExecutionCompleted(feature) {
-            handle.intercept(it).await()
+            agentConfig.submitToMainDispatcher {
+                handle.intercept(it)
+            }
         }
     }
 
@@ -159,10 +175,12 @@ public actual open class AIAgentGraphPipeline actual constructor(clock: Clock) :
     @JavaAPI
     public fun interceptSubgraphExecutionFailed(
         feature: AIAgentGraphFeature<*, *>,
-        handle: AsyncInterceptor<SubgraphExecutionFailedContext>
+        handle: Interceptor<SubgraphExecutionFailedContext>
     ) {
         interceptSubgraphExecutionFailed(feature) {
-            handle.intercept(it).await()
+            agentConfig.submitToMainDispatcher {
+                handle.intercept(it)
+            }
         }
     }
 
@@ -302,6 +320,4 @@ public actual open class AIAgentGraphPipeline actual constructor(clock: Clock) :
     ) {
         graphPipelineDelegate.interceptSubgraphExecutionFailed(feature, handle)
     }
-
-    //endregion Interceptors
 }

@@ -121,14 +121,14 @@ public abstract class StatefulSingleUseAIAgent<Input, Output, TContext : AIAgent
                     }
                 } catch (e: Throwable) {
                     logger.error(e) { "Execution exception reported by server!" }
-                    pipeline.onAgentExecutionFailed(executionInfo, this@StatefulSingleUseAIAgent.id, runId, e)
+                    pipeline.onAgentExecutionFailed(executionInfo, this@StatefulSingleUseAIAgent.id, runId, e, context)
 
                     agentStateMutex.withLock { state = AIAgentState.Failed(e) }
                     throw e
                 }
 
                 logger.debug { formatLog(this@StatefulSingleUseAIAgent.id, runId, "Finished agent execution") }
-                pipeline.onAgentCompleted(executionInfo, this@StatefulSingleUseAIAgent.id, runId, result)
+                pipeline.onAgentCompleted(executionInfo, this@StatefulSingleUseAIAgent.id, runId, result, context)
 
                 agentStateMutex.withLock {
                     state = if (result != null) {

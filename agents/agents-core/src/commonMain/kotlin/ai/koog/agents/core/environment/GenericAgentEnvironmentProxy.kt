@@ -20,7 +20,7 @@ internal class GenericAgentEnvironmentProxy(
             logger.trace { "Executing tool call (run id: ${context.runId}, tool call id: ${toolCall.id}, tool: ${toolCall.tool}, args: ${toolCall.contentJson})" }
 
             context.pipeline.onToolCallStarting(
-                executionInfo, context.runId, toolCall.id, toolCall.tool, toolCall.contentJson
+                executionInfo, context.runId, toolCall.id, toolCall.tool, toolCall.contentJson, context
             )
 
             val toolResult = environment.executeTool(toolCall)
@@ -43,19 +43,19 @@ internal class GenericAgentEnvironmentProxy(
         when (val toolResultKind = toolResult.resultKind) {
             is ToolResultKind.Success -> {
                 context.pipeline.onToolCallCompleted(
-                    executionInfo, context.runId, toolResult.id, toolResult.tool, toolResult.toolArgs, toolResult.toolDescription, toolResult.result
+                    executionInfo, context.runId, toolResult.id, toolResult.tool, toolResult.toolArgs, toolResult.toolDescription, toolResult.result, context
                 )
             }
 
             is ToolResultKind.Failure -> {
                 context.pipeline.onToolCallFailed(
-                    executionInfo, context.runId, toolResult.id, toolResult.tool, toolResult.toolArgs, toolResult.toolDescription,toolResult.content, toolResultKind.exception
+                    executionInfo, context.runId, toolResult.id, toolResult.tool, toolResult.toolArgs, toolResult.toolDescription,toolResult.content, toolResultKind.exception, context
                 )
             }
 
             is ToolResultKind.ValidationError -> {
                 context.pipeline.onToolValidationFailed(
-                    executionInfo, context.runId, toolResult.id, toolResult.tool, toolResult.toolArgs, toolResult.toolDescription, toolResult.content, toolResultKind.exception
+                    executionInfo, context.runId, toolResult.id, toolResult.tool, toolResult.toolArgs, toolResult.toolDescription, toolResult.content, toolResultKind.exception, context
                 )
             }
         }

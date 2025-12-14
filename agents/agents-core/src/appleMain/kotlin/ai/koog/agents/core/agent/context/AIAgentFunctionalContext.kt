@@ -2,6 +2,7 @@
 
 package ai.koog.agents.core.agent.context
 
+import ai.koog.agents.core.agent.ToolCalls
 import ai.koog.agents.core.agent.config.AIAgentConfig
 import ai.koog.agents.core.agent.entity.AIAgentStateManager
 import ai.koog.agents.core.agent.entity.AIAgentStorage
@@ -14,12 +15,17 @@ import ai.koog.agents.core.environment.SafeTool
 import ai.koog.agents.core.feature.pipeline.AIAgentFunctionalPipeline
 import ai.koog.agents.core.tools.Tool
 import ai.koog.agents.core.tools.ToolDescriptor
+import ai.koog.agents.core.tools.annotations.InternalAgentToolsApi
+import ai.koog.agents.ext.agent.CriticResult
+import ai.koog.prompt.llm.LLModel
 import ai.koog.prompt.message.Message
+import ai.koog.prompt.params.LLMParams
 import ai.koog.prompt.streaming.StreamFrame
 import ai.koog.prompt.structure.StructureDefinition
 import ai.koog.prompt.structure.StructureFixingParser
 import ai.koog.prompt.structure.StructuredResponse
 import kotlinx.coroutines.flow.Flow
+import kotlin.reflect.KClass
 
 @OptIn(InternalAgentsApi::class)
 @Suppress("UNCHECKED_CAST", "MissingKDocForPublicAPI")
@@ -188,4 +194,73 @@ public actual open class AIAgentFunctionalContext internal actual constructor(
         strategy: HistoryCompressionStrategy,
         preserveMemory: Boolean
     ): Unit = delegate.compressHistory(strategy, preserveMemory)
+
+    public actual open suspend fun <Input> subtaskWithVerification(
+        input: Input,
+        tools: List<Tool<*, *>>?,
+        llmModel: LLModel?,
+        llmParams: LLMParams?,
+        runMode: ToolCalls,
+        assistantResponseRepeatMax: Int?,
+        defineTask: suspend AIAgentFunctionalContext.(Input) -> String
+    ): CriticResult<Input> = delegate.subtaskWithVerification(
+        input,
+        tools,
+        llmModel,
+        llmParams,
+        runMode,
+        assistantResponseRepeatMax,
+        defineTask
+    )
+
+    public actual suspend inline fun <Input, reified Output> subtask(
+        input: Input,
+        tools: List<Tool<*, *>>?,
+        llmModel: LLModel?,
+        llmParams: LLMParams?,
+        runMode: ToolCalls,
+        assistantResponseRepeatMax: Int?,
+        noinline defineTask: suspend AIAgentFunctionalContext.(Input) -> String
+    ): Output = delegate.subtaskImpl(input, tools, llmModel, llmParams, runMode, assistantResponseRepeatMax, defineTask)
+
+    public actual open suspend fun <Input, Output : Any> subtask(
+        input: Input,
+        outputClass: KClass<Output>,
+        tools: List<Tool<*, *>>?,
+        llmModel: LLModel?,
+        llmParams: LLMParams?,
+        runMode: ToolCalls,
+        assistantResponseRepeatMax: Int?,
+        defineTask: suspend AIAgentFunctionalContext.(Input) -> String
+    ): Output = delegate.subtask(
+        input,
+        outputClass,
+        tools,
+        llmModel,
+        llmParams,
+        runMode,
+        assistantResponseRepeatMax,
+        defineTask
+    )
+
+    public actual open suspend fun <Input, Output, OutputTransformed> subtask(
+        input: Input,
+        tools: List<Tool<*, *>>?,
+        finishTool: Tool<Output, OutputTransformed>,
+        llmModel: LLModel?,
+        llmParams: LLMParams?,
+        runMode: ToolCalls,
+        assistantResponseRepeatMax: Int?,
+        defineTask: suspend AIAgentFunctionalContext.(Input) -> String
+    ): OutputTransformed = delegate.subtask(
+        input,
+        tools,
+        finishTool,
+        llmModel,
+        llmParams,
+        runMode,
+        assistantResponseRepeatMax,
+        defineTask
+    )
 }
+

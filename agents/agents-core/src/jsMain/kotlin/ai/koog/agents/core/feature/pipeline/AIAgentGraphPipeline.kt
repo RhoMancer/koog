@@ -2,6 +2,7 @@
 
 package ai.koog.agents.core.feature.pipeline
 
+import ai.koog.agents.core.agent.config.AIAgentConfig
 import ai.koog.agents.core.agent.context.AIAgentGraphContextBase
 import ai.koog.agents.core.agent.context.AgentExecutionInfo
 import ai.koog.agents.core.agent.entity.AIAgentNodeBase
@@ -17,8 +18,11 @@ import ai.koog.agents.core.feature.handler.subgraph.SubgraphExecutionStartingCon
 import kotlinx.datetime.Clock
 import kotlin.reflect.KType
 
-public actual open class AIAgentGraphPipeline actual constructor(clock: Clock) : AIAgentPipeline(clock) {
-    private val graphPipelineDelegate = AIAgentGraphPipelineImpl(clock)
+public actual open class AIAgentGraphPipeline actual constructor(
+    agentConfig: AIAgentConfig,
+    clock: Clock
+) : AIAgentPipeline(agentConfig, clock) {
+    private val graphPipelineDelegate = AIAgentGraphPipelineImpl(agentConfig, clock)
 
     public actual open fun <TConfig : FeatureConfig, TFeatureImpl : Any> install(
         feature: AIAgentGraphFeature<TConfig, TFeatureImpl>,

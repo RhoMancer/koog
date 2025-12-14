@@ -1,6 +1,9 @@
+@file:Suppress("MissingKDocForPublicAPI")
+
 package ai.koog.agents.core.utils
 
 import ai.koog.agents.core.agent.config.AIAgentConfig
+import ai.koog.agents.core.annotation.InternalAgentsApi
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineDispatcher
 import java.util.concurrent.ExecutorService
@@ -16,7 +19,8 @@ internal fun ExecutorService?.asCoroutineContext(
 ): CoroutineContext =
     (this ?: defaultExecutorService)?.asCoroutineDispatcher() ?: fallbackDispatcher
 
-internal fun <T> AIAgentConfig.runOnLLMDispatcher(executorService: ExecutorService?, block: suspend () -> T): T =
+@InternalAgentsApi
+public fun <T> AIAgentConfig.runOnLLMDispatcher(executorService: ExecutorService?, block: suspend () -> T): T =
     runBlocking(
         executorService.asCoroutineContext(
             defaultExecutorService = llmRequestExecutorService,
@@ -26,7 +30,8 @@ internal fun <T> AIAgentConfig.runOnLLMDispatcher(executorService: ExecutorServi
         block()
     }
 
-internal fun <T> AIAgentConfig.runOnMainDispatcher(
+@InternalAgentsApi
+public fun <T> AIAgentConfig.runOnMainDispatcher(
     executorService: ExecutorService? = null,
     block: suspend () -> T
 ): T =
@@ -39,7 +44,8 @@ internal fun <T> AIAgentConfig.runOnMainDispatcher(
         block()
     }
 
-internal suspend fun <T> AIAgentConfig.submitToMainDispatcher(block: () -> T): T {
+@InternalAgentsApi
+public suspend fun <T> AIAgentConfig.submitToMainDispatcher(block: () -> T): T {
     val result = CompletableDeferred<T>()
 
     (strategyExecutorService ?: Dispatchers.Default.asExecutor()).execute {

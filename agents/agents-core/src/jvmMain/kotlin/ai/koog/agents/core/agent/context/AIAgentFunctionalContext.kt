@@ -4,6 +4,7 @@ package ai.koog.agents.core.agent.context
 
 import ai.koog.agents.annotations.JavaAPI
 import ai.koog.agents.core.agent.NonSuspendAIAgentFunctionalStrategy
+import ai.koog.agents.core.agent.ToolCalls
 import ai.koog.agents.core.agent.config.AIAgentConfig
 import ai.koog.agents.core.agent.entity.AIAgentStateManager
 import ai.koog.agents.core.agent.entity.AIAgentStorage
@@ -19,7 +20,10 @@ import ai.koog.agents.core.tools.ToolDescriptor
 import ai.koog.agents.core.utils.asCoroutineContext
 import ai.koog.agents.core.utils.runOnLLMDispatcher
 import ai.koog.agents.core.utils.runOnMainDispatcher
+import ai.koog.agents.ext.agent.CriticResult
+import ai.koog.prompt.llm.LLModel
 import ai.koog.prompt.message.Message
+import ai.koog.prompt.params.LLMParams
 import ai.koog.prompt.streaming.StreamFrame
 import ai.koog.prompt.structure.StructureDefinition
 import ai.koog.prompt.structure.StructureFixingParser
@@ -33,6 +37,7 @@ import kotlinx.serialization.serializer
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Flow.Publisher
 import java.util.concurrent.Flow.Subscription
+import java.util.function.BiFunction
 import kotlin.reflect.KClass
 
 @OptIn(InternalAgentsApi::class)
@@ -492,5 +497,149 @@ public actual open class AIAgentFunctionalContext internal actual constructor(
         executorService: ExecutorService? = null
     ): Unit = config.runOnLLMDispatcher(executorService) {
         compressHistory(strategy, preserveMemory)
+    }
+
+    public actual open suspend fun <Input> subtaskWithVerification(
+        input: Input,
+        tools: List<Tool<*, *>>?,
+        llmModel: LLModel?,
+        llmParams: LLMParams?,
+        runMode: ToolCalls,
+        assistantResponseRepeatMax: Int?,
+        defineTask: suspend AIAgentFunctionalContext.(Input) -> String
+    ): CriticResult<Input> = delegate.subtaskWithVerification(
+        input,
+        tools,
+        llmModel,
+        llmParams,
+        runMode,
+        assistantResponseRepeatMax,
+        defineTask
+    )
+
+    @JavaAPI
+    @JvmOverloads
+    public fun <Input> subtaskWithVerification(
+        input: Input,
+        tools: List<Tool<*, *>>? = null,
+        llmModel: LLModel? = null,
+        llmParams: LLMParams? = null,
+        runMode: ToolCalls = ToolCalls.SEQUENTIAL,
+        assistantResponseRepeatMax: Int? = null,
+        executorService: ExecutorService? = null,
+        defineTask: BiFunction<AIAgentFunctionalContext, Input, String>
+    ): CriticResult<Input> = config.runOnMainDispatcher(executorService) {
+        subtaskWithVerification(
+            input,
+            tools,
+            llmModel,
+            llmParams,
+            runMode,
+            assistantResponseRepeatMax
+        ) {
+            config.runOnMainDispatcher(executorService) { defineTask.apply(this, it) }
+        }
+    }
+
+    public actual suspend inline fun <Input, reified Output> subtask(
+        input: Input,
+        tools: List<Tool<*, *>>?,
+        llmModel: LLModel?,
+        llmParams: LLMParams?,
+        runMode: ToolCalls,
+        assistantResponseRepeatMax: Int?,
+        noinline defineTask: suspend AIAgentFunctionalContext.(Input) -> String
+    ): Output = delegate.subtaskImpl(input, tools, llmModel, llmParams, runMode, assistantResponseRepeatMax, defineTask)
+
+    public actual open suspend fun <Input, Output : Any> subtask(
+        input: Input,
+        outputClass: KClass<Output>,
+        tools: List<Tool<*, *>>?,
+        llmModel: LLModel?,
+        llmParams: LLMParams?,
+        runMode: ToolCalls,
+        assistantResponseRepeatMax: Int?,
+        defineTask: suspend AIAgentFunctionalContext.(Input) -> String
+    ): Output = delegate.subtask(
+        input,
+        outputClass,
+        tools,
+        llmModel,
+        llmParams,
+        runMode,
+        assistantResponseRepeatMax,
+        defineTask
+    )
+
+    @JavaAPI
+    @JvmOverloads
+    public fun <Input, Output : Any> subtask(
+        input: Input,
+        outputClass: Class<Output>,
+        tools: List<Tool<*, *>>? = null,
+        llmModel: LLModel? = null,
+        llmParams: LLMParams? = null,
+        runMode: ToolCalls = ToolCalls.SEQUENTIAL,
+        assistantResponseRepeatMax: Int? = null,
+        executorService: ExecutorService? = null,
+        defineTask: BiFunction<AIAgentFunctionalContext, Input, String>
+    ): Output = config.runOnMainDispatcher(executorService) {
+        subtask(
+            input,
+            outputClass.kotlin,
+            tools,
+            llmModel,
+            llmParams,
+            runMode,
+            assistantResponseRepeatMax
+        ) {
+            config.runOnMainDispatcher(executorService) { defineTask.apply(this, it) }
+        }
+    }
+
+    public actual open suspend fun <Input, Output, OutputTransformed> subtask(
+        input: Input,
+        tools: List<Tool<*, *>>?,
+        finishTool: Tool<Output, OutputTransformed>,
+        llmModel: LLModel?,
+        llmParams: LLMParams?,
+        runMode: ToolCalls,
+        assistantResponseRepeatMax: Int?,
+        defineTask: suspend AIAgentFunctionalContext.(Input) -> String
+    ): OutputTransformed = delegate.subtask(
+        input,
+        tools,
+        finishTool,
+        llmModel,
+        llmParams,
+        runMode,
+        assistantResponseRepeatMax,
+        defineTask
+    )
+
+    @JavaAPI
+    @JvmOverloads
+    public fun <Input, Output, OutputTransformed> subtask(
+        input: Input,
+        finishTool: Tool<Output, OutputTransformed>,
+        tools: List<Tool<*, *>>? = null,
+        llmModel: LLModel? = null,
+        llmParams: LLMParams? = null,
+        runMode: ToolCalls = ToolCalls.SEQUENTIAL,
+        assistantResponseRepeatMax: Int? = null,
+        executorService: ExecutorService? = null,
+        defineTask: BiFunction<AIAgentFunctionalContext, Input, String>
+    ): OutputTransformed = config.runOnMainDispatcher(executorService) {
+        subtask(
+            input,
+            tools,
+            finishTool,
+            llmModel,
+            llmParams,
+            runMode,
+            assistantResponseRepeatMax
+        ) {
+            config.runOnMainDispatcher(executorService) { defineTask.apply(this, it) }
+        }
     }
 }

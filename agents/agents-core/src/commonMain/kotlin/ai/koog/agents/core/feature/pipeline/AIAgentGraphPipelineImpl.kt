@@ -1,6 +1,6 @@
 package ai.koog.agents.core.feature.pipeline
 
-import ai.koog.agents.core.agent.context.AIAgentContext
+import ai.koog.agents.core.agent.config.AIAgentConfig
 import ai.koog.agents.core.agent.context.AIAgentGraphContextBase
 import ai.koog.agents.core.agent.context.AgentExecutionInfo
 import ai.koog.agents.core.agent.entity.AIAgentNodeBase
@@ -26,7 +26,10 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.datetime.Clock
 import kotlin.reflect.KType
 
-internal class AIAgentGraphPipelineImpl(clock: Clock = Clock.System) : AIAgentGraphPipeline(clock) {
+internal class AIAgentGraphPipelineImpl(
+    agentConfig: AIAgentConfig,
+    clock: Clock = Clock.System
+) : AIAgentGraphPipeline(agentConfig, clock) {
     override val clock: Clock = clock
 
     /**

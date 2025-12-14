@@ -2,6 +2,7 @@ package ai.koog.agents.core.feature.handler.agent
 
 import ai.koog.agents.core.agent.AIAgent
 import ai.koog.agents.core.agent.GraphAIAgent
+import ai.koog.agents.core.agent.config.AIAgentConfig
 import ai.koog.agents.core.agent.context.AIAgentContext
 import ai.koog.agents.core.agent.context.AIAgentGraphContextBase
 import ai.koog.agents.core.agent.context.AgentExecutionInfo
@@ -49,6 +50,7 @@ public data class AgentCompletedContext(
     public val agentId: String,
     public val runId: String,
     public val result: Any?,
+    public val context: AIAgentContext,
 ) : AgentEventContext {
     override val eventType: AgentLifecycleEventType = AgentLifecycleEventType.AgentCompleted
 }
@@ -65,7 +67,8 @@ public data class AgentExecutionFailedContext(
     override val executionInfo: AgentExecutionInfo,
     val agentId: String,
     val runId: String,
-    val exception: Throwable?
+    val exception: Throwable?,
+    public val context: AIAgentContext,
 ) : AgentEventContext {
     override val eventType: AgentLifecycleEventType = AgentLifecycleEventType.AgentExecutionFailed
 }
@@ -79,6 +82,7 @@ public data class AgentExecutionFailedContext(
 public data class AgentClosingContext(
     override val executionInfo: AgentExecutionInfo,
     val agentId: String,
+    public val config: AIAgentConfig
 ) : AgentEventContext {
     override val eventType: AgentLifecycleEventType = AgentLifecycleEventType.AgentClosing
 }
@@ -94,6 +98,7 @@ public class AgentEnvironmentTransformingContext(
     override val executionInfo: AgentExecutionInfo,
     public val strategy: AIAgentStrategy<*, *, AIAgentGraphContextBase>,
     public val agent: GraphAIAgent<*, *>,
+    public val agentConfig: AIAgentConfig
 ) : AgentEventContext {
     override val eventType: AgentLifecycleEventType = AgentLifecycleEventType.AgentEnvironmentTransforming
 }

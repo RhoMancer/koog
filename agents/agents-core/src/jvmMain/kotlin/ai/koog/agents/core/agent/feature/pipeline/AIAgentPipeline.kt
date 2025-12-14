@@ -1,16 +1,18 @@
 @file:Suppress("EXPECT_ACTUAL_CLASSIFIERS_ARE_IN_BETA_WARNING", "MissingKDocForPublicAPI")
+@file:OptIn(InternalAgentsApi::class)
 
 package ai.koog.agents.core.feature.pipeline
 
+import ai.koog.agents.annotations.JavaAPI
 import ai.koog.agents.core.agent.AIAgent
 import ai.koog.agents.core.agent.GraphAIAgent
+import ai.koog.agents.core.agent.config.AIAgentConfig
 import ai.koog.agents.core.agent.context.AIAgentContext
 import ai.koog.agents.core.agent.context.AIAgentGraphContextBase
-import ai.koog.agents.core.agent.entity.AIAgentStrategy
-import ai.koog.agents.core.annotation.InternalAgentsApi
-import ai.koog.agents.annotations.JavaAPI
 import ai.koog.agents.core.agent.context.AgentExecutionInfo
 import ai.koog.agents.core.agent.entity.AIAgentStorageKey
+import ai.koog.agents.core.agent.entity.AIAgentStrategy
+import ai.koog.agents.core.annotation.InternalAgentsApi
 import ai.koog.agents.core.environment.AIAgentEnvironment
 import ai.koog.agents.core.feature.AIAgentFeature
 import ai.koog.agents.core.feature.config.FeatureConfig
@@ -28,15 +30,14 @@ import ai.koog.agents.core.feature.handler.tool.ToolCallCompletedContext
 import ai.koog.agents.core.feature.handler.tool.ToolCallFailedContext
 import ai.koog.agents.core.feature.handler.tool.ToolCallStartingContext
 import ai.koog.agents.core.feature.handler.tool.ToolValidationFailedContext
-import ai.koog.agents.core.tools.Tool
 import ai.koog.agents.core.tools.ToolDescriptor
 import ai.koog.agents.core.tools.ToolException
+import ai.koog.agents.core.utils.submitToMainDispatcher
 import ai.koog.prompt.dsl.ModerationResult
 import ai.koog.prompt.dsl.Prompt
 import ai.koog.prompt.llm.LLModel
 import ai.koog.prompt.message.Message
 import ai.koog.prompt.streaming.StreamFrame
-import kotlinx.coroutines.future.await
 import kotlinx.datetime.Clock
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
@@ -60,10 +61,13 @@ import kotlin.reflect.KType
  *
  * @param clock Clock instance for time-related operations
  */
-public actual abstract class AIAgentPipeline @JvmOverloads actual constructor(clock: Clock) {
+public actual abstract class AIAgentPipeline @JvmOverloads actual constructor(
+    private val agentConfig: AIAgentConfig,
+    clock: Clock
+) {
 
     @PublishedApi
-    internal val pipelineDelegate: AIAgentPipelineImpl = AIAgentPipelineImpl(clock)
+    internal val pipelineDelegate: AIAgentPipelineImpl = AIAgentPipelineImpl(agentConfig, clock)
 
     @Suppress("MissingKDocForPublicAPI")
     public actual open val clock: Clock = pipelineDelegate.clock
@@ -109,10 +113,12 @@ public actual abstract class AIAgentPipeline @JvmOverloads actual constructor(cl
     @JavaAPI
     public fun interceptAgentStarting(
         feature: AIAgentFeature<*, *>,
-        handle: AsyncInterceptor<AgentStartingContext>
+        handle: Interceptor<AgentStartingContext>
     ) {
         interceptAgentStarting(feature) { ctx ->
-            handle.intercept(ctx).await()
+            agentConfig.submitToMainDispatcher {
+                handle.intercept(ctx)
+            }
         }
     }
 
@@ -130,10 +136,12 @@ public actual abstract class AIAgentPipeline @JvmOverloads actual constructor(cl
     @JavaAPI
     public fun interceptAgentCompleted(
         feature: AIAgentFeature<*, *>,
-        handle: AsyncInterceptor<AgentCompletedContext>
+        handle: Interceptor<AgentCompletedContext>
     ) {
         interceptAgentCompleted(feature) { ctx ->
-            handle.intercept(ctx).await()
+            agentConfig.submitToMainDispatcher {
+                handle.intercept(ctx)
+            }
         }
     }
 
@@ -151,10 +159,12 @@ public actual abstract class AIAgentPipeline @JvmOverloads actual constructor(cl
     @JavaAPI
     public fun interceptAgentExecutionFailed(
         feature: AIAgentFeature<*, *>,
-        handle: AsyncInterceptor<AgentExecutionFailedContext>
+        handle: Interceptor<AgentExecutionFailedContext>
     ) {
         interceptAgentExecutionFailed(feature) { ctx ->
-            handle.intercept(ctx).await()
+            agentConfig.submitToMainDispatcher {
+                handle.intercept(ctx)
+            }
         }
     }
 
@@ -172,10 +182,12 @@ public actual abstract class AIAgentPipeline @JvmOverloads actual constructor(cl
     @JavaAPI
     public fun interceptAgentClosing(
         feature: AIAgentFeature<*, *>,
-        handle: AsyncInterceptor<AgentClosingContext>
+        handle: Interceptor<AgentClosingContext>
     ) {
         interceptAgentClosing(feature) { ctx ->
-            handle.intercept(ctx).await()
+            agentConfig.submitToMainDispatcher {
+                handle.intercept(ctx)
+            }
         }
     }
 
@@ -193,10 +205,12 @@ public actual abstract class AIAgentPipeline @JvmOverloads actual constructor(cl
     @JavaAPI
     public fun interceptStrategyStarting(
         feature: AIAgentFeature<*, *>,
-        handle: AsyncInterceptor<StrategyStartingContext>
+        handle: Interceptor<StrategyStartingContext>
     ) {
         interceptStrategyStarting(feature) { ctx ->
-            handle.intercept(ctx).await()
+            agentConfig.submitToMainDispatcher {
+                handle.intercept(ctx)
+            }
         }
     }
 
@@ -214,10 +228,12 @@ public actual abstract class AIAgentPipeline @JvmOverloads actual constructor(cl
     @JavaAPI
     public fun interceptStrategyCompleted(
         feature: AIAgentFeature<*, *>,
-        handle: AsyncInterceptor<StrategyCompletedContext>
+        handle: Interceptor<StrategyCompletedContext>
     ) {
         interceptStrategyCompleted(feature) { ctx ->
-            handle.intercept(ctx).await()
+            agentConfig.submitToMainDispatcher {
+                handle.intercept(ctx)
+            }
         }
     }
 
@@ -235,10 +251,12 @@ public actual abstract class AIAgentPipeline @JvmOverloads actual constructor(cl
     @JavaAPI
     public fun interceptLLMCallStarting(
         feature: AIAgentFeature<*, *>,
-        handle: AsyncInterceptor<LLMCallStartingContext>
+        handle: Interceptor<LLMCallStartingContext>
     ) {
         interceptLLMCallStarting(feature) { ctx ->
-            handle.intercept(ctx).await()
+            agentConfig.submitToMainDispatcher {
+                handle.intercept(ctx)
+            }
         }
     }
 
@@ -256,10 +274,12 @@ public actual abstract class AIAgentPipeline @JvmOverloads actual constructor(cl
     @JavaAPI
     public fun interceptLLMCallCompleted(
         feature: AIAgentFeature<*, *>,
-        handle: AsyncInterceptor<LLMCallCompletedContext>
+        handle: Interceptor<LLMCallCompletedContext>
     ) {
         interceptLLMCallCompleted(feature) { ctx ->
-            handle.intercept(ctx).await()
+            agentConfig.submitToMainDispatcher {
+                handle.intercept(ctx)
+            }
         }
     }
 
@@ -277,10 +297,12 @@ public actual abstract class AIAgentPipeline @JvmOverloads actual constructor(cl
     @JavaAPI
     public fun interceptLLMStreamingStarting(
         feature: AIAgentFeature<*, *>,
-        handle: AsyncInterceptor<LLMStreamingStartingContext>
+        handle: Interceptor<LLMStreamingStartingContext>
     ) {
         interceptLLMStreamingStarting(feature) { ctx ->
-            handle.intercept(ctx).await()
+            agentConfig.submitToMainDispatcher {
+                handle.intercept(ctx)
+            }
         }
     }
 
@@ -298,10 +320,12 @@ public actual abstract class AIAgentPipeline @JvmOverloads actual constructor(cl
     @JavaAPI
     public fun interceptLLMStreamingFrameReceived(
         feature: AIAgentFeature<*, *>,
-        handle: AsyncInterceptor<LLMStreamingFrameReceivedContext>
+        handle: Interceptor<LLMStreamingFrameReceivedContext>
     ) {
         interceptLLMStreamingFrameReceived(feature) { ctx ->
-            handle.intercept(ctx).await()
+            agentConfig.submitToMainDispatcher {
+                handle.intercept(ctx)
+            }
         }
     }
 
@@ -319,10 +343,12 @@ public actual abstract class AIAgentPipeline @JvmOverloads actual constructor(cl
     @JavaAPI
     public fun interceptLLMStreamingFailed(
         feature: AIAgentFeature<*, *>,
-        handle: AsyncInterceptor<LLMStreamingFailedContext>
+        handle: Interceptor<LLMStreamingFailedContext>
     ) {
         interceptLLMStreamingFailed(feature) { ctx ->
-            handle.intercept(ctx).await()
+            agentConfig.submitToMainDispatcher {
+                handle.intercept(ctx)
+            }
         }
     }
 
@@ -340,10 +366,12 @@ public actual abstract class AIAgentPipeline @JvmOverloads actual constructor(cl
     @JavaAPI
     public fun interceptLLMStreamingCompleted(
         feature: AIAgentFeature<*, *>,
-        handle: AsyncInterceptor<LLMStreamingCompletedContext>
+        handle: Interceptor<LLMStreamingCompletedContext>
     ) {
         interceptLLMStreamingCompleted(feature) { ctx ->
-            handle.intercept(ctx).await()
+            agentConfig.submitToMainDispatcher {
+                handle.intercept(ctx)
+            }
         }
     }
 
@@ -361,10 +389,12 @@ public actual abstract class AIAgentPipeline @JvmOverloads actual constructor(cl
     @JavaAPI
     public fun interceptToolCallStarting(
         feature: AIAgentFeature<*, *>,
-        handle: AsyncInterceptor<ToolCallStartingContext>
+        handle: Interceptor<ToolCallStartingContext>
     ) {
         interceptToolCallStarting(feature) { ctx ->
-            handle.intercept(ctx).await()
+            agentConfig.submitToMainDispatcher {
+                handle.intercept(ctx)
+            }
         }
     }
 
@@ -382,10 +412,12 @@ public actual abstract class AIAgentPipeline @JvmOverloads actual constructor(cl
     @JavaAPI
     public fun interceptToolValidationFailed(
         feature: AIAgentFeature<*, *>,
-        handle: AsyncInterceptor<ToolValidationFailedContext>
+        handle: Interceptor<ToolValidationFailedContext>
     ) {
         interceptToolValidationFailed(feature) { ctx ->
-            handle.intercept(ctx).await()
+            agentConfig.submitToMainDispatcher {
+                handle.intercept(ctx)
+            }
         }
     }
 
@@ -403,10 +435,12 @@ public actual abstract class AIAgentPipeline @JvmOverloads actual constructor(cl
     @JavaAPI
     public fun interceptToolCallFailed(
         feature: AIAgentFeature<*, *>,
-        handle: AsyncInterceptor<ToolCallFailedContext>
+        handle: Interceptor<ToolCallFailedContext>
     ) {
         interceptToolCallFailed(feature) { ctx ->
-            handle.intercept(ctx).await()
+            agentConfig.submitToMainDispatcher {
+                handle.intercept(ctx)
+            }
         }
     }
 
@@ -424,10 +458,12 @@ public actual abstract class AIAgentPipeline @JvmOverloads actual constructor(cl
     @JavaAPI
     public fun interceptToolCallCompleted(
         feature: AIAgentFeature<*, *>,
-        handle: AsyncInterceptor<ToolCallCompletedContext>
+        handle: Interceptor<ToolCallCompletedContext>
     ) {
         interceptToolCallCompleted(feature) { ctx ->
-            handle.intercept(ctx).await()
+            agentConfig.submitToMainDispatcher {
+                handle.intercept(ctx)
+            }
         }
     }
 
@@ -455,18 +491,20 @@ public actual abstract class AIAgentPipeline @JvmOverloads actual constructor(cl
         executionInfo: AgentExecutionInfo,
         agentId: String,
         runId: String,
-        result: Any?
+        result: Any?,
+        context: AIAgentContext
     ) {
-        pipelineDelegate.onAgentCompleted(executionInfo, agentId, runId, result)
+        pipelineDelegate.onAgentCompleted(executionInfo, agentId, runId, result, context)
     }
 
     public actual open suspend fun onAgentExecutionFailed(
         executionInfo: AgentExecutionInfo,
         agentId: String,
         runId: String,
-        exception: Throwable?
+        exception: Throwable?,
+        context: AIAgentContext
     ) {
-        pipelineDelegate.onAgentExecutionFailed(executionInfo, agentId, runId, exception)
+        pipelineDelegate.onAgentExecutionFailed(executionInfo, agentId, runId, exception, context)
     }
 
     public actual open suspend fun onAgentClosing(
@@ -515,9 +553,10 @@ public actual abstract class AIAgentPipeline @JvmOverloads actual constructor(cl
         runId: String,
         prompt: Prompt,
         model: LLModel,
-        tools: List<ToolDescriptor>
+        tools: List<ToolDescriptor>,
+        context: AIAgentContext
     ) {
-        pipelineDelegate.onLLMCallStarting(executionInfo, runId, prompt, model, tools)
+        pipelineDelegate.onLLMCallStarting(executionInfo, runId, prompt, model, tools, context)
     }
 
     public actual open suspend fun onLLMCallCompleted(
@@ -527,9 +566,19 @@ public actual abstract class AIAgentPipeline @JvmOverloads actual constructor(cl
         model: LLModel,
         tools: List<ToolDescriptor>,
         responses: List<Message.Response>,
-        moderationResponse: ModerationResult?
+        moderationResponse: ModerationResult?,
+        context: AIAgentContext
     ) {
-        pipelineDelegate.onLLMCallCompleted(executionInfo, runId, prompt, model, tools, responses, moderationResponse)
+        pipelineDelegate.onLLMCallCompleted(
+            executionInfo,
+            runId,
+            prompt,
+            model,
+            tools,
+            responses,
+            moderationResponse,
+            context
+        )
     }
 
     //endregion Trigger LLM Call Handlers
@@ -542,8 +591,9 @@ public actual abstract class AIAgentPipeline @JvmOverloads actual constructor(cl
         toolCallId: String?,
         toolName: String,
         toolArgs: JsonObject,
+        context: AIAgentContext
     ) {
-        pipelineDelegate.onToolCallStarting(executionInfo, runId, toolCallId, toolName, toolArgs)
+        pipelineDelegate.onToolCallStarting(executionInfo, runId, toolCallId, toolName, toolArgs, context)
     }
 
     public actual open suspend fun onToolValidationFailed(
@@ -555,6 +605,7 @@ public actual abstract class AIAgentPipeline @JvmOverloads actual constructor(cl
         toolDescription: String?,
         message: String,
         error: ToolException,
+        context: AIAgentContext
     ) {
         pipelineDelegate.onToolValidationFailed(
             executionInfo,
@@ -564,7 +615,8 @@ public actual abstract class AIAgentPipeline @JvmOverloads actual constructor(cl
             toolArgs,
             toolDescription,
             message,
-            error
+            error,
+            context
         )
     }
 
@@ -576,7 +628,8 @@ public actual abstract class AIAgentPipeline @JvmOverloads actual constructor(cl
         toolArgs: JsonObject,
         toolDescription: String?,
         message: String,
-        exception: Throwable?
+        exception: Throwable?,
+        context: AIAgentContext
     ) {
         pipelineDelegate.onToolCallFailed(
             executionInfo,
@@ -586,7 +639,8 @@ public actual abstract class AIAgentPipeline @JvmOverloads actual constructor(cl
             toolArgs,
             toolDescription,
             message,
-            exception
+            exception,
+            context
         )
     }
 
@@ -597,7 +651,8 @@ public actual abstract class AIAgentPipeline @JvmOverloads actual constructor(cl
         toolName: String,
         toolArgs: JsonObject,
         toolDescription: String?,
-        toolResult: JsonElement?
+        toolResult: JsonElement?,
+        context: AIAgentContext
     ) {
         pipelineDelegate.onToolCallCompleted(
             executionInfo,
@@ -606,7 +661,8 @@ public actual abstract class AIAgentPipeline @JvmOverloads actual constructor(cl
             toolName,
             toolArgs,
             toolDescription,
-            toolResult
+            toolResult,
+            context
         )
     }
 
@@ -619,9 +675,10 @@ public actual abstract class AIAgentPipeline @JvmOverloads actual constructor(cl
         runId: String,
         prompt: Prompt,
         model: LLModel,
-        tools: List<ToolDescriptor>
+        tools: List<ToolDescriptor>,
+        context: AIAgentContext
     ) {
-        pipelineDelegate.onLLMStreamingStarting(executionInfo, runId, prompt, model, tools)
+        pipelineDelegate.onLLMStreamingStarting(executionInfo, runId, prompt, model, tools, context)
     }
 
     public actual open suspend fun onLLMStreamingFrameReceived(
@@ -629,9 +686,10 @@ public actual abstract class AIAgentPipeline @JvmOverloads actual constructor(cl
         runId: String,
         prompt: Prompt,
         model: LLModel,
-        streamFrame: StreamFrame
+        streamFrame: StreamFrame,
+        context: AIAgentContext
     ) {
-        pipelineDelegate.onLLMStreamingFrameReceived(executionInfo, runId, prompt, model, streamFrame)
+        pipelineDelegate.onLLMStreamingFrameReceived(executionInfo, runId, prompt, model, streamFrame, context)
     }
 
     public actual open suspend fun onLLMStreamingFailed(
@@ -639,9 +697,10 @@ public actual abstract class AIAgentPipeline @JvmOverloads actual constructor(cl
         runId: String,
         prompt: Prompt,
         model: LLModel,
-        exception: Throwable
+        exception: Throwable,
+        context: AIAgentContext
     ) {
-        pipelineDelegate.onLLMStreamingFailed(executionInfo, runId, prompt, model, exception)
+        pipelineDelegate.onLLMStreamingFailed(executionInfo, runId, prompt, model, exception, context)
     }
 
     public actual open suspend fun onLLMStreamingCompleted(
@@ -649,9 +708,10 @@ public actual abstract class AIAgentPipeline @JvmOverloads actual constructor(cl
         runId: String,
         prompt: Prompt,
         model: LLModel,
-        tools: List<ToolDescriptor>
+        tools: List<ToolDescriptor>,
+        context: AIAgentContext
     ) {
-        pipelineDelegate.onLLMStreamingCompleted(executionInfo, runId, prompt, model, tools)
+        pipelineDelegate.onLLMStreamingCompleted(executionInfo, runId, prompt, model, tools, context)
     }
 
     //endregion Trigger LLM Streaming

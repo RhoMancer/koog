@@ -2,6 +2,7 @@
 
 package ai.koog.agents.core.feature.pipeline
 
+import ai.koog.agents.core.agent.config.AIAgentConfig
 import ai.koog.agents.core.agent.context.AIAgentGraphContextBase
 import ai.koog.agents.core.agent.context.AgentExecutionInfo
 import ai.koog.agents.core.agent.entity.AIAgentNodeBase
@@ -23,7 +24,10 @@ import kotlin.reflect.KType
  *
  * @property clock The clock used for time-based operations within the pipeline
  */
-public expect open class AIAgentGraphPipeline(clock: Clock = Clock.System) : AIAgentPipeline {
+public expect open class AIAgentGraphPipeline(
+    agentConfig: AIAgentConfig,
+    clock: Clock = Clock.System
+) : AIAgentPipeline {
 
     /**
      * Installs a feature into the pipeline with the provided configuration.

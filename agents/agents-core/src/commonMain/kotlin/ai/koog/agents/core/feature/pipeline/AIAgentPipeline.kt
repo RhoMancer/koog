@@ -4,6 +4,7 @@ package ai.koog.agents.core.feature.pipeline
 
 import ai.koog.agents.core.agent.AIAgent
 import ai.koog.agents.core.agent.GraphAIAgent
+import ai.koog.agents.core.agent.config.AIAgentConfig
 import ai.koog.agents.core.agent.context.AIAgentContext
 import ai.koog.agents.core.agent.context.AIAgentGraphContextBase
 import ai.koog.agents.core.agent.context.AgentExecutionInfo
@@ -61,7 +62,7 @@ import kotlin.reflect.KType
  *
  * @property clock Clock instance for time-related operations
  */
-public expect abstract class AIAgentPipeline(clock: Clock) {
+public expect abstract class AIAgentPipeline(agentConfig: AIAgentConfig, clock: Clock) {
     /**
      * Provides access to a `Clock` instance representing the current system time.
      * The `Clock` can be used to retrieve the current time, create date-time instances,
@@ -123,7 +124,8 @@ public expect abstract class AIAgentPipeline(clock: Clock) {
         executionInfo: AgentExecutionInfo,
         agentId: String,
         runId: String,
-        result: Any?
+        result: Any?,
+        context: AIAgentContext
     )
 
     /**
@@ -138,7 +140,8 @@ public expect abstract class AIAgentPipeline(clock: Clock) {
         executionInfo: AgentExecutionInfo,
         agentId: String,
         runId: String,
-        exception: Throwable?
+        exception: Throwable?,
+        context: AIAgentContext
     )
 
     /**
@@ -149,7 +152,7 @@ public expect abstract class AIAgentPipeline(clock: Clock) {
      */
     public open suspend fun onAgentClosing(
         executionInfo: AgentExecutionInfo,
-        agentId: String
+        agentId: String,
     )
 
     /**
@@ -168,7 +171,7 @@ public expect abstract class AIAgentPipeline(clock: Clock) {
         executionInfo: AgentExecutionInfo,
         strategy: AIAgentStrategy<*, *, AIAgentGraphContextBase>,
         agent: GraphAIAgent<*, *>,
-        baseEnvironment: AIAgentEnvironment
+        baseEnvironment: AIAgentEnvironment,
     ): AIAgentEnvironment
 
     //endregion Trigger Agent Handlers
@@ -224,7 +227,8 @@ public expect abstract class AIAgentPipeline(clock: Clock) {
         runId: String,
         prompt: Prompt,
         model: LLModel,
-        tools: List<ToolDescriptor>
+        tools: List<ToolDescriptor>,
+        context: AIAgentContext
     )
 
     /**
@@ -246,6 +250,7 @@ public expect abstract class AIAgentPipeline(clock: Clock) {
         tools: List<ToolDescriptor>,
         responses: List<Message.Response>,
         moderationResponse: ModerationResult? = null,
+        context: AIAgentContext
     )
 
     //endregion Trigger LLM Call Handlers
@@ -267,6 +272,7 @@ public expect abstract class AIAgentPipeline(clock: Clock) {
         toolCallId: String?,
         toolName: String,
         toolArgs: JsonObject,
+        context: AIAgentContext
     )
 
     /**
@@ -290,6 +296,7 @@ public expect abstract class AIAgentPipeline(clock: Clock) {
         toolDescription: String?,
         message: String,
         error: ToolException,
+        context: AIAgentContext
     )
 
     /**
@@ -312,7 +319,8 @@ public expect abstract class AIAgentPipeline(clock: Clock) {
         toolArgs: JsonObject,
         toolDescription: String?,
         message: String,
-        exception: Throwable?
+        exception: Throwable?,
+        context: AIAgentContext
     )
 
     /**
@@ -333,7 +341,8 @@ public expect abstract class AIAgentPipeline(clock: Clock) {
         toolName: String,
         toolArgs: JsonObject,
         toolDescription: String?,
-        toolResult: JsonElement?
+        toolResult: JsonElement?,
+        context: AIAgentContext
     )
 
     //endregion Trigger Tool Call Handlers
@@ -357,7 +366,8 @@ public expect abstract class AIAgentPipeline(clock: Clock) {
         runId: String,
         prompt: Prompt,
         model: LLModel,
-        tools: List<ToolDescriptor>
+        tools: List<ToolDescriptor>,
+        context: AIAgentContext
     )
 
     /**
@@ -375,7 +385,8 @@ public expect abstract class AIAgentPipeline(clock: Clock) {
         runId: String,
         prompt: Prompt,
         model: LLModel,
-        streamFrame: StreamFrame
+        streamFrame: StreamFrame,
+        context: AIAgentContext
     )
 
     /**
@@ -393,7 +404,8 @@ public expect abstract class AIAgentPipeline(clock: Clock) {
         runId: String,
         prompt: Prompt,
         model: LLModel,
-        exception: Throwable
+        exception: Throwable,
+        context: AIAgentContext
     )
 
     /**
@@ -413,7 +425,8 @@ public expect abstract class AIAgentPipeline(clock: Clock) {
         runId: String,
         prompt: Prompt,
         model: LLModel,
-        tools: List<ToolDescriptor>
+        tools: List<ToolDescriptor>,
+        context: AIAgentContext
     )
 
     //endregion Trigger LLM Streaming

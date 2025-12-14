@@ -2,6 +2,7 @@
 
 package ai.koog.agents.core.agent.context
 
+import ai.koog.agents.core.agent.ToolCalls
 import ai.koog.agents.core.agent.config.AIAgentConfig
 import ai.koog.agents.core.agent.entity.AIAgentStateManager
 import ai.koog.agents.core.agent.entity.AIAgentStorage
@@ -14,12 +15,17 @@ import ai.koog.agents.core.environment.SafeTool
 import ai.koog.agents.core.feature.pipeline.AIAgentFunctionalPipeline
 import ai.koog.agents.core.tools.Tool
 import ai.koog.agents.core.tools.ToolDescriptor
+import ai.koog.agents.core.tools.annotations.InternalAgentToolsApi
+import ai.koog.agents.ext.agent.CriticResult
+import ai.koog.prompt.llm.LLModel
 import ai.koog.prompt.message.Message
+import ai.koog.prompt.params.LLMParams
 import ai.koog.prompt.streaming.StreamFrame
 import ai.koog.prompt.structure.StructureDefinition
 import ai.koog.prompt.structure.StructureFixingParser
 import ai.koog.prompt.structure.StructuredResponse
 import kotlinx.coroutines.flow.Flow
+import kotlin.reflect.KClass
 
 /**
  * Represents the execution context for an AI agent operating in a loop.
@@ -337,4 +343,116 @@ public expect open class AIAgentFunctionalContext internal constructor(
         preserveMemory: Boolean = true
     )
 
+    /**
+     * Executes a subtask with validation and verification of the results.
+     * The method defines a subtask for the AI agent using the provided input
+     * and additional parameters and ensures that the output is evaluated
+     * based on its correctness and feedback.
+     *
+     * @param Input The type of the input provided to the subtask.
+     * @param input The input data for the subtask, which will be used to
+     * create and execute the task.
+     * @param tools An optional list of tools that can be used during
+     * the execution of the subtask.
+     * @param llmModel An optional parameter specifying the LLM model to be used for the subtask.
+     * @param llmParams Optional configuration parameters for the LLM, such as temperature
+     * and token limits.
+     * @param runMode The mode in which tools should be executed, either sequentially or in parallel.
+     * @param assistantResponseRepeatMax An optional parameter specifying the maximum number of
+     * retries for getting valid responses from the assistant.
+     * @param defineTask A suspend function that defines the subtask as a string
+     * based on the provided input.
+     * @return A [CriticResult] object containing the verification status, feedback,
+     * and the original input for the subtask.
+     */
+    @OptIn(InternalAgentToolsApi::class, InternalAgentsApi::class)
+    public open suspend fun <Input> subtaskWithVerification(
+        input: Input,
+        tools: List<Tool<*, *>>? = null,
+        llmModel: LLModel? = null,
+        llmParams: LLMParams? = null,
+        runMode: ToolCalls = ToolCalls.SEQUENTIAL,
+        assistantResponseRepeatMax: Int? = null,
+        defineTask: suspend AIAgentFunctionalContext.(input: Input) -> String
+    ): CriticResult<Input>
+
+    /**
+     * Executes a subtask within the larger context of an AI agent's functional operation. This method allows you to define a specific
+     * task to be performed, using the given input, tools, and optional configuration parameters.
+     *
+     * @param Input The type of input provided to the subtask.
+     * @param Output The type of the output expected from the subtask.
+     * @param input The input data required for the subtask execution.
+     * @param tools A list of tools available for use within the subtask.
+     * @param llmModel The optional large language model to be used during the subtask, if different from the default one.
+     * @param llmParams The configuration parameters for the large language model, such as temperature, etc.
+     * @param runMode The mode in which tools should be executed, either sequentially or in parallel.
+     * @param assistantResponseRepeatMax The maximum number of times the assistant response can repeat. Useful to control redundant outputs.
+     * @param defineTask A suspendable lambda defining the actual task logic, which takes the provided input and produces a task description.
+     * @return The result of the subtask execution, as an instance of type Output.
+     */
+    @OptIn(InternalAgentToolsApi::class)
+    public suspend inline fun <Input, reified Output> subtask(
+        input: Input,
+        tools: List<Tool<*, *>>? = null,
+        llmModel: LLModel? = null,
+        llmParams: LLMParams? = null,
+        runMode: ToolCalls = ToolCalls.SEQUENTIAL,
+        assistantResponseRepeatMax: Int? = null,
+        noinline defineTask: suspend AIAgentFunctionalContext.(input: Input) -> String
+    ): Output
+
+    /**
+     * Executes a subtask within the larger context of an AI agent's functional operation. This method allows you to define a specific
+     * task to be performed, using the given input, tools, and optional configuration parameters.
+     *
+     * @param Input The type of input provided to the subtask.
+     * @param Output The type of the output expected from the subtask.
+     * @param input The input data required for the subtask execution.
+     * @param tools A list of tools available for use within the subtask.
+     * @param llmModel The optional large language model to be used during the subtask, if different from the default one.
+     * @param llmParams The configuration parameters for the large language model, such as temperature, etc.
+     * @param runMode The mode in which tools should be executed, either sequentially or in parallel.
+     * @param assistantResponseRepeatMax The maximum number of times the assistant response can repeat. Useful to control redundant outputs.
+     * @param defineTask A suspendable lambda defining the actual task logic, which takes the provided input and produces a task description.
+     * @return The result of the subtask execution, as an instance of type Output.
+     */
+    @OptIn(InternalAgentToolsApi::class)
+    public open suspend fun <Input, Output : Any> subtask(
+        input: Input,
+        outputClass: KClass<Output>,
+        tools: List<Tool<*, *>>? = null,
+        llmModel: LLModel? = null,
+        llmParams: LLMParams? = null,
+        runMode: ToolCalls = ToolCalls.SEQUENTIAL,
+        assistantResponseRepeatMax: Int? = null,
+        defineTask: suspend AIAgentFunctionalContext.(input: Input) -> String
+    ): Output
+
+    /**
+     * Executes a subtask within the AI agent's functional context. This method enables the use of tools to
+     * achieve a specific task based on the input provided. It defines the task using an inline function,
+     * employs tools iteratively, and attempts to complete the subtask with a designated finishing tool.
+     *
+     * @param input The input data required to define and execute the subtask.
+     * @param tools An optional list of tools that can be used to achieve the task, excluding the finishing tool.
+     * @param finishTool A mandatory tool that determines the final result of the subtask by producing and transforming output.
+     * @param llmModel An optional specific language learning model (LLM) to use for executing the subtask.
+     * @param llmParams Optional parameters for configuring the behavior of the LLM during subtask execution.
+     * @param runMode The mode in which tools should be executed, either sequentially or in parallel.
+     * @param assistantResponseRepeatMax The maximum number of feedback attempts allowed from the language model if the subtask is not completed.
+     * @param defineTask A suspendable function used to define the task based on the provided input.
+     * @return The transformed final result of executing the finishing tool to complete the subtask.
+     */
+    @OptIn(InternalAgentToolsApi::class, DetachedPromptExecutorAPI::class, InternalAgentsApi::class)
+    public open suspend fun <Input, Output, OutputTransformed> subtask(
+        input: Input,
+        tools: List<Tool<*, *>>? = null,
+        finishTool: Tool<Output, OutputTransformed>,
+        llmModel: LLModel? = null,
+        llmParams: LLMParams? = null,
+        runMode: ToolCalls = ToolCalls.SEQUENTIAL,
+        assistantResponseRepeatMax: Int? = null,
+        defineTask: suspend AIAgentFunctionalContext.(input: Input) -> String
+    ): OutputTransformed
 }

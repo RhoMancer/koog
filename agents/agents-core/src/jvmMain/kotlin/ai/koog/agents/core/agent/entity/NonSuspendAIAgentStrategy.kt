@@ -1,9 +1,11 @@
 @file:Suppress("MissingKDocForPublicAPI", "EXPECT_ACTUAL_CLASSIFIERS_ARE_IN_BETA_WARNING")
+@file:OptIn(InternalAgentsApi::class)
 
 package ai.koog.agents.core.agent.entity
 
 import ai.koog.agents.annotations.JavaAPI
 import ai.koog.agents.core.agent.context.AIAgentContext
+import ai.koog.agents.core.annotation.InternalAgentsApi
 import ai.koog.agents.core.utils.submitToMainDispatcher
 
 /**

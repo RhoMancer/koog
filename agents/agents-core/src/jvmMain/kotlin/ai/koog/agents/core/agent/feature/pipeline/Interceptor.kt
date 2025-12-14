@@ -54,7 +54,7 @@ public fun interface TransformInterceptor<ContextT, DataT> {
  */
 @JavaAPI
 public fun interface AsyncInterceptor<ContextT> {
-    /**
+    /**0
      * Intercepts the given context and performs asynchronous processing.
      *
      * @param contextT the context object to be intercepted and processed

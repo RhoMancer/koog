@@ -4,6 +4,7 @@ package ai.koog.agents.core.feature.pipeline
 
 import ai.koog.agents.core.agent.AIAgent
 import ai.koog.agents.core.agent.GraphAIAgent
+import ai.koog.agents.core.agent.config.AIAgentConfig
 import ai.koog.agents.core.agent.context.AIAgentContext
 import ai.koog.agents.core.agent.context.AIAgentGraphContextBase
 import ai.koog.agents.core.agent.context.AgentExecutionInfo
@@ -44,10 +45,10 @@ import kotlinx.serialization.json.JsonObject
 import kotlin.reflect.KClass
 import kotlin.reflect.KType
 
-public actual abstract class AIAgentPipeline actual constructor(clock: Clock) {
+public actual abstract class AIAgentPipeline actual constructor(agentConfig: AIAgentConfig, clock: Clock) {
 
     @PublishedApi
-    internal val pipelineDelegate: AIAgentPipelineImpl = AIAgentPipelineImpl(clock)
+    internal val pipelineDelegate: AIAgentPipelineImpl = AIAgentPipelineImpl(agentConfig, clock)
 
     public actual open val clock: Clock = pipelineDelegate.clock
 
@@ -72,23 +73,25 @@ public actual abstract class AIAgentPipeline actual constructor(clock: Clock) {
         executionInfo: AgentExecutionInfo,
         agentId: String,
         runId: String,
-        result: Any?
+        result: Any?,
+        context: AIAgentContext
     ) {
-        pipelineDelegate.onAgentCompleted(executionInfo, agentId, runId, result)
+        pipelineDelegate.onAgentCompleted(executionInfo, agentId, runId, result, context)
     }
 
     public actual open suspend fun onAgentExecutionFailed(
         executionInfo: AgentExecutionInfo,
         agentId: String,
         runId: String,
-        exception: Throwable?
+        exception: Throwable?,
+        context: AIAgentContext
     ) {
-        pipelineDelegate.onAgentExecutionFailed(executionInfo, agentId, runId, exception)
+        pipelineDelegate.onAgentExecutionFailed(executionInfo, agentId, runId, exception, context)
     }
 
     public actual open suspend fun onAgentClosing(
         executionInfo: AgentExecutionInfo,
-        agentId: String
+        agentId: String,
     ) {
         pipelineDelegate.onAgentClosing(executionInfo, agentId)
     }
@@ -97,7 +100,7 @@ public actual abstract class AIAgentPipeline actual constructor(clock: Clock) {
         executionInfo: AgentExecutionInfo,
         strategy: AIAgentStrategy<*, *, AIAgentGraphContextBase>,
         agent: GraphAIAgent<*, *>,
-        baseEnvironment: AIAgentEnvironment
+        baseEnvironment: AIAgentEnvironment,
     ): AIAgentEnvironment =
         pipelineDelegate.onAgentEnvironmentTransforming(executionInfo, strategy, agent, baseEnvironment)
 
@@ -132,9 +135,10 @@ public actual abstract class AIAgentPipeline actual constructor(clock: Clock) {
         runId: String,
         prompt: Prompt,
         model: LLModel,
-        tools: List<ToolDescriptor>
+        tools: List<ToolDescriptor>,
+        context: AIAgentContext
     ) {
-        pipelineDelegate.onLLMCallStarting(executionInfo, runId, prompt, model, tools)
+        pipelineDelegate.onLLMCallStarting(executionInfo, runId, prompt, model, tools, context)
     }
 
     public actual open suspend fun onLLMCallCompleted(
@@ -144,9 +148,19 @@ public actual abstract class AIAgentPipeline actual constructor(clock: Clock) {
         model: LLModel,
         tools: List<ToolDescriptor>,
         responses: List<Message.Response>,
-        moderationResponse: ModerationResult?
+        moderationResponse: ModerationResult?,
+        context: AIAgentContext
     ) {
-        pipelineDelegate.onLLMCallCompleted(executionInfo, runId, prompt, model, tools, responses, moderationResponse)
+        pipelineDelegate.onLLMCallCompleted(
+            executionInfo,
+            runId,
+            prompt,
+            model,
+            tools,
+            responses,
+            moderationResponse,
+            context
+        )
     }
 
     //endregion Trigger LLM Call Handlers
@@ -159,8 +173,9 @@ public actual abstract class AIAgentPipeline actual constructor(clock: Clock) {
         toolCallId: String?,
         toolName: String,
         toolArgs: JsonObject,
+        context: AIAgentContext
     ) {
-        pipelineDelegate.onToolCallStarting(executionInfo, runId, toolCallId, toolName, toolArgs)
+        pipelineDelegate.onToolCallStarting(executionInfo, runId, toolCallId, toolName, toolArgs, context)
     }
 
     public actual open suspend fun onToolValidationFailed(
@@ -172,6 +187,7 @@ public actual abstract class AIAgentPipeline actual constructor(clock: Clock) {
         toolDescription: String?,
         message: String,
         error: ToolException,
+        context: AIAgentContext
     ) {
         pipelineDelegate.onToolValidationFailed(
             executionInfo,
@@ -181,7 +197,8 @@ public actual abstract class AIAgentPipeline actual constructor(clock: Clock) {
             toolArgs,
             toolDescription,
             message,
-            error
+            error,
+            context
         )
     }
 
@@ -193,7 +210,8 @@ public actual abstract class AIAgentPipeline actual constructor(clock: Clock) {
         toolArgs: JsonObject,
         toolDescription: String?,
         message: String,
-        exception: Throwable?
+        exception: Throwable?,
+        context: AIAgentContext
     ) {
         pipelineDelegate.onToolCallFailed(
             executionInfo,
@@ -203,7 +221,8 @@ public actual abstract class AIAgentPipeline actual constructor(clock: Clock) {
             toolArgs,
             toolDescription,
             message,
-            exception
+            exception,
+            context
         )
     }
 
@@ -214,7 +233,8 @@ public actual abstract class AIAgentPipeline actual constructor(clock: Clock) {
         toolName: String,
         toolArgs: JsonObject,
         toolDescription: String?,
-        toolResult: JsonElement?
+        toolResult: JsonElement?,
+        context: AIAgentContext
     ) {
         pipelineDelegate.onToolCallCompleted(
             executionInfo,
@@ -223,7 +243,8 @@ public actual abstract class AIAgentPipeline actual constructor(clock: Clock) {
             toolName,
             toolArgs,
             toolDescription,
-            toolResult
+            toolResult,
+            context
         )
     }
 
@@ -236,9 +257,10 @@ public actual abstract class AIAgentPipeline actual constructor(clock: Clock) {
         runId: String,
         prompt: Prompt,
         model: LLModel,
-        tools: List<ToolDescriptor>
+        tools: List<ToolDescriptor>,
+        context: AIAgentContext
     ) {
-        pipelineDelegate.onLLMStreamingStarting(executionInfo, runId, prompt, model, tools)
+        pipelineDelegate.onLLMStreamingStarting(executionInfo, runId, prompt, model, tools, context)
     }
 
     public actual open suspend fun onLLMStreamingFrameReceived(
@@ -246,9 +268,10 @@ public actual abstract class AIAgentPipeline actual constructor(clock: Clock) {
         runId: String,
         prompt: Prompt,
         model: LLModel,
-        streamFrame: StreamFrame
+        streamFrame: StreamFrame,
+        context: AIAgentContext
     ) {
-        pipelineDelegate.onLLMStreamingFrameReceived(executionInfo, runId, prompt, model, streamFrame)
+        pipelineDelegate.onLLMStreamingFrameReceived(executionInfo, runId, prompt, model, streamFrame, context)
     }
 
     public actual open suspend fun onLLMStreamingFailed(
@@ -256,9 +279,10 @@ public actual abstract class AIAgentPipeline actual constructor(clock: Clock) {
         runId: String,
         prompt: Prompt,
         model: LLModel,
-        exception: Throwable
+        exception: Throwable,
+        context: AIAgentContext
     ) {
-        pipelineDelegate.onLLMStreamingFailed(executionInfo, runId, prompt, model, exception)
+        pipelineDelegate.onLLMStreamingFailed(executionInfo, runId, prompt, model, exception, context)
     }
 
     public actual open suspend fun onLLMStreamingCompleted(
@@ -266,9 +290,10 @@ public actual abstract class AIAgentPipeline actual constructor(clock: Clock) {
         runId: String,
         prompt: Prompt,
         model: LLModel,
-        tools: List<ToolDescriptor>
+        tools: List<ToolDescriptor>,
+        context: AIAgentContext
     ) {
-        pipelineDelegate.onLLMStreamingCompleted(executionInfo, runId, prompt, model, tools)
+        pipelineDelegate.onLLMStreamingCompleted(executionInfo, runId, prompt, model, tools, context)
     }
 
     //endregion Trigger LLM Streaming

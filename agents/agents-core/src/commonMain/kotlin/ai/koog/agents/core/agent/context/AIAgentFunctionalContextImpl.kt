@@ -1,5 +1,6 @@
 package ai.koog.agents.core.agent.context
 
+import ai.koog.agents.core.agent.ToolCalls
 import ai.koog.agents.core.agent.config.AIAgentConfig
 import ai.koog.agents.core.agent.entity.AIAgentStateManager
 import ai.koog.agents.core.agent.entity.AIAgentStorage
@@ -7,14 +8,25 @@ import ai.koog.agents.core.agent.entity.AIAgentStorageKey
 import ai.koog.agents.core.annotation.InternalAgentsApi
 import ai.koog.agents.core.dsl.extension.HistoryCompressionStrategy
 import ai.koog.agents.core.dsl.extension.replaceHistoryWithTLDR
+import ai.koog.agents.core.dsl.extension.setToolChoiceRequired
 import ai.koog.agents.core.environment.AIAgentEnvironment
 import ai.koog.agents.core.environment.ReceivedToolResult
 import ai.koog.agents.core.environment.SafeTool
 import ai.koog.agents.core.environment.result
+import ai.koog.agents.core.environment.toSafeResult
 import ai.koog.agents.core.feature.pipeline.AIAgentFunctionalPipeline
 import ai.koog.agents.core.tools.Tool
 import ai.koog.agents.core.tools.ToolDescriptor
+import ai.koog.agents.core.tools.annotations.InternalAgentToolsApi
+import ai.koog.agents.ext.agent.CriticResult
+import ai.koog.agents.ext.agent.CriticResultFromLLM
+import ai.koog.agents.ext.agent.SubgraphWithTaskUtils
+import ai.koog.agents.ext.agent.executeFinishTool
+import ai.koog.agents.ext.agent.identityTool
+import ai.koog.prompt.llm.LLModel
+import ai.koog.prompt.markdown.markdown
 import ai.koog.prompt.message.Message
+import ai.koog.prompt.params.LLMParams
 import ai.koog.prompt.streaming.StreamFrame
 import ai.koog.prompt.structure.StructureDefinition
 import ai.koog.prompt.structure.StructureFixingParser
@@ -22,6 +34,7 @@ import ai.koog.prompt.structure.StructuredResponse
 import kotlinx.coroutines.flow.Flow
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.serializer
+import kotlin.reflect.KClass
 
 @OptIn(InternalAgentsApi::class)
 @Suppress("UNCHECKED_CAST")
@@ -498,4 +511,240 @@ internal class AIAgentFunctionalContextImpl(
         }
     }
 
+    @OptIn(InternalAgentToolsApi::class, InternalAgentsApi::class)
+    public override suspend fun <Input> subtaskWithVerification(
+        input: Input,
+        tools: List<Tool<*, *>>?,
+        llmModel: LLModel?,
+        llmParams: LLMParams?,
+        runMode: ToolCalls,
+        assistantResponseRepeatMax: Int?,
+        defineTask: suspend AIAgentFunctionalContext.(input: Input) -> String
+    ): CriticResult<Input> {
+        val result = subtask<Input, CriticResultFromLLM>(
+            input,
+            tools,
+            llmModel,
+            llmParams,
+            runMode,
+            assistantResponseRepeatMax,
+            defineTask
+        )
+
+        return CriticResult(
+            successful = result.isCorrect,
+            feedback = result.feedback,
+            input = input
+        )
+    }
+
+    @OptIn(InternalAgentToolsApi::class)
+    @PublishedApi
+    internal suspend inline fun <Input, reified Output> subtaskImpl(
+        input: Input,
+        tools: List<Tool<*, *>>? = null,
+        llmModel: LLModel? = null,
+        llmParams: LLMParams? = null,
+        runMode: ToolCalls = ToolCalls.SEQUENTIAL,
+        assistantResponseRepeatMax: Int? = null,
+        noinline defineTask: suspend AIAgentFunctionalContext.(input: Input) -> String
+    ): Output {
+        val finishTool = identityTool<Output>()
+
+        return subtask(input, tools, finishTool, llmModel, llmParams, runMode, assistantResponseRepeatMax, defineTask)
+    }
+
+    @OptIn(InternalAgentToolsApi::class)
+    public override suspend fun <Input, Output : Any> subtask(
+        input: Input,
+        outputClass: KClass<Output>,
+        tools: List<Tool<*, *>>?,
+        llmModel: LLModel?,
+        llmParams: LLMParams?,
+        runMode: ToolCalls,
+        assistantResponseRepeatMax: Int?,
+        defineTask: suspend AIAgentFunctionalContext.(input: Input) -> String
+    ): Output {
+        val finishTool = identityTool(outputClass)
+
+        return subtask(input, tools, finishTool, llmModel, llmParams, runMode, assistantResponseRepeatMax, defineTask)
+    }
+
+    @OptIn(InternalAgentToolsApi::class, DetachedPromptExecutorAPI::class, InternalAgentsApi::class)
+    public override suspend fun <Input, Output, OutputTransformed> subtask(
+        input: Input,
+        tools: List<Tool<*, *>>?,
+        finishTool: Tool<Output, OutputTransformed>,
+        llmModel: LLModel?,
+        llmParams: LLMParams?,
+        runMode: ToolCalls,
+        assistantResponseRepeatMax: Int?,
+        defineTask: suspend AIAgentFunctionalContext.(input: Input) -> String
+    ): OutputTransformed {
+        val maxAssistantResponses = assistantResponseRepeatMax ?: SubgraphWithTaskUtils.ASSISTANT_RESPONSE_REPEAT_MAX
+
+        val toolsSubset = tools?.map { it.descriptor } ?: llm.readSession { this.tools.toList() }
+
+        val originalTools = llm.readSession { this.tools.toList() }
+        val originalModel = llm.readSession { this.model }
+        val originalParams = llm.readSession { this.prompt.params }
+
+        // setup:
+        llm.writeSession {
+            if (finishTool.descriptor !in toolsSubset) {
+                this.tools = toolsSubset + finishTool.descriptor
+            }
+
+            if (llmModel != null) {
+                model = llmModel
+            }
+
+            if (llmParams != null) {
+                prompt = prompt.withParams(llmParams)
+            }
+
+            setToolChoiceRequired()
+        }
+
+        val task = defineTask(input)
+
+        val result = when (runMode) {
+            ToolCalls.SINGLE_RUN_SEQUENTIAL -> subtaskWithSingleToolMode(
+                task,
+                finishTool,
+                maxAssistantResponses
+            )
+
+            else -> subtaskWithMultiToolMode(
+                task,
+                finishTool,
+                runMode,
+                maxAssistantResponses
+            )
+        }
+
+        // rollback
+        llm.writeSession {
+            this.tools = originalTools
+            this.model = originalModel
+            this.prompt = prompt.withParams(originalParams)
+        }
+
+        return result
+    }
+
+    @PublishedApi
+    @OptIn(DetachedPromptExecutorAPI::class, InternalAgentsApi::class)
+    internal suspend fun <Output, OutputTransformed> subtaskWithSingleToolMode(
+        task: String,
+        finishTool: Tool<Output, OutputTransformed>,
+        maxAssistantResponses: Int
+    ): OutputTransformed {
+        var feedbacksCount = 0
+        var response = requestLLM(task)
+        while (true) {
+            when {
+                response is Message.Tool.Call -> {
+                    val toolResult = executeToolHacked(response, finishTool)
+                    response = sendToolResult(toolResult)
+
+                    if (toolResult.tool == finishTool.descriptor.name) {
+                        return toolResult.toSafeResult(finishTool).asSuccessful().result
+                    }
+                }
+
+                else -> {
+                    if (feedbacksCount++ > maxAssistantResponses) {
+                        error(
+                            "Unable to finish subtask. Reason: the model '${llm.model.id}' does not support tool choice, " +
+                                "and was not able to call `${finishTool.name}` tool after " +
+                                "<$maxAssistantResponses> attempts."
+                        )
+                    }
+
+                    response = requestLLM(
+                        message = markdown {
+                            h1("DO NOT CHAT WITH ME DIRECTLY! CALL TOOLS, INSTEAD.")
+                            h2("IF YOU HAVE FINISHED, CALL `${finishTool.name}` TOOL!")
+                        }
+                    )
+                }
+            }
+        }
+    }
+
+    @OptIn(InternalAgentToolsApi::class, InternalAgentsApi::class)
+    @PublishedApi
+    internal suspend fun <Output, OutputTransformed> executeMultipleToolsHacked(
+        toolCalls: List<Message.Tool.Call>,
+        finishTool: Tool<Output, OutputTransformed>,
+        parallelTools: Boolean = false
+    ): List<ReceivedToolResult> {
+        val finishTools = toolCalls.filter { it.tool == finishTool.descriptor.name }
+        val normalTools = toolCalls.filterNot { it.tool == finishTool.descriptor.name }
+
+        val finishToolResults = finishTools.map { toolCall ->
+            executeFinishTool(toolCall, finishTool)
+        }
+
+        val normalToolResults = if (parallelTools) {
+            environment.executeTools(normalTools)
+        } else {
+            normalTools.map { environment.executeTool(it) }
+        }
+
+        return finishToolResults + normalToolResults
+    }
+
+    @OptIn(InternalAgentToolsApi::class)
+    @PublishedApi
+    internal suspend fun <Output, OutputTransformed> executeToolHacked(
+        toolCall: Message.Tool.Call,
+        finishTool: Tool<Output, OutputTransformed>
+    ): ReceivedToolResult = executeMultipleToolsHacked(listOf(toolCall), finishTool).first()
+
+
+    @PublishedApi
+    @OptIn(DetachedPromptExecutorAPI::class, InternalAgentsApi::class)
+    internal suspend fun <Output, OutputTransformed> subtaskWithMultiToolMode(
+        task: String,
+        finishTool: Tool<Output, OutputTransformed>,
+        runMode: ToolCalls,
+        maxAssistantResponses: Int
+    ): OutputTransformed {
+        var feedbacksCount = 0
+        var responses = requestLLMMultiple(task)
+        while (true) {
+            when {
+                responses.containsToolCalls() -> {
+                    val toolCalls = extractToolCalls(responses)
+                    val toolResults =
+                        executeMultipleToolsHacked(toolCalls, finishTool, parallelTools = runMode == ToolCalls.PARALLEL)
+                    responses = sendMultipleToolResults(toolResults)
+
+                    toolResults.firstOrNull { it.tool == finishTool.descriptor.name }
+                        ?.let { finishResult ->
+                            return finishResult.toSafeResult(finishTool).asSuccessful().result
+                        }
+                }
+
+                else -> {
+                    if (feedbacksCount++ > maxAssistantResponses) {
+                        error(
+                            "Unable to finish subtask. Reason: the model '${llm.model.id}' does not support tool choice, " +
+                                "and was not able to call `${finishTool.name}` tool after " +
+                                "<$maxAssistantResponses> attempts."
+                        )
+                    }
+
+                    responses = requestLLMMultiple(
+                        message = markdown {
+                            h1("DO NOT CHAT WITH ME DIRECTLY! CALL TOOLS, INSTEAD.")
+                            h2("IF YOU HAVE FINISHED, CALL `${finishTool.name}` TOOL!")
+                        }
+                    )
+                }
+            }
+        }
+    }
 }

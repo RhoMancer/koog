@@ -85,7 +85,7 @@ class AIAgentPipelineJvmTest {
         )
 
         // Run prepare features logic
-        AIAgentGraphPipeline().use { pipeline ->
+        AIAgentGraphPipeline(agentConfig).use { pipeline ->
             pipeline.prepareFeatures()
 
             // Check Debugger feature parameters
@@ -109,7 +109,7 @@ class AIAgentPipelineJvmTest {
         System.setProperty(Debugger.KOOG_DEBUGGER_WAIT_CONNECTION_TIMEOUT_MS_VM_OPTION, "$expectedWaitConnectionTimeout")
 
         // Run prepare features logic
-        AIAgentGraphPipeline().use { pipeline ->
+        AIAgentGraphPipeline(agentConfig).use { pipeline ->
             pipeline.prepareFeatures()
 
             // Check Debugger feature parameters
@@ -172,7 +172,7 @@ class AIAgentPipelineJvmTest {
             "unknown-feature"
         )
 
-        AIAgentGraphPipeline().use { pipeline ->
+        AIAgentGraphPipeline(agentConfig).use { pipeline ->
             pipeline.prepareFeatures()
 
             val debuggerFeature = pipeline.feature(Debugger::class, Debugger)
@@ -193,7 +193,7 @@ class AIAgentPipelineJvmTest {
         System.setProperty(Debugger.KOOG_DEBUGGER_WAIT_CONNECTION_TIMEOUT_MS_VM_OPTION, "1")
 
         // Run prepare features logic
-        AIAgentGraphPipeline().use { pipeline ->
+        AIAgentGraphPipeline(agentConfig).use { pipeline ->
             pipeline.prepareFeatures()
 
             // Check Debugger feature is installed
@@ -215,7 +215,7 @@ class AIAgentPipelineJvmTest {
         System.setProperty(Debugger.KOOG_DEBUGGER_WAIT_CONNECTION_TIMEOUT_MS_VM_OPTION, "1")
 
         // Run prepare features logic
-        AIAgentGraphPipeline().use { pipeline ->
+        AIAgentGraphPipeline(agentConfig).use { pipeline ->
             pipeline.prepareFeatures()
 
             // Check Debugger feature is installed
