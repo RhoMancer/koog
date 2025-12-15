@@ -132,25 +132,14 @@ public open class GraphAIAgent<Input, Output>(
             parentContext = null,
         )
 
-        // Update: Create a mutable reference that will be updated
-        lateinit var updatedAgentContext: AIAgentGraphContextBase
-
         val contextualEnvironment = ContextualAgentEnvironment(
             environment = initialEnvironment,
-            context = object : AIAgentContext by initialAgentContext {
-                override var executionInfo: AgentExecutionInfo
-                    get() = updatedAgentContext.executionInfo
-                    set(value) { updatedAgentContext.executionInfo = value }
-            },
+            context = initialAgentContext,
         )
 
         val contextualPromptExecutor = ContextualPromptExecutor(
             executor = promptExecutor,
-            context = object : AIAgentContext by initialAgentContext {
-                override var executionInfo: AgentExecutionInfo
-                    get() = updatedAgentContext.executionInfo
-                    set(value) { updatedAgentContext.executionInfo = value }
-            },
+            context = initialAgentContext,
         )
 
         val updatedLLMContext = initialAgentContext.llm.copy(
@@ -158,13 +147,58 @@ public open class GraphAIAgent<Input, Output>(
             promptExecutor = contextualPromptExecutor,
         )
 
-        updatedAgentContext = initialAgentContext.copy(
+        val updatedAgentContext = initialAgentContext.copy(
             llm = updatedLLMContext,
             environment = contextualEnvironment,
             parentContext = initialAgentContext.parentContext, // Keep the original parent context
         )
 
-        return updatedAgentContext
+        initialAgentContext.replace(updatedAgentContext)
+
+        return initialAgentContext
+
+
+
+
+
+        // TODO: Origin....
+
+//        // Update: Create a mutable reference that will be updated
+//        lateinit var updatedAgentContext: AIAgentGraphContextBase
+//
+//        val agentContextDelegate = object : AIAgentContext by initialAgentContext {
+//            override var executionInfo: AgentExecutionInfo
+//                get() {
+//                    return updatedAgentContext.executionInfo
+//                }
+//                set(value) {
+//                    updatedAgentContext.executionInfo = value
+//                }
+//        }
+//
+//        val contextualEnvironment = ContextualAgentEnvironment(
+//            environment = initialEnvironment,
+//            context = agentContextDelegate,
+//        )
+//
+//        val contextualPromptExecutor = ContextualPromptExecutor(
+//            executor = promptExecutor,
+//            context = agentContextDelegate,
+//        )
+//
+//        val updatedLLMContext = initialAgentContext.llm.copy(
+//            environment = contextualEnvironment,
+//            promptExecutor = contextualPromptExecutor,
+//        )
+//
+//        updatedAgentContext = initialAgentContext.copy(
+//            executionInfo = executionInfo,
+//            llm = updatedLLMContext,
+//            environment = contextualEnvironment,
+//            parentContext = initialAgentContext.parentContext, // Keep the original parent context
+//        )
+//
+//        return updatedAgentContext
     }
 
     /**

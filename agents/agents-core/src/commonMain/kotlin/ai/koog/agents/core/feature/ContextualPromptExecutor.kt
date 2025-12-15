@@ -42,7 +42,7 @@ public class ContextualPromptExecutor(
             val callId = Uuid.random().toString()
 
             logger.debug { "Executing LLM call (prompt: $prompt, tools: [${tools.joinToString { it.name }}])" }
-            context.pipeline.onLLMCallStarting(context.executionInfo, context.runId, callId, prompt, model, tools)
+            context.pipeline.onLLMCallStarting(executionInfo, context.runId, callId, prompt, model, tools)
 
             val responses = executor.execute(prompt, model, tools)
 
