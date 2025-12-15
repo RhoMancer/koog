@@ -173,12 +173,8 @@ public open class GraphAIAgent<Input, Output>(
 
         val agentContextDelegate = object : AIAgentContext by initialAgentContext {
             override var executionInfo: AgentExecutionInfo
-                get() {
-                    return updatedAgentContext.executionInfo
-                }
-                set(value) {
-                    updatedAgentContext.executionInfo = value
-                }
+                get() = updatedAgentContext.executionInfo
+                set(value) { updatedAgentContext.executionInfo = value }
         }
 
         val contextualEnvironment = ContextualAgentEnvironment(

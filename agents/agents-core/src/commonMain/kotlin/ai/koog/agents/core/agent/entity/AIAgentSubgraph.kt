@@ -1,6 +1,7 @@
 package ai.koog.agents.core.agent.entity
 
 import ai.koog.agents.core.agent.context.AIAgentContext
+import ai.koog.agents.core.agent.context.AIAgentGraphContext
 import ai.koog.agents.core.agent.context.AIAgentGraphContextBase
 import ai.koog.agents.core.agent.context.DetachedPromptExecutorAPI
 import ai.koog.agents.core.agent.context.element.NodeInfoContextElement
@@ -167,24 +168,24 @@ public open class AIAgentSubgraph<TInput, TOutput>(
                 val newTools = selectTools(context)
 
                 // Copy inner context with new tools, model and LLM params.
-                val innerContext = with(context) {
-                    copy(
-                        llm = llm.copy(
-                            tools = newTools,
-                            model = llmModel ?: llm.model,
-                            prompt = llm.prompt.copy(params = llmParams ?: llm.prompt.params),
-                            responseProcessor = responseProcessor
-                        )
+                val initialLLMContext = context.llm
+
+                context.replace(context.copy(
+                    llm = context.llm.copy(
+                        tools = newTools,
+                        model = llmModel ?: context.llm.model,
+                        prompt = context.llm.prompt.copy(params = llmParams ?: context.llm.prompt.params),
+                        responseProcessor = responseProcessor
                     )
-                }
+                ))
 
                 runIfNonRootContext(context) {
-                    pipeline.onSubgraphExecutionStarting(executionInfo, this@AIAgentSubgraph, innerContext, input, inputType)
+                    pipeline.onSubgraphExecutionStarting(executionInfo, this@AIAgentSubgraph, context, input, inputType)
                 }
 
                 // Execute the subgraph with an inner context and get the result and updated prompt.
                 val result = try {
-                    executeWithInnerContext(innerContext, input)
+                    executeWithInnerContext(context, input)
                 } catch (e: CancellationException) {
                     throw e
                 } catch (e: Exception) {
@@ -195,20 +196,23 @@ public open class AIAgentSubgraph<TInput, TOutput>(
                     throw e
                 }
 
-                // Restore original LLM params on the new prompt.
-                val newPrompt = innerContext.llm.readSession {
-                    prompt.copy(params = context.llm.prompt.params)
-                }
-                context.llm.writeSession { prompt = newPrompt }
+                // Restore original LLM context with updated message history.
+                context.replace(
+                    context.copy(
+                        llm = initialLLMContext.copy(
+                            prompt = context.llm.prompt.copy(params = initialLLMContext.prompt.params)
+                        )
+                    )
+                )
 
-                val innerForcedData = innerContext.getAgentContextData()
+                val innerForcedData = context.getAgentContextData()
 
                 if (innerForcedData != null) {
                     context.store(innerForcedData)
                 }
 
                 runIfNonRootContext(context) {
-                    pipeline.onSubgraphExecutionCompleted(executionInfo, this@AIAgentSubgraph, innerContext, input, inputType, result, outputType)
+                    pipeline.onSubgraphExecutionCompleted(executionInfo, this@AIAgentSubgraph, context, input, inputType, result, outputType)
                 }
 
                 result

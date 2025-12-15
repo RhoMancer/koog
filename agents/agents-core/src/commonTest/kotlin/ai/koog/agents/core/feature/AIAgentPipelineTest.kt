@@ -689,12 +689,15 @@ class AIAgentPipelineTest {
         val nodeLLMCallWithoutToolsName = "test-llm-node-without-tools"
         val nodeLLMCallName = "test-llm-node"
 
+        val testLLMResponse = "Test LLM call prompt"
+        val llmCallWithToolsResponse = "Test LLM call with tools prompt"
+
         val strategy = strategy<String, String>(strategyName) {
             val llmCallWithoutTools by nodeLLMRequest(nodeLLMCallWithoutToolsName, allowToolCalls = false)
             val llmCall by nodeLLMRequest(nodeLLMCallName)
 
-            edge(nodeStart forwardTo llmCallWithoutTools transformed { "Test LLM call prompt" })
-            edge(llmCallWithoutTools forwardTo llmCall transformed { "Test LLM call with tools prompt" })
+            edge(nodeStart forwardTo llmCallWithoutTools transformed { testLLMResponse })
+            edge(llmCallWithoutTools forwardTo llmCall transformed { llmCallWithToolsResponse })
             edge(llmCall forwardTo nodeFinish transformed { agentOutput })
         }
 
@@ -714,8 +717,8 @@ class AIAgentPipelineTest {
         val runId = interceptedRunIds.first()
 
         val expectedEvents = listOf(
-            "${LLMCallStarting::class.simpleName} (path: ${agentExecutionPath(agentId, runId, strategyName, nodeLLMCallWithoutToolsName)})",
-            "${LLMCallStarting::class.simpleName} (path: ${agentExecutionPath(agentId, runId)}, node: $nodeLLMCallName)",
+            "${LLMCallStarting::class.simpleName} (path: ${agentExecutionPath(agentId, runId, strategyName, nodeLLMCallWithoutToolsName)}, prompt: $testLLMResponse, tools: [])",
+            "${LLMCallStarting::class.simpleName} (path: ${agentExecutionPath(agentId, runId, strategyName, nodeLLMCallName)}, prompt: $llmCallWithToolsResponse, tools: [${DummyTool().name}])",
         )
 
         assertEquals(
