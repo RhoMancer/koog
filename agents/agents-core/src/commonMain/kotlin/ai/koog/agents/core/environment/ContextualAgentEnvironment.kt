@@ -8,11 +8,15 @@ import io.github.oshai.kotlinlogging.KotlinLogging
 
 internal class ContextualAgentEnvironment(
     private val environment: AIAgentEnvironment,
-    private val context: AIAgentContext,
+    private var context: AIAgentContext,
 ) : AIAgentEnvironment {
 
     companion object {
         private val logger = KotlinLogging.logger { }
+    }
+
+    internal fun updateContext(context: AIAgentContext) {
+        this.context = context
     }
 
     override suspend fun executeTool(toolCall: Message.Tool.Call): ReceivedToolResult =

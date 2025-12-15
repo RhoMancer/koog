@@ -54,7 +54,7 @@ public class AIAgentGraphStrategy<TInput, TOutput>(
 
     @OptIn(InternalAgentsApi::class)
     override suspend fun execute(context: AIAgentGraphContextBase, input: TInput): TOutput? =
-        context.with(partName = name) { executionInfo ->
+        context.with(partName = id) { executionInfo ->
             runCatchingCancellable {
                 context.pipeline.onStrategyStarting(executionInfo, this, context)
                 restoreStateIfNeeded(context)

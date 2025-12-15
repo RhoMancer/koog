@@ -155,7 +155,10 @@ public open class GraphAIAgent<Input, Output>(
 
         initialAgentContext.replace(updatedAgentContext)
 
-        return initialAgentContext
+        contextualEnvironment.updateContext(updatedAgentContext)
+        contextualPromptExecutor.updateContext(updatedAgentContext)
+
+        return updatedAgentContext
 
 
 

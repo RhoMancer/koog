@@ -305,9 +305,9 @@ public open class AIAgentSubgraph<TInput, TOutput>(
         block: (executionInfo: AgentExecutionInfo) -> T
     ): T =
         if (this.parentContext == null) {
-            block(this.executionInfo)
+            this.with(this.executionInfo, block)
         } else {
-            this.with(id) { block(it) }
+            this.with(id, block)
         }
 
     private fun formatLog(context: AIAgentContext, message: String): String =

@@ -30,11 +30,15 @@ import kotlin.uuid.Uuid
 @OptIn(ExperimentalUuidApi::class)
 public class ContextualPromptExecutor(
     private val executor: PromptExecutor,
-    private val context: AIAgentContext,
+    private var context: AIAgentContext,
 ) : PromptExecutor {
 
     private companion object {
         private val logger = KotlinLogging.logger { }
+    }
+
+    internal fun updateContext(context: AIAgentContext) {
+        this.context = context
     }
 
     override suspend fun execute(prompt: Prompt, model: LLModel, tools: List<ToolDescriptor>): List<Message.Response> =
