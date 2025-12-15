@@ -15,34 +15,30 @@ import ai.koog.agents.core.dsl.extension.nodeDoNothing
 import ai.koog.agents.core.dsl.extension.nodeExecuteTool
 import ai.koog.agents.core.dsl.extension.nodeLLMRequest
 import ai.koog.agents.core.dsl.extension.onToolCall
-import ai.koog.agents.core.feature.handler.AgentLifecycleEventType.AgentStarting
+import ai.koog.agents.core.feature.handler.AgentLifecycleEventType.AgentClosing
 import ai.koog.agents.core.feature.handler.AgentLifecycleEventType.AgentCompleted
 import ai.koog.agents.core.feature.handler.AgentLifecycleEventType.AgentExecutionFailed
-import ai.koog.agents.core.feature.handler.AgentLifecycleEventType.AgentClosing
-import ai.koog.agents.core.feature.handler.AgentLifecycleEventType.LLMCallStarting
+import ai.koog.agents.core.feature.handler.AgentLifecycleEventType.AgentStarting
 import ai.koog.agents.core.feature.handler.AgentLifecycleEventType.LLMCallCompleted
-import ai.koog.agents.core.feature.handler.AgentLifecycleEventType.LLMStreamingStarting
-import ai.koog.agents.core.feature.handler.AgentLifecycleEventType.LLMStreamingCompleted
-import ai.koog.agents.core.feature.handler.AgentLifecycleEventType.LLMStreamingFrameReceived
-import ai.koog.agents.core.feature.handler.AgentLifecycleEventType.LLMStreamingFailed
-import ai.koog.agents.core.feature.handler.AgentLifecycleEventType.NodeExecutionStarting
-import ai.koog.agents.core.feature.handler.AgentLifecycleEventType.NodeExecutionFailed
+import ai.koog.agents.core.feature.handler.AgentLifecycleEventType.LLMCallStarting
 import ai.koog.agents.core.feature.handler.AgentLifecycleEventType.NodeExecutionCompleted
+import ai.koog.agents.core.feature.handler.AgentLifecycleEventType.NodeExecutionFailed
+import ai.koog.agents.core.feature.handler.AgentLifecycleEventType.NodeExecutionStarting
 import ai.koog.agents.core.feature.handler.AgentLifecycleEventType.StrategyStarting
-import ai.koog.agents.core.feature.handler.AgentLifecycleEventType.StrategyCompleted
-import ai.koog.agents.core.feature.handler.AgentLifecycleEventType.SubgraphExecutionStarting
 import ai.koog.agents.core.feature.handler.AgentLifecycleEventType.SubgraphExecutionCompleted
 import ai.koog.agents.core.feature.handler.AgentLifecycleEventType.SubgraphExecutionFailed
-import ai.koog.agents.core.feature.handler.AgentLifecycleEventType.ToolCallStarting
+import ai.koog.agents.core.feature.handler.AgentLifecycleEventType.SubgraphExecutionStarting
 import ai.koog.agents.core.feature.handler.AgentLifecycleEventType.ToolCallCompleted
-import ai.koog.agents.core.feature.handler.AgentLifecycleEventType.ToolValidationFailed
 import ai.koog.agents.core.feature.handler.AgentLifecycleEventType.ToolCallFailed
+import ai.koog.agents.core.feature.handler.AgentLifecycleEventType.ToolCallStarting
+import ai.koog.agents.core.feature.handler.AgentLifecycleEventType.ToolValidationFailed
 import ai.koog.agents.core.tools.ToolRegistry
 import ai.koog.agents.testing.tools.DummyTool
 import ai.koog.agents.testing.tools.getMockExecutor
 import ai.koog.prompt.dsl.prompt
 import ai.koog.prompt.executor.model.PromptExecutor
 import ai.koog.prompt.llm.OllamaModels
+import ai.koog.prompt.message.Message.Role
 import ai.koog.utils.io.use
 import kotlinx.coroutines.test.runTest
 import kotlinx.datetime.Clock
@@ -57,6 +53,10 @@ import kotlin.test.assertFailsWith
 import kotlin.time.Duration.Companion.seconds
 
 class AIAgentPipelineTest {
+
+    companion object {
+        private const val DEFAULT_ASSISTANT_RESPONSE = "Default test response"
+    }
 
     private val testClock: Clock = object : Clock {
         override fun now(): Instant = Instant.parse("2023-01-01T00:00:00Z")
@@ -417,12 +417,15 @@ class AIAgentPipelineTest {
         val nodeLLMCallWithoutToolsName = "test-llm-node-without-tools"
         val nodeLLMCall = "test-llm-node"
 
+        val testLLMResponse = "Test LLM call prompt"
+        val llmCallWithToolsResponse = "Test LLM call with tools prompt"
+
         val strategy = strategy<String, String>(strategyName) {
             val llmCallWithoutTools by nodeLLMRequest(nodeLLMCallWithoutToolsName, allowToolCalls = false)
             val llmCall by nodeLLMRequest(nodeLLMCall)
 
-            edge(nodeStart forwardTo llmCallWithoutTools transformed { "Test LLM call prompt" })
-            edge(llmCallWithoutTools forwardTo llmCall transformed { "Test LLM call with tools prompt" })
+            edge(nodeStart forwardTo llmCallWithoutTools transformed { testLLMResponse })
+            edge(llmCallWithoutTools forwardTo llmCall transformed { llmCallWithToolsResponse })
             edge(llmCall forwardTo nodeFinish transformed { agentOutput })
         }
 
@@ -443,10 +446,10 @@ class AIAgentPipelineTest {
         val runId = interceptedRunIds.first()
 
         val expectedEvents = listOf(
-            "${LLMCallStarting::class.simpleName} (path: ${agentExecutionPath(agentId, runId, strategyName, nodeLLMCallWithoutToolsName)}, name: $nodeLLMCallWithoutToolsName, prompt: Test LLM call prompt, tools: [])",
-            "${LLMCallCompleted::class.simpleName} (path: ${agentExecutionPath(agentId, runId, strategyName, nodeLLMCallWithoutToolsName)}, name: $nodeLLMCallWithoutToolsName, responses: [Assistant: Default test response])",
-            "${LLMCallStarting::class.simpleName} (path: ${agentExecutionPath(agentId, runId, strategyName, nodeLLMCall)}, name: $nodeLLMCall, prompt: Test LLM call with tools prompt, tools: [dummy])",
-            "${LLMCallCompleted::class.simpleName} (path: ${agentExecutionPath(agentId, runId, strategyName, nodeLLMCall)}, name: $nodeLLMCall, responses: [Assistant: Default test response])",
+            "${LLMCallStarting::class.simpleName} (path: ${agentExecutionPath(agentId, runId, strategyName, nodeLLMCallWithoutToolsName)}, prompt: $testLLMResponse, tools: [])",
+            "${LLMCallCompleted::class.simpleName} (path: ${agentExecutionPath(agentId, runId, strategyName, nodeLLMCallWithoutToolsName)}, responses: [${Role.Assistant.name}: $DEFAULT_ASSISTANT_RESPONSE])",
+            "${LLMCallStarting::class.simpleName} (path: ${agentExecutionPath(agentId, runId, strategyName, nodeLLMCall)}, prompt: $llmCallWithToolsResponse, tools: [${DummyTool().name}])",
+            "${LLMCallCompleted::class.simpleName} (path: ${agentExecutionPath(agentId, runId, strategyName, nodeLLMCall)}, responses: [${Role.Assistant.name}: $DEFAULT_ASSISTANT_RESPONSE])",
         )
 
         assertEquals(
@@ -506,10 +509,10 @@ class AIAgentPipelineTest {
         val runId = interceptedRunIds.first()
 
         val expectedEvents = listOf(
-            "${ToolCallStarting::class.simpleName} (path: ${agentExecutionPath(agentId, runId, strategyName, nodeToolCallName)}, name: $nodeToolCallName, tool: ${CalculatorTools.PlusTool.name}, args: ${
+            "${ToolCallStarting::class.simpleName} (path: ${agentExecutionPath(agentId, runId, strategyName, nodeToolCallName)}, tool: ${CalculatorTools.PlusTool.name}, args: ${
                 CalculatorTools.PlusTool.encodeArgs(CalculatorTools.CalculatorTool.Args(2.2F, 2.2F))
             })",
-            "${ToolCallCompleted::class.simpleName} (path: ${agentExecutionPath(agentId, runId, strategyName, nodeToolCallName)}, name: $nodeToolCallName, tool: ${CalculatorTools.PlusTool.name}, result: ${
+            "${ToolCallCompleted::class.simpleName} (path: ${agentExecutionPath(agentId, runId, strategyName, nodeToolCallName)}, tool: ${CalculatorTools.PlusTool.name}, result: ${
                 CalculatorTools.PlusTool.encodeResult(CalculatorTools.CalculatorTool.Result(4.4F))
             })"
         )
@@ -559,8 +562,8 @@ class AIAgentPipelineTest {
 
         val expectedEvents = listOf(
             "${AgentStarting::class.simpleName} (path: ${agentExecutionPath(agentId, runId)}, id: $agentId, run id: $runId)",
-            "${AgentCompleted::class.simpleName} (path: ${agentExecutionPath(agentId, runId)}, id: $agentId, run id: $runId, output: $agentOutput)",
-            "${AgentClosing::class.simpleName} (path: ${agentExecutionPath(agentId, runId)}, id: $agentId)"
+            "${AgentCompleted::class.simpleName} (path: ${agentExecutionPath(agentId, runId)}, id: $agentId, run id: $runId, result: $agentOutput)",
+            "${AgentClosing::class.simpleName} (path: ${agentExecutionPath(agentId)}, id: $agentId)"
         )
 
         assertEquals(
@@ -597,14 +600,13 @@ class AIAgentPipelineTest {
         }
 
         val actualEvents = interceptedEvents.filter { collectedEvent ->
-            collectedEvent.startsWith(StrategyStarting::class.simpleName.toString()) ||
-                collectedEvent.startsWith(StrategyCompleted::class.simpleName.toString())
+            collectedEvent.startsWith(StrategyStarting::class.simpleName.toString())
         }
 
         val runId = interceptedRunIds.first()
 
         val expectedEvents = listOf(
-            "${StrategyStarting::class.simpleName} (path: ${agentExecutionPath(agentId, runId)}, strategy: $strategyName)",
+            "${StrategyStarting::class.simpleName} (path: ${agentExecutionPath(agentId, runId, strategyName)}, strategy: $strategyName)",
         )
 
         assertEquals(
@@ -653,14 +655,16 @@ class AIAgentPipelineTest {
             }
         }
 
-        assertEquals(2, interceptedRunIds.size)
+        val runIds = interceptedRunIds.distinct()
+
+        assertEquals(2, runIds.size)
 
         val actualEvents = interceptedEvents.filter { collectedEvent ->
             collectedEvent.startsWith(AgentStarting::class.simpleName.toString())
         }
 
-        val runId1 = interceptedRunIds[0]
-        val runId2 = interceptedRunIds[1]
+        val runId1 = runIds[0]
+        val runId2 = runIds[1]
 
         val expectedEvents = listOf(
             "${AgentStarting::class.simpleName} (path: ${agentExecutionPath(agent1Id, runId1)}, id: $agent1Id, run id: $runId1)",
@@ -735,10 +739,17 @@ class AIAgentPipelineTest {
     @Test
     fun `test AgentExecutionInfo for tool calls`() = runTest {
         val interceptedEvents = mutableListOf<String>()
+        val interceptedRunIds = mutableListOf<String>()
 
-        val strategy = strategy("test-strategy") {
+        val agentId = "test-agent-id"
+        val agentInput = "add 2.2 and 2.2"
+
+        val strategyName = "test-strategy"
+        val nodeToolCallName = "tool-call-node"
+
+        val strategy = strategy(strategyName) {
             val nodeSendInput by nodeLLMRequest()
-            val toolCallNode by nodeExecuteTool("tool-call-node")
+            val toolCallNode by nodeExecuteTool(nodeToolCallName)
 
             edge(nodeStart forwardTo nodeSendInput)
             edge(nodeSendInput forwardTo toolCallNode onToolCall { true })
@@ -754,17 +765,28 @@ class AIAgentPipelineTest {
             toolRegistry = toolRegistry,
             promptExecutor = CalculatorChatExecutor
         ) {
-            install(TestFeature) { events = interceptedEvents }
+            install(TestFeature) {
+                events = interceptedEvents
+                runIds = interceptedRunIds
+            }
         }.use { agent ->
-            agent.run("add 2.2 and 2.2")
+            agent.run(agentInput)
         }
 
-        val actualEvents = interceptedEvents.filter { it.startsWith("Tool: ") }
+        val actualEvents = interceptedEvents.filter { collectedEvent ->
+            collectedEvent.startsWith(ToolCallStarting::class.simpleName.toString()) ||
+                collectedEvent.startsWith(ToolCallCompleted::class.simpleName.toString()) ||
+                collectedEvent.startsWith(ToolValidationFailed::class.simpleName.toString()) ||
+                collectedEvent.startsWith(ToolCallFailed::class.simpleName.toString())
+        }
+
+        val runId = interceptedRunIds.first()
+
         val expectedEvents = listOf(
-            "Tool: call tool (tool: ${CalculatorTools.PlusTool.name}, args: ${
+            "${ToolCallStarting::class.simpleName} (path: ${agentExecutionPath(agentId, runId, strategyName, nodeToolCallName)}, tool: ${CalculatorTools.PlusTool.name}, args: ${
                 CalculatorTools.PlusTool.encodeArgs(CalculatorTools.CalculatorTool.Args(2.2F, 2.2F))
             })",
-            "Tool: finish tool call with result (tool: ${CalculatorTools.PlusTool.name}, result: ${
+            "${ToolCallCompleted::class.simpleName} (path: ${agentExecutionPath(agentId, runId, strategyName, nodeToolCallName)}, tool: ${CalculatorTools.PlusTool.name}, result: ${
                 CalculatorTools.PlusTool.encodeResult(CalculatorTools.CalculatorTool.Result(4.4F))
             })"
         )
@@ -802,9 +824,13 @@ class AIAgentPipelineTest {
             maxAgentIterations = 10
         )
 
+        val testExecutor = getMockExecutor(clock = testClock) {
+            mockLLMAnswer(DEFAULT_ASSISTANT_RESPONSE).asDefaultResponse
+        }
+
         return AIAgent(
             id = id ?: "test-agent-id",
-            promptExecutor = promptExecutor ?: getMockExecutor { },
+            promptExecutor = promptExecutor ?: testExecutor,
             strategy = strategy,
             agentConfig = agentConfig,
             toolRegistry = toolRegistry ?: ToolRegistry {

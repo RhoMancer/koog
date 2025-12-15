@@ -1,7 +1,6 @@
 package ai.koog.agents.core.agent.entity
 
 import ai.koog.agents.core.agent.context.AIAgentContext
-import ai.koog.agents.core.agent.context.AIAgentGraphContext
 import ai.koog.agents.core.agent.context.AIAgentGraphContextBase
 import ai.koog.agents.core.agent.context.DetachedPromptExecutorAPI
 import ai.koog.agents.core.agent.context.element.NodeInfoContextElement
@@ -163,23 +162,25 @@ public open class AIAgentSubgraph<TInput, TOutput>(
      */
     @OptIn(InternalAgentsApi::class, DetachedPromptExecutorAPI::class, ExperimentalUuidApi::class)
     override suspend fun execute(context: AIAgentGraphContextBase, input: TInput): TOutput? =
-        context.withCheckParentContext { executionInfo ->
+        context.withCheckStrategyContext { executionInfo ->
             withContext(NodeInfoContextElement(Uuid.random().toString(), getNodeInfoElement()?.id, name, input, inputType)) {
                 val newTools = selectTools(context)
 
                 // Copy inner context with new tools, model and LLM params.
                 val initialLLMContext = context.llm
 
-                context.replace(context.copy(
-                    llm = context.llm.copy(
-                        tools = newTools,
-                        model = llmModel ?: context.llm.model,
-                        prompt = context.llm.prompt.copy(params = llmParams ?: context.llm.prompt.params),
-                        responseProcessor = responseProcessor
-                    )
-                ))
+                context.replace(
+                    context.copy(
+                        llm = context.llm.copy(
+                            tools = newTools,
+                            model = llmModel ?: context.llm.model,
+                            prompt = context.llm.prompt.copy(params = llmParams ?: context.llm.prompt.params),
+                            responseProcessor = responseProcessor
+                        ),
+                    ),
+                )
 
-                runIfNonRootContext(context) {
+                runIfNotStrategy(context) {
                     pipeline.onSubgraphExecutionStarting(executionInfo, this@AIAgentSubgraph, context, input, inputType)
                 }
 
@@ -190,7 +191,7 @@ public open class AIAgentSubgraph<TInput, TOutput>(
                     throw e
                 } catch (e: Exception) {
                     logger.error(e) { "Exception during executing subgraph '$name': ${e.message}" }
-                    runIfNonRootContext(context) {
+                    runIfNotStrategy(context) {
                         pipeline.onSubgraphExecutionFailed(executionInfo, this@AIAgentSubgraph, context, input, inputType, e)
                     }
                     throw e
@@ -201,8 +202,8 @@ public open class AIAgentSubgraph<TInput, TOutput>(
                     context.copy(
                         llm = initialLLMContext.copy(
                             prompt = context.llm.prompt.copy(params = initialLLMContext.prompt.params)
-                        )
-                    )
+                        ),
+                    ),
                 )
 
                 val innerForcedData = context.getAgentContextData()
@@ -211,7 +212,7 @@ public open class AIAgentSubgraph<TInput, TOutput>(
                     context.store(innerForcedData)
                 }
 
-                runIfNonRootContext(context) {
+                runIfNotStrategy(context) {
                     pipeline.onSubgraphExecutionCompleted(executionInfo, this@AIAgentSubgraph, context, input, inputType, result, outputType)
                 }
 
@@ -296,23 +297,32 @@ public open class AIAgentSubgraph<TInput, TOutput>(
      * effectively skipping execution for root contexts.
      */
     @OptIn(InternalAgentsApi::class)
-    private inline fun runIfNonRootContext(
+    private inline fun runIfNotStrategy(
         context: AIAgentGraphContextBase,
         action: AIAgentGraphContextBase.() -> Unit
     ) {
-        if (context.parentContext == null) return
+        // Check for strategy: Agent | Run | Strategy
+        val isStrategy = id == context.strategyName
+
+        if (isStrategy) {
+            return
+        }
+
         action(context)
     }
 
     @OptIn(InternalAgentsApi::class)
-    private inline fun <T> AIAgentContext.withCheckParentContext(
+    private inline fun <T> AIAgentContext.withCheckStrategyContext(
         block: (executionInfo: AgentExecutionInfo) -> T
-    ): T =
-        if (this.parentContext == null) {
-            this.with(this.executionInfo, block)
+    ): T {
+        // Check for strategy: Agent | Run | Strategy
+        val isStrategy = id == strategyName
+        return if (isStrategy) {
+            block(this.executionInfo)
         } else {
             this.with(id, block)
         }
+    }
 
     private fun formatLog(context: AIAgentContext, message: String): String =
         "$message [$name, ${context.strategyName}, ${context.runId}]"

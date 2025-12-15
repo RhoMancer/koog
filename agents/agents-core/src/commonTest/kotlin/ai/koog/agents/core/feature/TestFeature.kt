@@ -119,6 +119,21 @@ class TestFeature(val events: MutableList<String>) {
                 ))
             }
 
+            pipeline.interceptAgentCompleted(this) { event ->
+                config.runIds += event.runId
+                config.addEvent(event, mapOf(
+                    "id" to event.agentId,
+                    "run id" to event.runId,
+                    "result" to event.result
+                ))
+            }
+
+            pipeline.interceptAgentClosing(this) { event ->
+                config.addEvent(event, mapOf(
+                    "id" to event.agentId,
+                ))
+            }
+
             pipeline.interceptStrategyStarting(this) { event ->
                 config.addEvent(event, mapOf("strategy" to event.strategy.name))
             }
