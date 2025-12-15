@@ -22,6 +22,7 @@ import ai.koog.prompt.structure.parseResponseToStructuredResponse
 import kotlinx.coroutines.flow.Flow
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.serializer
+import kotlin.jvm.JvmName
 
 /**
  * Represents a session for an AI agent that interacts with an LLM (Language Learning Model).

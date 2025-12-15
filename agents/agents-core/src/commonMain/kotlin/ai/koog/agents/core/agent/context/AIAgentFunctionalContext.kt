@@ -25,6 +25,7 @@ import ai.koog.prompt.structure.StructureDefinition
 import ai.koog.prompt.structure.StructureFixingParser
 import ai.koog.prompt.structure.StructuredResponse
 import kotlinx.coroutines.flow.Flow
+import kotlin.jvm.JvmName
 import kotlin.reflect.KClass
 
 /**
@@ -65,18 +66,27 @@ public expect open class AIAgentFunctionalContext internal constructor(
 ) : AIAgentContext {
 
     override val environment: AIAgentEnvironment
+
     override val agentId: String
+
     override val pipeline: AIAgentFunctionalPipeline
+
     override val executionInfo: AgentExecutionInfo
+
     override val runId: String
+
     override val agentInput: Any?
+
     override val config: AIAgentConfig
+
     override val llm: AIAgentLLMContext
+
     override val stateManager: AIAgentStateManager
+
     override val storage: AIAgentStorage
+
     override val strategyName: String
 
-    @InternalAgentsApi
     override val parentContext: AIAgentContext?
     open override fun store(key: AIAgentStorageKey<*>, value: Any)
 
@@ -445,10 +455,10 @@ public expect open class AIAgentFunctionalContext internal constructor(
      * @return The transformed final result of executing the finishing tool to complete the subtask.
      */
     @OptIn(InternalAgentToolsApi::class, DetachedPromptExecutorAPI::class, InternalAgentsApi::class)
-    public open suspend fun <Input, Output, OutputTransformed> subtask(
+    public open suspend fun <Input, OutputTransformed> subtask(
         input: Input,
         tools: List<Tool<*, *>>? = null,
-        finishTool: Tool<Output, OutputTransformed>,
+        finishTool: Tool<*, OutputTransformed>,
         llmModel: LLModel? = null,
         llmParams: LLMParams? = null,
         runMode: ToolCalls = ToolCalls.SEQUENTIAL,

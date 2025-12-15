@@ -13,6 +13,7 @@ import ai.koog.prompt.dsl.Prompt
 import ai.koog.prompt.executor.model.PromptExecutor
 import ai.koog.prompt.llm.LLModel
 import kotlinx.datetime.Clock
+import kotlin.jvm.JvmName
 
 /**
  * Annotation for marking APIs as detached prompt executors within the `AIAgentLLMContext`.
@@ -61,24 +62,30 @@ public expect open class AIAgentLLMContext constructor(
     /**
      * A [ToolRegistry] that contains metadata about available tools.
      * */
+    @get:JvmName("toolRegistry")
     public val toolRegistry: ToolRegistry
 
     /**
      * The [PromptExecutor] responsible for performing operations on the current prompt.
      * */
     @property:DetachedPromptExecutorAPI
+    @get:JvmName("promptExecutor")
     public val promptExecutor: PromptExecutor
 
+    @get:JvmName("environment")
     protected val environment: AIAgentEnvironment
 
+    @get:JvmName("config")
     protected val config: AIAgentConfig
 
+    @get:JvmName("clock")
     protected val clock: Clock
 
     /**
      * List of current tools associated with this agent context.
      */
     @DetachedPromptExecutorAPI
+    @get:JvmName("tools")
     public var tools: List<ToolDescriptor>
         protected set
 
@@ -86,6 +93,7 @@ public expect open class AIAgentLLMContext constructor(
      * LLM currently associated with this context.
      */
     @DetachedPromptExecutorAPI
+    @get:JvmName("model")
     public  var model: LLModel
         protected set
 
@@ -98,6 +106,7 @@ public expect open class AIAgentLLMContext constructor(
      *
      * This variable can only be modified internally via specific methods, maintaining control over state changes.
      */
+    @get:JvmName("prompt")
     public var prompt: Prompt
 
     /**

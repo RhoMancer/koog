@@ -23,6 +23,7 @@ import ai.koog.prompt.structure.StructuredResponse
 import kotlinx.coroutines.flow.Flow
 import kotlinx.datetime.Clock
 import kotlinx.serialization.KSerializer
+import kotlin.jvm.JvmName
 import kotlin.reflect.KClass
 
 /**
@@ -47,14 +48,17 @@ public expect open class AIAgentLLMWriteSession internal constructor(
     clock: Clock
 ) : AIAgentLLMSession {
     @PublishedApi
+    @get:JvmName("environment")
     internal val environment: AIAgentEnvironment
 
     @PublishedApi
+    @get:JvmName("toolRegistry")
     internal val toolRegistry: ToolRegistry
 
     /**
      * [Clock] instance used for adding timestamps on LLM responses and other agent events.
      */
+    @get:JvmName("clock")
     public val clock: Clock
 
     /**

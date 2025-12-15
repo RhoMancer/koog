@@ -6,6 +6,8 @@ import ai.koog.prompt.executor.clients.openai.OpenAIModels.Embeddings.TextEmbedd
 import ai.koog.prompt.llm.LLMCapability
 import ai.koog.prompt.llm.LLMProvider
 import ai.koog.prompt.llm.LLModel
+import kotlin.jvm.JvmField
+import kotlin.jvm.JvmStatic
 
 /**
  * Object containing a collection of predefined OpenAI model configurations.
@@ -57,6 +59,7 @@ public object OpenAIModels : LLModelDefinitions {
          * Input: Text, image
          * Output: Text
          */
+        @JvmField
         public val Omni: LLModel = LLModel(
             provider = LLMProvider.OpenAI,
             id = "omni-moderation-latest",
@@ -87,6 +90,7 @@ public object OpenAIModels : LLModelDefinitions {
          *
          * @see <a href="https://platform.openai.com/docs/models/gpt-4o">Model page</a>
          */
+        @JvmField
         public val GPT4o: LLModel = LLModel(
             provider = LLMProvider.OpenAI,
             id = "gpt-4o",
@@ -118,6 +122,7 @@ public object OpenAIModels : LLModelDefinitions {
          *
          * @see <a href="https://platform.openai.com/docs/models/gpt-4o-mini">Model page</a>
          */
+        @JvmField
         public val GPT4oMini: LLModel = LLModel(
             provider = LLMProvider.OpenAI,
             id = "gpt-4o-mini",
@@ -149,6 +154,7 @@ public object OpenAIModels : LLModelDefinitions {
          *
          * @see <a href="https://platform.openai.com/docs/models/gpt-4.1">Model page</a>
          */
+        @JvmField
         public val GPT4_1: LLModel = LLModel(
             provider = LLMProvider.OpenAI,
             id = "gpt-4.1",
@@ -180,6 +186,7 @@ public object OpenAIModels : LLModelDefinitions {
          *
          * @see <a href="https://platform.openai.com/docs/models/gpt-4.1-nano">Model page</a>
          */
+        @JvmField
         public val GPT4_1Nano: LLModel = LLModel(
             provider = LLMProvider.OpenAI,
             id = "gpt-4.1-nano",
@@ -212,6 +219,7 @@ public object OpenAIModels : LLModelDefinitions {
          *
          * @see <a href="https://platform.openai.com/docs/models/gpt-4.1-mini">Model page</a>
          */
+        @JvmField
         public val GPT4_1Mini: LLModel = LLModel(
             provider = LLMProvider.OpenAI,
             id = "gpt-4.1-mini",
@@ -245,6 +253,7 @@ public object OpenAIModels : LLModelDefinitions {
          *
          * @see <a href="https://platform.openai.com/docs/models/o1">Model page</a>
          */
+        @JvmField
         public val O1: LLModel = LLModel(
             provider = LLMProvider.OpenAI,
             id = "o1",
@@ -278,6 +287,7 @@ public object OpenAIModels : LLModelDefinitions {
          *
          * @see <a href="https://platform.openai.com/docs/models/o3">Model page</a>
          */
+        @JvmField
         public val O3: LLModel = LLModel(
             provider = LLMProvider.OpenAI,
             id = "o3",
@@ -311,6 +321,7 @@ public object OpenAIModels : LLModelDefinitions {
          *
          * @see <a href="https://platform.openai.com/docs/models/o3-mini">Model page</a>
          */
+        @JvmField
         public val O3Mini: LLModel = LLModel(
             provider = LLMProvider.OpenAI,
             id = "o3-mini",
@@ -342,6 +353,7 @@ public object OpenAIModels : LLModelDefinitions {
          *
          * @see <a href="https://platform.openai.com/docs/models/o4-mini">Model page</a>
          */
+        @JvmField
         public val O4Mini: LLModel = LLModel(
             provider = LLMProvider.OpenAI,
             id = "o4-mini",
@@ -372,6 +384,7 @@ public object OpenAIModels : LLModelDefinitions {
          *
          * @see <a href="https://platform.openai.com/docs/models/gpt-5">Model page</a>
          */
+        @JvmField
         public val GPT5: LLModel = LLModel(
             provider = LLMProvider.OpenAI,
             id = "gpt-5",
@@ -403,6 +416,7 @@ public object OpenAIModels : LLModelDefinitions {
          *
          * @see <a href="https://platform.openai.com/docs/models/gpt-5-mini">Model page</a>
          */
+        @JvmField
         public val GPT5Mini: LLModel = LLModel(
             provider = LLMProvider.OpenAI,
             id = "gpt-5-mini",
@@ -435,6 +449,7 @@ public object OpenAIModels : LLModelDefinitions {
          *
          * @see <a href="https://platform.openai.com/docs/models/gpt-5-nano">Model page</a>
          */
+        @JvmField
         public val GPT5Nano: LLModel = LLModel(
             provider = LLMProvider.OpenAI,
             id = "gpt-5-nano",
@@ -466,6 +481,7 @@ public object OpenAIModels : LLModelDefinitions {
          *
          * @see <a href="https://platform.openai.com/docs/models/gpt-5-codex"\>Model page</a>
          */
+        @JvmField
         public val GPT5Codex: LLModel = LLModel(
             provider = LLMProvider.OpenAI,
             id = "gpt-5-codex",
@@ -497,6 +513,7 @@ public object OpenAIModels : LLModelDefinitions {
          *
          * @see <a href="https://platform.openai.com/docs/models/gpt-5-pro">Model page</a>
          */
+        @JvmField
         public val GPT5Pro: LLModel = LLModel(
             provider = LLMProvider.OpenAI,
             id = "gpt-5-pro",
@@ -524,6 +541,7 @@ public object OpenAIModels : LLModelDefinitions {
          *
          * @see <a href="https://platform.openai.com/docs/models/gpt-5.1"\>Model page</a>
          */
+        @JvmField
         public val GPT5_1: LLModel = LLModel(
             provider = LLMProvider.OpenAI,
             id = "gpt-5.1",
@@ -556,6 +574,7 @@ public object OpenAIModels : LLModelDefinitions {
          *
          * @see <a href="https://platform.openai.com/docs/models/gpt-5.1-codex"\>Model page</a>
          */
+        @JvmField
         public val GPT5_1Codex: LLModel = LLModel(
             provider = LLMProvider.OpenAI,
             id = "gpt-5.1-codex",
@@ -593,6 +612,7 @@ public object OpenAIModels : LLModelDefinitions {
          *
          * @see <a href="https://platform.openai.com/docs/models/gpt-audio">Model page</a>
          */
+        @JvmField
         public val GptAudio: LLModel = LLModel(
             provider = LLMProvider.OpenAI,
             id = "gpt-audio",
@@ -619,6 +639,7 @@ public object OpenAIModels : LLModelDefinitions {
          *
          * @see <a href="https://platform.openai.com/docs/models/gpt-4o-mini-audio-preview">Model page</a>
          */
+        @JvmField
         public val GPT4oMiniAudio: LLModel = LLModel(
             provider = LLMProvider.OpenAI,
             id = "gpt-4o-mini-audio-preview",
@@ -643,6 +664,7 @@ public object OpenAIModels : LLModelDefinitions {
          *
          * @see <a href="https://platform.openai.com/docs/models/gpt-4o-audio-preview">Model page</a>
          */
+        @JvmField
         public val GPT4oAudio: LLModel = LLModel(
             provider = LLMProvider.OpenAI,
             id = "gpt-4o-audio-preview",
@@ -681,6 +703,7 @@ public object OpenAIModels : LLModelDefinitions {
          *
          * @see <a href="https://platform.openai.com/docs/models/text-embedding-3-small">Model page</a>
          */
+        @JvmField
         public val TextEmbedding3Small: LLModel = LLModel(
             provider = LLMProvider.OpenAI,
             id = "text-embedding-3-small",
@@ -709,6 +732,7 @@ public object OpenAIModels : LLModelDefinitions {
          *
          * @see <a href="https://platform.openai.com/docs/models/text-embedding-3-large">Model page</a>
          */
+        @JvmField
         public val TextEmbedding3Large: LLModel = LLModel(
             provider = LLMProvider.OpenAI,
             id = "text-embedding-3-large",
@@ -735,6 +759,7 @@ public object OpenAIModels : LLModelDefinitions {
          *
          * @see <a href="https://platform.openai.com/docs/models/text-embedding-ada-002">Model page</a>
          */
+        @JvmField
         public val TextEmbeddingAda002: LLModel = LLModel(
             provider = LLMProvider.OpenAI,
             id = "text-embedding-ada-002",

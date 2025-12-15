@@ -5,6 +5,8 @@ package ai.koog.agents.core.agent.config
 import ai.koog.prompt.dsl.Prompt
 import ai.koog.prompt.executor.clients.openai.OpenAIModels
 import ai.koog.prompt.llm.LLModel
+import kotlin.jvm.JvmField
+import kotlin.jvm.JvmName
 
 /**
  * Configuration class for an AI agent that specifies the prompt, execution parameters, and behavior.
@@ -34,6 +36,7 @@ public expect class AIAgentConfig constructor(
      * The prompt configuration used in the AI agent settings.
      *
      * This property represents the current prompt*/
+    @get:JvmName("prompt")
     public val prompt: Prompt
 
     /**
@@ -44,6 +47,7 @@ public expect class AIAgentConfig constructor(
      * maximum output tokens. It determines how the agent processes inputs, generates
      * outputs, and interacts with other components or tools as part of its functionality.
      */
+    @get:JvmName("model")
     public val model: LLModel
 
     /**
@@ -51,12 +55,14 @@ public expect class AIAgentConfig constructor(
      *
      * This property defines the upper limit on the number of cycles the AI agent can perform
      * during its*/
+    @get:JvmName("maxAgentIterations")
     public val maxAgentIterations: Int
 
     /**
      * Defines the strategy for converting tool calls in the prompt when some tool definitions
      * are missing in the request. This is particularly relevant when managing multi-stage processing
      * or subgraphs where tools used in different*/
+    @get:JvmName("missingToolsConversionStrategy")
     public val missingToolsConversionStrategy: MissingToolsConversionStrategy
 
 

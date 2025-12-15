@@ -1,4 +1,4 @@
-@file:Suppress("EXPECT_ACTUAL_CLASSIFIERS_ARE_IN_BETA_WARNING")
+@file:Suppress("EXPECT_ACTUAL_CLASSIFIERS_ARE_IN_BETA_WARNING", "ACTUAL_ANNOTATIONS_NOT_MATCH_EXPECT")
 
 package ai.koog.agents.core.agent.context
 
@@ -83,6 +83,96 @@ public actual open class AIAgentFunctionalContext internal actual constructor(
     actual override val storage: AIAgentStorage = delegate.storage
     actual override val strategyName: String = delegate.strategyName
     actual override val executionInfo: AgentExecutionInfo = delegate.executionInfo
+
+    /**
+     * Retrieves the current AI agent environment.
+     *
+     * @return The AIAgentEnvironment instance representing the current environment.
+     */
+    @JavaAPI
+    public fun environment(): AIAgentEnvironment = environment
+
+    /**
+     * Retrieves the unique identifier for the agent.
+     *
+     * @return A string representing the agent's unique identifier.
+     */
+    @JavaAPI
+    public fun agentId(): String = agentId
+
+    /**
+     * Builds and returns an instance of the AIAgentFunctionalPipeline.
+     *
+     * @return An instance of AIAgentFunctionalPipeline representing the constructed pipeline.
+     */
+    @JavaAPI
+    public fun pipeline(): AIAgentFunctionalPipeline = pipeline
+
+    /**
+     * Retrieves the current run identifier.
+     *
+     * @return the run identifier as a string.
+     */
+    @JavaAPI
+    public fun runId(): String = runId
+
+    /**
+     * Retrieves the current agent input.
+     *
+     * @return The agent input as an `Any?` type, which may be null if no input is available.
+     */
+    @JavaAPI
+    public fun agentInput(): Any? = agentInput
+
+    /**
+     * Provides the configuration for an AI agent.
+     *
+     * @return An instance of [AIAgentConfig] representing the current AI agent configuration.
+     */
+    @JavaAPI
+    public fun config(): AIAgentConfig = config
+
+    /**
+     * Returns the current instance of AIAgentLLMContext.
+     *
+     * @return The AIAgentLLMContext instance.
+     */
+    @JavaAPI
+    public fun llm(): AIAgentLLMContext = llm
+
+    /**
+     * Provides an instance of AIAgentStateManager responsible for managing the state
+     * of an AI Agent. This function allows access to the state management operations
+     * for coordinating AI agent behavior.
+     *
+     * @return the AIAgentStateManager instance.
+     */
+    @JavaAPI
+    public fun stateManager(): AIAgentStateManager = stateManager
+
+    /**
+     * Provides access to the AIAgentStorage instance.
+     *
+     * @return the AIAgentStorage instance used for managing AI agent-related data.
+     */
+    @JavaAPI
+    public fun storage(): AIAgentStorage = storage
+
+    /**
+     * Retrieves the name of the strategy.
+     *
+     * @return the name of the strategy as a string.
+     */
+    @JavaAPI
+    public fun strategyName(): String = strategyName
+
+    /**
+     * Retrieves the execution information of the agent.
+     *
+     * @return an instance of AgentExecutionInfo containing details about the execution context.
+     */
+    @JavaAPI
+    public fun executionInfo(): AgentExecutionInfo = executionInfo
 
     @InternalAgentsApi
     actual override val parentContext: AIAgentContext? = delegate.parentContext
@@ -517,30 +607,6 @@ public actual open class AIAgentFunctionalContext internal actual constructor(
         defineTask
     )
 
-    @JavaAPI
-    @JvmOverloads
-    public fun <Input> subtaskWithVerification(
-        input: Input,
-        tools: List<Tool<*, *>>? = null,
-        llmModel: LLModel? = null,
-        llmParams: LLMParams? = null,
-        runMode: ToolCalls = ToolCalls.SEQUENTIAL,
-        assistantResponseRepeatMax: Int? = null,
-        executorService: ExecutorService? = null,
-        defineTask: BiFunction<AIAgentFunctionalContext, Input, String>
-    ): CriticResult<Input> = config.runOnMainDispatcher(executorService) {
-        subtaskWithVerification(
-            input,
-            tools,
-            llmModel,
-            llmParams,
-            runMode,
-            assistantResponseRepeatMax
-        ) {
-            config.runOnMainDispatcher(executorService) { defineTask.apply(this, it) }
-        }
-    }
-
     public actual suspend inline fun <Input, reified Output> subtask(
         input: Input,
         tools: List<Tool<*, *>>?,
@@ -571,36 +637,10 @@ public actual open class AIAgentFunctionalContext internal actual constructor(
         defineTask
     )
 
-    @JavaAPI
-    @JvmOverloads
-    public fun <Input, Output : Any> subtask(
-        input: Input,
-        outputClass: Class<Output>,
-        tools: List<Tool<*, *>>? = null,
-        llmModel: LLModel? = null,
-        llmParams: LLMParams? = null,
-        runMode: ToolCalls = ToolCalls.SEQUENTIAL,
-        assistantResponseRepeatMax: Int? = null,
-        executorService: ExecutorService? = null,
-        defineTask: BiFunction<AIAgentFunctionalContext, Input, String>
-    ): Output = config.runOnMainDispatcher(executorService) {
-        subtask(
-            input,
-            outputClass.kotlin,
-            tools,
-            llmModel,
-            llmParams,
-            runMode,
-            assistantResponseRepeatMax
-        ) {
-            config.runOnMainDispatcher(executorService) { defineTask.apply(this, it) }
-        }
-    }
-
-    public actual open suspend fun <Input, Output, OutputTransformed> subtask(
+    public actual open suspend fun <Input, OutputTransformed> subtask(
         input: Input,
         tools: List<Tool<*, *>>?,
-        finishTool: Tool<Output, OutputTransformed>,
+        finishTool: Tool<*, OutputTransformed>,
         llmModel: LLModel?,
         llmParams: LLMParams?,
         runMode: ToolCalls,
@@ -618,28 +658,5 @@ public actual open class AIAgentFunctionalContext internal actual constructor(
     )
 
     @JavaAPI
-    @JvmOverloads
-    public fun <Input, Output, OutputTransformed> subtask(
-        input: Input,
-        finishTool: Tool<Output, OutputTransformed>,
-        tools: List<Tool<*, *>>? = null,
-        llmModel: LLModel? = null,
-        llmParams: LLMParams? = null,
-        runMode: ToolCalls = ToolCalls.SEQUENTIAL,
-        assistantResponseRepeatMax: Int? = null,
-        executorService: ExecutorService? = null,
-        defineTask: BiFunction<AIAgentFunctionalContext, Input, String>
-    ): OutputTransformed = config.runOnMainDispatcher(executorService) {
-        subtask(
-            input,
-            tools,
-            finishTool,
-            llmModel,
-            llmParams,
-            runMode,
-            assistantResponseRepeatMax
-        ) {
-            config.runOnMainDispatcher(executorService) { defineTask.apply(this, it) }
-        }
-    }
+    public fun subtask(taskDescription: String): SubtaskBuilder = SubtaskBuilder(this, taskDescription)
 }

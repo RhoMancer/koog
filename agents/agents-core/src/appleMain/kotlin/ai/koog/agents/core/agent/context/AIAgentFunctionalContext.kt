@@ -1,4 +1,4 @@
-@file:Suppress("EXPECT_ACTUAL_CLASSIFIERS_ARE_IN_BETA_WARNING")
+@file:Suppress("EXPECT_ACTUAL_CLASSIFIERS_ARE_IN_BETA_WARNING", "ACTUAL_ANNOTATIONS_NOT_MATCH_EXPECT")
 
 package ai.koog.agents.core.agent.context
 
@@ -243,10 +243,10 @@ public actual open class AIAgentFunctionalContext internal actual constructor(
         defineTask
     )
 
-    public actual open suspend fun <Input, Output, OutputTransformed> subtask(
+    public actual open suspend fun <Input, OutputTransformed> subtask(
         input: Input,
         tools: List<Tool<*, *>>?,
-        finishTool: Tool<Output, OutputTransformed>,
+        finishTool: Tool<*, OutputTransformed>,
         llmModel: LLModel?,
         llmParams: LLMParams?,
         runMode: ToolCalls,

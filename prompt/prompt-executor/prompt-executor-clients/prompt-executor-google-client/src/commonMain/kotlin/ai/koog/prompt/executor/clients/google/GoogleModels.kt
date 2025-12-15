@@ -10,6 +10,8 @@ import ai.koog.prompt.executor.clients.google.GoogleModels.Gemini2_5Pro
 import ai.koog.prompt.llm.LLMCapability
 import ai.koog.prompt.llm.LLMProvider
 import ai.koog.prompt.llm.LLModel
+import kotlin.jvm.JvmField
+import kotlin.jvm.JvmStatic
 
 /**
  * Google Gemini models and their capabilities.
@@ -73,6 +75,7 @@ public object GoogleModels : LLModelDefinitions {
      *
      * @see <a href="storage.googleapis.com/model-cards/documents/gemini-2-flash.pdf">
      */
+    @JvmField
     public val Gemini2_0Flash: LLModel = LLModel(
         provider = LLMProvider.Google,
         id = "gemini-2.0-flash",
@@ -84,6 +87,7 @@ public object GoogleModels : LLModelDefinitions {
     /**
      * Specific version of Gemini 2.0 Flash
      */
+    @JvmField
     public val Gemini2_0Flash001: LLModel = Gemini2_0Flash.copy(
         id = "gemini-2.0-flash-001",
     )
@@ -97,6 +101,7 @@ public object GoogleModels : LLModelDefinitions {
      *
      * @see <a href="storage.googleapis.com/model-cards/documents/gemini-2-flash-lite.pdf">
      */
+    @JvmField
     public val Gemini2_0FlashLite: LLModel = LLModel(
         provider = LLMProvider.Google,
         id = "gemini-2.0-flash-lite",
@@ -108,6 +113,7 @@ public object GoogleModels : LLModelDefinitions {
     /**
      * Specific version of Gemini 2.0 Flash-Lite
      */
+    @JvmField
     public val Gemini2_0FlashLite001: LLModel = Gemini2_0FlashLite.copy(
         id = "gemini-2.0-flash-lite-001",
     )
@@ -117,6 +123,7 @@ public object GoogleModels : LLModelDefinitions {
      *
      * @see <a href="storage.googleapis.com/model-cards/documents/gemini-2.5-pro.pdf">
      */
+    @JvmField
     public val Gemini2_5Pro: LLModel = LLModel(
         provider = LLMProvider.Google,
         id = "gemini-2.5-pro",
@@ -130,6 +137,7 @@ public object GoogleModels : LLModelDefinitions {
      *
      * @see <a href="storage.googleapis.com/model-cards/documents/gemini-2.5-flash.pdf">
      */
+    @JvmField
     public val Gemini2_5Flash: LLModel = LLModel(
         provider = LLMProvider.Google,
         id = "gemini-2.5-flash",
@@ -143,6 +151,7 @@ public object GoogleModels : LLModelDefinitions {
      *
      * @see <a href="storage.googleapis.com/deepmind-media/Model-Cards/Gemini-2-5-Flash-Lite-Model-Card.pdf">
      */
+    @JvmField
     public val Gemini2_5FlashLite: LLModel = LLModel(
         provider = LLMProvider.Google,
         id = "gemini-2.5-flash-lite",

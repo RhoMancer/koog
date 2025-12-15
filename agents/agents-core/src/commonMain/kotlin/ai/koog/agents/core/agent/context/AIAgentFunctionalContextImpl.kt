@@ -571,10 +571,10 @@ internal class AIAgentFunctionalContextImpl(
     }
 
     @OptIn(InternalAgentToolsApi::class, DetachedPromptExecutorAPI::class, InternalAgentsApi::class)
-    public override suspend fun <Input, Output, OutputTransformed> subtask(
+    public override suspend fun <Input, OutputTransformed> subtask(
         input: Input,
         tools: List<Tool<*, *>>?,
-        finishTool: Tool<Output, OutputTransformed>,
+        finishTool: Tool<*, OutputTransformed>,
         llmModel: LLModel?,
         llmParams: LLMParams?,
         runMode: ToolCalls,
