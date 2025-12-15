@@ -1,8 +1,6 @@
 package ai.koog.agents.core.feature
 
 import ai.koog.agents.core.agent.context.AIAgentContext
-import ai.koog.agents.core.agent.context.with
-import ai.koog.agents.core.agent.execution.AgentExecutionInfo
 import ai.koog.agents.core.tools.ToolDescriptor
 import ai.koog.prompt.dsl.ModerationResult
 import ai.koog.prompt.dsl.Prompt
@@ -30,31 +28,26 @@ import kotlin.uuid.Uuid
 @OptIn(ExperimentalUuidApi::class)
 public class ContextualPromptExecutor(
     private val executor: PromptExecutor,
-    private var context: AIAgentContext,
+    private val context: AIAgentContext,
 ) : PromptExecutor {
 
     private companion object {
         private val logger = KotlinLogging.logger { }
     }
 
-    internal fun updateContext(context: AIAgentContext) {
-        this.context = context
+    override suspend fun execute(prompt: Prompt, model: LLModel, tools: List<ToolDescriptor>): List<Message.Response> {
+        val callId = Uuid.random().toString()
+
+        logger.debug { "Executing LLM call (prompt: $prompt, tools: [${tools.joinToString { it.name }}])" }
+        context.pipeline.onLLMCallStarting(context.executionInfo, context.runId, callId, prompt, model, tools)
+
+        val responses = executor.execute(prompt, model, tools)
+
+        logger.trace { "Finished LLM call with responses: [${responses.joinToString { "${it.role}: ${it.content}" }}]" }
+        context.pipeline.onLLMCallCompleted(context.executionInfo, context.runId, callId, prompt, model, tools, responses)
+
+        return responses
     }
-
-    override suspend fun execute(prompt: Prompt, model: LLModel, tools: List<ToolDescriptor>): List<Message.Response> =
-        context.with(prompt, ExecutionPathPartPrefix.LLM) { executionInfo ->
-            val callId = Uuid.random().toString()
-
-            logger.debug { "Executing LLM call (prompt: $prompt, tools: [${tools.joinToString { it.name }}])" }
-            context.pipeline.onLLMCallStarting(executionInfo, context.runId, callId, prompt, model, tools)
-
-            val responses = executor.execute(prompt, model, tools)
-
-            logger.trace { "Finished LLM call with responses: [${responses.joinToString { "${it.role}: ${it.content}" }}]" }
-            context.pipeline.onLLMCallCompleted(executionInfo, context.runId, callId, prompt, model, tools, responses)
-
-            responses
-        }
 
     /**
      * Executes a streaming call to the language model with tool support.
@@ -78,30 +71,21 @@ public class ContextualPromptExecutor(
         val callId: String = Uuid.random().toString()
         return executor.executeStreaming(prompt, model, tools)
             .onStart {
-                context.with(prompt, ExecutionPathPartPrefix.STREAMING) { executionInfo ->
-                    logger.debug { "Starting LLM streaming call" }
-                    context.pipeline.onLLMStreamingStarting(executionInfo, context.runId, callId, prompt, model, tools)
-                }
+                logger.debug { "Starting LLM streaming call" }
+                context.pipeline.onLLMStreamingStarting(context.executionInfo, context.runId, callId, prompt, model, tools)
             }
-
             .onEach { frame ->
-                context.with(prompt, ExecutionPathPartPrefix.STREAMING) { executionInfo ->
-                    logger.debug { "Received frame from LLM streaming call: $frame" }
-                    context.pipeline.onLLMStreamingFrameReceived(executionInfo, context.runId, callId, frame)
-                }
+                logger.debug { "Received frame from LLM streaming call: $frame" }
+                context.pipeline.onLLMStreamingFrameReceived(context.executionInfo, context.runId, callId, frame)
             }
             .catch { error ->
-                context.with(prompt, ExecutionPathPartPrefix.STREAMING) { executionInfo ->
-                    logger.debug(error) { "Error in LLM streaming call" }
-                    context.pipeline.onLLMStreamingFailed(executionInfo, context.runId, callId, error)
-                    throw error
-                }
+                logger.debug(error) { "Error in LLM streaming call" }
+                context.pipeline.onLLMStreamingFailed(context.executionInfo, context.runId, callId, error)
+                throw error
             }
             .onCompletion { error ->
-                context.with(prompt, ExecutionPathPartPrefix.STREAMING) { executionInfo ->
-                    logger.debug(error) { "Finished LLM streaming call" }
-                    context.pipeline.onLLMStreamingCompleted(executionInfo, context.runId, callId, prompt, model, tools)
-                }
+                logger.debug(error) { "Finished LLM streaming call" }
+                context.pipeline.onLLMStreamingCompleted(context.executionInfo, context.runId, callId, prompt, model, tools)
             }
     }
 
@@ -134,20 +118,20 @@ public class ContextualPromptExecutor(
     override suspend fun moderate(
         prompt: Prompt,
         model: LLModel
-    ): ModerationResult = context.with(prompt, prefix = ExecutionPathPartPrefix.MODERATION) { executionInfo ->
+    ): ModerationResult {
         logger.debug { "Executing moderation LLM request (prompt: $prompt)" }
         val callId = Uuid.random().toString()
 
-        context.pipeline.onLLMCallStarting(executionInfo, context.runId, callId, prompt, model, tools = emptyList())
+        context.pipeline.onLLMCallStarting(context.executionInfo, context.runId, callId, prompt, model, tools = emptyList())
 
         val result = executor.moderate(prompt, model)
         logger.trace { "Finished moderation LLM request with response: $result" }
 
         context.pipeline.onLLMCallCompleted(
-            executionInfo, context.runId, callId, prompt, model, tools = emptyList(), responses = emptyList(), moderationResponse = result
+            context.executionInfo, context.runId, callId, prompt, model, tools = emptyList(), responses = emptyList(), moderationResponse = result
         )
 
-        result
+        return result
     }
 
     override suspend fun models(): List<String> {
@@ -157,24 +141,4 @@ public class ContextualPromptExecutor(
     override fun close() {
         executor.close()
     }
-
-    //region Private Methods
-
-    private enum class ExecutionPathPartPrefix(val id: String) {
-        LLM("llm"),
-        STREAMING("stream"),
-        MODERATION("moderation"),
-        TOOL("tool")
-    }
-
-    private inline fun <T> AIAgentContext.with(
-        prompt: Prompt,
-        prefix: ExecutionPathPartPrefix,
-        block: (executionInfo: AgentExecutionInfo) -> T
-    ): T {
-        val partName = "${prefix.id}:${prompt.messages.lastOrNull()?.content ?: prompt.id}"
-        return with(partName = partName) { executionInfo -> block(executionInfo) }
-    }
-
-    //endregion Private Methods
 }

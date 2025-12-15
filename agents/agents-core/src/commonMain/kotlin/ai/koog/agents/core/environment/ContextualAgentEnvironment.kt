@@ -1,55 +1,50 @@
 package ai.koog.agents.core.environment
 
 import ai.koog.agents.core.agent.context.AIAgentContext
-import ai.koog.agents.core.agent.context.with
 import ai.koog.agents.core.agent.execution.AgentExecutionInfo
 import ai.koog.prompt.message.Message
 import io.github.oshai.kotlinlogging.KotlinLogging
 
 internal class ContextualAgentEnvironment(
     private val environment: AIAgentEnvironment,
-    private var context: AIAgentContext,
+    private val context: AIAgentContext,
 ) : AIAgentEnvironment {
 
     companion object {
         private val logger = KotlinLogging.logger { }
     }
 
-    internal fun updateContext(context: AIAgentContext) {
-        this.context = context
-    }
-
-    override suspend fun executeTool(toolCall: Message.Tool.Call): ReceivedToolResult =
-        context.with(partName = toolCall.tool) { executionInfo ->
-            logger.trace {
-                "Executing tool call (" +
-                    "run id: ${context.runId}, " +
-                    "tool call id: ${toolCall.id}, " +
-                    "tool: ${toolCall.tool}, " +
-                    "args: ${toolCall.contentJson})"
-            }
-
-            context.pipeline.onToolCallStarting(
-                executionInfo, context.runId,
-                toolCallId = toolCall.id,
-                toolName = toolCall.tool,
-                toolArgs = toolCall.contentJson
-            )
-
-            val toolResult = environment.executeTool(toolCall)
-            processToolResult(executionInfo, toolResult)
-
-            logger.trace {
-                "Tool call completed (" +
-                    "run id: ${context.runId}, " +
-                    "tool call id: ${toolCall.id}, " +
-                    "tool: ${toolCall.tool}, " +
-                    "args: ${toolCall.contentJson}) " +
-                    "with result: $toolResult"
-            }
-
-            toolResult
+    override suspend fun executeTool(toolCall: Message.Tool.Call): ReceivedToolResult {
+        logger.trace {
+            "Executing tool call (" +
+                "run id: ${context.runId}, " +
+                "tool call id: ${toolCall.id}, " +
+                "tool: ${toolCall.tool}, " +
+                "args: ${toolCall.contentJson})"
         }
+
+        context.pipeline.onToolCallStarting(
+            executionInfo = context.executionInfo,
+            runId = context.runId,
+            toolCallId = toolCall.id,
+            toolName = toolCall.tool,
+            toolArgs = toolCall.contentJson
+        )
+
+        val toolResult = environment.executeTool(toolCall)
+        processToolResult(context.executionInfo, toolResult)
+
+        logger.trace {
+            "Tool call completed (" +
+                "run id: ${context.runId}, " +
+                "tool call id: ${toolCall.id}, " +
+                "tool: ${toolCall.tool}, " +
+                "args: ${toolCall.contentJson}) " +
+                "with result: $toolResult"
+        }
+
+        return toolResult
+    }
 
     override suspend fun reportProblem(exception: Throwable) {
         environment.reportProblem(exception)
