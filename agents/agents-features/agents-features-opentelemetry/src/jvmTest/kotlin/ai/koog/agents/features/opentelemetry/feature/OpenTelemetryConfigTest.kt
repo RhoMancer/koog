@@ -1,9 +1,12 @@
 package ai.koog.agents.features.opentelemetry.feature
 
+import ai.koog.agents.core.agent.entity.AIAgentSubgraph.Companion.FINISH_NODE_PREFIX
+import ai.koog.agents.core.agent.entity.AIAgentSubgraph.Companion.START_NODE_PREFIX
 import ai.koog.agents.core.dsl.builder.forwardTo
 import ai.koog.agents.core.dsl.builder.strategy
 import ai.koog.agents.core.dsl.extension.nodeLLMRequest
 import ai.koog.agents.core.dsl.extension.onAssistantMessage
+import ai.koog.agents.features.eventHandler.feature.handleEvents
 import ai.koog.agents.features.opentelemetry.OpenTelemetrySpanAsserts.assertSpans
 import ai.koog.agents.features.opentelemetry.OpenTelemetryTestAPI.createAgent
 import ai.koog.agents.features.opentelemetry.OpenTelemetryTestAPI.testClock
@@ -16,12 +19,15 @@ import ai.koog.agents.testing.tools.getMockExecutor
 import ai.koog.prompt.executor.clients.openai.OpenAIModels
 import ai.koog.utils.io.use
 import io.opentelemetry.sdk.OpenTelemetrySdk
+import io.opentelemetry.sdk.trace.export.BatchSpanProcessor
 import kotlinx.coroutines.test.runTest
+import kotlinx.coroutines.withTimeoutOrNull
 import java.util.Properties
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFails
 import kotlin.test.assertTrue
+import kotlin.time.Duration.Companion.seconds
 
 /**
  * Tests for the OpenTelemetry feature.
@@ -247,6 +253,100 @@ class OpenTelemetryConfigTest : OpenTelemetryTestBase() {
             )
 
             assertSpans(expectedInvokeAgentSpans, actualInvokeAgentSpans)
+        }
+    }
+
+    /**
+     * Verifies the default OTel span processor that exports collected events in a batch.
+     * Confirms that all spans have been flushed when an agent is stopping and not exported on every span stop.
+     */
+    @Test
+    fun `test default OTel span processor`() = runTest {
+        val strategy = strategy<String, String>("test-strategy") {
+            nodeStart then nodeFinish
+        }
+
+        MockSpanExporter().use { mockExporter ->
+            var collectedSpansOnFinishNodeComplete = 0
+            var collectedSpansOnAgentClosing = 0
+
+            createAgent(strategy = strategy) {
+                install(OpenTelemetry) {
+                    addSpanExporter(mockExporter)
+                }
+
+                handleEvents {
+                    onNodeExecutionCompleted { event ->
+                        // Catch the 'finish' node and check that the 'start' node is already flushed.
+                        if (event.node.id == FINISH_NODE_PREFIX) {
+                            collectedSpansOnFinishNodeComplete = mockExporter.collectedSpans.size
+                        }
+                    }
+
+                    onAgentClosing {
+                        collectedSpansOnAgentClosing = mockExporter.collectedSpans.size
+                    }
+                }
+            }.use { agent ->
+                agent.run("test")
+            }
+
+            assertEquals(0, collectedSpansOnFinishNodeComplete)
+
+            assertTrue(collectedSpansOnAgentClosing > 0)
+            assertEquals(collectedSpansOnAgentClosing, mockExporter.collectedSpans.size)
+        }
+    }
+
+    /**
+     * Verifies the custom OTel span processor that exports collected events on the every "span end" event.
+     * Confirms that all spans have been flushed successfully one by one when stopping.
+     */
+    @Test
+    fun `test custom OTel span processor`() = runTest {
+        val strategy = strategy<String, String>("test-strategy") {
+            nodeStart then nodeFinish
+        }
+
+        MockSpanExporter().use { mockExporter ->
+            var collectedSpansOnFinishNodeComplete = 0
+            var collectedSpansOnAgentClosing = 0
+
+            createAgent(strategy = strategy) {
+                install(OpenTelemetry) {
+                    addSpanExporter(mockExporter)
+
+                    // Custom OTel span processor that flushes on every span stop event.
+                    addSpanProcessor { exporter ->
+                        BatchSpanProcessor.builder(exporter)
+                            .setMaxExportBatchSize(1)
+                            .build()
+                    }
+                }
+
+                handleEvents {
+                    onNodeExecutionCompleted { event ->
+                        // Catch the 'finish' node and check that the 'start' node is already flushed.
+                        if (event.node.id == START_NODE_PREFIX) {
+                            withTimeoutOrNull(2.seconds) {
+                                mockExporter.collectedSpans.isNotEmpty()
+                            }
+                            collectedSpansOnFinishNodeComplete = mockExporter.collectedSpans.size
+                        }
+                    }
+
+                    onAgentClosing {
+                        collectedSpansOnAgentClosing = mockExporter.collectedSpans.size
+                    }
+                }
+            }.use { agent ->
+                agent.run("test")
+            }
+
+            assertEquals(1, collectedSpansOnFinishNodeComplete)
+
+            assertTrue(collectedSpansOnAgentClosing > 1)
+            assertEquals(collectedSpansOnAgentClosing, mockExporter.collectedSpans.size)
         }
     }
 }

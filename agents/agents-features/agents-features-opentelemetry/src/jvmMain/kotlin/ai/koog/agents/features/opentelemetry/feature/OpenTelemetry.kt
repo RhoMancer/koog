@@ -30,6 +30,7 @@ import ai.koog.agents.utils.HiddenString
 import ai.koog.prompt.message.Message
 import io.github.oshai.kotlinlogging.KotlinLogging
 import io.opentelemetry.api.trace.StatusCode
+import java.util.concurrent.TimeUnit
 import kotlin.reflect.KType
 
 /**
@@ -167,6 +168,11 @@ public class OpenTelemetry {
 
                 spanAdapter?.onBeforeSpanFinished(agentSpan)
                 spanProcessor.endSpan(span = agentSpan)
+
+                // Force flush all spans and wait for the operation to finish.
+                spanProcessor.endUnfinishedSpans()
+                config.sdk.sdkTracerProvider.forceFlush()
+                    .join(config.spansForceFlushTimeout.inWholeMilliseconds, TimeUnit.MILLISECONDS)
             }
 
             //endregion Agent

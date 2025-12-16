@@ -65,25 +65,27 @@ The example includes the following configuration methods:
 
 Please see below the full list of available configuration properties:
 
-| Name               | Data type          | Default value | Description                                                                  |
-|--------------------|--------------------|---------------|------------------------------------------------------------------------------|
-| `serviceName`      | `String`           | `ai.koog`     | The name of the service being instrumented.                                  |
-| `serviceVersion`   | `String`           | `0.0.0`       | The version of the service being instrumented.                               |
-| `sdk`              | `OpenTelemetrySdk` |               | The OpenTelemetry SDK instance to use for telemetry collection.              |
-| `isVerbose`        | `Boolean`          | `false`       | Whether to enable verbose logging for debugging OpenTelemetry configuration. |
-| `tracer`           | `Tracer`           |               | The OpenTelemetry tracer instance used for creating spans.                   |
+| Name                     | Data type          | Default value | Description                                                                  |
+|--------------------------|--------------------|---------------|------------------------------------------------------------------------------|
+| `serviceName`            | `String`           | `ai.koog`     | The name of the service being instrumented.                                  |
+| `serviceVersion`         | `String`           | `0.0.0`       | The version of the service being instrumented.                               |
+| `sdk`                    | `OpenTelemetrySdk` |               | The OpenTelemetry SDK instance to use for telemetry collection.              |
+| `isVerbose`              | `Boolean`          | `false`       | Whether to enable verbose logging for debugging OpenTelemetry configuration. |
+| `tracer`                 | `Tracer`           |               | The OpenTelemetry tracer instance used for creating spans.                   |
+| `spansForceFlushTimeout` | `Duration`         | `2.seconds`   | The timeout duration for forcing a final flush of spans when agent finishes. |
 
 Configuration API:
 
-| Name                    | Arguments                                           | Description                                                                       |
-|-------------------------|-----------------------------------------------------|-----------------------------------------------------------------------------------|
-| `setServiceInfo`        | `serviceName: String, serviceVersion: String`       | Sets the service information including name and version.                          |
-| `addSpanExporter`       | `exporter: SpanExporter`                            | Adds a span exporter to send telemetry data to external systems.                  |
-| `addSpanProcessor`      | `processor: (SpanExporter) -> SpanProcessor`        | Adds a span processor creator function to process spans before they are exported. |
-| `addResourceAttributes` | `attributes: Map<AttributeKey<T>, T> where T : Any` | Adds resource attributes to provide additional context about the service.         |
-| `setSampler`            | `sampler: Sampler`                                  | Sets the sampling strategy to control which spans are collected.                  |
-| `setVerbose`            | `verbose: Boolean`                                  | Enables or disables verbose logging for debugging OpenTelemetry configuration.    |
-| `setSdk`                | `sdk: OpenTelemetrySdk`                             | Injects a custom OpenTelemetry SDK instance for advanced configuration control.   |
+| Name                       | Arguments                                           | Description                                                                       |
+|----------------------------|-----------------------------------------------------|-----------------------------------------------------------------------------------|
+| `setServiceInfo`           | `serviceName: String, serviceVersion: String`       | Sets the service information including name and version.                          |
+| `addSpanExporter`          | `exporter: SpanExporter`                            | Adds a span exporter to send telemetry data to external systems.                  |
+| `addSpanProcessor`         | `processor: (SpanExporter) -> SpanProcessor`        | Adds a span processor creator function to process spans before they are exported. |
+| `addResourceAttributes`    | `attributes: Map<AttributeKey<T>, T> where T : Any` | Adds resource attributes to provide additional context about the service.         |
+| `setSampler`               | `sampler: Sampler`                                  | Sets the sampling strategy to control which spans are collected.                  |
+| `setVerbose`               | `verbose: Boolean`                                  | Enables or disables verbose logging for debugging OpenTelemetry configuration.    |
+| `setSdk`                   | `sdk: OpenTelemetrySdk`                             | Injects a custom OpenTelemetry SDK instance for advanced configuration control.   |
+| `setSpansForceFlushTimeout`| `timeout: Duration`                                 | Sets the timeout for flushing spans when agent finishes (default: 2 seconds).     |
 
 
 ### Advanced configuration
