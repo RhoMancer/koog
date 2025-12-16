@@ -16,12 +16,14 @@ import io.opentelemetry.sdk.resources.Resource
 import io.opentelemetry.sdk.trace.SdkTracerProvider
 import io.opentelemetry.sdk.trace.SdkTracerProviderBuilder
 import io.opentelemetry.sdk.trace.SpanProcessor
-import io.opentelemetry.sdk.trace.export.SimpleSpanProcessor
+import io.opentelemetry.sdk.trace.export.BatchSpanProcessor
 import io.opentelemetry.sdk.trace.export.SpanExporter
 import io.opentelemetry.sdk.trace.samplers.Sampler
 import java.time.Instant
 import java.time.format.DateTimeFormatter
 import java.util.Properties
+import kotlin.time.Duration
+import kotlin.time.Duration.Companion.seconds
 
 /**
  * Configuration class for OpenTelemetry integration.
@@ -31,7 +33,10 @@ import java.util.Properties
  */
 public class OpenTelemetryConfig : FeatureConfig() {
 
-    private companion object {
+    /**
+     * Companion object providing default values for OS properties
+     */
+    public companion object {
 
         private val logger = KotlinLogging.logger { }
 
@@ -40,6 +45,12 @@ public class OpenTelemetryConfig : FeatureConfig() {
         private val osVersion = System.getProperty("os.version")
 
         private val osArch = System.getProperty("os.arch")
+
+        /**
+         * The default timeout duration for forcing a final flush of spans
+         * in the OpenTelemetry when an agent finishes it's execution.
+         */
+        public val defaultSpansForceFlushTimeout: Duration = 2.seconds
     }
 
     private val productProperties = run {
@@ -71,6 +82,8 @@ public class OpenTelemetryConfig : FeatureConfig() {
     private var _verbose: Boolean = false
 
     private var _spanAdapter: SpanAdapter? = null
+
+    private var _spansForceFlushTimeout: Duration = defaultSpansForceFlushTimeout
 
     override fun setEventFilter(filter: (AgentLifecycleEventContext) -> Boolean) {
         // Do not allow events filtering for the OpenTelemetry feature
@@ -131,6 +144,12 @@ public class OpenTelemetryConfig : FeatureConfig() {
      */
     public val serviceVersion: String
         get() = _serviceVersion
+
+    /**
+     * Represents the duration to wait for flushing pending spans within the OpenTelemetry SDK.
+     */
+    public val spansForceFlushTimeout: Duration
+        get() = _spansForceFlushTimeout
 
     internal val spanAdapter: SpanAdapter?
         get() = _spanAdapter
@@ -220,6 +239,13 @@ public class OpenTelemetryConfig : FeatureConfig() {
     }
 
     /**
+     * Configures the timeout to be used when flushing spans in the OpenTelemetry SDK.
+     */
+    public fun setSpansForceFlushTimeout(timeout: Duration) {
+        _spansForceFlushTimeout = timeout
+    }
+
+    /**
      * Adds a custom span adapter for post-processing GenAI agent spans.
      * The adapter can modify span data, add attributes/events, or perform other
      * post-processing logic before spans are completed.
@@ -302,7 +328,9 @@ public class OpenTelemetryConfig : FeatureConfig() {
             logger.debug {
                 "No custom span processors configured. Use batch span processor with ${exporter::class.simpleName} as an exporter."
             }
-            addSpanProcessor(SimpleSpanProcessor.builder(exporter).build())
+
+            // Use Batch Span Processor with default parameters.
+            addSpanProcessor(BatchSpanProcessor.builder(exporter).build())
             return
         }
 

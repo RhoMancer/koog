@@ -10,6 +10,7 @@ import ai.koog.agents.features.opentelemetry.feature.OpenTelemetryTestBase
 import ai.koog.agents.features.opentelemetry.mock.TestGetWeatherTool
 import ai.koog.agents.features.opentelemetry.span.sha256base64
 import ai.koog.agents.utils.HiddenString
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertTrue
