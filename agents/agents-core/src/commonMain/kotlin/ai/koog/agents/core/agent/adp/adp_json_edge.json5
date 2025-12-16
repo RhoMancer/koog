@@ -1,0 +1,60 @@
+{
+    "edge": {
+        "type": "object",
+        "required": [
+            "from",
+            "to"
+        ],
+        "properties": {
+            "from": {
+                "type": "string"
+                // node id
+            },
+            "to": {
+                "type": "string"
+                // node id
+            },
+            "condition": {
+                "type": "object",
+                "required": [
+                    "property",
+                    "operator",
+                    "value"
+                ],
+                "properties": {
+                    "property": {
+                        // property name/key of "from" node "output_type"
+                        "type": "string"
+                    },
+                    "operator": {
+                        "type": "string",
+                        "enum": [
+                            ">",
+                            "<",
+                            ">=",
+                            "<=",
+                            "!=",
+                            "=="
+                        ],
+                    },
+                    "value": {
+                        "oneOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "number"
+                            },
+                            {
+                                "type": "integer"
+                            },
+                            {
+                                "type": "boolean"
+                            }
+                        ]
+                    }
+                }
+            },
+        },
+    }
+}

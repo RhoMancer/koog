@@ -1,0 +1,62 @@
+{
+    "configuration": {
+        "type": "object",
+        "required": [
+            "model"
+        ],
+        "properties": {
+            "model": {
+                "type": "object",
+                "required": [
+                    "provider",
+                    "name"
+                ],
+                "properties": {
+                    "provider": {
+                        "type": "string"
+                        // "openai"
+                    },
+                    "name": {
+                        "type": "string"
+                        // "gpt-3.5-turbo"
+                    }
+                }
+            },
+            "temperature": {
+                "type": "number"
+            },
+            "max_iterations": {
+                "type": "integer"
+            },
+            "max_tokens": {
+                "type": "integer"
+            },
+            "top_p": {
+                "type": "number"
+            },
+            "tool_choice": {
+                "oneOf": [
+                    {
+                        "type": "string",
+                        "enum": [
+                            "none",
+                            "auto",
+                            "required"
+                        ]
+                    },
+                    {
+                        "type": "object",
+                        "required": [
+                            "tool"
+                        ],
+                        "properties": {
+                            "tool": {
+                                "type": "string",
+                            }
+                        }
+                    }
+                ],
+            },
+        },
+    }
+}

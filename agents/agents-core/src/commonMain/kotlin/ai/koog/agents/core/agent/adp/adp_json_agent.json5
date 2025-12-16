@@ -1,0 +1,57 @@
+{
+    "agent": {
+        "type": "object",
+        "required": [
+            "id",
+            "configuration",
+            "input",
+            "strategy"
+        ],
+        "properties": {
+            "id": {
+                "type": "string"
+            },
+
+            "configuration": {
+                "type": "object"
+                // see "configuration" object definition - adp_json_config.json5
+            },
+
+            "strategy": {
+                "oneOf": [
+                    {
+                        "type": "object"
+                        // see "strategy" object definition - adp_json_strategy.json5}
+                    },
+                    {
+                        "type": "string",
+                        "enum": [
+                            "simple",
+                            "react"
+                        ]
+                    }
+                ],
+            },
+
+            "tools": {
+                "type": "array",
+                "items": {
+                    "type": "object"
+                    // see "tool" object definition - adp_json_tool.json5
+                }
+            },
+
+            "input": {
+                "type": "string"
+            },
+
+            "features": {
+                "type": "array",
+                "items": {
+                    "type": "string"
+                    // Koog feature id
+                }
+            },
+        }
+    }
+}

@@ -1,0 +1,195 @@
+// Example of a calculator strategy with conditional flow
+{
+  "strategy": {
+    "id": "calculator_strategy",
+
+    "nodes": [
+      {
+        "id": "start",
+        "kind": "start",
+        "input_type": {
+          "type": "string"
+        },
+        "input": "(10 + 20) * 5",
+        "output_type": {
+          "type": "string"
+        },
+        "output": "(10 + 20) * 5"
+      },
+      {
+        "id": "parseExpression",
+        "kind": "call_llm",
+        "input_type": {
+          "type": "string"
+        },
+        "input": "(10 + 20) * 5",
+        "output_type": {
+          "type": "object",
+          "required": ["operation", "operands"],
+          "properties": {
+            "operation": {
+              "type": "string"
+            },
+            "operands": {
+              "type": "object"
+            }
+          }
+        },
+        "output": {
+          "operation": "multiply",
+          "operands": {
+            "a": 30.0,
+            "b": 5.0
+          }
+        }
+      },
+      {
+        "id": "executeCalculation",
+        "kind": "execute_tool",
+        "input_type": {
+          "type": "object",
+          "required": ["operation", "operands"],
+          "properties": {
+            "operation": {
+              "type": "string"
+            },
+            "operands": {
+              "type": "object"
+            }
+          }
+        },
+        "input": {
+          "operation": "multiply",
+          "operands": {
+            "a": 30.0,
+            "b": 5.0
+          }
+        },
+        "output_type": {
+          "type": "object",
+          "required": ["result"],
+          "properties": {
+            "result": {
+              "type": "number"
+            }
+          }
+        },
+        "output": {
+          "result": 150.0
+        },
+        "tools": ["plus", "minus", "multiply", "divide"]
+      },
+      {
+        "id": "validateLarge",
+        "kind": "subgraph_with_task",
+        "input_type": {
+          "type": "object",
+          "required": ["result"],
+          "properties": {
+            "result": {
+              "type": "number"
+            }
+          }
+        },
+        "input": {
+          "result": 150.0
+        },
+        "output_type": {
+          "type": "object",
+          "required": ["result", "validated"],
+          "properties": {
+            "result": {
+              "type": "number"
+            },
+            "validated": {
+              "type": "boolean"
+            }
+          }
+        },
+        "output": {
+          "result": 150.0,
+          "validated": true
+        },
+        "task": "## GOAL Validate that large result is within acceptable range",
+        "tools": []
+      },
+      {
+        "id": "finishLarge",
+        "kind": "finish",
+        "input_type": {
+          "type": "object",
+          "required": ["result", "validated"],
+          "properties": {
+            "result": {
+              "type": "number"
+            },
+            "validated": {
+              "type": "boolean"
+            }
+          }
+        },
+        "input": {
+          "result": 150.0,
+          "validated": true
+        },
+        "output_type": {
+          "type": "string"
+        },
+        "output": "Large result: 150.0 (validated)"
+      },
+      {
+        "id": "finishSmall",
+        "kind": "finish",
+        "input_type": {
+          "type": "object",
+          "required": ["result"],
+          "properties": {
+            "result": {
+              "type": "number"
+            }
+          }
+        },
+        "input": {
+          "result": 150.0
+        },
+        "output_type": {
+          "type": "string"
+        },
+        "output": "Small result: 150.0"
+      }
+    ],
+
+    "edges": [
+      {
+        "from": "start",
+        "to": "parseExpression"
+      },
+      {
+        "from": "parseExpression",
+        "to": "executeCalculation"
+      },
+      {
+        "from": "executeCalculation",
+        "to": "validateLarge",
+        "condition": {
+          "property": "result",
+          "operator": ">",
+          "value": 100
+        }
+      },
+      {
+        "from": "executeCalculation",
+        "to": "finishSmall",
+        "condition": {
+          "property": "result",
+          "operator": "<=",
+          "value": 100
+        }
+      },
+      {
+        "from": "validateLarge",
+        "to": "finishLarge"
+      }
+    ]
+  }
+}

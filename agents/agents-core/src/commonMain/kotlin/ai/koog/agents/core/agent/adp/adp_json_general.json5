@@ -1,0 +1,103 @@
+{
+
+  "input": {
+    type: string,
+    data: json
+  },
+
+  output_schema: json
+
+  configuration: {
+    model: string,
+    temperature: double,
+    ...
+  },
+
+
+
+  strategy: {
+    nodes: [
+      {
+        id: string,
+        type: enum
+      }
+    ],
+    edges: [
+      {
+        from: string,
+        to: string,
+        conditons: [
+          {
+            parameter: jsonObject,
+            value: jsonPrimitive,
+            type: enum
+          }
+        ]
+      }
+    ]
+  },
+
+
+  "strategy": {
+    "nodes": [
+      {
+        "id": "Node1",
+        "type": "subgraphWithTask",
+        "inputType": {
+          "type": "object",
+          "properties": {
+            "prop1": {
+              "type": "string"
+            }
+          }
+        },
+        "outputType": {
+          "type": "object",
+          "properties": {
+            "prop2": {
+              "type": "string"
+            }
+          }
+        },
+        "task": "## GOAL Write a function that takes a string and returns the same string reversed.",
+        "tools": []
+      },
+
+      {
+        "id": "Node2",
+        "type": "function",
+        "inputType": {
+          "type": "object",
+          "properties": {
+            "prop1": {
+              "type": "string"
+            }
+          }
+        },
+        "outputType": {
+          "type": "string"
+        },
+        "function": "function reverse(str) {\n  return str.split('').reverse().join('');\n}",
+      }
+    ],
+    "edges": [{
+      "from": "Node1",
+      "to": "Node2",
+      "condition": {
+        "property": "prop1",
+        "operator": ">",
+        "value": "10"
+      }
+    }]
+  },
+
+
+
+
+  features: [
+    {
+      id: string
+    }
+  ],
+
+}

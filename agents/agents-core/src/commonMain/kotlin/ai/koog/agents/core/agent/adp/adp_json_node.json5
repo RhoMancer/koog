@@ -1,0 +1,117 @@
+{
+    "node": {
+        "type": "object",
+        "required": [
+            "id",
+            "kind",
+            "input",
+            "output"
+        ],
+        "properties": {
+            "id": {
+                "type": "string"
+                // node id/name
+            },
+            "kind": {
+                // string value from the available node type from enum
+                "type": "string",
+                "enum": [
+                    "start",
+                    "finish",
+                    "blank",
+                    "subgraph_with_task",
+                    "subgraph",
+                    "call_llm",
+                    "execute_tool",
+                    "send_tool_result", // ?
+                    "send_tool_result"
+                ]
+            },
+            "input_type": {
+                // JSON Schema to define the input structure (domain entity / Kotlin data class)
+                "oneOf": [
+                    {
+                        "type": "string"
+                    },
+                    {
+                        "type": "number"
+                    },
+                    {
+                        "type": "integer"
+                    },
+                    {
+                        "type": "boolean"
+                    },
+                    {
+                        "type": "object",
+                        "required": [],
+                        // Array of keys from "properties"
+                        "properties": {
+                            "type": "object",
+                            // Object of input type field names with types
+                            // "propertyOne": {
+                            //   "type": "string"
+                            // },
+                            // "propertyTwo": {
+                            //   "type": "integer"
+                            // }
+                        }
+                    }
+                ]
+            },
+            "input": {
+                // Input data that conforms to the schema defined in "input_type"
+                // { "propertyOne": "value", "propertyTwo": 123 }
+            },
+            "output_type": {
+                // JSON Schema to define the output structure (domain entity / Kotlin data class)
+                "oneOf": [
+                    {
+                        "type": "string"
+                    },
+                    {
+                        "type": "number"
+                    },
+                    {
+                        "type": "integer"
+                    },
+                    {
+                        "type": "boolean"
+                    },
+                    {
+                        "type": "object",
+                        "required": [],
+                        // Array of keys from "properties"
+                        "properties": {
+                            "type": "object",
+                            // Object of output type field names with types
+                            // "propertyThree": {
+                            //   "type": "string"
+                            // },
+                            // "propertyFour": {
+                            //   "type": "integer"
+                            // }
+                        }
+                    }
+                ]
+            },
+            "output": {
+                // Output data that conforms to the schema defined in "output_type"
+                // { "propertyThree": "value", "propertyFour": 456 }
+            },
+            "task": {
+                "type": "string",
+                // Required string for subgraph_with_task node type
+                // "## GOAL Write a function that takes a string and returns the same string reversed.",
+            },
+            "tools": {
+                "type": "array",
+                // Array of strings with tool ids (see tools)
+                "items": {
+                    "type": "string"
+                    // "plus", "minus", "mcp_tool_id"
+                }
+            }
+        },
+    },
+}

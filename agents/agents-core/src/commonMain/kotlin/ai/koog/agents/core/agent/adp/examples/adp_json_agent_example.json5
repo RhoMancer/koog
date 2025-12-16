@@ -1,0 +1,24 @@
+// Example of an agent configuration using calculator tools
+{
+    "agent": {
+        "id": "calculator_agent",
+
+        "configuration": {
+            // ...
+        },
+
+        "strategy": {
+            // ...
+        },
+        "tools": [
+            // ...
+        ],
+
+        "input": "(10 + 20) * 5",
+
+        "features": [
+            "EventHandler",
+            "OpenTelemetry"
+        ]
+    }
+}

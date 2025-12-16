@@ -1,0 +1,58 @@
+{
+    "tool": {
+        "type": "object",
+        "required": [
+            "kind"
+        ],
+        "properties": {
+            "kind": {
+                "type": "string",
+                "enum": [
+                    "mcp",
+                    "procedural"
+                ]
+            }
+        },
+        "oneOf": [
+            {
+                // Procedural tool
+                "properties": {
+                    "kind": {
+                        "const": "procedural"
+                    },
+                    "fqn": {
+                        "type": "string"
+                        // fully qualified name of the procedural tool
+                    }
+                },
+                "required": ["kind", "fqn"]
+            },
+            {
+                // MCP tool via public server endpoint
+                "properties": {
+                    "kind": {
+                        "const": "mcp"
+                    },
+                    "endpoint": {
+                        "type": "string"
+                        // public server endpoint URL
+                    }
+                },
+                "required": ["kind", "endpoint"]
+            },
+            {
+                // MCP tool via docker stdio
+                "properties": {
+                    "kind": {
+                        "const": "mcp"
+                    },
+                    "docker": {
+                        "type": "string"
+                        // docker image name
+                    }
+                },
+                "required": ["kind", "docker"]
+            }
+        ]
+    },
+}

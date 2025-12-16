@@ -1,0 +1,116 @@
+{
+    "nodes": [
+        {
+            "id": "node_search_tool_call",
+            "kind": "execute_tool",
+            "input_type": {
+                "type": "string"
+            },
+            "input": "search query text",
+            "output_type": {
+                "type": "object",
+                "required": ["id", "tool", "content"],
+                "properties": {
+                    "id": {
+                        "type": "string"
+                    },
+                    "tool": {
+                        "type": "string"
+                    },
+                    "content": {
+                        "type": "string"
+                    },
+                    "result": {
+                        "type": "object"
+                    }
+                }
+            },
+            "output": {
+                "id": "tool_call_id",
+                "tool": "search_tool",
+                "content": "Search results: Found 5 relevant documents",
+                "result": {
+                    "count": 5
+                }
+            },
+            "tools": ["search_tool"]
+        },
+        {
+            "id": "node_send_tool_result",
+            "kind": "send_tool_result",
+            "input_type": {
+                "type": "object",
+                "required": ["id", "tool", "content"],
+                "properties": {
+                    "id": {
+                        "type": "string"
+                    },
+                    "tool": {
+                        "type": "string"
+                    },
+                    "content": {
+                        "type": "string"
+                    },
+                    "result": {
+                        "type": "object"
+                    }
+                }
+            },
+            "input": {
+                "id": "tool_call_id",
+                "tool": "search_tool",
+                "content": "Search results: Found 5 relevant documents",
+                "result": {
+                    "count": 5
+                }
+            },
+            "output_type": {
+                "type": "object",
+                "required": ["parts", "metaInfo", "role"],
+                "properties": {
+                    "parts": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "text": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "metaInfo": {
+                        "type": "object",
+                        "properties": {
+                            "timestamp": {
+                                "type": "string"
+                            },
+                            "totalTokensCount": {
+                                "type": "integer"
+                            },
+                        }
+                    },
+                    "role": {
+                        "type": "string"
+                    },
+                    "finishReason": {
+                        "type": "string"
+                    }
+                }
+            },
+            "output": {
+                "parts": [
+                    {
+                        "text": "I found 5 relevant documents for your query."
+                    }
+                ],
+                "metaInfo": {
+                    "timestamp": "2025-01-15T10:30:00Z",
+                    "totalTokensCount": 150,
+                },
+                "role": "Assistant",
+                "finishReason": "stop"
+            }
+        }
+    ]
+}

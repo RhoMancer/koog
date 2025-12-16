@@ -1,0 +1,29 @@
+{
+    "strategy": {
+        "type": "object",
+        "required": [
+            "id",
+            "nodes",
+            "edges"
+        ],
+        "properties": {
+            "id": {
+                "type": "string"
+            },
+            "nodes": {
+                "type": "array",
+                "items": {
+                    "type": "object"
+                    // see "node" object definition - adp_json_node.json5
+                }
+            },
+            "edges": {
+                "type": "array",
+                "items": {
+                    "type": "object"
+                    // see "edge" object definition - adp_json_edge.json5
+                }
+            },
+        }
+    }
+}

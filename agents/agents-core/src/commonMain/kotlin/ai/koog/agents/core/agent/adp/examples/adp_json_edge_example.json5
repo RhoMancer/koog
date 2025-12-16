@@ -1,0 +1,13 @@
+{
+    "edges": [
+        {
+            "from": "node_search_tool_call",
+            "to": "node_send_tool_result",
+            "condition": {
+                "property": "result.count",
+                "operator": ">",
+                "value": 0
+            }
+        }
+    ]
+}

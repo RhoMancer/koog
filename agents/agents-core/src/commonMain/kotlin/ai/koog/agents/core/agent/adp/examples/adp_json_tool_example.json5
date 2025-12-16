@@ -1,0 +1,45 @@
+// Examples of tool definitions for calculator operations
+[
+    // Procedural tool - plus
+    {
+        "tool": {
+            "kind": "procedural",
+            "fqn": "ai.koog.agents.example.calculator.CalculatorTools.plus"
+        }
+    },
+    // Procedural tool - minus
+    {
+        "tool": {
+            "kind": "procedural",
+            "fqn": "ai.koog.agents.example.calculator.CalculatorTools.minus"
+        }
+    },
+    // Procedural tool - multiply
+    {
+        "tool": {
+            "kind": "procedural",
+            "fqn": "ai.koog.agents.example.calculator.CalculatorTools.multiply"
+        }
+    },
+    // Procedural tool - divide
+    {
+        "tool": {
+            "kind": "procedural",
+            "fqn": "ai.koog.agents.example.calculator.CalculatorTools.divide"
+        }
+    },
+    // MCP tool via public server endpoint
+    {
+        "tool": {
+            "kind": "mcp",
+            "endpoint": "https://mcp.example.com/calculator/advanced"
+        }
+    },
+    // MCP tool via docker stdio
+    {
+        "tool": {
+            "kind": "mcp",
+            "docker": "calculator-mcp-server:latest"
+        }
+    }
+]
