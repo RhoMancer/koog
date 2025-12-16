@@ -16,6 +16,7 @@ import ai.koog.agents.core.feature.pipeline.AIAgentPipeline
 import ai.koog.agents.core.tools.ToolRegistry
 import ai.koog.agents.testing.network.NetUtil
 import ai.koog.agents.testing.tools.getMockExecutor
+import ai.koog.prompt.dsl.Prompt
 import ai.koog.prompt.dsl.prompt
 import ai.koog.prompt.executor.clients.openai.OpenAIModels
 import ai.koog.prompt.executor.model.PromptExecutor
@@ -45,6 +46,12 @@ class AIAgentPipelineJvmTest {
     companion object {
         private val testTimeout = 10.seconds
     }
+
+    val agentConfig = AIAgentConfig(
+        Prompt.Empty,
+        OpenAIModels.Chat.GPT4o,
+        10
+    )
 
     @AfterEach
     fun cleanup() {

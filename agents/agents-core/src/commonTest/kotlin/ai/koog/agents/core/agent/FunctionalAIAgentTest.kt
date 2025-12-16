@@ -9,8 +9,6 @@ import ai.koog.agents.core.tools.Tool
 import ai.koog.agents.core.tools.ToolRegistry
 import ai.koog.agents.core.tools.annotations.LLMDescription
 import ai.koog.agents.ext.agent.SubgraphWithTaskUtils
-import ai.koog.agents.ext.agent.subtask
-import ai.koog.agents.ext.agent.subtaskWithVerification
 import ai.koog.agents.features.eventHandler.feature.EventHandler
 import ai.koog.agents.testing.tools.getMockExecutor
 import ai.koog.prompt.executor.clients.anthropic.AnthropicModels

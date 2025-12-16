@@ -7,6 +7,8 @@ import ai.koog.prompt.params.LLMParams.Schema
 import ai.koog.prompt.params.LLMParams.ToolChoice
 import kotlinx.datetime.Clock
 import kotlinx.serialization.Serializable
+import kotlin.jvm.JvmField
+import kotlin.jvm.JvmName
 import kotlin.jvm.JvmOverloads
 import kotlin.jvm.JvmStatic
 import kotlin.time.Duration
@@ -50,6 +52,7 @@ public data class Prompt @JvmOverloads constructor(
          * The `Empty` value can be used as a default or placeholder for scenarios
          * where no meaningful data or prompt has been provided.
          */
+        @JvmField
         public val Empty: Prompt = Prompt(emptyList(), "")
 
         /**
@@ -95,6 +98,7 @@ public data class Prompt @JvmOverloads constructor(
      *
      * Useful for tracking the token count of the most recently generated LLM response in the LLM chat flow.
      */
+    @get:JvmName("latestTokenUsage")
     public val latestTokenUsage: Int
         get() = messages
             .lastOrNull { it is Message.Response }
@@ -109,7 +113,7 @@ public data class Prompt @JvmOverloads constructor(
      *
      * If no messages are present, the total time spent is `0`.
      */
-
+    @get:JvmName("totalTimeSpent")
     public val totalTimeSpent: Duration
         get() = when {
             messages.isEmpty() -> Duration.ZERO
