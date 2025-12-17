@@ -12,9 +12,7 @@ import ai.koog.prompt.message.Message
  * Extracted observability setup used by agents in this module.
  * Logic is kept identical to the original blocks; only the agent name is parameterized.
  */
-fun GraphAIAgent.FeatureContext.setupObservability(
-    agentName: String,
-) {
+fun GraphAIAgent.FeatureContext.setupObservability(agentName: String) {
     install(OpenTelemetry) {
         setVerbose(true) // Send full strings instead of HIDDEN placeholders
         addLangfuseExporter(
@@ -25,11 +23,7 @@ fun GraphAIAgent.FeatureContext.setupObservability(
     }
     handleEvents {
         onToolCallStarting { ctx ->
-            println(
-                "[$agentName][tool-call] Tool '${ctx.toolName}' called with args: ${
-                    ctx.toolArgs.toString().take(100)
-                }"
-            )
+            println("[$agentName] Tool '${ctx.toolName}' called with args: ${ctx.toolArgs.toString().take(100)}")
         }
 
         onLLMCallCompleted { ctx: LLMCallCompletedContext ->
