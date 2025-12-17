@@ -21,49 +21,45 @@ import ai.koog.prompt.executor.clients.openai.models.ReasoningSummary
 import ai.koog.rag.base.files.JVMFileSystemProvider
 
 val executor = simpleOpenAIExecutor(System.getenv("OPENAI_API_KEY"))
-private val basePrompt: Prompt = Prompt.build(
-    id = "koog-code-agent-reasoning",
-    params = OpenAIResponsesParams(
-        reasoning = ReasoningConfig(
-            effort = ReasoningEffort.MEDIUM,
-            summary = ReasoningSummary.DETAILED
-        )
-    )
-) {
-    system(
-        """
-        You are a highly skilled programmer tasked with updating the provided codebase according to the given task.
-        Your goal is to deliver production-ready code changes that integrate seamlessly with the existing codebase and solve given task.
-        Ensure minimal possible changes done - that guarantees minimal impact on existing functionality.
-        
-        You have shell access to execute commands and run tests.
-        After investigation, define expected behavior with test scripts, then iterate on your implementation until the tests pass.
-        Verify your changes don't break existing functionality through regression testing, but prefer running targeted tests over full test suites.
-        Note: the codebase may be fully configured or freshly cloned with no dependencies installed - handle any necessary setup steps.
-        
-        You also have an intelligent find micro agent at your disposition, which can help you find code components and other constructs 
-        more cheaply than you can do it yourself. Lean on it for any and all search operations. Do not use shell execution for find tasks.
-        """.trimIndent()
-    )
-}
-
-private val agentConfig = AIAgentConfig(
-    prompt = basePrompt,
-    model = OpenAIModels.Chat.GPT5Codex,
-    maxAgentIterations = 400
-)
-
 val agent = AIAgent(
     promptExecutor = executor,
-    agentConfig = agentConfig,
-    strategy = singleRunStrategy(),
     toolRegistry = ToolRegistry {
         tool(ListDirectoryTool(JVMFileSystemProvider.ReadOnly))
         tool(ReadFileTool(JVMFileSystemProvider.ReadOnly))
         tool(EditFileTool(JVMFileSystemProvider.ReadWrite))
         tool(createExecuteShellCommandToolFromEnv())
         tool(createFindAgentTool())
-    }
+    },
+    agentConfig = AIAgentConfig(
+        model = OpenAIModels.Chat.GPT5Codex,
+        prompt = Prompt.build(
+            id = "koog-code-agent-reasoning",
+            params = OpenAIResponsesParams(
+                reasoning = ReasoningConfig(
+                    effort = ReasoningEffort.MEDIUM,
+                    summary = ReasoningSummary.DETAILED
+                )
+            )
+        ) {
+            system(
+                """
+                You are a highly skilled programmer tasked with updating the provided codebase according to the given task.
+                Your goal is to deliver production-ready code changes that integrate seamlessly with the existing codebase and solve given task.
+                Ensure minimal possible changes done - that guarantees minimal impact on existing functionality.
+                
+                You have shell access to execute commands and run tests.
+                After investigation, define expected behavior with test scripts, then iterate on your implementation until the tests pass.
+                Verify your changes don't break existing functionality through regression testing, but prefer running targeted tests over full test suites.
+                Note: the codebase may be fully configured or freshly cloned with no dependencies installed - handle any necessary setup steps.
+                
+                You also have an intelligent find micro agent at your disposition, which can help you find code components and other constructs 
+                more cheaply than you can do it yourself. Lean on it for any and all search operations. Do not use shell execution for find tasks.
+                """.trimIndent()
+            )
+        },
+        maxAgentIterations = 400
+    ),
+    strategy = singleRunStrategy()
 ) {
     setupObservability(agentName = "main")
 }
