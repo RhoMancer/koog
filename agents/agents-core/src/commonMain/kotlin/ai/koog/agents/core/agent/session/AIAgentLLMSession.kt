@@ -3,29 +3,26 @@
 package ai.koog.agents.core.agent.session
 
 import ai.koog.agents.core.agent.config.AIAgentConfig
+import ai.koog.agents.core.annotation.InternalAgentsApi
 import ai.koog.agents.core.tools.Tool
 import ai.koog.agents.core.tools.ToolDescriptor
 import ai.koog.agents.core.utils.ActiveProperty
 import ai.koog.prompt.dsl.ModerationResult
 import ai.koog.prompt.dsl.Prompt
-import ai.koog.prompt.executor.model.PromptExecutor
 import ai.koog.prompt.llm.LLModel
 import ai.koog.prompt.message.LLMChoice
 import ai.koog.prompt.message.Message
-import ai.koog.prompt.params.LLMParams
 import ai.koog.prompt.streaming.StreamFrame
 import ai.koog.prompt.structure.StructureFixingParser
 import ai.koog.prompt.structure.StructuredRequestConfig
 import ai.koog.prompt.structure.StructuredResponse
 import ai.koog.prompt.structure.executeStructured
-import ai.koog.prompt.structure.parseResponseToStructuredResponse
 import kotlinx.coroutines.flow.Flow
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.serializer
-import kotlin.jvm.JvmName
 
 /**
- * Represents a session for an AI agent that interacts with an LLM (Language Learning Model).
+ * Represents a session API for an AI agent that interacts with an LLM (Language Learning Model).
  * The session manages prompt execution, structured outputs, and tools integration.
  *
  * This is a sealed class that provides common behavior and lifecycle management for derived types.
@@ -34,15 +31,16 @@ import kotlin.jvm.JvmName
  * @property executor The executor responsible for executing prompts and handling LLM interactions.
  * @constructor Creates an instance of an [AIAgentLLMSession] with an executor, a list of tools, and a prompt.
  */
-@OptIn(ExperimentalStdlibApi::class)
-public expect sealed class AIAgentLLMSession(
-    executor: PromptExecutor,
-    tools: List<ToolDescriptor>,
-    prompt: Prompt,
-    model: LLModel,
-    config: AIAgentConfig,
-) : AutoCloseable {
-    protected open val config: AIAgentConfig
+public interface AIAgentLLMSession : AutoCloseable {
+    /**
+     * Represents the configuration settings for an AI agent.
+     *
+     * This variable holds an instance of [AIAgentConfig], which encapsulates 
+     * various parameters and options used to customize the behavior and 
+     * functionality of the AI agent.
+     */
+
+    public val config: AIAgentConfig
 
     /**
      * Represents the current prompt associated with the LLM session.
@@ -60,7 +58,7 @@ public expect sealed class AIAgentLLMSession(
      * - [requestLLM]
      * etc.
      */
-    public open val prompt: Prompt
+    public val prompt: Prompt
 
     /**
      * Provides a list of tools based on the current active state.
@@ -73,7 +71,7 @@ public expect sealed class AIAgentLLMSession(
      * Accessing this property when the session is inactive will raise an exception, ensuring consistency
      * and preventing misuse of tools outside a valid context.
      */
-    public open val tools: List<ToolDescriptor>
+    public val tools: List<ToolDescriptor>
 
     /**
      * Represents the active language model used within the session.
@@ -86,7 +84,7 @@ public expect sealed class AIAgentLLMSession(
      *
      * Usage of this property when the session is inactive will result in an exception.
      */
-    public open val model: LLModel
+    public val model: LLModel
 
     /**
      * A flag indicating whether the session is currently active.
@@ -94,7 +92,8 @@ public expect sealed class AIAgentLLMSession(
      * This variable is used to ensure that the session operations are only performed when the session is active.
      * Once the session is closed, this flag is set to `false` to prevent further usage.
      */
-    protected open var isActive: Boolean
+    @InternalAgentsApi
+    public var isActive: Boolean
 
     /**
      * Ensures that the session is active before allowing further operations.
@@ -106,22 +105,55 @@ public expect sealed class AIAgentLLMSession(
      * Throws:
      * - `IllegalStateException` if the session is not active.
      */
-    protected open fun validateSession()
+    @InternalAgentsApi
+    public fun validateSession()
 
-    protected open fun preparePrompt(prompt: Prompt, tools: List<ToolDescriptor>): Prompt
+    /**
+     * Prepares a prompt by incorporating the provided tools into it.
+     *
+     * @param prompt The initial prompt that needs to be updated or modified.
+     * @param tools A list of tool descriptors that may be used to enhance or adapt the prompt.
+     * @return The updated prompt after incorporating the provided tools.
+     */
+    @InternalAgentsApi
+    public fun preparePrompt(prompt: Prompt, tools: List<ToolDescriptor>): Prompt
 
-    protected open fun executeStreaming(prompt: Prompt, tools: List<ToolDescriptor>): Flow<StreamFrame>
+    /**
+     * Executes a streaming process based on the provided prompt and tools.
+     *
+     * @param prompt the input prompt containing the initial data or request for the streaming process.
+     * @param tools a list of tool descriptors that provide functionality to assist during streaming execution.
+     * @return a flow of StreamFrame objects representing the streamed output.
+     */
+    @InternalAgentsApi
+    public fun executeStreaming(prompt: Prompt, tools: List<ToolDescriptor>): Flow<StreamFrame>
 
-    protected open suspend fun executeMultiple(prompt: Prompt, tools: List<ToolDescriptor>): List<Message.Response>
+    /**
+     * Executes multiple tools using the given prompt and returns their responses.
+     *
+     * @param prompt The input prompt that guides the execution of the tools.
+     * @param tools The list of tool descriptors to be executed.
+     * @return A list of responses generated by executing the tools.
+     */
+    @InternalAgentsApi
+    public suspend fun executeMultiple(prompt: Prompt, tools: List<ToolDescriptor>): List<Message.Response>
 
-    protected open suspend fun executeSingle(prompt: Prompt, tools: List<ToolDescriptor>): Message.Response
+    /**
+     * Executes a single operation based on the provided prompt and tools.
+     *
+     * @param prompt The input prompt containing the necessary information for the operation.
+     * @param tools A list of tool descriptors that can be utilized during the execution.
+     * @return The response message resulting from the execution.
+     */
+    @InternalAgentsApi
+    public suspend fun executeSingle(prompt: Prompt, tools: List<ToolDescriptor>): Message.Response
 
     /**
      * Sends a request to the language model without utilizing any tools and returns multiple responses.
      *
      * @return A list of response messages from the language model.
      */
-    public open suspend fun requestLLMMultipleWithoutTools(): List<Message.Response>
+    public suspend fun requestLLMMultipleWithoutTools(): List<Message.Response>
 
     /**
      * Sends a request to the language model without using any tools and returns the response.
@@ -134,7 +166,7 @@ public expect sealed class AIAgentLLMSession(
      * @return The response message from the language model after executing the request, represented
      *         as a [Message.Response] instance.
      */
-    public open suspend fun requestLLMWithoutTools(): Message.Response
+    public suspend fun requestLLMWithoutTools(): Message.Response
 
     /**
      * Sends a request to the language model that enforces the usage of tools and retrieves the response.
@@ -144,7 +176,7 @@ public expect sealed class AIAgentLLMSession(
      *
      * @return The response from the language model after executing the request with enforced tool usage.
      */
-    public open suspend fun requestLLMOnlyCallingTools(): Message.Response
+    public suspend fun requestLLMOnlyCallingTools(): Message.Response
 
     /**
      * Sends a request to the language model while enforcing the use of a specific tool
@@ -160,7 +192,7 @@ public expect sealed class AIAgentLLMSession(
      * @return The response from the language model as a [Message.Response] instance after
      *         processing the request with the enforced tool.
      */
-    public open suspend fun requestLLMForceOneTool(tool: ToolDescriptor): Message.Response
+    public suspend fun requestLLMForceOneTool(tool: ToolDescriptor): Message.Response
 
     /**
      * Sends a request to the language model while enforcing the use of a specific tool and returns the response.
@@ -174,7 +206,7 @@ public expect sealed class AIAgentLLMSession(
      * @return The response from the language model as a [Message.Response] instance after processing the request with the
      *         enforced tool.
      */
-    public open suspend fun requestLLMForceOneTool(tool: Tool<*, *>): Message.Response
+    public suspend fun requestLLMForceOneTool(tool: Tool<*, *>): Message.Response
 
     /**
      * Sends a request to the underlying LLM and returns the first response.
@@ -182,7 +214,7 @@ public expect sealed class AIAgentLLMSession(
      *
      * @return The first response message from the LLM after executing the request.
      */
-    public open suspend fun requestLLM(): Message.Response
+    public suspend fun requestLLM(): Message.Response
 
     /**
      * Sends a streaming request to the underlying LLM and returns the streamed response.
@@ -190,7 +222,7 @@ public expect sealed class AIAgentLLMSession(
      *
      * @return A flow emitting `StreamFrame` objects that represent the streaming output of the language model.
      */
-    public open suspend fun requestLLMStreaming(): Flow<StreamFrame>
+    public suspend fun requestLLMStreaming(): Flow<StreamFrame>
 
     /**
      * Sends a moderation request to the specified or default large language model (LLM) for content moderation.
@@ -204,7 +236,7 @@ public expect sealed class AIAgentLLMSession(
      * @return A [ModerationResult] instance containing the details of the moderation analysis, including
      *         content classification and flagged categories.
      */
-    public open suspend fun requestModeration(moderatingModel: LLModel? = null): ModerationResult
+    public suspend fun requestModeration(moderatingModel: LLModel? = null): ModerationResult
 
     /**
      * Sends a request to the language model, potentially using multiple tools,
@@ -215,7 +247,7 @@ public expect sealed class AIAgentLLMSession(
      *
      * @return a list of responses from the language model
      */
-    public open suspend fun requestLLMMultiple(): List<Message.Response>
+    public suspend fun requestLLMMultiple(): List<Message.Response>
 
     /**
      * Sends a request to LLM and gets a structured response.
@@ -224,7 +256,7 @@ public expect sealed class AIAgentLLMSession(
      *
      * @see [executeStructured]
      */
-    public open suspend fun <T> requestLLMStructured(
+    public suspend fun <T> requestLLMStructured(
         config: StructuredRequestConfig<T>,
     ): Result<StructuredResponse<T>>
 
@@ -242,7 +274,7 @@ public expect sealed class AIAgentLLMSession(
      * intelligently fix parsing errors. When specified, parsing errors trigger additional
      * LLM calls with error context to attempt correction of the structure format.
      */
-    public open suspend fun <T> requestLLMStructured(
+    public suspend fun <T> requestLLMStructured(
         serializer: KSerializer<T>,
         examples: List<T> = emptyList(),
         fixingParser: StructureFixingParser? = null
@@ -261,7 +293,7 @@ public expect sealed class AIAgentLLMSession(
      * It includes options such as structure definitions and optional parsers for error handling.
      * @return A structured response containing the parsed data of type `T` along with the original message.
      */
-    public open suspend fun <T> parseResponseToStructuredResponse(
+    public suspend fun <T> parseResponseToStructuredResponse(
         response: Message.Assistant,
         config: StructuredRequestConfig<T>
     ): StructuredResponse<T>
@@ -275,7 +307,7 @@ public expect sealed class AIAgentLLMSession(
      *
      * @return a list of choices from the model
      */
-    public open suspend fun requestLLMMultipleChoices(): List<LLMChoice>
+    public suspend fun requestLLMMultipleChoices(): List<LLMChoice>
 
     override fun close()
 }

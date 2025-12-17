@@ -1,6 +1,9 @@
+@file:OptIn(InternalAgentsApi::class)
+
 package ai.koog.agents.core.agent.session
 
 import ai.koog.agents.core.agent.config.AIAgentConfig
+import ai.koog.agents.core.annotation.InternalAgentsApi
 import ai.koog.agents.core.environment.AIAgentEnvironment
 import ai.koog.agents.core.environment.SafeTool
 import ai.koog.agents.core.tools.Tool
@@ -28,15 +31,16 @@ import kotlin.reflect.KClass
 
 @PublishedApi
 internal class AIAgentLLMWriteSessionImpl internal constructor(
-    environment: AIAgentEnvironment,
+    override val environment: AIAgentEnvironment,
     executor: PromptExecutor,
     tools: List<ToolDescriptor>,
-    toolRegistry: ToolRegistry,
+    override val toolRegistry: ToolRegistry,
     prompt: Prompt,
     model: LLModel,
     config: AIAgentConfig,
-    clock: Clock
-) : AIAgentLLMWriteSession(environment, executor, tools, toolRegistry, prompt, model, config, clock) {
+    override val clock: Clock,
+    private val readSessionDelegate: AIAgentLLMSessionImpl
+) : AIAgentLLMSession by readSessionDelegate, AIAgentLLMWriteSessionAPI {
 
     override var prompt: Prompt by ActiveProperty(prompt) { isActive }
 
@@ -78,7 +82,7 @@ internal class AIAgentLLMWriteSessionImpl internal constructor(
     }
 
     override suspend fun requestLLMMultipleWithoutTools(): List<Message.Response> {
-        return super.requestLLMMultipleWithoutTools().also { responses ->
+        return readSessionDelegate.requestLLMMultipleWithoutTools().also { responses ->
             appendPrompt {
                 responses.forEach { message(it) }
             }
@@ -87,27 +91,27 @@ internal class AIAgentLLMWriteSessionImpl internal constructor(
 
     override suspend fun requestLLMWithoutTools(): Message.Response {
         config
-        return super.requestLLMWithoutTools().also { response -> appendPrompt { message(response) } }
+        return readSessionDelegate.requestLLMWithoutTools().also { response -> appendPrompt { message(response) } }
     }
 
     override suspend fun requestLLMOnlyCallingTools(): Message.Response {
-        return super.requestLLMOnlyCallingTools().also { response -> appendPrompt { message(response) } }
+        return readSessionDelegate.requestLLMOnlyCallingTools().also { response -> appendPrompt { message(response) } }
     }
 
     override suspend fun requestLLMForceOneTool(tool: ToolDescriptor): Message.Response {
-        return super.requestLLMForceOneTool(tool).also { response -> appendPrompt { message(response) } }
+        return readSessionDelegate.requestLLMForceOneTool(tool).also { response -> appendPrompt { message(response) } }
     }
 
     override suspend fun requestLLMForceOneTool(tool: Tool<*, *>): Message.Response {
-        return super.requestLLMForceOneTool(tool).also { response -> appendPrompt { message(response) } }
+        return readSessionDelegate.requestLLMForceOneTool(tool).also { response -> appendPrompt { message(response) } }
     }
 
     override suspend fun requestLLM(): Message.Response {
-        return super.requestLLM().also { response -> appendPrompt { message(response) } }
+        return readSessionDelegate.requestLLM().also { response -> appendPrompt { message(response) } }
     }
 
     override suspend fun requestLLMMultiple(): List<Message.Response> {
-        return super.requestLLMMultiple().also { responses ->
+        return readSessionDelegate.requestLLMMultiple().also { responses ->
             appendPrompt {
                 responses.forEach { message(it) }
             }
@@ -117,7 +121,7 @@ internal class AIAgentLLMWriteSessionImpl internal constructor(
     override suspend fun <T> requestLLMStructured(
         config: StructuredRequestConfig<T>,
     ): Result<StructuredResponse<T>> {
-        return super.requestLLMStructured(config).also {
+        return readSessionDelegate.requestLLMStructured(config).also {
             it.onSuccess { response ->
                 appendPrompt {
                     message(response.message)
@@ -131,7 +135,7 @@ internal class AIAgentLLMWriteSessionImpl internal constructor(
         examples: List<T>,
         fixingParser: StructureFixingParser?
     ): Result<StructuredResponse<T>> {
-        return super.requestLLMStructured(serializer, examples, fixingParser).also {
+        return readSessionDelegate.requestLLMStructured(serializer, examples, fixingParser).also {
             it.onSuccess { response ->
                 appendPrompt {
                     message(response.message)
@@ -149,7 +153,7 @@ internal class AIAgentLLMWriteSessionImpl internal constructor(
             }
             this.prompt = prompt
         }
-        return super.requestLLMStreaming()
+        return readSessionDelegate.requestLLMStreaming()
     }
 
     @PublishedApi
@@ -189,7 +193,7 @@ internal class AIAgentLLMWriteSessionImpl internal constructor(
         concurrency: Int = 16
     ): Flow<SafeTool.Result<TResult>> {
         val tool = findTool(toolClass)
-        return toParallelToolCalls(tool, concurrency)
+        return toParallelToolCallsImpl(tool, concurrency)
     }
 
     @PublishedApi
@@ -198,6 +202,6 @@ internal class AIAgentLLMWriteSessionImpl internal constructor(
         concurrency: Int = 16
     ): Flow<String> {
         val tool = findTool(toolClass)
-        return toParallelToolCallsRaw(tool, concurrency)
+        return toParallelToolCallsRawImpl(tool, concurrency)
     }
 }

@@ -16,75 +16,94 @@ import ai.koog.prompt.llm.LLModel
 import kotlinx.datetime.Clock
 import kotlin.reflect.typeOf
 
-public actual open class AIAgentBuilder internal actual constructor() {
-    private val delegate = AIAgentBuilderImpl()
+public actual class AIAgentBuilder internal actual constructor() : AIAgentBuilderAPI {
+    private val delegate: AIAgentBuilderImpl = AIAgentBuilderImpl()
 
     @property:PublishedApi
-    internal actual open var promptExecutor: PromptExecutor? = delegate.promptExecutor
+    internal actual var promptExecutor: PromptExecutor?
+        get() = delegate.promptExecutor
+        set(value) { delegate.promptExecutor = value }
 
     @property:PublishedApi
-    internal actual open var toolRegistry: ToolRegistry = delegate.toolRegistry
+    internal actual var toolRegistry: ToolRegistry
+        get() = delegate.toolRegistry
+        set(value) { delegate.toolRegistry = value }
 
     @property:PublishedApi
-    internal actual open var id: String? = delegate.id
+    internal actual var id: String?
+        get() = delegate.id
+        set(value) { delegate.id = value }
 
     @property:PublishedApi
-    internal actual open var prompt: Prompt = delegate.prompt
+    internal actual var prompt: Prompt
+        get() = delegate.prompt
+        set(value) { delegate.prompt = value }
 
     @property:PublishedApi
-    internal actual open var llmModel: LLModel? = delegate.llmModel
+    internal actual var llmModel: LLModel?
+        get() = delegate.llmModel
+        set(value) { delegate.llmModel = value }
 
     @property:PublishedApi
-    internal actual open var temperature: Double = delegate.temperature
+    internal actual var temperature: Double
+        get() = delegate.temperature
+        set(value) { delegate.temperature = value }
 
     @property:PublishedApi
-    internal actual open var numberOfChoices: Int = delegate.numberOfChoices
+    internal actual var numberOfChoices: Int
+        get() = delegate.numberOfChoices
+        set(value) { delegate.numberOfChoices = value }
 
     @property:PublishedApi
-    internal actual open var missingToolsConversionStrategy: MissingToolsConversionStrategy =
-        delegate.missingToolsConversionStrategy
+    internal actual var missingToolsConversionStrategy: MissingToolsConversionStrategy
+        get() = delegate.missingToolsConversionStrategy
+        set(value) { delegate.missingToolsConversionStrategy = value }
 
     @property:PublishedApi
-    internal actual open var maxIterations: Int = delegate.maxIterations
+    internal actual var maxIterations: Int
+        get() = delegate.maxIterations
+        set(value) { delegate.maxIterations = value }
 
     @property:PublishedApi
-    internal actual open var clock: Clock = delegate.clock
+    internal actual var clock: Clock
+        get() = delegate.clock
+        set(value) { delegate.clock = value }
 
-    public actual open fun promptExecutor(promptExecutor: PromptExecutor): AIAgentBuilder =
-        delegate.promptExecutor(promptExecutor)
+    public actual override fun promptExecutor(promptExecutor: PromptExecutor): AIAgentBuilder =
+        apply { delegate.promptExecutor(promptExecutor) }
 
-    public actual open fun llmModel(model: LLModel): AIAgentBuilder = delegate.llmModel(model)
+    public actual override fun llmModel(model: LLModel): AIAgentBuilder = apply { delegate.llmModel(model) }
 
-    public actual open fun toolRegistry(toolRegistry: ToolRegistry): AIAgentBuilder =
-        delegate.toolRegistry(toolRegistry)
+    public actual override fun toolRegistry(toolRegistry: ToolRegistry): AIAgentBuilder =
+        apply { delegate.toolRegistry(toolRegistry) }
 
-    public actual open fun <Input, Output> graphStrategy(
+    public actual override fun <Input, Output> graphStrategy(
         strategy: AIAgentGraphStrategy<Input, Output>
     ): GraphAgentBuilder<Input, Output> = delegate.graphStrategy(strategy)
 
-    public actual open fun <Input, Output> functionalStrategy(
+    public actual override fun <Input, Output> functionalStrategy(
         strategy: AIAgentFunctionalStrategy<Input, Output>
     ): FunctionalAgentBuilder<Input, Output> = delegate.functionalStrategy(strategy)
 
-    public actual open fun id(id: String?): AIAgentBuilder = delegate.id(id)
+    public actual override fun id(id: String?): AIAgentBuilder = apply { delegate.id(id) }
 
-    public actual open fun systemPrompt(systemPrompt: String): AIAgentBuilder = delegate.systemPrompt(systemPrompt)
+    public actual override fun systemPrompt(systemPrompt: String): AIAgentBuilder = apply { delegate.systemPrompt(systemPrompt) }
 
-    public actual open fun prompt(prompt: Prompt): AIAgentBuilder = delegate.prompt(prompt)
+    public actual override fun prompt(prompt: Prompt): AIAgentBuilder = apply { delegate.prompt(prompt) }
 
-    public actual open fun temperature(temperature: Double): AIAgentBuilder = delegate.temperature(temperature)
+    public actual override fun temperature(temperature: Double): AIAgentBuilder = apply { delegate.temperature(temperature) }
 
-    public actual open fun numberOfChoices(numberOfChoices: Int): AIAgentBuilder =
-        delegate.numberOfChoices(numberOfChoices)
+    public actual override fun numberOfChoices(numberOfChoices: Int): AIAgentBuilder =
+        apply { delegate.numberOfChoices(numberOfChoices) }
 
-    public actual open fun maxIterations(maxIterations: Int): AIAgentBuilder = delegate.maxIterations(maxIterations)
+    public actual override fun maxIterations(maxIterations: Int): AIAgentBuilder = apply { delegate.maxIterations(maxIterations) }
 
-    public actual open fun agentConfig(config: AIAgentConfig): AIAgentBuilder = delegate.agentConfig(config)
+    public actual override fun agentConfig(config: AIAgentConfig): AIAgentBuilder = apply { delegate.agentConfig(config) }
 
-    public actual open fun <TConfig : FeatureConfig> install(
+    public actual override fun <TConfig : FeatureConfig> install(
         feature: AIAgentGraphFeature<TConfig, *>,
         configure: ConfigureAction<TConfig>
     ): GraphAgentBuilder<String, String> = delegate.install(feature, configure)
 
-    public actual open fun build(): AIAgent<String, String> = delegate.build()
+    public actual override fun build(): AIAgent<String, String> = delegate.build()
 }

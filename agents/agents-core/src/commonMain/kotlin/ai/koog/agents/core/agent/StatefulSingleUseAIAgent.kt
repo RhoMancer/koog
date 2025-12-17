@@ -8,6 +8,7 @@ import ai.koog.agents.core.agent.context.AgentExecutionInfo
 import ai.koog.agents.core.agent.context.AgentExecutionPath
 import ai.koog.agents.core.agent.context.withParent
 import ai.koog.agents.core.agent.entity.AIAgentStrategy
+import ai.koog.agents.core.annotation.InternalAgentsApi
 import ai.koog.agents.core.feature.AIAgentFeature
 import ai.koog.agents.core.feature.pipeline.AIAgentPipeline
 import io.github.oshai.kotlinlogging.KLogger
@@ -191,6 +192,7 @@ public abstract class StatefulSingleUseAIAgent<Input, Output, TContext : AIAgent
         "[agent id: $agentId, run id: $runId] $message"
 
 
+    @OptIn(InternalAgentsApi::class)
     private suspend fun <T> AIAgentPipeline.withPreparedPipeline(
         block: suspend () -> T
     ): T = try {

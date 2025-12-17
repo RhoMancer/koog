@@ -1,3 +1,5 @@
+@file:OptIn(InternalAgentsApi::class)
+
 package ai.koog.agents.core.feature.pipeline
 
 import ai.koog.agents.core.agent.AIAgent
@@ -89,7 +91,10 @@ import kotlin.reflect.safeCast
  *
  * @property clock Clock instance for time-related operations
  */
-internal class AIAgentPipelineImpl(private val config: AIAgentConfig, clock: Clock) : AIAgentPipeline(config, clock) {
+@InternalAgentsApi
+public class AIAgentPipelineImpl(
+    override val agentConfig: AIAgentConfig, clock: Clock
+) : AIAgentPipelineAPI {
 
     public override val clock: Clock = clock
 
@@ -186,7 +191,7 @@ internal class AIAgentPipelineImpl(private val config: AIAgentConfig, clock: Clo
             )
     }
 
-    protected override fun <TConfig : FeatureConfig, TFeatureImpl : Any> install(
+    public override fun <TConfig : FeatureConfig, TFeatureImpl : Any> install(
         featureKey: AIAgentStorageKey<TFeatureImpl>,
         featureConfig: TConfig,
         featureImpl: TFeatureImpl,
@@ -223,7 +228,8 @@ internal class AIAgentPipelineImpl(private val config: AIAgentConfig, clock: Clo
     /**
      * Prepares features by initializing their respective message processors.
      */
-    internal override suspend fun prepareFeatures() {
+    @InternalAgentsApi
+    override suspend fun prepareFeatures() {
         // Install system features (if exist)
         installFeaturesFromSystemConfig()
 
@@ -252,6 +258,7 @@ internal class AIAgentPipelineImpl(private val config: AIAgentConfig, clock: Clo
      * This internal method properly shuts down all message processors of registered features,
      * ensuring resources are released appropriately.
      */
+    @InternalAgentsApi
     override suspend fun closeAllFeaturesMessageProcessors() {
         registeredFeatures.values.forEach { registerFeature ->
             closeFeatureMessageProcessors(registerFeature.featureConfig)
@@ -331,7 +338,7 @@ internal class AIAgentPipelineImpl(private val config: AIAgentConfig, clock: Clo
         executionInfo: AgentExecutionInfo,
         agentId: String
     ) {
-        val eventContext = AgentClosingContext(executionInfo, agentId, config)
+        val eventContext = AgentClosingContext(executionInfo, agentId, agentConfig)
         agentEventHandlers.values.forEach { handler -> handler.agentClosingHandler.handle(eventContext) }
     }
 
@@ -353,7 +360,7 @@ internal class AIAgentPipelineImpl(private val config: AIAgentConfig, clock: Clo
         agent: GraphAIAgent<*, *>,
         baseEnvironment: AIAgentEnvironment,
     ): AIAgentEnvironment {
-        val eventContext = AgentEnvironmentTransformingContext(executionInfo, strategy, agent, config)
+        val eventContext = AgentEnvironmentTransformingContext(executionInfo, strategy, agent, agentConfig)
         return agentEventHandlers.values.fold(baseEnvironment) { environment, handler ->
             handler.transformEnvironment(eventContext, environment)
         }
@@ -1446,6 +1453,7 @@ internal class AIAgentPipelineImpl(private val config: AIAgentConfig, clock: Clo
         }
     }
 
+    @InternalAgentsApi
     public override fun <TContext : AgentLifecycleEventContext> createConditionalHandler(
         feature: AIAgentFeature<*, *>,
         handle: suspend (TContext) -> Unit
@@ -1459,6 +1467,7 @@ internal class AIAgentPipelineImpl(private val config: AIAgentConfig, clock: Clo
         handle(eventContext)
     }
 
+    @InternalAgentsApi
     public override fun createConditionalHandler(
         feature: AIAgentFeature<*, *>,
         handle: suspend AgentEnvironmentTransformingContext.(AIAgentEnvironment) -> AIAgentEnvironment

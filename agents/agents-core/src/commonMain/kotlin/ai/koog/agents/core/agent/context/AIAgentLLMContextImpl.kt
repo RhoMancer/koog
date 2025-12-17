@@ -1,10 +1,12 @@
-@file:OptIn(DetachedPromptExecutorAPI::class)
+@file:OptIn(DetachedPromptExecutorAPI::class, InternalAgentsApi::class)
+@file:Suppress("MissingKDocForPublicAPI")
 
 package ai.koog.agents.core.agent.context
 
 import ai.koog.agents.core.agent.config.AIAgentConfig
 import ai.koog.agents.core.agent.session.AIAgentLLMReadSession
 import ai.koog.agents.core.agent.session.AIAgentLLMWriteSession
+import ai.koog.agents.core.annotation.InternalAgentsApi
 import ai.koog.agents.core.environment.AIAgentEnvironment
 import ai.koog.agents.core.tools.ToolDescriptor
 import ai.koog.agents.core.tools.ToolRegistry
@@ -14,28 +16,19 @@ import ai.koog.prompt.executor.model.PromptExecutor
 import ai.koog.prompt.llm.LLModel
 import kotlinx.datetime.Clock
 
-internal class AIAgentLLMContextImpl(
-    tools: List<ToolDescriptor>,
-    toolRegistry: ToolRegistry = ToolRegistry.EMPTY,
-    prompt: Prompt,
-    model: LLModel,
-    promptExecutor: PromptExecutor,
-    environment: AIAgentEnvironment,
-    config: AIAgentConfig,
-    clock: Clock
-) : AIAgentLLMContext(
-    tools,
-    toolRegistry,
-    prompt,
-    model,
-    promptExecutor,
-    environment,
-    config,
-    clock
-) {
-    public override suspend fun withPrompt(block: Prompt.() -> Prompt): AIAgentLLMContext = rwLock.withReadLock {
+@InternalAgentsApi
+public class AIAgentLLMContextImpl(
+    override var tools: List<ToolDescriptor>,
+    override val toolRegistry: ToolRegistry = ToolRegistry.EMPTY,
+    override var prompt: Prompt,
+    override var model: LLModel,
+    override val promptExecutor: PromptExecutor,
+    override val environment: AIAgentEnvironment,
+    override val config: AIAgentConfig,
+    override val clock: Clock
+) : AIAgentLLMContextAPI {
+    public override suspend fun withPrompt(block: Prompt.() -> Prompt): Unit = rwLock.withReadLock {
         this.prompt = prompt.block()
-        this
     }
 
     public override suspend fun copy(

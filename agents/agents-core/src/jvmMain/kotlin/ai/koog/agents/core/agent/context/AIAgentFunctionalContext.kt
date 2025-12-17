@@ -1,14 +1,13 @@
 @file:Suppress("EXPECT_ACTUAL_CLASSIFIERS_ARE_IN_BETA_WARNING", "ACTUAL_ANNOTATIONS_NOT_MATCH_EXPECT")
+@file:OptIn(InternalAgentsApi::class)
 
 package ai.koog.agents.core.agent.context
 
 import ai.koog.agents.annotations.JavaAPI
-import ai.koog.agents.core.agent.NonSuspendAIAgentFunctionalStrategy
 import ai.koog.agents.core.agent.ToolCalls
 import ai.koog.agents.core.agent.config.AIAgentConfig
 import ai.koog.agents.core.agent.entity.AIAgentStateManager
 import ai.koog.agents.core.agent.entity.AIAgentStorage
-import ai.koog.agents.core.agent.entity.AIAgentStorageKey
 import ai.koog.agents.core.annotation.InternalAgentsApi
 import ai.koog.agents.core.dsl.extension.HistoryCompressionStrategy
 import ai.koog.agents.core.environment.AIAgentEnvironment
@@ -20,7 +19,6 @@ import ai.koog.agents.core.tools.ToolDescriptor
 import ai.koog.agents.core.utils.asCoroutineContext
 import ai.koog.agents.core.utils.runOnLLMDispatcher
 import ai.koog.agents.core.utils.runOnMainDispatcher
-import ai.koog.agents.ext.agent.CriticResult
 import ai.koog.prompt.llm.LLModel
 import ai.koog.prompt.message.Message
 import ai.koog.prompt.params.LLMParams
@@ -30,19 +28,15 @@ import ai.koog.prompt.structure.StructureFixingParser
 import ai.koog.prompt.structure.StructuredResponse
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.launch
 import kotlinx.serialization.InternalSerializationApi
 import kotlinx.serialization.serializer
 import java.util.concurrent.ExecutorService
-import java.util.concurrent.Flow.Publisher
-import java.util.concurrent.Flow.Subscription
-import java.util.function.BiFunction
+import java.util.concurrent.Flow
 import kotlin.reflect.KClass
 
-@OptIn(InternalAgentsApi::class)
-@Suppress("UNCHECKED_CAST", "MissingKDocForPublicAPI")
-public actual open class AIAgentFunctionalContext internal actual constructor(
+@Suppress("MissingKDocForPublicAPI")
+public actual class AIAgentFunctionalContext internal actual constructor(
     environment: AIAgentEnvironment,
     agentId: String,
     runId: String,
@@ -54,13 +48,49 @@ public actual open class AIAgentFunctionalContext internal actual constructor(
     strategyName: String,
     pipeline: AIAgentFunctionalPipeline,
     executionInfo: AgentExecutionInfo,
-    parentContext: AIAgentContext?
-) : AIAgentContext {
-    @PublishedApi
-    internal val delegate: AIAgentFunctionalContextImpl = AIAgentFunctionalContextImpl(
+    parentContext: AIAgentContext?,
+    @PublishedApi internal actual val delegate: AIAgentFunctionalContextImpl
+) : AIAgentContext, AIAgentFunctionalContextAPI by delegate {
+    public actual suspend inline fun <reified T> requestLLMStructured(
+        message: String,
+        examples: List<T>,
+        fixingParser: StructureFixingParser?
+    ): Result<StructuredResponse<T>> = delegate.requestLLMStructuredImpl(message, examples, fixingParser)
+
+    public actual suspend inline fun <Input, reified Output> subtask(
+        taskDescription: String,
+        input: Input,
+        tools: List<Tool<*, *>>?,
+        llmModel: LLModel?,
+        llmParams: LLMParams?,
+        runMode: ToolCalls,
+        assistantResponseRepeatMax: Int?,
+    ): Output = delegate.subtaskImpl(
+        taskDescription,
+        input,
+        tools,
+        llmModel,
+        llmParams,
+        runMode,
+        assistantResponseRepeatMax,
+    )
+
+    @JvmOverloads
+    public actual fun copy(
+        environment: AIAgentEnvironment,
+        agentId: String,
+        runId: String,
+        agentInput: Any?,
+        config: AIAgentConfig,
+        llm: AIAgentLLMContext,
+        stateManager: AIAgentStateManager,
+        storage: AIAgentStorage,
+        strategyName: String,
+        pipeline: AIAgentFunctionalPipeline,
+        parentRootContext: AIAgentContext?
+    ): AIAgentFunctionalContext = AIAgentFunctionalContext(
         environment = environment,
         agentId = agentId,
-        pipeline = pipeline,
         runId = runId,
         agentInput = agentInput,
         config = config,
@@ -68,21 +98,11 @@ public actual open class AIAgentFunctionalContext internal actual constructor(
         stateManager = stateManager,
         storage = storage,
         strategyName = strategyName,
-        parentContext = parentContext,
+        pipeline = pipeline,
         executionInfo = executionInfo,
+        parentContext = parentRootContext,
+        delegate = delegate,
     )
-
-    actual override val environment: AIAgentEnvironment = delegate.environment
-    actual override val agentId: String = delegate.agentId
-    actual override val pipeline: AIAgentFunctionalPipeline = delegate.pipeline
-    actual override val runId: String = delegate.runId
-    actual override val agentInput: Any? = delegate.agentInput
-    actual override val config: AIAgentConfig = delegate.config
-    actual override val llm: AIAgentLLMContext = delegate.llm
-    actual override val stateManager: AIAgentStateManager = delegate.stateManager
-    actual override val storage: AIAgentStorage = delegate.storage
-    actual override val strategyName: String = delegate.strategyName
-    actual override val executionInfo: AgentExecutionInfo = delegate.executionInfo
 
     /**
      * Retrieves the current AI agent environment.
@@ -174,51 +194,13 @@ public actual open class AIAgentFunctionalContext internal actual constructor(
     @JavaAPI
     public fun executionInfo(): AgentExecutionInfo = executionInfo
 
-    @InternalAgentsApi
-    actual override val parentContext: AIAgentContext? = delegate.parentContext
-
-    actual open override fun store(key: AIAgentStorageKey<*>, value: Any): Unit = delegate.store(key, value)
-
-    actual open override fun <T> get(key: AIAgentStorageKey<*>): T? = delegate.get(key)
-
-    actual open override fun remove(key: AIAgentStorageKey<*>): Boolean = delegate.remove(key)
-
-    actual open override suspend fun getHistory(): List<Message> = delegate.getHistory()
-
     @JavaAPI
     @JvmOverloads
     public fun getHistory(executorService: ExecutorService? = null): List<Message> =
         config.runOnMainDispatcher(executorService) { getHistory() }
 
     @JvmOverloads
-    public actual open fun copy(
-        environment: AIAgentEnvironment,
-        agentId: String,
-        runId: String,
-        agentInput: Any?,
-        config: AIAgentConfig,
-        llm: AIAgentLLMContext,
-        stateManager: AIAgentStateManager,
-        storage: AIAgentStorage,
-        strategyName: String,
-        pipeline: AIAgentFunctionalPipeline,
-        parentRootContext: AIAgentContext?
-    ): AIAgentFunctionalContext = delegate.copy(
-        environment = environment,
-        agentId = agentId,
-        runId = runId,
-        agentInput = agentInput,
-        config = config,
-        llm = llm,
-        stateManager = stateManager,
-        storage = storage,
-        strategyName = strategyName,
-        pipeline = pipeline,
-        parentRootContext = parentRootContext,
-    )
-
-    @JvmOverloads
-    public actual open suspend fun requestLLM(
+    public actual override suspend fun requestLLM(
         message: String,
         allowToolCalls: Boolean
     ): Message.Response = delegate.requestLLM(message, allowToolCalls)
@@ -242,35 +224,6 @@ public actual open class AIAgentFunctionalContext internal actual constructor(
         requestLLM(message, allowToolCalls)
     }
 
-    public actual open fun onAssistantMessage(
-        response: Message.Response,
-        action: (Message.Assistant) -> Unit
-    ): Unit = delegate.onAssistantMessage(response, action)
-
-    public actual open fun Message.Response.asAssistantMessageOrNull(): Message.Assistant? = with(delegate) {
-        this@asAssistantMessageOrNull.asAssistantMessageOrNull()
-    }
-
-    public actual open fun Message.Response.asAssistantMessage(): Message.Assistant = with(delegate) {
-        this@asAssistantMessage.asAssistantMessage()
-    }
-
-    public actual open fun onMultipleToolCalls(
-        response: List<Message.Response>,
-        action: (List<Message.Tool.Call>) -> Unit
-    ): Unit = delegate.onMultipleToolCalls(response, action)
-
-    public actual open fun extractToolCalls(
-        response: List<Message.Response>
-    ): List<Message.Tool.Call> = delegate.extractToolCalls(response)
-
-    public actual open fun onMultipleAssistantMessages(
-        response: List<Message.Response>,
-        action: (List<Message.Assistant>) -> Unit
-    ): Unit = delegate.onMultipleAssistantMessages(response, action)
-
-    public actual open suspend fun latestTokenUsage(): Int = delegate.latestTokenUsage()
-
     /**
      * Retrieves the most recent token usage count synchronously.
      *
@@ -287,13 +240,6 @@ public actual open class AIAgentFunctionalContext internal actual constructor(
     ): Int = config.runOnMainDispatcher(executorService) {
         latestTokenUsage()
     }
-
-    @JvmOverloads
-    public actual suspend inline fun <reified T> requestLLMStructured(
-        message: String,
-        examples: List<T>,
-        fixingParser: StructureFixingParser?
-    ): Result<StructuredResponse<T>> = delegate.requestLLMStructuredImpl(message, examples, fixingParser)
 
     /**
      * Sends a structured request to the Large Language Model (LLM) and processes the response.
@@ -316,12 +262,6 @@ public actual open class AIAgentFunctionalContext internal actual constructor(
     ): Result<StructuredResponse<T>> =
         delegate.requestLLMStructuredImpl(message, clazz.serializer(), examples, fixingParser)
 
-    @JvmOverloads
-    public actual open suspend fun requestLLMStreaming(
-        message: String,
-        structureDefinition: StructureDefinition?
-    ): Flow<StreamFrame> = delegate.requestLLMStreaming(message, structureDefinition)
-
     /**
      * Sends a request to the Language Learning Model (LLM) for streaming data.
      *
@@ -336,14 +276,14 @@ public actual open class AIAgentFunctionalContext internal actual constructor(
         message: String,
         structureDefinition: StructureDefinition?,
         executorService: ExecutorService? = null
-    ): Publisher<StreamFrame> = config.runOnLLMDispatcher(executorService) {
+    ): Flow.Publisher<StreamFrame> = config.runOnLLMDispatcher(executorService) {
         // TODO: Use JavaRX instead of Publisher!
         val context = executorService.asCoroutineContext(
             defaultExecutorService = config.llmRequestExecutorService,
             fallbackDispatcher = Dispatchers.IO
         )
 
-        Publisher { subscriber ->
+        Flow.Publisher { subscriber ->
             val scope = CoroutineScope(context)
             val job = scope.launch {
                 try {
@@ -355,7 +295,7 @@ public actual open class AIAgentFunctionalContext internal actual constructor(
                     subscriber.onError(e)
                 }
             }
-            subscriber.onSubscribe(object : Subscription {
+            subscriber.onSubscribe(object : Flow.Subscription {
                 override fun request(n: Long) {
                     // Basic implementation without backpressure handling for simplicity.
                     // For production, consider adding flow control (e.g., using a shared flow or buffer).
@@ -367,9 +307,6 @@ public actual open class AIAgentFunctionalContext internal actual constructor(
             })
         }
     }
-
-    public actual open suspend fun requestLLMMultiple(message: String): List<Message.Response> =
-        delegate.requestLLMMultiple(message)
 
     /**
      * Sends a request to the Large Language Model (LLM) and retrieves multiple responses.
@@ -387,9 +324,6 @@ public actual open class AIAgentFunctionalContext internal actual constructor(
         requestLLMMultiple(message)
     }
 
-    public actual open suspend fun requestLLMOnlyCallingTools(message: String): Message.Response =
-        delegate.requestLLMOnlyCallingTools(message)
-
     /**
      * Executes a request to the LLM, restricting the process to only calling external tools as needed.
      *
@@ -405,11 +339,6 @@ public actual open class AIAgentFunctionalContext internal actual constructor(
     ): Message.Response = config.runOnLLMDispatcher(executorService) {
         requestLLMOnlyCallingTools(message)
     }
-
-    public actual open suspend fun requestLLMForceOneTool(
-        message: String,
-        tool: ToolDescriptor
-    ): Message.Response = delegate.requestLLMForceOneTool(message, tool)
 
     /**
      * Sends a request to the LLM (Large Language Model) system using a specified tool, ensuring the
@@ -431,11 +360,6 @@ public actual open class AIAgentFunctionalContext internal actual constructor(
         requestLLMForceOneTool(message, tool)
     }
 
-    public actual open suspend fun requestLLMForceOneTool(
-        message: String,
-        tool: Tool<*, *>
-    ): Message.Response = delegate.requestLLMForceOneTool(message, tool)
-
     /**
      * Sends a request to the LLM (Large Language Model) forcing the use of a specified tool and returns the response.
      *
@@ -455,8 +379,6 @@ public actual open class AIAgentFunctionalContext internal actual constructor(
         requestLLMForceOneTool(message, tool)
     }
 
-    public actual open suspend fun executeTool(toolCall: Message.Tool.Call): ReceivedToolResult =
-        delegate.executeTool(toolCall)
 
     /**
      * Executes the specified tool call using an optional executor service.
@@ -473,12 +395,6 @@ public actual open class AIAgentFunctionalContext internal actual constructor(
     ): ReceivedToolResult = config.runOnMainDispatcher(executorService) {
         executeTool(toolCall)
     }
-
-    @JvmOverloads
-    public actual open suspend fun executeMultipleTools(
-        toolCalls: List<Message.Tool.Call>,
-        parallelTools: Boolean
-    ): List<ReceivedToolResult> = delegate.executeMultipleTools(toolCalls, parallelTools)
 
     /**
      * Executes multiple tool calls either sequentially or in parallel based on the provided configurations.
@@ -498,9 +414,6 @@ public actual open class AIAgentFunctionalContext internal actual constructor(
         executeMultipleTools(toolCalls, parallelTools)
     }
 
-    public actual open suspend fun sendToolResult(toolResult: ReceivedToolResult): Message.Response =
-        delegate.sendToolResult(toolResult)
-
     /**
      * Sends the provided tool result for processing.
      *
@@ -516,10 +429,6 @@ public actual open class AIAgentFunctionalContext internal actual constructor(
     ): Message.Response = config.runOnLLMDispatcher(executorService) {
         sendToolResult(toolResult)
     }
-
-    public actual open suspend fun sendMultipleToolResults(
-        results: List<ReceivedToolResult>
-    ): List<Message.Response> = delegate.sendMultipleToolResults(results)
 
     /**
      * Sends multiple tool results for processing and returns the corresponding responses.
@@ -537,12 +446,6 @@ public actual open class AIAgentFunctionalContext internal actual constructor(
         sendMultipleToolResults(results)
     }
 
-    @JvmOverloads
-    public actual open suspend fun <ToolArg, TResult> executeSingleTool(
-        tool: Tool<ToolArg, TResult>,
-        toolArgs: ToolArg,
-        doUpdatePrompt: Boolean
-    ): SafeTool.Result<TResult> = delegate.executeSingleTool(tool, toolArgs, doUpdatePrompt)
 
     /**
      * Executes a single tool with the specified arguments.
@@ -564,12 +467,6 @@ public actual open class AIAgentFunctionalContext internal actual constructor(
         executeSingleTool(tool, toolArgs, doUpdatePrompt)
     }
 
-    @JvmOverloads
-    public actual open suspend fun compressHistory(
-        strategy: HistoryCompressionStrategy,
-        preserveMemory: Boolean
-    ): Unit = delegate.compressHistory(strategy, preserveMemory)
-
     /**
      * Compresses the historical data of a tool's operations using the specified compression strategy.
      * This method is designed for optimizing memory usage by reducing the size of stored historical data.
@@ -588,74 +485,6 @@ public actual open class AIAgentFunctionalContext internal actual constructor(
     ): Unit = config.runOnLLMDispatcher(executorService) {
         compressHistory(strategy, preserveMemory)
     }
-
-    public actual open suspend fun <Input> subtaskWithVerification(
-        input: Input,
-        tools: List<Tool<*, *>>?,
-        llmModel: LLModel?,
-        llmParams: LLMParams?,
-        runMode: ToolCalls,
-        assistantResponseRepeatMax: Int?,
-        defineTask: suspend AIAgentFunctionalContext.(Input) -> String
-    ): CriticResult<Input> = delegate.subtaskWithVerification(
-        input,
-        tools,
-        llmModel,
-        llmParams,
-        runMode,
-        assistantResponseRepeatMax,
-        defineTask
-    )
-
-    public actual suspend inline fun <Input, reified Output> subtask(
-        input: Input,
-        tools: List<Tool<*, *>>?,
-        llmModel: LLModel?,
-        llmParams: LLMParams?,
-        runMode: ToolCalls,
-        assistantResponseRepeatMax: Int?,
-        noinline defineTask: suspend AIAgentFunctionalContext.(Input) -> String
-    ): Output = delegate.subtaskImpl(input, tools, llmModel, llmParams, runMode, assistantResponseRepeatMax, defineTask)
-
-    public actual open suspend fun <Input, Output : Any> subtask(
-        input: Input,
-        outputClass: KClass<Output>,
-        tools: List<Tool<*, *>>?,
-        llmModel: LLModel?,
-        llmParams: LLMParams?,
-        runMode: ToolCalls,
-        assistantResponseRepeatMax: Int?,
-        defineTask: suspend AIAgentFunctionalContext.(Input) -> String
-    ): Output = delegate.subtask(
-        input,
-        outputClass,
-        tools,
-        llmModel,
-        llmParams,
-        runMode,
-        assistantResponseRepeatMax,
-        defineTask
-    )
-
-    public actual open suspend fun <Input, OutputTransformed> subtask(
-        input: Input,
-        tools: List<Tool<*, *>>?,
-        finishTool: Tool<*, OutputTransformed>,
-        llmModel: LLModel?,
-        llmParams: LLMParams?,
-        runMode: ToolCalls,
-        assistantResponseRepeatMax: Int?,
-        defineTask: suspend AIAgentFunctionalContext.(Input) -> String
-    ): OutputTransformed = delegate.subtask(
-        input,
-        tools,
-        finishTool,
-        llmModel,
-        llmParams,
-        runMode,
-        assistantResponseRepeatMax,
-        defineTask
-    )
 
     @JavaAPI
     public fun subtask(taskDescription: String): SubtaskBuilder = SubtaskBuilder(this, taskDescription)

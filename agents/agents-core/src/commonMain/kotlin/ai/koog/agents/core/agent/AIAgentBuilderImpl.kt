@@ -14,68 +14,48 @@ import ai.koog.prompt.llm.LLModel
 import kotlinx.datetime.Clock
 import kotlin.reflect.typeOf
 
-/**
- * Implementation class for building and configuring AI agents with customizable components and settings.
- *
- * The `AIAgentBuilderImpl` class provides functionality to configure multiple aspects of an AI agent,
- * such as tool registry, large language model, execution strategies, and system-level prompts.
- * The class offers a fluent API enabling efficient chaining of configuration methods, ensuring flexibility
- * in constructing AI agents tailored for specific requirements.
- *
- * Fields:
- * - `promptExecutor`: Manages the execution of prompts and interactions with language models.
- * - `toolRegistry`: Stores tools available for use by the agent.
- * - `id`: Optional identifier for the agent being built.
- * - `prompt`: Defines the input prompt template to guide model behavior.
- * - `llmModel`: Represents the Large Language Model (LLM) utilized by the agent.
- * - `temperature`: Configures the randomness of language model outputs.
- * - `numberOfChoices`: Specifies the number of response options generated.
- * - `missingToolsConversionStrategy`: Strategy to handle cases where required tools are unavailable.
- * - `maxIterations`: Limits the number of iterations an agent can utilize.
- * - `clock`: Tracks and manages time-related operations within the agent.
- */
-internal class AIAgentBuilderImpl internal constructor() : AIAgentBuilder() {
+internal class AIAgentBuilderImpl internal constructor() : AIAgentBuilderAPI {
     @property:PublishedApi
-    internal override var promptExecutor: PromptExecutor? = null
+    internal var promptExecutor: PromptExecutor? = null
 
     @property:PublishedApi
-    internal override var toolRegistry: ToolRegistry = ToolRegistry.EMPTY
+    internal var toolRegistry: ToolRegistry = ToolRegistry.EMPTY
 
     @property:PublishedApi
-    internal override var id: String? = null
+    internal var id: String? = null
 
     @property:PublishedApi
-    internal override var prompt: Prompt = Prompt.Empty
+    internal var prompt: Prompt = Prompt.Empty
 
     @property:PublishedApi
-    internal override var llmModel: LLModel? = null
+    internal var llmModel: LLModel? = null
 
     @property:PublishedApi
-    internal override var temperature: Double = 1.0
+    internal var temperature: Double = 1.0
 
     @property:PublishedApi
-    internal override var numberOfChoices: Int = 1
+    internal var numberOfChoices: Int = 1
 
     @property:PublishedApi
-    internal override var missingToolsConversionStrategy: MissingToolsConversionStrategy =
+    internal var missingToolsConversionStrategy: MissingToolsConversionStrategy =
         MissingToolsConversionStrategy.Missing(ToolCallDescriber.JSON)
 
     @property:PublishedApi
-    internal override var maxIterations: Int = 50
+    internal var maxIterations: Int = 50
 
     @property:PublishedApi
-    internal override var clock: Clock = Clock.System
+    internal var clock: Clock = Clock.System
 
-    public override fun promptExecutor(promptExecutor: PromptExecutor): AIAgentBuilder = apply {
+    public override fun promptExecutor(promptExecutor: PromptExecutor): AIAgentBuilderAPI = apply {
         AIAgentConfig
         this.promptExecutor = promptExecutor
     }
 
-    public override fun llmModel(model: LLModel): AIAgentBuilder = apply {
+    public override fun llmModel(model: LLModel): AIAgentBuilderAPI = apply {
         this.llmModel = model
     }
 
-    public override fun toolRegistry(toolRegistry: ToolRegistry): AIAgentBuilder = apply {
+    public override fun toolRegistry(toolRegistry: ToolRegistry): AIAgentBuilderAPI = apply {
         this.toolRegistry = toolRegistry
     }
 
@@ -109,31 +89,31 @@ internal class AIAgentBuilderImpl internal constructor() : AIAgentBuilder() {
         clock = this.clock
     )
 
-    public override fun id(id: String?): AIAgentBuilder = apply {
+    public override fun id(id: String?): AIAgentBuilderAPI = apply {
         this.id = id
     }
 
-    public override fun systemPrompt(systemPrompt: String): AIAgentBuilder = apply {
+    public override fun systemPrompt(systemPrompt: String): AIAgentBuilderAPI = apply {
         this.prompt = ai.koog.prompt.dsl.prompt(id = "agent") { system(systemPrompt) }
     }
 
-    public override fun prompt(prompt: Prompt): AIAgentBuilder = apply {
+    public override fun prompt(prompt: Prompt): AIAgentBuilderAPI = apply {
         this.prompt = prompt
     }
 
-    public override fun temperature(temperature: Double): AIAgentBuilder = apply {
+    public override fun temperature(temperature: Double): AIAgentBuilderAPI = apply {
         this.temperature = temperature
     }
 
-    public override fun numberOfChoices(numberOfChoices: Int): AIAgentBuilder = apply {
+    public override fun numberOfChoices(numberOfChoices: Int): AIAgentBuilderAPI = apply {
         this.numberOfChoices = numberOfChoices
     }
 
-    public override fun maxIterations(maxIterations: Int): AIAgentBuilder = apply {
+    public override fun maxIterations(maxIterations: Int): AIAgentBuilderAPI = apply {
         this.maxIterations = maxIterations
     }
 
-    public override fun agentConfig(config: AIAgentConfig): AIAgentBuilder = apply {
+    public override fun agentConfig(config: AIAgentConfig): AIAgentBuilderAPI = apply {
         this.prompt = config.prompt
         this.llmModel = config.model
         this.maxIterations = config.maxAgentIterations

@@ -19,34 +19,30 @@ import ai.koog.prompt.llm.LLModel
 import kotlinx.datetime.Clock
 import java.util.function.Function
 
+@OptIn(DetachedPromptExecutorAPI::class)
 public actual open class AIAgentLLMContext @JvmOverloads actual constructor(
-    public actual var tools: List<ToolDescriptor>,
-    public actual val toolRegistry: ToolRegistry,
-    public actual var prompt: Prompt,
-    public actual var model: LLModel,
-    @property:DetachedPromptExecutorAPI
-    public actual val promptExecutor: PromptExecutor,
-    protected actual val environment: AIAgentEnvironment,
-    protected actual val config: AIAgentConfig,
-    protected actual val clock: Clock
+    tools: List<ToolDescriptor>,
+    toolRegistry: ToolRegistry,
+    prompt: Prompt,
+    model: LLModel,
+    promptExecutor: PromptExecutor,
+    environment: AIAgentEnvironment,
+    config: AIAgentConfig,
+    clock: Clock,
+    internal actual val delegate: AIAgentLLMContextImpl
+) : AIAgentLLMContextAPI by AIAgentLLMContextImpl(
+    tools,
+    toolRegistry,
+    prompt,
+    model,
+    promptExecutor,
+    environment,
+    config,
+    clock
 ) {
-    @OptIn(DetachedPromptExecutorAPI::class)
-    private val delegate = AIAgentLLMContextImpl(
-        tools,
-        toolRegistry,
-        prompt,
-        model,
-        promptExecutor,
-        environment,
-        config,
-        clock
-    )
-
-    public actual open suspend fun withPrompt(block: Prompt.() -> Prompt): AIAgentLLMContext =
-        delegate.withPrompt(block)
 
     @JvmOverloads
-    public actual open suspend fun copy(
+    public actual final override suspend fun copy(
         tools: List<ToolDescriptor>,
         toolRegistry: ToolRegistry,
         prompt: Prompt,
@@ -57,9 +53,17 @@ public actual open class AIAgentLLMContext @JvmOverloads actual constructor(
         clock: Clock
     ): AIAgentLLMContext = delegate.copy(tools, toolRegistry, prompt, model, promptExecutor, environment, config, clock)
 
-    public actual open suspend fun <T> writeSession(block: suspend AIAgentLLMWriteSession.() -> T): T =
-        delegate.writeSession(block)
-
+    /**
+     * Executes a block of code within a write session for the AI Agent LLM context.
+     *
+     * This function provides a mechanism to modify or interact with the AI Agent's state in a mutable
+     * manner, ensuring proper synchronization and execution within the main dispatcher.
+     *
+     * @param T The return type of the operation performed within the write session.
+     * @param block A function that takes an instance of `AIAgentLLMWriteSession` as its receiver and
+     *              performs operations on it. The result of this block is the return value of the enclosing function.
+     * @return The result produced by the provided block of code.
+     */
     @JavaAPI
     public fun <T> writeSession(block: Function<AIAgentLLMWriteSession, T>): T = config.runOnMainDispatcher {
         writeSession {
@@ -69,6 +73,15 @@ public actual open class AIAgentLLMContext @JvmOverloads actual constructor(
         }
     }
 
+    /**
+     * Executes a read-only session within the context of `AIAgentLLMReadSession` and returns the result of the provided block.
+     *
+     * This method is designed for Java interop and facilitates read operations on the `AIAgentLLMReadSession`,
+     * ensuring the provided block is executed within the specified context.
+     *
+     * @param block A function that performs actions within the `AIAgentLLMReadSession` and computes a result of type `T`.
+     * @return The result of executing the provided block within the `AIAgentLLMReadSession` context.
+     */
     @JavaAPI
     public fun <T> readSession(block: Function<AIAgentLLMReadSession, T>): T = config.runOnMainDispatcher {
         readSession {
@@ -79,11 +92,11 @@ public actual open class AIAgentLLMContext @JvmOverloads actual constructor(
     }
 
     @OptIn(ExperimentalStdlibApi::class)
-    public actual open suspend fun <T> readSession(block: suspend AIAgentLLMReadSession.() -> T): T =
+    public actual override suspend fun <T> readSession(block: suspend AIAgentLLMReadSession.() -> T): T =
         delegate.readSession(block)
 
     @JvmOverloads
-    public actual open fun copy(
+    public actual final override fun copy(
         tools: List<ToolDescriptor>,
         prompt: Prompt,
         model: LLModel,

@@ -1,5 +1,6 @@
 package ai.koog.agents.features.eventHandler.feature
 
+import ai.koog.agents.core.annotation.InternalAgentsApi
 import ai.koog.agents.core.feature.config.FeatureConfig
 import ai.koog.agents.core.feature.handler.AfterLLMCallContext
 import ai.koog.agents.core.feature.handler.AgentBeforeCloseContext
@@ -63,239 +64,102 @@ import ai.koog.agents.core.feature.handler.tool.ToolValidationFailedContext
  * ```
  */
 @Suppress("EXPECT_ACTUAL_CLASSIFIERS_ARE_IN_BETA_WARNING")
-public expect open class EventHandlerConfig constructor() : FeatureConfig {
-
+public expect class EventHandlerConfig constructor() : FeatureConfig, EventHandlerConfigAPI {
     //region Agent Handlers
 
-    /**
-     * Append handler called when an agent is started.
-     */
-    public open fun onAgentStarting(handler: suspend (eventContext: AgentStartingContext) -> Unit)
+    public override fun onAgentStarting(handler: suspend (eventContext: AgentStartingContext) -> Unit)
 
-    /**
-     * Append handler called when an agent finishes execution.
-     */
-    public open fun onAgentCompleted(handler: suspend (eventContext: AgentCompletedContext) -> Unit)
+    public override fun onAgentCompleted(handler: suspend (eventContext: AgentCompletedContext) -> Unit)
 
-    /**
-     * Append handler called when an error occurs during agent execution.
-     */
-    public open fun onAgentExecutionFailed(handler: suspend (eventContext: AgentExecutionFailedContext) -> Unit)
+    public override fun onAgentExecutionFailed(handler: suspend (eventContext: AgentExecutionFailedContext) -> Unit)
 
-    /**
-     * Appends a handler called before an agent is closed. This allows for additional behavior
-     * to be executed prior to the agent being closed.
-     */
-    public open fun onAgentClosing(handler: suspend (eventContext: AgentClosingContext) -> Unit)
+    public override fun onAgentClosing(handler: suspend (eventContext: AgentClosingContext) -> Unit)
 
     //endregion Trigger Agent Handlers
 
     //region Strategy Handlers
 
-    /**
-     * Append handler called when a strategy starts execution.
-     */
-    public open fun onStrategyStarting(handler: suspend (eventContext: StrategyStartingContext) -> Unit)
+    public override fun onStrategyStarting(handler: suspend (eventContext: StrategyStartingContext) -> Unit)
 
-    /**
-     * Append handler called when a strategy finishes execution.
-     */
-    public open fun onStrategyCompleted(handler: suspend (eventContext: StrategyCompletedContext) -> Unit)
+    public override fun onStrategyCompleted(handler: suspend (eventContext: StrategyCompletedContext) -> Unit)
 
     //endregion Strategy Handlers
 
     //region Node Handlers
 
-    /**
-     * Append handler called before a node in the agent's execution graph is processed.
-     */
-    public open fun onNodeExecutionStarting(handler: suspend (eventContext: NodeExecutionStartingContext) -> Unit)
+    public override fun onNodeExecutionStarting(handler: suspend (eventContext: NodeExecutionStartingContext) -> Unit)
 
-    /**
-     * Append handler called after a node in the agent's execution graph has been processed.
-     */
-    public open fun onNodeExecutionCompleted(handler: suspend (eventContext: NodeExecutionCompletedContext) -> Unit)
+    public override fun onNodeExecutionCompleted(handler: suspend (eventContext: NodeExecutionCompletedContext) -> Unit)
 
-    /**
-     * Append handler called when an error occurs during the execution of a node.
-     */
-    public open fun onNodeExecutionFailed(handler: suspend (eventContext: NodeExecutionFailedContext) -> Unit)
+    public override fun onNodeExecutionFailed(handler: suspend (eventContext: NodeExecutionFailedContext) -> Unit)
 
-    internal open suspend fun invokeOnSubgraphExecutionStarting(eventContext: SubgraphExecutionStartingContext)
+    @InternalAgentsApi
+    public override suspend fun invokeOnSubgraphExecutionStarting(eventContext: SubgraphExecutionStartingContext)
 
-    /**
-     * Invoke handlers for after a subgraph in the agent's execution graph has been processed event.
-     */
-    internal open suspend fun invokeOnSubgraphExecutionCompleted(eventContext: SubgraphExecutionCompletedContext)
+    @InternalAgentsApi
+    public override suspend fun invokeOnSubgraphExecutionCompleted(eventContext: SubgraphExecutionCompletedContext)
 
-    /**
-     * Invokes the error handling logic for a subgraph execution error event.
-     */
-    internal open suspend fun invokeOnSubgraphExecutionFailed(interceptContext: SubgraphExecutionFailedContext)
+    @InternalAgentsApi
+    public override suspend fun invokeOnSubgraphExecutionFailed(interceptContext: SubgraphExecutionFailedContext)
 
     //endregion Node Handlers
 
     //region Subgraph Handlers
 
-    /**
-     * Append handler called before a subgraph in the agent's execution graph is processed.
-     */
-    public open fun onSubgraphExecutionStarting(handler: suspend (eventContext: SubgraphExecutionStartingContext) -> Unit)
+    public override fun onSubgraphExecutionStarting(handler: suspend (eventContext: SubgraphExecutionStartingContext) -> Unit)
 
-    /**
-     * Append handler called after a subgraph in the agent's execution graph has been processed.
-     */
-    public open fun onSubgraphExecutionCompleted(handler: suspend (eventContext: SubgraphExecutionCompletedContext) -> Unit)
+    public override fun onSubgraphExecutionCompleted(handler: suspend (eventContext: SubgraphExecutionCompletedContext) -> Unit)
 
-    /**
-     * Append handler called when an error occurs during the execution of a subgraph.
-     */
-    public open fun onSubgraphExecutionFailed(handler: suspend (eventContext: SubgraphExecutionFailedContext) -> Unit)
+    public override fun onSubgraphExecutionFailed(handler: suspend (eventContext: SubgraphExecutionFailedContext) -> Unit)
 
     //endregion Subgraph Handlers
 
     //region LLM Call Handlers
 
-    /**
-     * Append handler called before a call is made to the language model.
-     */
-    public open fun onLLMCallStarting(handler: suspend (eventContext: LLMCallStartingContext) -> Unit)
+    public override fun onLLMCallStarting(handler: suspend (eventContext: LLMCallStartingContext) -> Unit)
 
-    /**
-     * Append handler called after a response is received from the language model.
-     */
-    public open fun onLLMCallCompleted(handler: suspend (eventContext: LLMCallCompletedContext) -> Unit)
+    public override fun onLLMCallCompleted(handler: suspend (eventContext: LLMCallCompletedContext) -> Unit)
 
     //endregion LLM Call Handlers
 
     //region Tool Call Handlers
 
-    /**
-     * Append handler called when a tool is about to be called.
-     */
-    public open fun onToolCallStarting(handler: suspend (eventContext: ToolCallStartingContext) -> Unit)
+    public override fun onToolCallStarting(handler: suspend (eventContext: ToolCallStartingContext) -> Unit)
 
-    /**
-     * Append handler called when a validation error occurs during a tool call.
-     */
-    public open fun onToolValidationFailed(handler: suspend (eventContext: ToolValidationFailedContext) -> Unit)
+    public override fun onToolValidationFailed(handler: suspend (eventContext: ToolValidationFailedContext) -> Unit)
 
-    /**
-     * Append handler called when a tool call fails with an exception.
-     */
-    public open fun onToolCallFailed(handler: suspend (eventContext: ToolCallFailedContext) -> Unit)
+    public override fun onToolCallFailed(handler: suspend (eventContext: ToolCallFailedContext) -> Unit)
 
-    /**
-     * Append handler called when a tool call completes successfully.
-     */
-    public open fun onToolCallCompleted(handler: suspend (eventContext: ToolCallCompletedContext) -> Unit)
+    public override fun onToolCallCompleted(handler: suspend (eventContext: ToolCallCompletedContext) -> Unit)
 
     //endregion Tool Call Handlers
 
     //region Stream Handlers
 
-    /**
-     * Registers a handler to be invoked before streaming from a language model begins.
-     *
-     * This handler is called immediately before starting a streaming operation,
-     * allowing you to perform preprocessing, validation, or logging of the streaming request.
-     *
-     * @param handler The handler function that receives a [LLMStreamingStartingContext] containing
-     *                the run ID, prompt, model, and available tools for the streaming session.
-     *
-     * Example:
-     * ```
-     * onLLMStreamingStarting { eventContext ->
-     *     logger.info("Starting stream for run: ${eventContext.runId}")
-     *     logger.debug("Prompt: ${eventContext.prompt}")
-     * }
-     * ```
-     */
-    public open fun onLLMStreamingStarting(handler: suspend (eventContext: LLMStreamingStartingContext) -> Unit)
+    public override fun onLLMStreamingStarting(handler: suspend (eventContext: LLMStreamingStartingContext) -> Unit)
 
-    /**
-     * Registers a handler to be invoked when stream frames are received during streaming.
-     *
-     * This handler is called for each stream frame as it arrives from the language model,
-     * enabling real-time processing, monitoring, or aggregation of streaming content.
-     *
-     * @param handler The handler function that receives a [LLMStreamingFrameReceivedContext] containing
-     *                the run ID and the stream frame with partial response data.
-     *
-     * Example:
-     * ```
-     * onLLMStreamingFrameReceived { eventContext ->
-     *     when (val frame = eventContext.streamFrame) {
-     *         is StreamFrame.Append -> processText(frame.text)
-     *         is StreamFrame.ToolCall -> processTool(frame)
-     *     }
-     * }
-     * ```
-     */
-    public open fun onLLMStreamingFrameReceived(handler: suspend (eventContext: LLMStreamingFrameReceivedContext) -> Unit)
+    public override fun onLLMStreamingFrameReceived(handler: suspend (eventContext: LLMStreamingFrameReceivedContext) -> Unit)
 
-    /**
-     * Registers a handler to be invoked when an error occurs during streaming.
-     *
-     * This handler is called when an error occurs during streaming,
-     * allowing you to perform error handling or logging.
-     *
-     * @param handler The handler function that receives a [LLMStreamingFailedContext] containing
-     *                the run ID, prompt, model, and tools that were used for the streaming session.
-     *
-     * Example:
-     * ```
-     * onLLMStreamingFailed { eventContext ->
-     *     logger.error("Stream error for run: ${eventContext.runId}")
-     * }
-     * ```
-     */
-    public open fun onLLMStreamingFailed(handler: suspend (eventContext: LLMStreamingFailedContext) -> Unit)
+    public override fun onLLMStreamingFailed(handler: suspend (eventContext: LLMStreamingFailedContext) -> Unit)
 
-    /**
-     * Registers a handler to be invoked after streaming from a language model completes.
-     *
-     * This handler is called when the streaming operation finishes,
-     * allowing you to perform post-processing, cleanup, or final logging operations.
-     *
-     * @param handler The handler function that receives an [LLMStreamingCompletedContext] containing
-     *                the run ID, prompt, model, and tools that were used for the streaming session.
-     *
-     * Example:
-     * ```
-     * onLLMStreamingCompleted { eventContext ->
-     *     logger.info("Stream completed for run: ${eventContext.runId}")
-     *     // Perform any cleanup or aggregation of collected stream data
-     * }
-     * ```
-     */
-    public open fun onLLMStreamingCompleted(handler: suspend (eventContext: LLMStreamingCompletedContext) -> Unit)
+    public override fun onLLMStreamingCompleted(handler: suspend (eventContext: LLMStreamingCompletedContext) -> Unit)
 
     //endregion Stream Handlers
 
     //region Deprecated Handlers
 
-    /**
-     * Append handler called when an agent is started.
-     */
     @Deprecated(
         message = "Use onAgentStarting instead",
         ReplaceWith("onAgentStarting(handler)", "ai.koog.agents.core.feature.handler.AgentStartingContext")
     )
-    public open fun onBeforeAgentStarted(handler: suspend (eventContext: AgentStartContext) -> Unit)
+    public override fun onBeforeAgentStarted(handler: suspend (eventContext: AgentStartContext) -> Unit)
 
-    /**
-     * Append handler called when an agent finishes execution.
-     */
     @Deprecated(
         message = "Use onAgentCompleted instead",
         ReplaceWith("onAgentCompleted(handler)", "ai.koog.agents.core.feature.handler.AgentCompletedContext")
     )
-    public open fun onAgentFinished(handler: suspend (eventContext: AgentFinishedContext) -> Unit)
+    public override fun onAgentFinished(handler: suspend (eventContext: AgentFinishedContext) -> Unit)
 
-    /**
-     * Append handler called when an error occurs during agent execution.
-     */
     @Deprecated(
         message = "Use onAgentExecutionFailed instead",
         ReplaceWith(
@@ -303,39 +167,26 @@ public expect open class EventHandlerConfig constructor() : FeatureConfig {
             "ai.koog.agents.core.feature.handler.AgentExecutionFailedContext"
         )
     )
-    public open fun onAgentRunError(handler: suspend (eventContext: AgentRunErrorContext) -> Unit)
+    public override fun onAgentRunError(handler: suspend (eventContext: AgentRunErrorContext) -> Unit)
 
-    /**
-     * Appends a handler called before an agent is closed. This allows for additional behavior
-     * to be executed prior to the agent being closed.
-     */
     @Deprecated(
         message = "Use onAgentClosing instead",
         ReplaceWith("onAgentClosing(handler)", "ai.koog.agents.core.feature.handler.AgentClosingContext")
     )
-    public open fun onAgentBeforeClose(handler: suspend (eventContext: AgentBeforeCloseContext) -> Unit)
+    public override fun onAgentBeforeClose(handler: suspend (eventContext: AgentBeforeCloseContext) -> Unit)
 
-    /**
-     * Append handler called when a strategy starts execution.
-     */
     @Deprecated(
         message = "Use onStrategyStarting instead",
         ReplaceWith("onStrategyStarting(handler)", "ai.koog.agents.core.feature.handler.StrategyStartingContext")
     )
-    public open fun onStrategyStarted(handler: suspend (eventContext: StrategyStartContext) -> Unit)
+    public override fun onStrategyStarted(handler: suspend (eventContext: StrategyStartContext) -> Unit)
 
-    /**
-     * Append handler called when a strategy finishes execution.
-     */
     @Deprecated(
         message = "Use onStrategyCompleted instead",
         ReplaceWith("onStrategyCompleted(handler)", "ai.koog.agents.core.feature.handler.StrategyCompletedContext")
     )
-    public open fun onStrategyFinished(handler: suspend (eventContext: StrategyFinishedContext) -> Unit)
+    public override fun onStrategyFinished(handler: suspend (eventContext: StrategyFinishedContext) -> Unit)
 
-    /**
-     * Append handler called before a node in the agent's execution graph is processed.
-     */
     @Deprecated(
         message = "Use onNodeExecutionStarting instead",
         ReplaceWith(
@@ -343,11 +194,8 @@ public expect open class EventHandlerConfig constructor() : FeatureConfig {
             "ai.koog.agents.core.feature.handler.NodeExecutionStartingContext"
         )
     )
-    public open fun onBeforeNode(handler: suspend (eventContext: NodeBeforeExecuteContext) -> Unit)
+    public override fun onBeforeNode(handler: suspend (eventContext: NodeBeforeExecuteContext) -> Unit)
 
-    /**
-     * Append handler called after a node in the agent's execution graph has been processed.
-     */
     @Deprecated(
         message = "Use onNodeExecutionCompleted instead",
         ReplaceWith(
@@ -355,47 +203,32 @@ public expect open class EventHandlerConfig constructor() : FeatureConfig {
             "ai.koog.agents.core.feature.handler.NodeExecutionCompletedContext"
         )
     )
-    public open fun onAfterNode(handler: suspend (eventContext: NodeAfterExecuteContext) -> Unit)
+    public override fun onAfterNode(handler: suspend (eventContext: NodeAfterExecuteContext) -> Unit)
 
-    /**
-     * Append handler called when an error occurs during the execution of a node.
-     */
     @Deprecated(
         message = "Use onNodeExecutionError instead",
         ReplaceWith("onNodeExecutionFailed(handler)", "ai.koog.agents.core.feature.handler.NodeExecutionFailedContext")
     )
-    public open fun onNodeExecutionError(handler: suspend (eventContext: NodeExecutionErrorContext) -> Unit)
+    public override fun onNodeExecutionError(handler: suspend (eventContext: NodeExecutionErrorContext) -> Unit)
 
-    /**
-     * Append handler called before a call is made to the language model.
-     */
     @Deprecated(
         message = "Use onLLMCallStarting instead",
         ReplaceWith("onLLMCallStarting(handler)", "ai.koog.agents.core.feature.handler.LLMCallStartingContext")
     )
-    public open fun onBeforeLLMCall(handler: suspend (eventContext: BeforeLLMCallContext) -> Unit)
+    public override fun onBeforeLLMCall(handler: suspend (eventContext: BeforeLLMCallContext) -> Unit)
 
-    /**
-     * Append handler called after a response is received from the language model.
-     */
     @Deprecated(
         message = "Use onLLMCallCompleted instead",
         ReplaceWith("onLLMCallCompleted(handler)", "ai.koog.agents.core.feature.handler.LLMCallCompletedContext")
     )
-    public open fun onAfterLLMCall(handler: suspend (eventContext: AfterLLMCallContext) -> Unit)
+    public override fun onAfterLLMCall(handler: suspend (eventContext: AfterLLMCallContext) -> Unit)
 
-    /**
-     * Append handler called when a tool is about to be called.
-     */
     @Deprecated(
         message = "Use onToolCallStarting instead",
         ReplaceWith("onToolCallStarting(handler)", "ai.koog.agents.core.feature.handler.ToolCallStartingContext")
     )
-    public open fun onToolCall(handler: suspend (eventContext: ToolCallContext) -> Unit)
+    public override fun onToolCall(handler: suspend (eventContext: ToolCallContext) -> Unit)
 
-    /**
-     * Append handler called when a validation error occurs during a tool call.
-     */
     @Deprecated(
         message = "Use onToolValidationFailed instead",
         ReplaceWith(
@@ -403,152 +236,100 @@ public expect open class EventHandlerConfig constructor() : FeatureConfig {
             "ai.koog.agents.core.feature.handler.ToolValidationFailedContext"
         )
     )
-    public open fun onToolValidationError(handler: suspend (eventContext: ToolValidationErrorContext) -> Unit)
+    public override fun onToolValidationError(handler: suspend (eventContext: ToolValidationErrorContext) -> Unit)
 
-    /**
-     * Append handler called when a tool call fails with an exception.
-     */
     @Deprecated(
         message = "Use onToolCallFailed instead",
         ReplaceWith("onToolCallFailed(handler)", "ai.koog.agents.core.feature.handler.ToolCallFailedContext")
     )
-    public open fun onToolCallFailure(handler: suspend (eventContext: ToolCallFailureContext) -> Unit)
+    public override fun onToolCallFailure(handler: suspend (eventContext: ToolCallFailureContext) -> Unit)
 
-    /**
-     * Append handler called when a tool call completes successfully.
-     */
     @Deprecated(
         message = "Use onToolCallCompleted instead",
         ReplaceWith("onToolCallCompleted(handler)", "ai.koog.agents.core.feature.handler.ToolCallCompletedContext")
     )
-    public open fun onToolCallResult(handler: suspend (eventContext: ToolCallResultContext) -> Unit)
+    public override fun onToolCallResult(handler: suspend (eventContext: ToolCallResultContext) -> Unit)
 
     //endregion Deprecated Handlers
 
     //region Invoke Agent Handlers
 
-    /**
-     * Invoke handlers for an event when an agent is started.
-     */
-    internal open suspend fun invokeOnAgentStarting(eventContext: AgentStartingContext)
+    @InternalAgentsApi
+    public override suspend fun invokeOnAgentStarting(eventContext: AgentStartingContext)
 
-    /**
-     * Invoke handlers for after a node in the agent's execution graph has been processed event.
-     */
-    internal open suspend fun invokeOnAgentCompleted(eventContext: AgentCompletedContext)
+    @InternalAgentsApi
+    public override suspend fun invokeOnAgentCompleted(eventContext: AgentCompletedContext)
 
-    /**
-     * Invoke handlers for an event when an error occurs during agent execution.
-     */
-    internal open suspend fun invokeOnAgentExecutionFailed(eventContext: AgentExecutionFailedContext)
+    @InternalAgentsApi
+    public override suspend fun invokeOnAgentExecutionFailed(eventContext: AgentExecutionFailedContext)
 
-    /**
-     * Invokes the handler associated with the event that occurs before an agent is closed.
-     */
-    internal open suspend fun invokeOnAgentClosing(eventContext: AgentClosingContext)
+    @InternalAgentsApi
+    public override suspend fun invokeOnAgentClosing(eventContext: AgentClosingContext)
 
     //endregion Invoke Agent Handlers
 
     //region Invoke Strategy Handlers
 
-    /**
-     * Invoke handlers for an event when strategy starts execution.
-     */
-    internal open suspend fun invokeOnStrategyStarting(eventContext: StrategyStartingContext)
+    @InternalAgentsApi
+    public override suspend fun invokeOnStrategyStarting(eventContext: StrategyStartingContext)
 
-    /**
-     * Invoke handlers for an event when a strategy finishes execution.
-     */
-    internal open suspend fun invokeOnStrategyCompleted(eventContext: StrategyCompletedContext)
+    @InternalAgentsApi
+    public override suspend fun invokeOnStrategyCompleted(eventContext: StrategyCompletedContext)
 
     //endregion Invoke Strategy Handlers
 
     //region Invoke Node Handlers
 
-    /**
-     * Invoke handlers for before a node in the agent's execution graph is processed event.
-     */
-    internal open suspend fun invokeOnNodeExecutionStarting(eventContext: NodeExecutionStartingContext)
+    @InternalAgentsApi
+    public override suspend fun invokeOnNodeExecutionStarting(eventContext: NodeExecutionStartingContext)
 
-    /**
-     * Invoke handlers for after a node in the agent's execution graph has been processed event.
-     */
-    internal open suspend fun invokeOnNodeExecutionCompleted(eventContext: NodeExecutionCompletedContext)
+    @InternalAgentsApi
+    public override suspend fun invokeOnNodeExecutionCompleted(eventContext: NodeExecutionCompletedContext)
 
-    /**
-     * Invokes the error handling logic for a node execution error event.
-     */
-    internal open suspend fun invokeOnNodeExecutionFailed(interceptContext: NodeExecutionFailedContext)
+    @InternalAgentsApi
+    public override suspend fun invokeOnNodeExecutionFailed(interceptContext: NodeExecutionFailedContext)
 
     //endregion Invoke Node Handlers
 
     //region Invoke LLM Call Handlers
 
-    /**
-     * Invoke handlers for before a call is made to the language model event.
-     */
-    internal open suspend fun invokeOnLLMCallStarting(eventContext: LLMCallStartingContext)
+    @InternalAgentsApi
+    public override suspend fun invokeOnLLMCallStarting(eventContext: LLMCallStartingContext)
 
-    /**
-     * Invoke handlers for after a response is received from the language model event.
-     */
-    internal open suspend fun invokeOnLLMCallCompleted(eventContext: LLMCallCompletedContext)
+    @InternalAgentsApi
+    public override suspend fun invokeOnLLMCallCompleted(eventContext: LLMCallCompletedContext)
 
     //endregion Invoke LLM Call Handlers
 
     //region Invoke Tool Call Handlers
 
-    /**
-     * Invoke handlers for the tool call event.
-     */
-    internal open suspend fun invokeOnToolCallStarting(eventContext: ToolCallStartingContext)
+    @InternalAgentsApi
+    public override suspend fun invokeOnToolCallStarting(eventContext: ToolCallStartingContext)
 
-    /**
-     * Invoke handlers for a validation error during a tool call event.
-     */
-    internal open suspend fun invokeOnToolValidationFailed(eventContext: ToolValidationFailedContext)
+    @InternalAgentsApi
+    public override suspend fun invokeOnToolValidationFailed(eventContext: ToolValidationFailedContext)
 
-    /**
-     * Invoke handlers for a tool call failure with an exception event.
-     */
-    internal open suspend fun invokeOnToolCallFailed(eventContext: ToolCallFailedContext)
+    @InternalAgentsApi
+    public override suspend fun invokeOnToolCallFailed(eventContext: ToolCallFailedContext)
 
-    /**
-     * Invoke handlers for an event when a tool call is completed successfully.
-     */
-    internal open suspend fun invokeOnToolCallCompleted(eventContext: ToolCallCompletedContext)
+    @InternalAgentsApi
+    public override suspend fun invokeOnToolCallCompleted(eventContext: ToolCallCompletedContext)
 
     //endregion Invoke Tool Call Handlers
 
     //region Invoke Stream Handlers
 
-    /**
-     * Invokes the handler associated with the event that occurs before streaming starts.
-     *
-     * @param eventContext The context containing information about the streaming session about to begin
-     */
-    internal open suspend fun invokeOnLLMStreamingStarting(eventContext: LLMStreamingStartingContext)
+    @InternalAgentsApi
+    public override suspend fun invokeOnLLMStreamingStarting(eventContext: LLMStreamingStartingContext)
 
-    /**
-     * Invokes the handler associated with stream frame events during streaming.
-     *
-     * @param eventContext The context containing the stream frame data
-     */
-    internal open suspend fun invokeOnLLMStreamingFrameReceived(eventContext: LLMStreamingFrameReceivedContext)
+    @InternalAgentsApi
+    public override suspend fun invokeOnLLMStreamingFrameReceived(eventContext: LLMStreamingFrameReceivedContext)
 
-    /**
-     * Invokes the handler associated with the event that occurs when an error occurs during streaming.
-     *
-     * @param eventContext The context containing information about the streaming session that experienced the error
-     */
-    internal open suspend fun invokeOnLLMStreamingFailed(eventContext: LLMStreamingFailedContext)
+    @InternalAgentsApi
+    public override suspend fun invokeOnLLMStreamingFailed(eventContext: LLMStreamingFailedContext)
 
-    /**
-     * Invokes the handler associated with the event that occurs after streaming completes.
-     *
-     * @param eventContext The context containing information about the completed streaming session
-     */
-    internal open suspend fun invokeOnLLMStreamingCompleted(eventContext: LLMStreamingCompletedContext)
+    @InternalAgentsApi
+    public override suspend fun invokeOnLLMStreamingCompleted(eventContext: LLMStreamingCompletedContext)
 
     //endregion Invoke Stream Handlers
 }

@@ -1,4 +1,5 @@
 @file:Suppress("EXPECT_ACTUAL_CLASSIFIERS_ARE_IN_BETA_WARNING")
+@file:OptIn(InternalAgentsApi::class)
 
 package ai.koog.agents.core.feature.pipeline
 
@@ -7,6 +8,7 @@ import ai.koog.agents.core.agent.context.AIAgentGraphContextBase
 import ai.koog.agents.core.agent.context.AgentExecutionInfo
 import ai.koog.agents.core.agent.entity.AIAgentNodeBase
 import ai.koog.agents.core.agent.entity.AIAgentSubgraph
+import ai.koog.agents.core.annotation.InternalAgentsApi
 import ai.koog.agents.core.feature.AIAgentGraphFeature
 import ai.koog.agents.core.feature.config.FeatureConfig
 import ai.koog.agents.core.feature.handler.node.NodeExecutionCompletedContext
@@ -26,8 +28,9 @@ import kotlin.reflect.KType
  */
 public expect open class AIAgentGraphPipeline(
     agentConfig: AIAgentConfig,
-    clock: Clock = Clock.System
-) : AIAgentPipeline {
+    clock: Clock = Clock.System,
+    basePipelineDelegate: AIAgentPipelineImpl = AIAgentPipelineImpl(agentConfig, clock)
+) : AIAgentPipeline, AIAgentGraphPipelineAPI {
 
     /**
      * Installs a feature into the pipeline with the provided configuration.
@@ -40,7 +43,7 @@ public expect open class AIAgentGraphPipeline(
      * @param feature The feature implementation to be installed
      * @param configure A lambda to customize the feature configuration
      */
-    public open fun <TConfig : FeatureConfig, TFeatureImpl : Any> install(
+    public fun <TConfig : FeatureConfig, TFeatureImpl : Any> install(
         feature: AIAgentGraphFeature<TConfig, TFeatureImpl>,
         configure: TConfig.() -> Unit,
     )
@@ -56,7 +59,7 @@ public expect open class AIAgentGraphPipeline(
      * @param input The input data for the node execution
      * @param inputType The type of the input data provided to the node
      */
-    public open suspend fun onNodeExecutionStarting(
+    public open override suspend fun onNodeExecutionStarting(
         executionInfo: AgentExecutionInfo,
         node: AIAgentNodeBase<*, *>,
         context: AIAgentGraphContextBase,
@@ -75,7 +78,7 @@ public expect open class AIAgentGraphPipeline(
      * @param output The output data produced by the node execution
      * @param outputType The type of the output data produced by the node execution
      */
-    public open suspend fun onNodeExecutionCompleted(
+    public open override suspend fun onNodeExecutionCompleted(
         executionInfo: AgentExecutionInfo,
         node: AIAgentNodeBase<*, *>,
         context: AIAgentGraphContextBase,
@@ -95,7 +98,7 @@ public expect open class AIAgentGraphPipeline(
      * @param inputType The type of the input data provided to the node.
      * @param throwable The exception or error that occurred during node execution.
      */
-    public open suspend fun onNodeExecutionFailed(
+    public open override suspend fun onNodeExecutionFailed(
         executionInfo: AgentExecutionInfo,
         node: AIAgentNodeBase<*, *>,
         context: AIAgentGraphContextBase,
@@ -117,7 +120,7 @@ public expect open class AIAgentGraphPipeline(
      * @param input The input data for the subgraph execution.
      * @param inputType The type of the input data provided to the subgraph.
      */
-    public open suspend fun onSubgraphExecutionStarting(
+    public open override suspend fun onSubgraphExecutionStarting(
         executionInfo: AgentExecutionInfo,
         subgraph: AIAgentSubgraph<*, *>,
         context: AIAgentGraphContextBase,
@@ -136,7 +139,7 @@ public expect open class AIAgentGraphPipeline(
      * @param output The output data produced by the subgraph execution.
      * @param outputType The type of the output data produced by the subgraph execution.
      */
-    public open suspend fun onSubgraphExecutionCompleted(
+    public open override suspend fun onSubgraphExecutionCompleted(
         executionInfo: AgentExecutionInfo,
         subgraph: AIAgentSubgraph<*, *>,
         context: AIAgentGraphContextBase,
@@ -156,7 +159,7 @@ public expect open class AIAgentGraphPipeline(
      * @param inputType The type of the input data provided to the subgraph.
      * @param throwable The exception or error that caused the subgraph execution to fail.
      */
-    public open suspend fun onSubgraphExecutionFailed(
+    public open override suspend fun onSubgraphExecutionFailed(
         executionInfo: AgentExecutionInfo,
         subgraph: AIAgentSubgraph<*, *>,
         context: AIAgentGraphContextBase,
@@ -182,7 +185,7 @@ public expect open class AIAgentGraphPipeline(
      * }
      * ```
      */
-    public open fun interceptNodeExecutionStarting(
+    public open override fun interceptNodeExecutionStarting(
         feature: AIAgentGraphFeature<*, *>,
         handle: suspend (eventContext: NodeExecutionStartingContext) -> Unit
     )
@@ -200,7 +203,7 @@ public expect open class AIAgentGraphPipeline(
      * }
      * ```
      */
-    public open fun interceptNodeExecutionCompleted(
+    public open override fun interceptNodeExecutionCompleted(
         feature: AIAgentGraphFeature<*, *>,
         handle: suspend (eventContext: NodeExecutionCompletedContext) -> Unit
     )
@@ -218,7 +221,7 @@ public expect open class AIAgentGraphPipeline(
      * }
      * ```
      */
-    public open fun interceptNodeExecutionFailed(
+    public open override fun interceptNodeExecutionFailed(
         feature: AIAgentGraphFeature<*, *>,
         handle: suspend (eventContext: NodeExecutionFailedContext) -> Unit
     )
@@ -236,7 +239,7 @@ public expect open class AIAgentGraphPipeline(
      * }
      * ```
      */
-    public open fun interceptSubgraphExecutionStarting(
+    public open override fun interceptSubgraphExecutionStarting(
         feature: AIAgentGraphFeature<*, *>,
         handle: suspend (eventContext: SubgraphExecutionStartingContext) -> Unit
     )
@@ -255,7 +258,7 @@ public expect open class AIAgentGraphPipeline(
      * }
      * ```
      */
-    public open fun interceptSubgraphExecutionCompleted(
+    public open override fun interceptSubgraphExecutionCompleted(
         feature: AIAgentGraphFeature<*, *>,
         handle: suspend (eventContext: SubgraphExecutionCompletedContext) -> Unit
     )
@@ -273,7 +276,7 @@ public expect open class AIAgentGraphPipeline(
      * }
      * ```
      */
-    public open fun interceptSubgraphExecutionFailed(
+    public open override fun interceptSubgraphExecutionFailed(
         feature: AIAgentGraphFeature<*, *>,
         handle: suspend (eventContext: SubgraphExecutionFailedContext) -> Unit
     )

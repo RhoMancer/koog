@@ -250,6 +250,7 @@ public class SubtaskBuilderWithInputAndOutput<Input, Output : Any>(
         when (output) {
             is OutputOption.ByClass<Output> -> {
                 context.subtask(
+                    taskDescription,
                     input = input,
                     outputClass = output.outputClass.kotlin,
                     tools = tools,
@@ -257,12 +258,11 @@ public class SubtaskBuilderWithInputAndOutput<Input, Output : Any>(
                     llmParams = llmParams,
                     runMode = runMode,
                     assistantResponseRepeatMax = assistantResponseRepeatMax
-                ) {
-                    taskDescription
-                }
+                )
             }
 
             is OutputOption.ByFinishTool<Output> -> context.subtask(
+                taskDescription,
                 input = input,
                 finishTool = output.finishTool,
                 tools = tools,
@@ -270,19 +270,16 @@ public class SubtaskBuilderWithInputAndOutput<Input, Output : Any>(
                 llmParams = llmParams,
                 runMode = runMode,
                 assistantResponseRepeatMax = assistantResponseRepeatMax
-            ) {
-                taskDescription
-            }
+            )
             is Verification<*> -> context.subtaskWithVerification(
+                taskDescription,
                 input = input,
                 tools = tools,
                 llmModel = llmModel,
                 llmParams = llmParams,
                 runMode = runMode,
                 assistantResponseRepeatMax = assistantResponseRepeatMax
-            ) {
-                taskDescription
-            } as Output // Output === CriticResult<Input> in this case
+            ) as Output // Output === CriticResult<Input> in this case
         }
     }
 }

@@ -1,33 +1,16 @@
+@file:OptIn(InternalAgentsApi::class)
+
 package ai.koog.agents.snapshot.feature
 
 import ai.koog.agents.annotations.JavaAPI
-import ai.koog.agents.core.tools.Tool
+import ai.koog.agents.core.annotation.InternalAgentsApi
 import ai.koog.agents.core.tools.reflect.ToolSet
-import ai.koog.agents.core.tools.reflect.asTool
 import ai.koog.agents.core.tools.reflect.java.asJavaTools
-import kotlin.reflect.KFunction
 
 @Suppress("EXPECT_ACTUAL_CLASSIFIERS_ARE_IN_BETA_WARNING", "MissingKDocForPublicAPI")
-public actual open class RollbackToolRegistryBuilder actual constructor() {
-    private val delegate = RollbackToolRegistryBuilderImpl()
-
-    public actual open fun <TArgs> registerRollback(
-        tool: Tool<TArgs, *>,
-        rollbackTool: Tool<TArgs, *>
-    ): RollbackToolRegistryBuilder = delegate.registerRollback(tool, rollbackTool)
-
-    /**
-     * Registers a relationship between a tool and its respective rollback tool by converting them from functions.
-     *
-     * @param toolFunction The function representing the primary tool to register in the rollback registry.
-     * @param rollbackToolFunction The function representing the rollback tool that corresponds to the primary tool.
-     */
-    public fun registerRollback(
-        toolFunction: KFunction<*>,
-        rollbackToolFunction: KFunction<*>
-    ) {
-        this.registerRollback(toolFunction.asTool(), rollbackToolFunction.asTool())
-    }
+public actual open class RollbackToolRegistryBuilder actual constructor(
+    internal actual val delegate: RollbackToolRegistryBuilderImpl
+) : RollbackToolRegistryBuilderAPI by delegate {
 
     /**
      * Registers relationships between tools in the given tool set and their corresponding rollback tools
@@ -61,6 +44,4 @@ public actual open class RollbackToolRegistryBuilder actual constructor() {
             normalTools.zip(revertTools)
                 .forEach { (tool, revertTool) -> delegate.registerRollbackUnsafe(tool, revertTool) }
         }
-
-    public actual open fun build(): RollbackToolRegistry = delegate.build()
 }

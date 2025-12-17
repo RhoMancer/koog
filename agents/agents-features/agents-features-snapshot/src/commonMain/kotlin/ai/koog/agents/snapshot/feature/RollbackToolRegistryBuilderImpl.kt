@@ -1,10 +1,14 @@
+@file:Suppress("MissingKDocForPublicAPI")
+
 package ai.koog.agents.snapshot.feature
 
+import ai.koog.agents.core.annotation.InternalAgentsApi
 import ai.koog.agents.core.tools.Tool
 import kotlin.jvm.JvmStatic
 
-internal class RollbackToolRegistryBuilderImpl: RollbackToolRegistryBuilder() {
-   private val rollbackToolsMap = mutableMapOf<Tool<*, *>, Tool<*, *>>()
+@InternalAgentsApi
+public class RollbackToolRegistryBuilderImpl : RollbackToolRegistryBuilderAPI {
+    private val rollbackToolsMap = mutableMapOf<Tool<*, *>, Tool<*, *>>()
 
     /**
      * Registers a rollback relationship between the provided tool and its corresponding rollback tool.
@@ -17,7 +21,7 @@ internal class RollbackToolRegistryBuilderImpl: RollbackToolRegistryBuilder() {
     public override fun <TArgs> registerRollback(
         tool: Tool<TArgs, *>,
         rollbackTool: Tool<TArgs, *>
-    ): RollbackToolRegistryBuilderImpl = apply {
+    ): RollbackToolRegistryBuilderAPI = apply {
         require(tool.name !in rollbackToolsMap.map { it.key.name }) { "Tool \"${tool.name}\" is already defined" }
         rollbackToolsMap[tool] = rollbackTool
     }
@@ -34,7 +38,7 @@ internal class RollbackToolRegistryBuilderImpl: RollbackToolRegistryBuilder() {
     internal fun registerRollbackUnsafe(
         tool: Tool<*, *>,
         rollbackTool: Tool<*, *>
-    ): RollbackToolRegistryBuilderImpl = apply {
+    ): RollbackToolRegistryBuilderAPI = apply {
         require(tool.name !in rollbackToolsMap.map { it.key.name }) { "Tool \"${tool.name}\" is already defined" }
         rollbackToolsMap[tool] = rollbackTool
     }

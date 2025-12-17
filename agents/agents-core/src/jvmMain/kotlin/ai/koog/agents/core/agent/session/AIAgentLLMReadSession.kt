@@ -23,38 +23,13 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.serialization.KSerializer
 import java.util.concurrent.ExecutorService
 
-@OptIn(ExperimentalStdlibApi::class)
-public actual sealed class AIAgentLLMSession actual constructor(
-    executor: PromptExecutor,
+public actual class AIAgentLLMReadSession actual constructor(
     tools: List<ToolDescriptor>,
+    executor: PromptExecutor,
     prompt: Prompt,
     model: LLModel,
     config: AIAgentConfig,
-) : AutoCloseable {
-    private val delegate = AIAgentLLMSessionImpl(executor, tools, prompt, model, config)
-
-    protected actual open val config: AIAgentConfig = delegate.config
-
-    public actual open val prompt: Prompt = delegate.prompt
-
-    public actual open val tools: List<ToolDescriptor> = delegate.tools
-
-    public actual open val model: LLModel = delegate.model
-
-    protected actual open var isActive: Boolean = delegate.isActive
-
-    protected actual open fun validateSession(): Unit = delegate.validateSession()
-
-    protected actual open fun preparePrompt(prompt: Prompt, tools: List<ToolDescriptor>): Prompt =
-        delegate.preparePrompt(prompt, tools)
-
-    protected actual open fun executeStreaming(prompt: Prompt, tools: List<ToolDescriptor>): Flow<StreamFrame> =
-        delegate.executeStreaming(prompt, tools)
-
-    protected actual open suspend fun executeMultiple(
-        prompt: Prompt,
-        tools: List<ToolDescriptor>
-    ): List<Message.Response> = delegate.executeMultiple(prompt, tools)
+) : AIAgentLLMSession by AIAgentLLMSessionImpl(executor, tools, prompt, model, config) {
 
     /**
      * Executes multiple tasks or requests associated with the given `Prompt` and `ToolDescriptor` list.
@@ -70,7 +45,7 @@ public actual sealed class AIAgentLLMSession actual constructor(
      */
     @JavaAPI
     @JvmOverloads
-    protected fun executeMultiple(
+    public fun executeMultiple(
         prompt: Prompt,
         tools: List<ToolDescriptor>,
         executorService: ExecutorService? = null
@@ -78,8 +53,6 @@ public actual sealed class AIAgentLLMSession actual constructor(
         executeMultiple(prompt, tools)
     }
 
-    protected actual open suspend fun executeSingle(prompt: Prompt, tools: List<ToolDescriptor>): Message.Response =
-        delegate.executeSingle(prompt, tools)
 
     /**
      * Executes a single task or request associated with the given `Prompt` and `ToolDescriptor` list.
@@ -95,7 +68,7 @@ public actual sealed class AIAgentLLMSession actual constructor(
      */
     @JavaAPI
     @JvmOverloads
-    protected fun executeSingle(
+    public fun executeSingle(
         prompt: Prompt,
         tools: List<ToolDescriptor>,
         executorService: ExecutorService? = null
@@ -104,8 +77,6 @@ public actual sealed class AIAgentLLMSession actual constructor(
             executeSingle(prompt, tools)
         }
 
-    public actual open suspend fun requestLLMMultipleWithoutTools(): List<Message.Response> =
-        delegate.requestLLMMultipleWithoutTools()
 
     /**
      * Sends a request to the language model without utilizing any tools and returns multiple responses.
@@ -122,8 +93,6 @@ public actual sealed class AIAgentLLMSession actual constructor(
         requestLLMMultipleWithoutTools()
     }
 
-    public actual open suspend fun requestLLMWithoutTools(): Message.Response = delegate.requestLLMWithoutTools()
-
     /**
      * Sends a request to the language model without utilizing any tools and returns a single response.
      *
@@ -138,9 +107,6 @@ public actual sealed class AIAgentLLMSession actual constructor(
     ): Message.Response = config.runOnMainDispatcher(executorService) {
         requestLLMWithoutTools()
     }
-
-    public actual open suspend fun requestLLMOnlyCallingTools(): Message.Response =
-        delegate.requestLLMOnlyCallingTools()
 
     /**
      * Sends a request to the language model that is allowed to only perform tool calls
@@ -157,9 +123,6 @@ public actual sealed class AIAgentLLMSession actual constructor(
     ): Message.Response = config.runOnMainDispatcher(executorService) {
         requestLLMOnlyCallingTools()
     }
-
-    public actual open suspend fun requestLLMForceOneTool(tool: ToolDescriptor): Message.Response =
-        delegate.requestLLMForceOneTool(tool)
 
     /**
      * Sends a request to the language model and forces it to use exactly one specific tool,
@@ -179,9 +142,6 @@ public actual sealed class AIAgentLLMSession actual constructor(
         requestLLMForceOneTool(tool)
     }
 
-    public actual open suspend fun requestLLMForceOneTool(tool: Tool<*, *>): Message.Response =
-        delegate.requestLLMForceOneTool(tool)
-
     /**
      * Sends a request to the language model and forces it to use exactly one specific tool instance.
      *
@@ -199,7 +159,6 @@ public actual sealed class AIAgentLLMSession actual constructor(
         requestLLMForceOneTool(tool)
     }
 
-    public actual open suspend fun requestLLM(): Message.Response = delegate.requestLLM()
 
     /**
      * Sends a request to the language model using the current session configuration
@@ -217,7 +176,6 @@ public actual sealed class AIAgentLLMSession actual constructor(
         requestLLM()
     }
 
-    public actual open suspend fun requestLLMStreaming(): Flow<StreamFrame> = delegate.requestLLMStreaming()
 
     /**
      * Sends a request to the language model and returns a streaming response as a [Flow] of [StreamFrame].
@@ -236,9 +194,6 @@ public actual sealed class AIAgentLLMSession actual constructor(
         requestLLMStreaming()
     }
 
-    public actual open suspend fun requestModeration(moderatingModel: LLModel?): ModerationResult =
-        delegate.requestModeration()
-
     /**
      * Sends a moderation request to the moderation model.
      *
@@ -256,8 +211,6 @@ public actual sealed class AIAgentLLMSession actual constructor(
         requestModeration(moderatingModel)
     }
 
-    public actual open suspend fun requestLLMMultiple(): List<Message.Response> = delegate.requestLLMMultiple()
-
     /**
      * Sends a request to the language model and returns multiple responses.
      *
@@ -272,10 +225,6 @@ public actual sealed class AIAgentLLMSession actual constructor(
     ): List<Message.Response> = config.runOnMainDispatcher(executorService) {
         requestLLMMultiple()
     }
-
-    public actual open suspend fun <T> requestLLMStructured(
-        config: StructuredRequestConfig<T>,
-    ): Result<StructuredResponse<T>> = delegate.requestLLMStructured(config)
 
     /**
      * Sends a structured request to the language model using a [StructuredRequestConfig].
@@ -293,12 +242,6 @@ public actual sealed class AIAgentLLMSession actual constructor(
     ): Result<StructuredResponse<T>> = this.config.runOnMainDispatcher(executorService) {
         requestLLMStructured(config)
     }
-
-    public actual open suspend fun <T> requestLLMStructured(
-        serializer: KSerializer<T>,
-        examples: List<T>,
-        fixingParser: StructureFixingParser?
-    ): Result<StructuredResponse<T>> = delegate.requestLLMStructured(serializer, examples, fixingParser)
 
     /**
      * Sends a structured request to the language model using an explicit serializer and example values.
@@ -321,11 +264,6 @@ public actual sealed class AIAgentLLMSession actual constructor(
         requestLLMStructured(serializer, examples, fixingParser)
     }
 
-    public actual open suspend fun <T> parseResponseToStructuredResponse(
-        response: Message.Assistant,
-        config: StructuredRequestConfig<T>
-    ): StructuredResponse<T> = delegate.parseResponseToStructuredResponse(response, config)
-
     /**
      * Parses an assistant response into a strongly typed [StructuredResponse] according to the given configuration.
      *
@@ -345,8 +283,6 @@ public actual sealed class AIAgentLLMSession actual constructor(
         parseResponseToStructuredResponse(response, config)
     }
 
-    public actual open suspend fun requestLLMMultipleChoices(): List<LLMChoice> = delegate.requestLLMMultipleChoices()
-
     /**
      * Sends a request to the language model and returns multiple choice alternatives.
      *
@@ -361,6 +297,4 @@ public actual sealed class AIAgentLLMSession actual constructor(
     ): List<LLMChoice> = config.runOnMainDispatcher(executorService) {
         requestLLMMultipleChoices()
     }
-
-    actual override fun close(): Unit = delegate.close()
 }
