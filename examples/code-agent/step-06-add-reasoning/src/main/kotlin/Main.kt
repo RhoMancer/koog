@@ -2,6 +2,7 @@ package ai.koog.agents.examples.codeagent.step06
 
 import ai.koog.agents.core.agent.AIAgent
 import ai.koog.agents.core.agent.singleRunStrategy
+import ai.koog.agents.core.agent.config.AIAgentConfig
 import ai.koog.agents.core.tools.ToolRegistry
 import ai.koog.agents.ext.tool.file.EditFileTool
 import ai.koog.agents.ext.tool.file.ListDirectoryTool
@@ -11,21 +12,27 @@ import ai.koog.agents.ext.tool.shell.JvmShellCommandExecutor
 import ai.koog.agents.ext.tool.shell.PrintShellCommandConfirmationHandler
 import ai.koog.agents.ext.tool.shell.ShellCommandConfirmation
 import ai.koog.prompt.executor.clients.openai.OpenAIModels
+import ai.koog.prompt.executor.clients.openai.OpenAIResponsesParams
+import ai.koog.prompt.executor.clients.openai.base.models.ReasoningEffort
+import ai.koog.prompt.executor.clients.openai.models.OpenAIInclude
+import ai.koog.prompt.executor.clients.openai.models.ReasoningConfig
 import ai.koog.prompt.executor.llms.all.simpleOpenAIExecutor
+import ai.koog.prompt.dsl.Prompt
 import ai.koog.rag.base.files.JVMFileSystemProvider
 
 val executor = simpleOpenAIExecutor(System.getenv("OPENAI_API_KEY"))
-val agent = AIAgent(
-    promptExecutor = executor,
-    llmModel = OpenAIModels.Chat.GPT5Codex,
-    toolRegistry = ToolRegistry {
-        tool(ListDirectoryTool(JVMFileSystemProvider.ReadOnly))
-        tool(ReadFileTool(JVMFileSystemProvider.ReadOnly))
-        tool(EditFileTool(JVMFileSystemProvider.ReadWrite))
-        tool(createExecuteShellCommandToolFromEnv())
-        tool(createFindAgentTool())
-    },
-    systemPrompt = """
+// Build a Prompt that embeds OpenAI Responses params (reasoning + include)
+private val basePrompt: Prompt = Prompt.build(
+    id = "koog-code-agent-reasoning",
+    params = OpenAIResponsesParams(
+        reasoning = ReasoningConfig(
+            effort = ReasoningEffort.MEDIUM
+        ),
+        include = listOf(OpenAIInclude.REASONING_ENCRYPTED_CONTENT)
+    )
+) {
+    system(
+        """
         You are a highly skilled programmer tasked with updating the provided codebase according to the given task.
         Your goal is to deliver production-ready code changes that integrate seamlessly with the existing codebase and solve given task.
         Ensure minimal possible changes done - that guarantees minimal impact on existing functionality.
@@ -37,9 +44,27 @@ val agent = AIAgent(
         
         You also have an intelligent find micro agent at your disposition, which can help you find code components and other constructs 
         more cheaply than you can do it yourself. Lean on it for any and all search operations. Do not use shell execution for find tasks.
-    """.trimIndent(),
+        """.trimIndent()
+    )
+}
+
+private val agentConfig = AIAgentConfig(
+    prompt = basePrompt,
+    model = OpenAIModels.Chat.O3Mini,
+    maxAgentIterations = 400
+)
+
+val agent = AIAgent(
+    promptExecutor = executor,
+    agentConfig = agentConfig,
     strategy = singleRunStrategy(),
-    maxIterations = 400
+    toolRegistry = ToolRegistry {
+        tool(ListDirectoryTool(JVMFileSystemProvider.ReadOnly))
+        tool(ReadFileTool(JVMFileSystemProvider.ReadOnly))
+        tool(EditFileTool(JVMFileSystemProvider.ReadWrite))
+        tool(createExecuteShellCommandToolFromEnv())
+        tool(createFindAgentTool())
+    }
 ) {
     setupObservability(agentName = "main")
 }
