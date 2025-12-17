@@ -14,21 +14,20 @@ import ai.koog.agents.ext.tool.shell.ShellCommandConfirmation
 import ai.koog.prompt.executor.clients.openai.OpenAIModels
 import ai.koog.prompt.executor.clients.openai.OpenAIResponsesParams
 import ai.koog.prompt.executor.clients.openai.base.models.ReasoningEffort
-import ai.koog.prompt.executor.clients.openai.models.OpenAIInclude
 import ai.koog.prompt.executor.clients.openai.models.ReasoningConfig
 import ai.koog.prompt.executor.llms.all.simpleOpenAIExecutor
 import ai.koog.prompt.dsl.Prompt
+import ai.koog.prompt.executor.clients.openai.models.ReasoningSummary
 import ai.koog.rag.base.files.JVMFileSystemProvider
 
 val executor = simpleOpenAIExecutor(System.getenv("OPENAI_API_KEY"))
-// Build a Prompt that embeds OpenAI Responses params (reasoning + include)
 private val basePrompt: Prompt = Prompt.build(
     id = "koog-code-agent-reasoning",
     params = OpenAIResponsesParams(
         reasoning = ReasoningConfig(
-            effort = ReasoningEffort.MEDIUM
-        ),
-        include = listOf(OpenAIInclude.REASONING_ENCRYPTED_CONTENT)
+            effort = ReasoningEffort.MEDIUM,
+            summary = ReasoningSummary.DETAILED
+        )
     )
 ) {
     system(
@@ -50,7 +49,7 @@ private val basePrompt: Prompt = Prompt.build(
 
 private val agentConfig = AIAgentConfig(
     prompt = basePrompt,
-    model = OpenAIModels.Chat.O3Mini,
+    model = OpenAIModels.Chat.GPT5Codex,
     maxAgentIterations = 400
 )
 
