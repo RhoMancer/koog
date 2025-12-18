@@ -11,7 +11,7 @@ import ai.koog.agents.core.tools.Tool
  */
 @Suppress("EXPECT_ACTUAL_CLASSIFIERS_ARE_IN_BETA_WARNING")
 public expect open class RollbackToolRegistryBuilder constructor(
-    delegate: RollbackToolRegistryBuilderImpl
+    delegate: RollbackToolRegistryBuilderImpl = RollbackToolRegistryBuilderImpl()
 ) : RollbackToolRegistryBuilderAPI {
     internal val delegate: RollbackToolRegistryBuilderImpl
 

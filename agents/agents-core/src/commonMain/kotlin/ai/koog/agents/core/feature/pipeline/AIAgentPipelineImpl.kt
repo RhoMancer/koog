@@ -1,4 +1,5 @@
 @file:OptIn(InternalAgentsApi::class)
+@file:Suppress("MissingKDocForPublicAPI")
 
 package ai.koog.agents.core.feature.pipeline
 
@@ -75,23 +76,8 @@ import kotlin.reflect.KType
 import kotlin.reflect.safeCast
 
 /**
- * Pipeline for AI agent features that provides interception points for various agent lifecycle events.
- *
- * The pipeline allows features to:
- * - Be installed into agent contexts
- * - Intercept agent creation and environment transformation
- * - Intercept strategy execution before and after it happens
- * - Intercept node execution before and after it happens
- * - Intercept LLM calls before and after they happen
- * - Intercept tool calls before and after they happen
- *
- * This pipeline serves as the central mechanism for extending and customizing agent behavior
- * through a flexible interception system. Features can be installed with custom configurations
- * and can hook into different stages of the agent's execution lifecycle.
- *
- * @property clock Clock instance for time-related operations
+ * Default implementation of [AIAgentPipelineAPI]
  */
-@InternalAgentsApi
 public class AIAgentPipelineImpl(
     override val agentConfig: AIAgentConfig, clock: Clock
 ) : AIAgentPipelineAPI {
@@ -103,80 +89,33 @@ public class AIAgentPipelineImpl(
     //   (e.g., explicit public visibility) or to keep implementation details concise.
     //   These suppressions are intentional and safe.
 
-    /**
-     * Companion object for the AIAgentPipeline class.
-     */
     private companion object {
-        /**
-         * Logger instance for the AIAgentPipeline class.
-         */
         private val logger = KotlinLogging.logger { }
     }
 
-    /**
-     * Represents configured and installed agent feature implementation along with its configuration.
-     * @param featureImpl The feature implementation
-     * @param featureConfig The feature configuration
-     */
     @Suppress("RedundantVisibilityModifier") // have to put public here, explicitApi requires it
     private class RegisteredFeature(
         public val featureImpl: Any,
         public val featureConfig: FeatureConfig
     )
 
-    /**
-     * Map of registered features and their configurations.
-     * Keys are feature storage keys, values are feature configurations.
-     */
     private val registeredFeatures: MutableMap<AIAgentStorageKey<*>, RegisteredFeature> = mutableMapOf()
 
-    /**
-     * Set of system features that are always defined by the framework.
-     */
     @OptIn(ExperimentalAgentsApi::class)
     private val systemFeatures: Set<AIAgentStorageKey<*>> = setOf(
         Debugger.key
     )
 
-    /**
-     * Map of agent handlers registered for different features.
-     * Keys are feature storage keys, values are agent handlers.
-     */
     private val agentEventHandlers: MutableMap<AIAgentStorageKey<*>, AgentEventHandler> = mutableMapOf()
 
-    /**
-     * Map of strategy handlers registered for different features.
-     * Keys are feature storage keys, values are strategy handlers.
-     */
     private val strategyEventHandlers: MutableMap<AIAgentStorageKey<*>, StrategyEventHandler> = mutableMapOf()
 
-    /**
-     * Map of tool execution handlers registered for different features.
-     * Keys are feature storage keys, values are tool execution handlers.
-     */
     private val toolCallEventHandlers: MutableMap<AIAgentStorageKey<*>, ToolCallEventHandler> = mutableMapOf()
 
-    /**
-     * Map of LLM execution handlers registered for different features.
-     * Keys are feature storage keys, values are LLM execution handlers.
-     */
     private val llmCallEventHandlers: MutableMap<AIAgentStorageKey<*>, LLMCallEventHandler> = mutableMapOf()
 
-    /**
-     * Map of feature storage keys to their stream handlers.
-     * These handlers manage the streaming lifecycle events (before, during, and after streaming).
-     */
     private val llmStreamingEventHandlers: MutableMap<AIAgentStorageKey<*>, LLMStreamingEventHandler> = mutableMapOf()
 
-    /**
-     * Retrieves a feature implementation from the current pipeline using the specified [feature], if it is registered.
-     *
-     * @param TFeature A feature implementation type.
-     * @param feature A feature to fetch.
-     * @param featureClass The [KClass] of the feature to be retrieved.
-     * @return The feature associated with the provided key, or null if no matching feature is found.
-     * @throws IllegalArgumentException if the specified [featureClass] does not correspond to a registered feature.
-     */
     public override fun <TFeature : Any> feature(
         featureClass: KClass<TFeature>,
         feature: AIAgentFeature<*, TFeature>
@@ -212,11 +151,6 @@ public class AIAgentPipelineImpl(
 
     //region Internal Handlers
 
-    /**
-     * Prepares the feature by initializing all the associated message processors defined in the feature configuration.
-     *
-     * @param featureConfig The configuration object containing the list of message processors to be initialized.
-     */
     internal suspend fun prepareFeature(featureConfig: FeatureConfig) {
         featureConfig.messageProcessors.forEach { processor ->
             logger.debug { "Start preparing processor: ${processor::class.simpleName}" }
@@ -225,9 +159,6 @@ public class AIAgentPipelineImpl(
         }
     }
 
-    /**
-     * Prepares features by initializing their respective message processors.
-     */
     @InternalAgentsApi
     override suspend fun prepareFeatures() {
         // Install system features (if exist)
@@ -239,11 +170,6 @@ public class AIAgentPipelineImpl(
         }
     }
 
-    /**
-     * Closes all message processors associated with the provided feature by feature configuration.
-     *
-     * @param featureConfig The configuration object containing the message processors to be closed.
-     */
     internal suspend fun closeFeatureMessageProcessors(featureConfig: FeatureConfig) {
         featureConfig.messageProcessors.forEach { provider ->
             logger.trace { "Start closing feature processor: ${featureConfig::class.simpleName}" }
@@ -252,12 +178,6 @@ public class AIAgentPipelineImpl(
         }
     }
 
-    /**
-     * Closes all feature stream providers.
-     *
-     * This internal method properly shuts down all message processors of registered features,
-     * ensuring resources are released appropriately.
-     */
     @InternalAgentsApi
     override suspend fun closeAllFeaturesMessageProcessors() {
         registeredFeatures.values.forEach { registerFeature ->
@@ -269,14 +189,6 @@ public class AIAgentPipelineImpl(
 
     //region Trigger Agent Handlers
 
-    /**
-     * Notifies all registered handlers that an agent has started execution.
-     *
-     * @param executionInfo The execution information for the agent environment transformation event
-     * @param runId The unique identifier for the agent run
-     * @param agent The agent instance for which the execution has started
-     * @param context The context of the agent execution, providing access to the agent environment and context features
-     */
     @OptIn(InternalAgentsApi::class)
     public override suspend fun <TInput, TOutput> onAgentStarting(
         executionInfo: AgentExecutionInfo,
@@ -290,14 +202,6 @@ public class AIAgentPipelineImpl(
         }
     }
 
-    /**
-     * Notifies all registered handlers that an agent has finished execution.
-     *
-     * @param executionInfo The execution information for the agent environment transformation event
-     * @param agentId The unique identifier of the agent that finished execution
-     * @param runId The unique identifier of the agent run
-     * @param result The result produced by the agent, or null if no result was produced
-     */
     public override suspend fun onAgentCompleted(
         executionInfo: AgentExecutionInfo,
         agentId: String,
@@ -309,14 +213,6 @@ public class AIAgentPipelineImpl(
         agentEventHandlers.values.forEach { handler -> handler.agentCompletedHandler.handle(eventContext) }
     }
 
-    /**
-     * Notifies all registered handlers about an error that occurred during agent execution.
-     *
-     * @param executionInfo The execution information for the agent environment transformation event
-     * @param agentId The unique identifier of the agent that encountered the error
-     * @param runId The unique identifier of the agent run
-     * @param exception The [Throwable] exception instance that was thrown during agent execution
-     */
     public override suspend fun onAgentExecutionFailed(
         executionInfo: AgentExecutionInfo,
         agentId: String,
@@ -328,12 +224,6 @@ public class AIAgentPipelineImpl(
         agentEventHandlers.values.forEach { handler -> handler.agentExecutionFailedHandler.handle(eventContext) }
     }
 
-    /**
-     * Invoked before an agent is closed to perform necessary pre-closure operations.
-     *
-     * @param executionInfo The execution information for the agent environment transformation event
-     * @param agentId The unique identifier of the agent that will be closed.
-     */
     public override suspend fun onAgentClosing(
         executionInfo: AgentExecutionInfo,
         agentId: String
@@ -342,18 +232,6 @@ public class AIAgentPipelineImpl(
         agentEventHandlers.values.forEach { handler -> handler.agentClosingHandler.handle(eventContext) }
     }
 
-    /**
-     * Transforms the agent environment by applying all registered environment transformers.
-     *
-     * This method allows features to modify or enhance the agent's environment before it starts execution.
-     * Each registered handler can apply its own transformations to the environment in sequence.
-     *
-     * @param executionInfo The execution information for the agent environment transformation event
-     * @param strategy The strategy associated with the agent
-     * @param agent The agent instance for which the environment is being transformed
-     * @param baseEnvironment The initial environment to be transformed
-     * @return The transformed environment after all handlers have been applied
-     */
     public override suspend fun onAgentEnvironmentTransforming(
         executionInfo: AgentExecutionInfo,
         strategy: AIAgentStrategy<*, *, AIAgentGraphContextBase>,
@@ -370,13 +248,6 @@ public class AIAgentPipelineImpl(
 
     //region Trigger Strategy Handlers
 
-    /**
-     * Notifies all registered strategy handlers that a strategy has started execution.
-     *
-     * @param executionInfo The execution information for the strategy event
-     * @param strategy The strategy that has started execution
-     * @param context The context of the strategy execution
-     */
     @OptIn(InternalAgentsApi::class)
     public override suspend fun onStrategyStarting(
         executionInfo: AgentExecutionInfo,
@@ -387,14 +258,6 @@ public class AIAgentPipelineImpl(
         strategyEventHandlers.values.forEach { handler -> handler.handleStrategyStarting(eventContext) }
     }
 
-    /**
-     * Notifies all registered strategy handlers that a strategy has finished execution.
-     *
-     * @param executionInfo The execution information for the strategy event
-     * @param strategy The strategy that has finished execution
-     * @param context The context of the strategy execution
-     * @param result The result produced by the strategy execution
-     */
     @OptIn(InternalAgentsApi::class)
     public override suspend fun onStrategyCompleted(
         executionInfo: AgentExecutionInfo,
@@ -412,15 +275,6 @@ public class AIAgentPipelineImpl(
 
     //region Trigger LLM Call Handlers
 
-    /**
-     * Notifies all registered LLM handlers before a language model call is made.
-     *
-     * @param executionInfo The execution information for the LLM call event
-     * @param runId The unique identifier for the current run.
-     * @param prompt The prompt that will be sent to the language model
-     * @param model The language model instance that will process the request
-     * @param tools The list of tool descriptors available for the LLM call
-     */
     public override suspend fun onLLMCallStarting(
         executionInfo: AgentExecutionInfo,
         runId: String,
@@ -433,17 +287,6 @@ public class AIAgentPipelineImpl(
         llmCallEventHandlers.values.forEach { handler -> handler.llmCallStartingHandler.handle(eventContext) }
     }
 
-    /**
-     * Notifies all registered LLM handlers after a language model call has completed.
-     *
-     * @param executionInfo The execution information for the LLM call event
-     * @param runId Identifier for the current run.
-     * @param prompt The prompt that was sent to the language model
-     * @param model The language model instance that processed the request
-     * @param tools The list of tool descriptors that were available for the LLM call
-     * @param responses The response messages received from the language model
-     * @param moderationResponse The moderation response, if any, received from the language model
-     */
     public override suspend fun onLLMCallCompleted(
         executionInfo: AgentExecutionInfo,
         runId: String,
@@ -463,15 +306,6 @@ public class AIAgentPipelineImpl(
 
     //region Trigger Tool Call Handlers
 
-    /**
-     * Notifies all registered tool handlers when a tool is called.
-     *
-     * @param executionInfo The execution information for the tool call event
-     * @param runId The unique identifier for the current run.
-     * @param toolCallId The unique identifier for the current tool call.
-     * @param toolName The tool name that is being called
-     * @param toolArgs The arguments provided to the tool
-     */
     public override suspend fun onToolCallStarting(
         executionInfo: AgentExecutionInfo,
         runId: String,
@@ -484,18 +318,6 @@ public class AIAgentPipelineImpl(
         toolCallEventHandlers.values.forEach { handler -> handler.toolCallHandler.handle(eventContext) }
     }
 
-    /**
-     * Notifies all registered tool handlers when a validation error occurs during a tool call.
-     *
-     * @param executionInfo The execution information for the tool call event;
-     * @param runId The unique identifier for the current run;
-     * @param toolCallId The unique identifier for the current tool call;
-     * @param toolName The name of the tool for which validation failed;
-     * @param toolArgs The arguments that failed validation;
-     * @param toolDescription The description of the tool that was called;
-     * @param message The validation error message;
-     * @param error The validation error message.
-     */
     public override suspend fun onToolValidationFailed(
         executionInfo: AgentExecutionInfo,
         runId: String,
@@ -521,18 +343,6 @@ public class AIAgentPipelineImpl(
         toolCallEventHandlers.values.forEach { handler -> handler.toolValidationErrorHandler.handle(eventContext) }
     }
 
-    /**
-     * Notifies all registered tool handlers when a tool call fails with an exception.
-     *
-     * @param executionInfo The execution information for the tool call agent event
-     * @param runId The unique identifier for the current run;
-     * @param toolCallId The unique identifier for the current tool call;
-     * @param toolName The tool name that was called;
-     * @param toolArgs The arguments provided to the tool;
-     * @param toolDescription The description of the tool that was called;
-     * @param message A message describing the failure.
-     * @param exception The [Throwable] that caused the failure.
-     */
     public override suspend fun onToolCallFailed(
         executionInfo: AgentExecutionInfo,
         runId: String,
@@ -558,17 +368,6 @@ public class AIAgentPipelineImpl(
         toolCallEventHandlers.values.forEach { handler -> handler.toolCallFailureHandler.handle(eventContext) }
     }
 
-    /**
-     * Notifies all registered tool handlers about the result of a tool call.
-     *
-     * @param executionInfo The execution information for the tool call agent event
-     * @param runId The unique identifier for the current run;
-     * @param toolCallId The unique identifier for the current tool call;
-     * @param toolName The tool name that was called;
-     * @param toolArgs The arguments that were provided to the tool;
-     * @param toolDescription The description of the tool that was called;
-     * @param toolResult The result produced by the tool, or null if no result was produced.
-     */
     public override suspend fun onToolCallCompleted(
         executionInfo: AgentExecutionInfo,
         runId: String,
@@ -596,18 +395,6 @@ public class AIAgentPipelineImpl(
 
     //region Trigger LLM Streaming
 
-    /**
-     * Invoked before streaming from a language model begins.
-     *
-     * This method notifies all registered stream handlers that streaming is about to start,
-     * allowing them to perform preprocessing or logging operations.
-     *
-     * @param executionInfo The execution information for the LLM streaming event
-     * @param runId The unique identifier for this LLM streaming session;
-     * @param prompt The prompt being sent to the language model;
-     * @param model The language model being used for streaming;
-     * @param tools The list of available tool descriptors for this streaming session.
-     */
     public override suspend fun onLLMStreamingStarting(
         executionInfo: AgentExecutionInfo,
         runId: String,
@@ -621,16 +408,6 @@ public class AIAgentPipelineImpl(
         llmStreamingEventHandlers.values.forEach { handler -> handler.llmStreamingStartingHandler.handle(eventContext) }
     }
 
-    /**
-     * Invoked when a stream frame is received during the streaming process.
-     *
-     * This method notifies all registered stream handlers about each incoming stream frame,
-     * allowing them to process, transform, or aggregate the streaming content in real-time.
-     *
-     * @param executionInfo The execution information for the LLM streaming event
-     * @param runId The unique identifier for this streaming session;
-     * @param streamFrame The individual stream frame containing partial response data.
-     */
     public override suspend fun onLLMStreamingFrameReceived(
         executionInfo: AgentExecutionInfo,
         runId: String,
@@ -647,16 +424,6 @@ public class AIAgentPipelineImpl(
         }
     }
 
-    /**
-     * Invoked if an error occurs during the streaming process.
-     *
-     * This method notifies all registered stream handlers about the streaming error,
-     * allowing them to handle or log the error.
-     *
-     * @param executionInfo The execution information for the LLM streaming event
-     * @param runId The unique identifier for this streaming session;
-     * @param exception The exception that occurred during streaming if applicable.
-     */
     public override suspend fun onLLMStreamingFailed(
         executionInfo: AgentExecutionInfo,
         runId: String,
@@ -670,18 +437,6 @@ public class AIAgentPipelineImpl(
         llmStreamingEventHandlers.values.forEach { handler -> handler.llmStreamingFailedHandler.handle(eventContext) }
     }
 
-    /**
-     * Invoked after streaming from a language model completes.
-     *
-     * This method notifies all registered stream handlers that streaming has finished,
-     * allowing them to perform post-processing, cleanup, or final logging operations.
-     *
-     * @param executionInfo The execution information for the LLM streaming event
-     * @param runId The unique identifier for this streaming session
-     * @param prompt The prompt that was sent to the language model
-     * @param model The language model that was used for streaming
-     * @param tools The list of tool descriptors that were available for this streaming session
-     */
     public override suspend fun onLLMStreamingCompleted(
         executionInfo: AgentExecutionInfo,
         runId: String,
@@ -699,24 +454,6 @@ public class AIAgentPipelineImpl(
 
     //region Interceptors
 
-    /**
-     * Intercepts environment creation to allow features to modify or enhance the agent environment.
-     *
-     * This method registers a transformer function that will be called when an agent environment
-     * is being created, allowing the feature to customize the environment based on the agent context.
-     *
-     * @param transform A function that transforms the environment, with access to the agent creation context
-     *
-     * Example:
-     * ```
-     * pipeline.interceptEnvironmentCreated(InterceptContext) { environment ->
-     *     // Modify the environment based on agent context
-     *     environment.copy(
-     *         variables = environment.variables + mapOf("customVar" to "value")
-     *     )
-     * }
-     * ```
-     */
     public override fun interceptEnvironmentCreated(
         feature: AIAgentFeature<*, *>,
         transform: suspend AgentEnvironmentTransformingContext.(AIAgentEnvironment) -> AIAgentEnvironment
@@ -728,20 +465,6 @@ public class AIAgentPipelineImpl(
         )
     }
 
-    /**
-     * Intercepts on before an agent started to modify or enhance the agent.
-     *
-     * @param handle The handler that processes agent creation events
-     *
-     * Example:
-     * ```
-     * pipeline.interceptAgentStarting(InterceptContext) {
-     *     readStages { stages ->
-     *         // Inspect agent stages
-     *     }
-     * }
-     * ```
-     */
     public override fun interceptAgentStarting(
         feature: AIAgentFeature<*, *>,
         handle: suspend (AgentStartingContext) -> Unit
@@ -753,18 +476,6 @@ public class AIAgentPipelineImpl(
         )
     }
 
-    /**
-     * Intercepts the completion of an agent's operation and assigns a custom handler to process the result.
-     *
-     * @param handle A suspend function providing custom logic to execute when the agent completes,
-     *
-     * Example:
-     * ```
-     * pipeline.interceptAgentCompleted(feature) { eventContext ->
-     *     // Handle the completion result here, using the strategy name and the result.
-     * }
-     * ```
-     */
     public override fun interceptAgentCompleted(
         feature: AIAgentFeature<*, *>,
         handle: suspend (eventContext: AgentCompletedContext) -> Unit
@@ -776,18 +487,6 @@ public class AIAgentPipelineImpl(
         )
     }
 
-    /**
-     * Intercepts and handles errors occurring during the execution of an AI agent's strategy.
-     *
-     * @param handle A suspend function providing custom logic to execute when an error occurs,
-     *
-     * Example:
-     * ```
-     * pipeline.interceptAgentExecutionFailed(feature) { eventContext ->
-     *     // Handle the error here, using the strategy name and the exception that occurred.
-     * }
-     * ```
-     */
     public override fun interceptAgentExecutionFailed(
         feature: AIAgentFeature<*, *>,
         handle: suspend (eventContext: AgentExecutionFailedContext) -> Unit
@@ -799,19 +498,6 @@ public class AIAgentPipelineImpl(
         )
     }
 
-    /**
-     * Intercepts and sets a handler to be invoked before an agent is closed.
-     *
-     * @param feature The feature associated with this handler.
-     * @param handle A suspendable function that is executed during the agent's pre-close phase.
-     *
-     * Example:
-     * ```
-     * pipeline.interceptAgentClosing(feature) { eventContext ->
-     *     // Handle agent run before close event.
-     * }
-     * ```
-     */
     public override fun interceptAgentClosing(
         feature: AIAgentFeature<*, *>,
         handle: suspend (eventContext: AgentClosingContext) -> Unit
@@ -823,20 +509,6 @@ public class AIAgentPipelineImpl(
         )
     }
 
-    /**
-     * Intercepts strategy started event to perform actions when an agent strategy begins execution.
-     *
-     * @param feature The feature associated with this handler.
-     * @param handle A suspend function that processes the start of a strategy, accepting the strategy context
-     *
-     * Example:
-     * ```
-     * pipeline.interceptStrategyStarting(feature) { event ->
-     *     val strategyName = event.strategy.name
-     *     logger.info("Strategy $strategyName has started execution")
-     * }
-     * ```
-     */
     public override fun interceptStrategyStarting(
         feature: AIAgentFeature<*, *>,
         handle: suspend (StrategyStartingContext) -> Unit
@@ -848,19 +520,6 @@ public class AIAgentPipelineImpl(
         )
     }
 
-    /**
-     * Sets up an interceptor to handle the completion of a strategy for the given feature.
-     *
-     * @param feature The feature associated with this handler.
-     * @param handle A suspend function that processes the completion of a strategy.
-     *
-     * Example:
-     * ```
-     * pipeline.interceptStrategyCompleted(feature) { event ->
-     *     // Handle the completion of the strategy here
-     * }
-     * ```
-     */
     public override fun interceptStrategyCompleted(
         feature: AIAgentFeature<*, *>,
         handle: suspend (StrategyCompletedContext) -> Unit
@@ -872,19 +531,6 @@ public class AIAgentPipelineImpl(
         )
     }
 
-    /**
-     * Intercepts LLM calls before they are made to modify or log the prompt.
-     *
-     * @param feature The feature associated with this handler.
-     * @param handle The handler that processes before-LLM-call events
-     *
-     * Example:
-     * ```
-     * pipeline.interceptLLMCallStarting(feature) { eventContext ->
-     *     logger.info("About to make LLM call with prompt: ${eventContext.prompt.messages.last().content}")
-     * }
-     * ```
-     */
     public override fun interceptLLMCallStarting(
         feature: AIAgentFeature<*, *>,
         handle: suspend (eventContext: LLMCallStartingContext) -> Unit
@@ -896,19 +542,6 @@ public class AIAgentPipelineImpl(
         )
     }
 
-    /**
-     * Intercepts LLM calls after they are made to process or log the response.
-     *
-     * @param feature The feature associated with this handler.
-     * @param handle The handler that processes after-LLM-call events
-     *
-     * Example:
-     * ```
-     * pipeline.interceptLLMCallCompleted(feature) { eventContext ->
-     *     // Process or analyze the response
-     * }
-     * ```
-     */
     public override fun interceptLLMCallCompleted(
         feature: AIAgentFeature<*, *>,
         handle: suspend (eventContext: LLMCallCompletedContext) -> Unit
@@ -920,22 +553,6 @@ public class AIAgentPipelineImpl(
         )
     }
 
-    /**
-     * Intercepts streaming operations before they begin to modify or log the streaming request.
-     *
-     * This method allows features to hook into the streaming pipeline before streaming starts,
-     * enabling preprocessing, validation, or logging of streaming requests.
-     *
-     * @param feature The feature associated with this handler.
-     * @param handle The handler that processes before-stream events
-     *
-     * Example:
-     * ```
-     * pipeline.interceptLLMStreamingStarting(feature) { eventContext ->
-     *     logger.info("About to start streaming with prompt: ${eventContext.prompt.messages.last().content}")
-     * }
-     * ```
-     */
     public override fun interceptLLMStreamingStarting(
         feature: AIAgentFeature<*, *>,
         handle: suspend (eventContext: LLMStreamingStartingContext) -> Unit
@@ -947,22 +564,6 @@ public class AIAgentPipelineImpl(
         )
     }
 
-    /**
-     * Intercepts stream frames as they are received during the streaming process.
-     *
-     * This method allows features to process individual stream frames in real-time,
-     * enabling monitoring, transformation, or aggregation of streaming content.
-     *
-     * @param feature The feature associated with this handler.
-     * @param handle The handler that processes stream frame events
-     *
-     * Example:
-     * ```
-     * pipeline.interceptLLMStreamingFrameReceived(feature) { eventContext ->
-     *     logger.debug("Received stream frame: ${eventContext.streamFrame}")
-     * }
-     * ```
-     */
     public override fun interceptLLMStreamingFrameReceived(
         feature: AIAgentFeature<*, *>,
         handle: suspend (eventContext: LLMStreamingFrameReceivedContext) -> Unit
@@ -974,12 +575,6 @@ public class AIAgentPipelineImpl(
         )
     }
 
-    /**
-     * Intercepts errors during the streaming process.
-     *
-     * @param feature The feature associated with this handler.
-     * @param handle The handler that processes stream errors
-     */
     public override fun interceptLLMStreamingFailed(
         feature: AIAgentFeature<*, *>,
         handle: suspend (eventContext: LLMStreamingFailedContext) -> Unit
@@ -991,22 +586,6 @@ public class AIAgentPipelineImpl(
         )
     }
 
-    /**
-     * Intercepts streaming operations after they complete to perform post-processing or cleanup.
-     *
-     * This method allows features to hook into the streaming pipeline after streaming finishes,
-     * enabling post-processing, cleanup, or final logging of the streaming session.
-     *
-     * @param feature The feature associated with this handler.
-     * @param handle The handler that processes after-stream events
-     *
-     * Example:
-     * ```
-     * pipeline.interceptLLMStreamingCompleted(feature) { eventContext ->
-     *     logger.info("Streaming completed for run: ${eventContext.runId}")
-     * }
-     * ```
-     */
     public override fun interceptLLMStreamingCompleted(
         feature: AIAgentFeature<*, *>,
         handle: suspend (eventContext: LLMStreamingCompletedContext) -> Unit
@@ -1018,19 +597,6 @@ public class AIAgentPipelineImpl(
         )
     }
 
-    /**
-     * Intercepts and handles tool calls for the specified feature.
-     *
-     * @param feature The feature associated with this handler.
-     * @param handle A suspend lambda function that processes tool calls.
-     *
-     * Example:
-     * ```
-     * pipeline.interceptToolCallStarting(feature) { eventContext ->
-     *    // Process or log the tool call
-     * }
-     * ```
-     */
     public override fun interceptToolCallStarting(
         feature: AIAgentFeature<*, *>,
         handle: suspend (eventContext: ToolCallStartingContext) -> Unit
@@ -1042,19 +608,6 @@ public class AIAgentPipelineImpl(
         )
     }
 
-    /**
-     * Intercepts validation errors encountered during the execution of tools associated with the specified feature.
-     *
-     * @param feature The feature associated with this handler.
-     * @param handle A suspendable lambda function that will be invoked when a tool validation error occurs.
-     *
-     * Example:
-     * ```
-     * pipeline.interceptToolValidationFailed(feature) { eventContext ->
-     *     // Handle the tool validation error here
-     * }
-     * ```
-     */
     public override fun interceptToolValidationFailed(
         feature: AIAgentFeature<*, *>,
         handle: suspend (eventContext: ToolValidationFailedContext) -> Unit
@@ -1066,19 +619,6 @@ public class AIAgentPipelineImpl(
         )
     }
 
-    /**
-     * Sets up an interception mechanism to handle tool call failures for a specific feature.
-     *
-     * @param feature The feature associated with this handler.
-     * @param handle A suspend function that is invoked when a tool call fails.
-     *
-     * Example:
-     * ```
-     * pipeline.interceptToolCallFailed(feature) { eventContext ->
-     *     // Handle the tool call failure here
-     * }
-     * ```
-     */
     public override fun interceptToolCallFailed(
         feature: AIAgentFeature<*, *>,
         handle: suspend (eventContext: ToolCallFailedContext) -> Unit
@@ -1090,19 +630,6 @@ public class AIAgentPipelineImpl(
         )
     }
 
-    /**
-     * Intercepts the result of a tool call with a custom handler for a specific feature.
-     *
-     * @param feature The feature associated with this handler.
-     * @param handle A suspending function that defines the behavior to execute when a tool call result is intercepted.
-     *
-     * Example:
-     * ```
-     * pipeline.interceptToolCallCompleted(feature) { eventContext ->
-     *     // Handle the tool call result here
-     * }
-     * ```
-     */
     public override fun interceptToolCallCompleted(
         feature: AIAgentFeature<*, *>,
         handle: suspend (eventContext: ToolCallCompletedContext) -> Unit
@@ -1118,9 +645,6 @@ public class AIAgentPipelineImpl(
 
     //region Deprecated Interceptors
 
-    /**
-     * Intercepts on before an agent started to modify or enhance the agent.
-     */
     @Deprecated(
         message = "Please use interceptAgentStarting instead. This method is deprecated and will be removed in the next release.",
         replaceWith = ReplaceWith(
@@ -1135,9 +659,6 @@ public class AIAgentPipelineImpl(
         interceptAgentStarting(feature, handle)
     }
 
-    /**
-     * Intercepts the completion of an agent's operation and assigns a custom handler to process the result.
-     */
     @Deprecated(
         message = "Please use interceptAgentCompleted instead. This method is deprecated and will be removed in the next release.",
         replaceWith = ReplaceWith(
@@ -1154,9 +675,6 @@ public class AIAgentPipelineImpl(
         interceptAgentCompleted(feature, handle)
     }
 
-    /**
-     * Intercepts and handles errors occurring during the execution of an AI agent's strategy.
-     */
     @Deprecated(
         message = "Please use interceptAgentExecutionFailed instead. This method is deprecated and will be removed in the next release.",
         replaceWith = ReplaceWith(
@@ -1173,9 +691,6 @@ public class AIAgentPipelineImpl(
         interceptAgentExecutionFailed(feature, handle)
     }
 
-    /**
-     * Intercepts and sets a handler to be invoked before an agent is closed.
-     */
     @Deprecated(
         message = "Please use interceptAgentClosing instead. This method is deprecated and will be removed in the next release.",
         replaceWith = ReplaceWith(
@@ -1192,9 +707,6 @@ public class AIAgentPipelineImpl(
         interceptAgentClosing(feature, handle)
     }
 
-    /**
-     * Intercepts strategy started event to perform actions when an agent strategy begins execution.
-     */
     @Deprecated(
         message = "Please use interceptStrategyStarting instead. This method is deprecated and will be removed in the next release.",
         replaceWith = ReplaceWith(
@@ -1211,9 +723,6 @@ public class AIAgentPipelineImpl(
         interceptStrategyStarting(feature, handle)
     }
 
-    /**
-     * Sets up an interceptor to handle the completion of a strategy for the given feature.
-     */
     @Deprecated(
         message = "Please use interceptStrategyCompleted instead. This method is deprecated and will be removed in the next release.",
         replaceWith = ReplaceWith(
@@ -1230,9 +739,6 @@ public class AIAgentPipelineImpl(
         interceptStrategyCompleted(feature, handle)
     }
 
-    /**
-     * Intercepts LLM calls before they are made (deprecated name).
-     */
     @Deprecated(
         message = "Please use interceptLLMCallStarting instead. This method is deprecated and will be removed in the next release.",
         replaceWith = ReplaceWith(
@@ -1249,9 +755,6 @@ public class AIAgentPipelineImpl(
         interceptLLMCallStarting(feature, handle)
     }
 
-    /**
-     * Intercepts LLM calls after they are made to process or log the response.
-     */
     @Deprecated(
         message = "Please use interceptLLMCallCompleted instead. This method is deprecated and will be removed in the next release.",
         replaceWith = ReplaceWith(
@@ -1268,10 +771,6 @@ public class AIAgentPipelineImpl(
         interceptLLMCallCompleted(feature, handle)
     }
 
-    /**
-     * Intercepts and handles tool calls for the specified feature and its implementation.
-     * Updates the tool call handler for the given feature key with a custom handler.
-     */
     @Deprecated(
         message = "Please use interceptToolCallStarting instead. This method is deprecated and will be removed in the next release.",
         replaceWith = ReplaceWith(
@@ -1288,9 +787,6 @@ public class AIAgentPipelineImpl(
         interceptToolCallStarting(feature, handle)
     }
 
-    /**
-     * Intercepts the result of a tool call with a custom handler for a specific feature.
-     */
     @Deprecated(
         message = "Please use interceptToolCallCompleted instead. This method is deprecated and will be removed in the next release.",
         replaceWith = ReplaceWith(
@@ -1307,9 +803,6 @@ public class AIAgentPipelineImpl(
         interceptToolCallCompleted(feature, handle)
     }
 
-    /**
-     * Sets up an interception mechanism to handle tool call failures for a specific feature.
-     */
     @Deprecated(
         message = "Please use interceptToolCallFailed instead. This method is deprecated and will be removed in the next release.",
         replaceWith = ReplaceWith(
@@ -1326,9 +819,6 @@ public class AIAgentPipelineImpl(
         interceptToolCallFailed(feature, handle)
     }
 
-    /**
-     * Intercepts validation errors encountered during the execution of tools associated with the specified feature.
-     */
     @Deprecated(
         message = "Please use interceptToolValidationFailed instead. This method is deprecated and will be removed in the next release.",
         replaceWith = ReplaceWith(
@@ -1358,12 +848,6 @@ public class AIAgentPipelineImpl(
         }
     }
 
-    /**
-     * Read feature keys from system variables.
-     *
-     * @return List of feature keys as a string.
-     *         For example, ["debugger", "tracing"]
-     */
     private fun readFeatureKeysFromSystemVariables(): List<String> {
         val collectedFeaturesKeys = mutableListOf<String>()
 
@@ -1386,12 +870,6 @@ public class AIAgentPipelineImpl(
         return collectedFeaturesKeys.toList()
     }
 
-    /**
-     * Filter system features to install based on the provided feature keys.
-     *
-     * @return List of [AIAgentStorageKey]s with filtered system features to install.
-     *         For example, [AIAgentStorageKey("debugger")]
-     */
     private fun filterSystemFeaturesToInstall(featureKeys: List<String>): List<AIAgentStorageKey<*>> {
         val filteredSystemFeaturesToInstall = mutableListOf<AIAgentStorageKey<*>>()
 

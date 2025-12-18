@@ -6,7 +6,9 @@ import ai.koog.agents.core.annotation.InternalAgentsApi
 import ai.koog.agents.core.tools.Tool
 import kotlin.jvm.JvmStatic
 
-@InternalAgentsApi
+/**
+ * Default implementation of [RollbackToolRegistryBuilderAPI]
+ * */
 public class RollbackToolRegistryBuilderImpl : RollbackToolRegistryBuilderAPI {
     private val rollbackToolsMap = mutableMapOf<Tool<*, *>, Tool<*, *>>()
 
