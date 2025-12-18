@@ -41,8 +41,74 @@
                 }
             },
 
+            "input_type": {
+                // JSON Schema to define the input structure (domain entity / Kotlin data class)
+                "oneOf": [
+                    {
+                        "type": "string"
+                    },
+                    {
+                        "type": "number"
+                    },
+                    {
+                        "type": "integer"
+                    },
+                    {
+                        "type": "boolean"
+                    },
+                    {
+                        "type": "object",
+                        "required": [],
+                        // Array of keys from "properties"
+                        "properties": {
+                            "type": "object",
+                            // Object of input type field names with types
+                            // "propertyOne": {
+                            //   "type": "string"
+                            // },
+                            // "propertyTwo": {
+                            //   "type": "integer"
+                            // }
+                        }
+                    }
+                ]
+            },
+
             "input": {
                 "type": "string"
+            },
+
+            "output_type": {
+                // JSON Schema to define the input structure (domain entity / Kotlin data class)
+                "oneOf": [
+                    {
+                        "type": "string"
+                    },
+                    {
+                        "type": "number"
+                    },
+                    {
+                        "type": "integer"
+                    },
+                    {
+                        "type": "boolean"
+                    },
+                    {
+                        "type": "object",
+                        "required": [],
+                        // Array of keys from "properties"
+                        "properties": {
+                            "type": "object",
+                            // Object of input type field names with types
+                            // "propertyOne": {
+                            //   "type": "string"
+                            // },
+                            // "propertyTwo": {
+                            //   "type": "integer"
+                            // }
+                        }
+                    }
+                ]
             },
 
             "features": {
