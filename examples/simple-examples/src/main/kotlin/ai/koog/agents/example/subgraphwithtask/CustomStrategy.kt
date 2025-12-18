@@ -70,4 +70,6 @@ fun customWizardStrategy(
     edge(verify forwardTo fix onCondition { !it.successful })
     edge(verify forwardTo nodeFinish onCondition { it.successful } transformed { "Project is correct." })
     edge(fix forwardTo verify)
+
+    // + compress history
 }

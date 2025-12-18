@@ -19,13 +19,26 @@
                     "start",
                     "finish",
                     "blank",
-                    "subgraph_with_task",
+                    "subgraph_with_task", // -> rename to "task"
                     "subgraph",
                     "call_llm",
                     "execute_tool",
                     "send_tool_result", // ?
-                    "send_tool_result"
-                ]
+                    // + "custom" / + fqn
+                ],
+
+                // start + finish
+                // task (subgraph_with_task)
+                // compress_history
+                // chat
+                // verifier
+                // fixer
+                // critique
+                // plan
+                // parallel
+                // custom
+
+
             },
             "input_type": {
                 // JSON Schema to define the input structure (domain entity / Kotlin data class)
