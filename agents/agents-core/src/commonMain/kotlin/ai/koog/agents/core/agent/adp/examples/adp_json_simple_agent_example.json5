@@ -1,0 +1,18 @@
+{
+    "agent": {
+        "id": "simple-agent",
+
+        "configuration": {
+            "model": {
+                "provider": "openai",
+                "id": "gpt-3.5-turbo",
+            }
+        },
+
+        "input": "Calculate 2 plus 2",
+
+        "strategy": {
+            // TODO: fill this
+        }
+    }
+}
