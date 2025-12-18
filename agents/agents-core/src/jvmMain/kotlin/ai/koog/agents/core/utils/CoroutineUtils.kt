@@ -31,7 +31,7 @@ public fun <T> AIAgentConfig.runOnLLMDispatcher(executorService: ExecutorService
     }
 
 @InternalAgentsApi
-public fun <T> AIAgentConfig.runOnMainDispatcher(
+public fun <T> AIAgentConfig.runOnStrategyDispatcher(
     executorService: ExecutorService? = null,
     block: suspend () -> T
 ): T =

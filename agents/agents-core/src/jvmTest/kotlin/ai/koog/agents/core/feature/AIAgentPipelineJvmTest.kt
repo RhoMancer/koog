@@ -1,3 +1,5 @@
+@file:OptIn(InternalAgentsApi::class)
+
 package ai.koog.agents.core.feature
 
 import ai.koog.agents.core.agent.GraphAIAgent
@@ -5,6 +7,7 @@ import ai.koog.agents.core.agent.GraphAIAgent.FeatureContext
 import ai.koog.agents.core.agent.config.AIAgentConfig
 import ai.koog.agents.core.agent.entity.AIAgentGraphStrategy
 import ai.koog.agents.core.annotation.ExperimentalAgentsApi
+import ai.koog.agents.core.annotation.InternalAgentsApi
 import ai.koog.agents.core.dsl.builder.forwardTo
 import ai.koog.agents.core.dsl.builder.strategy
 import ai.koog.agents.core.dsl.extension.nodeDoNothing

@@ -16,7 +16,7 @@ import ai.koog.prompt.llm.LLModel
 import kotlinx.datetime.Clock
 import kotlin.reflect.typeOf
 
-public actual class AIAgentBuilder internal actual constructor() : AIAgentBuilderAPI {
+public actual class AIAgentBuilder internal actual constructor() : AIAgentBuilderAPI by AIAgentBuilderImpl(){
     private val delegate: AIAgentBuilderImpl = AIAgentBuilderImpl()
 
     @property:PublishedApi

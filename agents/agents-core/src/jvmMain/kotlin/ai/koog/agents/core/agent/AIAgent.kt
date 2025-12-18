@@ -8,13 +8,10 @@ import ai.koog.agents.core.agent.config.AIAgentConfig
 import ai.koog.agents.core.agent.entity.AIAgentGraphStrategy
 import ai.koog.agents.core.annotation.InternalAgentsApi
 import ai.koog.agents.core.tools.ToolRegistry
-import ai.koog.agents.core.utils.asCoroutineContext
-import ai.koog.agents.core.utils.runOnMainDispatcher
+import ai.koog.agents.core.utils.runOnStrategyDispatcher
 import ai.koog.prompt.executor.model.PromptExecutor
 import ai.koog.prompt.llm.LLModel
 import ai.koog.utils.io.Closeable
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.runBlocking
 import kotlinx.datetime.Clock
 import java.util.concurrent.ExecutorService
 import kotlin.uuid.ExperimentalUuidApi
@@ -39,7 +36,7 @@ public actual abstract class AIAgent<Input, Output> : Closeable {
     public final fun run(
         agentInput: Input,
         executorService: ExecutorService? = null
-    ): Output = agentConfig.runOnMainDispatcher(executorService) { run(agentInput) }
+    ): Output = agentConfig.runOnStrategyDispatcher(executorService) { run(agentInput) }
 
     /**
      * Retrieves the current state of the AI agent asynchronously.
@@ -59,7 +56,7 @@ public actual abstract class AIAgent<Input, Output> : Closeable {
     @JvmOverloads
     public final fun getState(
         executorService: ExecutorService? = null,
-    ): AIAgentState<Output> = agentConfig.runOnMainDispatcher(executorService) { getState() }
+    ): AIAgentState<Output> = agentConfig.runOnStrategyDispatcher(executorService) { getState() }
 
     // Common (multiplatform) methods:
 

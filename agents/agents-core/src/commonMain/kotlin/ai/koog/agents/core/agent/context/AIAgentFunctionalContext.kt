@@ -141,7 +141,7 @@ public expect class AIAgentFunctionalContext internal constructor(
         strategyName: String = this.strategyName,
         pipeline: AIAgentFunctionalPipeline = this.pipeline,
         parentRootContext: AIAgentContext? = this.parentContext,
-    ): AIAgentFunctionalContext
+    ): AIAgentFunctionalContext 
 
     public override suspend fun requestLLM(
         message: String,
@@ -225,11 +225,11 @@ public expect class AIAgentFunctionalContext internal constructor(
     public suspend inline fun <Input, reified Output> subtask(
         taskDescription: String,
         input: Input,
-        tools: List<Tool<*, *>>?,
-        llmModel: LLModel?,
-        llmParams: LLMParams?,
-        runMode: ToolCalls,
-        assistantResponseRepeatMax: Int?
+        tools: List<Tool<*, *>>? = null,
+        llmModel: LLModel? = null,
+        llmParams: LLMParams? = null,
+        runMode: ToolCalls = ToolCalls.SEQUENTIAL,
+        assistantResponseRepeatMax: Int? = null
     ): Output
 
     override suspend fun <Input> subtaskWithVerification(

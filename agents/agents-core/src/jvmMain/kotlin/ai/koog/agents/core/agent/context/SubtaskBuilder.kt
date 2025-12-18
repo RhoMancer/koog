@@ -4,7 +4,7 @@ import ai.koog.agents.core.agent.ToolCalls
 import ai.koog.agents.core.agent.context.SubtaskBuilderWithInputAndOutput.OutputOption.Verification
 import ai.koog.agents.core.annotation.InternalAgentsApi
 import ai.koog.agents.core.tools.Tool
-import ai.koog.agents.core.utils.runOnMainDispatcher
+import ai.koog.agents.core.utils.runOnStrategyDispatcher
 import ai.koog.agents.ext.agent.CriticResult
 import ai.koog.prompt.llm.LLModel
 import ai.koog.prompt.params.LLMParams
@@ -245,7 +245,7 @@ public class SubtaskBuilderWithInputAndOutput<Input, Output : Any>(
      * @return The result of the subtask execution, which is of type `Output`.
      */
     @OptIn(InternalAgentsApi::class)
-    public fun run(): Output = context.config.runOnMainDispatcher(executorService) {
+    public fun run(): Output = context.config.runOnStrategyDispatcher(executorService) {
         @Suppress("UNCHECKED_CAST")
         when (output) {
             is OutputOption.ByClass<Output> -> {

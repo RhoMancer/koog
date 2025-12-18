@@ -18,7 +18,7 @@ import ai.koog.agents.core.tools.Tool
 import ai.koog.agents.core.tools.ToolDescriptor
 import ai.koog.agents.core.utils.asCoroutineContext
 import ai.koog.agents.core.utils.runOnLLMDispatcher
-import ai.koog.agents.core.utils.runOnMainDispatcher
+import ai.koog.agents.core.utils.runOnStrategyDispatcher
 import ai.koog.prompt.llm.LLModel
 import ai.koog.prompt.message.Message
 import ai.koog.prompt.params.LLMParams
@@ -197,7 +197,7 @@ public actual class AIAgentFunctionalContext internal actual constructor(
     @JavaAPI
     @JvmOverloads
     public fun getHistory(executorService: ExecutorService? = null): List<Message> =
-        config.runOnMainDispatcher(executorService) { getHistory() }
+        config.runOnStrategyDispatcher(executorService) { getHistory() }
 
     @JvmOverloads
     public actual override suspend fun requestLLM(
@@ -237,7 +237,7 @@ public actual class AIAgentFunctionalContext internal actual constructor(
     @JvmOverloads
     public fun latestTokenUsage(
         executorService: ExecutorService? = null
-    ): Int = config.runOnMainDispatcher(executorService) {
+    ): Int = config.runOnStrategyDispatcher(executorService) {
         latestTokenUsage()
     }
 
@@ -392,7 +392,7 @@ public actual class AIAgentFunctionalContext internal actual constructor(
     public fun executeTool(
         toolCall: Message.Tool.Call,
         executorService: ExecutorService? = null
-    ): ReceivedToolResult = config.runOnMainDispatcher(executorService) {
+    ): ReceivedToolResult = config.runOnStrategyDispatcher(executorService) {
         executeTool(toolCall)
     }
 
@@ -410,7 +410,7 @@ public actual class AIAgentFunctionalContext internal actual constructor(
         toolCalls: List<Message.Tool.Call>,
         parallelTools: Boolean,
         executorService: ExecutorService? = null
-    ): List<ReceivedToolResult> = config.runOnMainDispatcher(executorService) {
+    ): List<ReceivedToolResult> = config.runOnStrategyDispatcher(executorService) {
         executeMultipleTools(toolCalls, parallelTools)
     }
 
@@ -463,7 +463,7 @@ public actual class AIAgentFunctionalContext internal actual constructor(
         toolArgs: ToolArg,
         doUpdatePrompt: Boolean,
         executorService: ExecutorService? = null
-    ): SafeTool.Result<ToolResult> = config.runOnMainDispatcher(executorService) {
+    ): SafeTool.Result<ToolResult> = config.runOnStrategyDispatcher(executorService) {
         executeSingleTool(tool, toolArgs, doUpdatePrompt)
     }
 
@@ -488,4 +488,9 @@ public actual class AIAgentFunctionalContext internal actual constructor(
 
     @JavaAPI
     public fun subtask(taskDescription: String): SubtaskBuilder = SubtaskBuilder(this, taskDescription)
+}
+
+
+private suspend fun f(ctx: AIAgentFunctionalContext) {
+    ctx.requestLLM("hello")
 }

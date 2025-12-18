@@ -11,7 +11,7 @@ import ai.koog.agents.core.environment.SafeTool
 import ai.koog.agents.core.tools.Tool
 import ai.koog.agents.core.tools.ToolDescriptor
 import ai.koog.agents.core.tools.ToolRegistry
-import ai.koog.agents.core.utils.runOnMainDispatcher
+import ai.koog.agents.core.utils.runOnStrategyDispatcher
 import ai.koog.prompt.dsl.ModerationResult
 import ai.koog.prompt.dsl.Prompt
 import ai.koog.prompt.executor.model.PromptExecutor
@@ -59,7 +59,7 @@ public actual class AIAgentLLMWriteSession internal actual constructor(
         prompt: Prompt,
         tools: List<ToolDescriptor>,
         executorService: ExecutorService? = null
-    ): List<Message.Response> = config.runOnMainDispatcher(executorService) {
+    ): List<Message.Response> = config.runOnStrategyDispatcher(executorService) {
         executeMultiple(prompt, tools)
     }
 
@@ -83,7 +83,7 @@ public actual class AIAgentLLMWriteSession internal actual constructor(
         tools: List<ToolDescriptor>,
         executorService: ExecutorService? = null
     ): Message.Response =
-        config.runOnMainDispatcher(executorService) {
+        config.runOnStrategyDispatcher(executorService) {
             executeSingle(prompt, tools)
         }
 
@@ -99,7 +99,7 @@ public actual class AIAgentLLMWriteSession internal actual constructor(
     @JvmOverloads
     public fun requestLLMMultipleWithoutTools(
         executorService: ExecutorService? = null
-    ): List<Message.Response> = config.runOnMainDispatcher(executorService) {
+    ): List<Message.Response> = config.runOnStrategyDispatcher(executorService) {
         requestLLMMultipleWithoutTools()
     }
 
@@ -114,7 +114,7 @@ public actual class AIAgentLLMWriteSession internal actual constructor(
     @JvmOverloads
     public fun requestLLMWithoutTools(
         executorService: ExecutorService? = null
-    ): Message.Response = config.runOnMainDispatcher(executorService) {
+    ): Message.Response = config.runOnStrategyDispatcher(executorService) {
         requestLLMWithoutTools()
     }
 
@@ -130,7 +130,7 @@ public actual class AIAgentLLMWriteSession internal actual constructor(
     @JvmOverloads
     public fun requestLLMOnlyCallingTools(
         executorService: ExecutorService? = null
-    ): Message.Response = config.runOnMainDispatcher(executorService) {
+    ): Message.Response = config.runOnStrategyDispatcher(executorService) {
         requestLLMOnlyCallingTools()
     }
 
@@ -148,7 +148,7 @@ public actual class AIAgentLLMWriteSession internal actual constructor(
     public fun requestLLMForceOneTool(
         tool: ToolDescriptor,
         executorService: ExecutorService? = null
-    ): Message.Response = config.runOnMainDispatcher(executorService) {
+    ): Message.Response = config.runOnStrategyDispatcher(executorService) {
         requestLLMForceOneTool(tool)
     }
 
@@ -165,7 +165,7 @@ public actual class AIAgentLLMWriteSession internal actual constructor(
     public fun requestLLMForceOneTool(
         tool: Tool<*, *>,
         executorService: ExecutorService? = null
-    ): Message.Response = config.runOnMainDispatcher(executorService) {
+    ): Message.Response = config.runOnStrategyDispatcher(executorService) {
         requestLLMForceOneTool(tool)
     }
 
@@ -182,7 +182,7 @@ public actual class AIAgentLLMWriteSession internal actual constructor(
     @JvmOverloads
     public fun requestLLM(
         executorService: ExecutorService? = null
-    ): Message.Response = config.runOnMainDispatcher(executorService) {
+    ): Message.Response = config.runOnStrategyDispatcher(executorService) {
         requestLLM()
     }
 
@@ -200,7 +200,7 @@ public actual class AIAgentLLMWriteSession internal actual constructor(
     @JvmOverloads
     public fun requestLLMStreaming(
         executorService: ExecutorService? = null
-    ): Flow<StreamFrame> = config.runOnMainDispatcher(executorService) {
+    ): Flow<StreamFrame> = config.runOnStrategyDispatcher(executorService) {
         requestLLMStreaming()
     }
 
@@ -217,7 +217,7 @@ public actual class AIAgentLLMWriteSession internal actual constructor(
     public fun requestModeration(
         moderatingModel: LLModel? = null,
         executorService: ExecutorService? = null
-    ): ModerationResult = config.runOnMainDispatcher(executorService) {
+    ): ModerationResult = config.runOnStrategyDispatcher(executorService) {
         requestModeration(moderatingModel)
     }
 
@@ -232,7 +232,7 @@ public actual class AIAgentLLMWriteSession internal actual constructor(
     @JvmOverloads
     public fun requestLLMMultiple(
         executorService: ExecutorService? = null
-    ): List<Message.Response> = config.runOnMainDispatcher(executorService) {
+    ): List<Message.Response> = config.runOnStrategyDispatcher(executorService) {
         requestLLMMultiple()
     }
 
@@ -249,7 +249,7 @@ public actual class AIAgentLLMWriteSession internal actual constructor(
     public fun <T> requestLLMStructured(
         config: StructuredRequestConfig<T>,
         executorService: ExecutorService? = null
-    ): Result<StructuredResponse<T>> = this.config.runOnMainDispatcher(executorService) {
+    ): Result<StructuredResponse<T>> = this.config.runOnStrategyDispatcher(executorService) {
         requestLLMStructured(config)
     }
 
@@ -270,7 +270,7 @@ public actual class AIAgentLLMWriteSession internal actual constructor(
         examples: List<T> = emptyList(),
         fixingParser: StructureFixingParser? = null,
         executorService: ExecutorService? = null
-    ): Result<StructuredResponse<T>> = config.runOnMainDispatcher(executorService) {
+    ): Result<StructuredResponse<T>> = config.runOnStrategyDispatcher(executorService) {
         requestLLMStructured(serializer, examples, fixingParser)
     }
 
@@ -289,7 +289,7 @@ public actual class AIAgentLLMWriteSession internal actual constructor(
         response: Message.Assistant,
         config: StructuredRequestConfig<T>,
         executorService: ExecutorService? = null
-    ): StructuredResponse<T> = this.config.runOnMainDispatcher(executorService) {
+    ): StructuredResponse<T> = this.config.runOnStrategyDispatcher(executorService) {
         parseResponseToStructuredResponse(response, config)
     }
 
@@ -304,7 +304,7 @@ public actual class AIAgentLLMWriteSession internal actual constructor(
     @JvmOverloads
     public fun requestLLMMultipleChoices(
         executorService: ExecutorService? = null
-    ): List<LLMChoice> = config.runOnMainDispatcher(executorService) {
+    ): List<LLMChoice> = config.runOnStrategyDispatcher(executorService) {
         requestLLMMultipleChoices()
     }
 

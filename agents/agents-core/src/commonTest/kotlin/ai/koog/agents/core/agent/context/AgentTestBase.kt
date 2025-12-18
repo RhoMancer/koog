@@ -1,3 +1,5 @@
+@file:OptIn(InternalAgentsApi::class)
+
 package ai.koog.agents.core.agent.context
 
 import ai.koog.agents.core.CalculatorChatExecutor.testClock
@@ -6,6 +8,7 @@ import ai.koog.agents.core.agent.config.MissingToolsConversionStrategy
 import ai.koog.agents.core.agent.config.ToolCallDescriber
 import ai.koog.agents.core.agent.entity.AIAgentStateManager
 import ai.koog.agents.core.agent.entity.AIAgentStorage
+import ai.koog.agents.core.annotation.InternalAgentsApi
 import ai.koog.agents.core.environment.AIAgentEnvironment
 import ai.koog.agents.core.environment.ReceivedToolResult
 import ai.koog.agents.core.environment.ToolResultKind

@@ -472,22 +472,21 @@ class FunctionalAIAgentTest {
                         additionalInfo = qaReport?.bodyReport?.feedbackIfIncorrect
                     )
 
+                    val assembly = Assembly(engine, body)
                     product = subtask<Assembly, Spacecraft>(
-                        input = Assembly(engine, body),
+                        taskDescription = "Assemble the product: $assembly",
+                        input = assembly,
                         tools = AssemblyTools.tools,
                         llmModel = OllamaModels.Meta.LLAMA_4,
                         runMode = ToolCalls.SINGLE_RUN_SEQUENTIAL
-                    ) {
-                        "Assemble the product: $it"
-                    }
+                    )
 
                     qaReport = subtask<Spacecraft, FullQAReport>(
+                        taskDescription = "Verify the product is built correctly",
                         input = product,
                         tools = QATools.tools,
                         runMode = ToolCalls.SINGLE_RUN_SEQUENTIAL
-                    ) {
-                        "Verify the product is built correctly: $it"
-                    }
+                    )
 
                     if (qaReport.isCorrect) break
                 }
@@ -516,40 +515,37 @@ class FunctionalAIAgentTest {
         architecture: Architecture,
         additionalInfo: String? = null
     ): Body = subtask<Architecture, Body>(
+        taskDescription = "Create the body for the given architecture: $architecture" +
+            (additionalInfo?.let { "Additional feedback: $additionalInfo" } ?: ""),
         input = architecture,
         tools = BuildBodyTools.tools,
         llmModel = GoogleModels.Gemini2_0Flash,
         runMode = ToolCalls.SINGLE_RUN_SEQUENTIAL
-    ) {
-        "Create the body for the given architecture: $it" +
-            (additionalInfo?.let { "Additional feedback: $additionalInfo" } ?: "")
-    }
+    )
 
     private suspend fun AIAgentFunctionalContext.buildEngine(
         architecture: Architecture,
         additionalInfo: String? = null
     ): Engine = subtask<Architecture, Engine>(
+        taskDescription = "Create the engine for the given architecture: $architecture" +
+            (additionalInfo?.let { "Additional feedback: $additionalInfo" } ?: ""),
         input = architecture,
         tools = BuildEngineTools.tools,
         llmModel = AnthropicModels.Sonnet_4_5,
         runMode = ToolCalls.SINGLE_RUN_SEQUENTIAL
-    ) {
-        "Create the engine for the given architecture: $it" +
-            (additionalInfo?.let { "Additional feedback: $additionalInfo" } ?: "")
-    }
+    )
 
     private suspend fun AIAgentFunctionalContext.designArchitecture(
         input: String,
         additionalInfo: String? = null
     ): Architecture = subtask<String, Architecture>(
+        taskDescription = "Create the architecture for the following machinery: $input" +
+            (additionalInfo?.let { "Additional feedback: $additionalInfo" } ?: ""),
         input = input,
         tools = ArchitectureTools.tools,
         llmModel = OpenAIModels.Chat.GPT5,
         runMode = ToolCalls.SINGLE_RUN_SEQUENTIAL
-    ) {
-        "Create the architecture for the following machinery: $input" +
-            (additionalInfo?.let { "Additional feedback: $additionalInfo" } ?: "")
-    }
+    )
 
     @Test
     fun `subtask_default_sequential_finish_only`() = runTest {
@@ -571,12 +567,11 @@ class FunctionalAIAgentTest {
             toolRegistry = ToolRegistry.EMPTY,
             strategy = functionalStrategy<String, SimpleOut> { input ->
                 subtask<String, SimpleOut>(
+                    taskDescription = "Do simple subtask: $input",
                     input = input,
                     tools = null, // no extra tools
                     runMode = ToolCalls.SEQUENTIAL
-                ) {
-                    "Do simple subtask: $it"
-                }
+                )
             },
             systemPrompt = "You are helpful"
         ) {
@@ -620,12 +615,11 @@ class FunctionalAIAgentTest {
             llmModel = OllamaModels.Meta.LLAMA_3_2,
             strategy = functionalStrategy<String, SimpleOut> { input ->
                 subtask<String, SimpleOut>(
+                    taskDescription = "Compose task with tool: $input",
                     input = input,
                     tools = listOf(DummyTool),
                     runMode = ToolCalls.SEQUENTIAL
-                ) {
-                    "Compose task with tool: $it"
-                }
+                )
             },
             toolRegistry = testToolRegistry
         ) {
@@ -661,12 +655,11 @@ class FunctionalAIAgentTest {
             llmModel = OllamaModels.Meta.LLAMA_3_2,
             strategy = functionalStrategy<String, SimpleOut> { input ->
                 subtask<String, SimpleOut>(
+                    taskDescription = "Parallel subtask: $input",
                     input = input,
                     tools = null,
                     runMode = ToolCalls.PARALLEL
-                ) {
-                    "Parallel subtask: $it"
-                }
+                )
             }
         ) {
             install(EventHandler) {
@@ -698,12 +691,11 @@ class FunctionalAIAgentTest {
             llmModel = OllamaModels.Meta.LLAMA_3_2,
             strategy = functionalStrategy<String, SimpleOut> { input ->
                 subtask<String, SimpleOut>(
+                    taskDescription = "Single-run subtask: $input",
                     input = input,
                     tools = null,
                     runMode = ToolCalls.SINGLE_RUN_SEQUENTIAL
-                ) {
-                    "Single-run subtask: $it"
-                }
+                )
             }
         ) {
             install(EventHandler) {
@@ -736,11 +728,10 @@ class FunctionalAIAgentTest {
             toolRegistry = ToolRegistry.EMPTY,
             strategy = functionalStrategy<String, ai.koog.agents.ext.agent.CriticResult<String>> { input ->
                 subtaskWithVerification(
+                    taskDescription = "Judge this: $input",
                     input = input,
                     runMode = ToolCalls.SEQUENTIAL
-                ) {
-                    "Judge this: $it"
-                }
+                )
             },
             systemPrompt = "You are helpful"
         ) {

@@ -8,7 +8,7 @@ import ai.koog.agents.core.agent.config.AIAgentConfig
 import ai.koog.agents.core.agent.entity.AIAgentGraphStrategy
 import ai.koog.agents.core.annotation.InternalAgentsApi
 import ai.koog.agents.core.tools.ToolRegistry
-import ai.koog.agents.core.utils.runOnMainDispatcher
+import ai.koog.agents.core.utils.runOnStrategyDispatcher
 import ai.koog.prompt.executor.model.PromptExecutor
 import ai.koog.prompt.llm.LLModel
 import kotlinx.datetime.Clock
@@ -49,7 +49,7 @@ public actual abstract class AIAgentService<Input, Output, TAgent : AIAgent<Inpu
         agentConfig: AIAgentConfig = this.agentConfig,
         executorService: ExecutorService? = null,
         clock: Clock = Clock.System
-    ): TAgent = agentConfig.runOnMainDispatcher(executorService) {
+    ): TAgent = agentConfig.runOnStrategyDispatcher(executorService) {
         createAgent(id, additionalToolRegistry, agentConfig, clock)
     }
 
@@ -70,7 +70,7 @@ public actual abstract class AIAgentService<Input, Output, TAgent : AIAgent<Inpu
     public fun removeAgent(
         agent: TAgent,
         executorService: ExecutorService? = null
-    ): Boolean = agentConfig.runOnMainDispatcher(executorService) {
+    ): Boolean = agentConfig.runOnStrategyDispatcher(executorService) {
         removeAgent(agent)
     }
 
@@ -79,7 +79,7 @@ public actual abstract class AIAgentService<Input, Output, TAgent : AIAgent<Inpu
     public fun removeAgentWithId(
         id: String,
         executorService: ExecutorService? = null
-    ): Boolean = agentConfig.runOnMainDispatcher(executorService) {
+    ): Boolean = agentConfig.runOnStrategyDispatcher(executorService) {
         removeAgentWithId(id)
     }
 
@@ -88,7 +88,7 @@ public actual abstract class AIAgentService<Input, Output, TAgent : AIAgent<Inpu
     public fun agentById(
         id: String,
         executorService: ExecutorService? = null
-    ): TAgent? = agentConfig.runOnMainDispatcher(executorService) {
+    ): TAgent? = agentConfig.runOnStrategyDispatcher(executorService) {
         agentById(id)
     }
 
@@ -96,7 +96,7 @@ public actual abstract class AIAgentService<Input, Output, TAgent : AIAgent<Inpu
     @JvmOverloads
     public fun listAllAgents(
         executorService: ExecutorService? = null
-    ): List<TAgent> = agentConfig.runOnMainDispatcher(executorService) {
+    ): List<TAgent> = agentConfig.runOnStrategyDispatcher(executorService) {
         listAllAgents()
     }
 
@@ -104,7 +104,7 @@ public actual abstract class AIAgentService<Input, Output, TAgent : AIAgent<Inpu
     @JvmOverloads
     public fun listActiveAgents(
         executorService: ExecutorService? = null
-    ): List<TAgent> = agentConfig.runOnMainDispatcher(executorService) {
+    ): List<TAgent> = agentConfig.runOnStrategyDispatcher(executorService) {
         listActiveAgents()
     }
 
@@ -112,7 +112,7 @@ public actual abstract class AIAgentService<Input, Output, TAgent : AIAgent<Inpu
     @JvmOverloads
     public fun listInactiveAgents(
         executorService: ExecutorService? = null
-    ): List<TAgent> = agentConfig.runOnMainDispatcher(executorService) {
+    ): List<TAgent> = agentConfig.runOnStrategyDispatcher(executorService) {
         listInactiveAgents()
     }
 
@@ -120,7 +120,7 @@ public actual abstract class AIAgentService<Input, Output, TAgent : AIAgent<Inpu
     @JvmOverloads
     public fun listFinishedAgents(
         executorService: ExecutorService? = null
-    ): List<TAgent> = agentConfig.runOnMainDispatcher(executorService) {
+    ): List<TAgent> = agentConfig.runOnStrategyDispatcher(executorService) {
         listFinishedAgents()
     }
 
@@ -129,7 +129,7 @@ public actual abstract class AIAgentService<Input, Output, TAgent : AIAgent<Inpu
     public fun closeAll(
         executorService: ExecutorService? = null
     ) {
-        agentConfig.runOnMainDispatcher(executorService) {
+        agentConfig.runOnStrategyDispatcher(executorService) {
             closeAll()
         }
     }

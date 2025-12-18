@@ -11,7 +11,7 @@ import ai.koog.agents.core.annotation.InternalAgentsApi
 import ai.koog.agents.core.environment.AIAgentEnvironment
 import ai.koog.agents.core.tools.ToolDescriptor
 import ai.koog.agents.core.tools.ToolRegistry
-import ai.koog.agents.core.utils.runOnMainDispatcher
+import ai.koog.agents.core.utils.runOnStrategyDispatcher
 import ai.koog.agents.core.utils.submitToMainDispatcher
 import ai.koog.prompt.dsl.Prompt
 import ai.koog.prompt.executor.model.PromptExecutor
@@ -65,7 +65,7 @@ public actual open class AIAgentLLMContext @JvmOverloads actual constructor(
      * @return The result produced by the provided block of code.
      */
     @JavaAPI
-    public fun <T> writeSession(block: Function<AIAgentLLMWriteSession, T>): T = config.runOnMainDispatcher {
+    public fun <T> writeSession(block: Function<AIAgentLLMWriteSession, T>): T = config.runOnStrategyDispatcher {
         writeSession {
             config.submitToMainDispatcher {
                 block.apply(this)
@@ -83,7 +83,7 @@ public actual open class AIAgentLLMContext @JvmOverloads actual constructor(
      * @return The result of executing the provided block within the `AIAgentLLMReadSession` context.
      */
     @JavaAPI
-    public fun <T> readSession(block: Function<AIAgentLLMReadSession, T>): T = config.runOnMainDispatcher {
+    public fun <T> readSession(block: Function<AIAgentLLMReadSession, T>): T = config.runOnStrategyDispatcher {
         readSession {
             config.submitToMainDispatcher {
                 block.apply(this)

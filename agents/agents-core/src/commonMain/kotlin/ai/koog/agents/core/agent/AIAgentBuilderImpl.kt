@@ -47,7 +47,6 @@ internal class AIAgentBuilderImpl internal constructor() : AIAgentBuilderAPI {
     internal var clock: Clock = Clock.System
 
     public override fun promptExecutor(promptExecutor: PromptExecutor): AIAgentBuilderAPI = apply {
-        AIAgentConfig
         this.promptExecutor = promptExecutor
     }
 
@@ -69,6 +68,7 @@ internal class AIAgentBuilderImpl internal constructor() : AIAgentBuilderAPI {
         prompt = this.prompt,
         llmModel = this.llmModel,
         temperature = this.temperature,
+        promptExecutor = this.promptExecutor,
         numberOfChoices = this.numberOfChoices,
         maxIterations = this.maxIterations,
         missingToolsConversionStrategy = this.missingToolsConversionStrategy,
@@ -80,6 +80,7 @@ internal class AIAgentBuilderImpl internal constructor() : AIAgentBuilderAPI {
     ): FunctionalAgentBuilder<Input, Output> = FunctionalAgentBuilder(
         strategy = strategy,
         id = this.id,
+        promptExecutor = this.promptExecutor,
         prompt = this.prompt,
         llmModel = this.llmModel,
         temperature = this.temperature,
@@ -132,6 +133,7 @@ internal class AIAgentBuilderImpl internal constructor() : AIAgentBuilderAPI {
         llmModel = this.llmModel,
         temperature = this.temperature,
         numberOfChoices = this.numberOfChoices,
+        promptExecutor = this.promptExecutor,
         maxIterations = this.maxIterations,
         missingToolsConversionStrategy = this.missingToolsConversionStrategy,
         clock = this.clock,
