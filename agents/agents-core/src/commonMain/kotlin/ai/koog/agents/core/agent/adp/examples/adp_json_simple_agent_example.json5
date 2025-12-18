@@ -1,18 +1,217 @@
 {
     "agent": {
-        "id": "simple-agent",
+        "id": "calculator-agent-test",
 
         "configuration": {
             "model": {
                 "provider": "openai",
-                "id": "gpt-3.5-turbo",
-            }
+                "name": "gpt-3.5-turbo",
+            },
+            "temperature": 1.0,
+            "tool_choice": "auto",
+            "max_iterations": 10
         },
 
-        "input": "Calculate 2 plus 2",
-
         "strategy": {
-            // TODO: fill this
-        }
+            "id": "single_run",
+            "nodes": [
+                {
+                    "id": "start",
+                    "kind": "start",
+                    "input_type": {
+                        "type": "string"
+                    },
+                    "output_type": {
+                        "type": "string"
+                    }
+                },
+                {
+                    "id": "nodeCallLLM",
+                    "kind": "call_llm",
+                    "input_type": {
+                        "type": "string"
+                    },
+                    "output_type": {
+                        "type": "object",
+                        "description": "Message.Response",
+                        "required": ["content", "metaInfo"],
+                        "properties": {
+                            "content": {
+                                "type": "string"
+                            },
+                            "metaInfo": {
+                                "type": "object"
+                            },
+                            "toolCalls": {
+                                "type": "array",
+                                "items": {
+                                    "type": "object",
+                                    "description": "Message.Tool.Call"
+                                }
+                            }
+                        }
+                    }
+                },
+                {
+                    "id": "nodeExecuteTool",
+                    "kind": "execute_tool",
+                    "input_type": {
+                        "type": "object",
+                        "description": "Message.Tool.Call",
+                        "required": ["id", "tool", "args"],
+                        "properties": {
+                            "id": {
+                                "type": "string"
+                            },
+                            "tool": {
+                                "type": "string"
+                            },
+                            "args": {
+                                "type": "object"
+                            }
+                        }
+                    },
+                    "output_type": {
+                        "type": "object",
+                        "description": "ReceivedToolResult",
+                        "required": ["id", "tool", "toolArgs", "content", "resultKind"],
+                        "properties": {
+                            "id": {
+                                "type": "string"
+                            },
+                            "tool": {
+                                "type": "string"
+                            },
+                            "toolArgs": {
+                                "type": "object"
+                            },
+                            "toolDescription": {
+                                "type": "string"
+                            },
+                            "content": {
+                                "type": "string"
+                            },
+                            "resultKind": {
+                                "type": "string",
+                                "enum": ["SUCCESS", "FAILURE", "VALIDATION_ERROR"]
+                            },
+                            "result": {
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                {
+                    "id": "nodeSendToolResult",
+                    "kind": "send_tool_result",
+                    "input_type": {
+                        "type": "object",
+                        "description": "ReceivedToolResult",
+                        "required": ["id", "tool", "toolArgs", "content", "resultKind"],
+                        "properties": {
+                            "id": {
+                                "type": "string"
+                            },
+                            "tool": {
+                                "type": "string"
+                            },
+                            "toolArgs": {
+                                "type": "object"
+                            },
+                            "toolDescription": {
+                                "type": "string"
+                            },
+                            "content": {
+                                "type": "string"
+                            },
+                            "resultKind": {
+                                "type": "string",
+                                "enum": ["SUCCESS", "FAILURE", "VALIDATION_ERROR"]
+                            },
+                            "result": {
+                                "type": "object"
+                            }
+                        }
+                    },
+                    "output_type": {
+                        "type": "object",
+                        "description": "Message.Response",
+                        "required": ["content", "metaInfo"],
+                        "properties": {
+                            "content": {
+                                "type": "string"
+                            },
+                            "metaInfo": {
+                                "type": "object"
+                            },
+                            "toolCalls": {
+                                "type": "array",
+                                "items": {
+                                    "type": "object",
+                                    "description": "Message.Tool.Call"
+                                }
+                            }
+                        }
+                    }
+                },
+                {
+                    "id": "finish",
+                    "kind": "finish",
+                    "input_type": {
+                        "type": "string"
+                    },
+                    "output_type": {
+                        "type": "string"
+                    }
+                }
+            ],
+            "edges": [
+                {
+                    "from": "start",
+                    "to": "nodeCallLLM"
+                },
+                {
+                    "from": "nodeCallLLM",
+                    "to": "nodeExecuteTool",
+                    "condition": {
+                        "type": "on_tool_call"
+                    }
+                },
+                {
+                    "from": "nodeCallLLM",
+                    "to": "finish",
+                    "condition": {
+                        "type": "on_assistant_message"
+                    }
+                },
+                {
+                    "from": "nodeExecuteTool",
+                    "to": "nodeSendToolResult"
+                },
+                {
+                    "from": "nodeSendToolResult",
+                    "to": "finish",
+                    "condition": {
+                        "type": "on_assistant_message"
+                    }
+                },
+                {
+                    "from": "nodeSendToolResult",
+                    "to": "nodeExecuteTool",
+                    "condition": {
+                        "type": "on_tool_call"
+                    }
+                }
+            ]
+        },
+
+        "tools": [
+            {
+                "kind": "procedural",
+                "fqn": "ai.koog.integration.tests.utils.tools.CalculatorToolNoArgs"
+            }
+        ],
+
+        "input": "What is 123 + 456?"
     }
 }
