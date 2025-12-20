@@ -60,35 +60,40 @@ internal class SpanCollector(
      *
      * @return The last active span, or null if no spans are currently active.
      */
-    fun getLastActiveSpan(): GenAIAgentSpan? {
-        return spansLock.read { activeSpans.lastOrNull() }
-    }
+    fun getLastActiveSpan(): GenAIAgentSpan? =
+        spansLock.read { activeSpans.lastOrNull() }
 
     /**
      * Returns the most recently opened span of a specific type that is still active.
      *
      * @return The last active span of type T, or null if no matching span is active.
      */
-    inline fun <reified T : GenAIAgentSpan> getLastActiveSpan(): T? {
-        return spansLock.read { activeSpans.lastOrNull { it is T } as? T }
-    }
+    inline fun <reified T : GenAIAgentSpan> getLastActiveSpan(): T? =
+        spansLock.read { activeSpans.lastOrNull { it is T } as? T }
 
     /**
      * Returns all currently active spans in chronological order (oldest first).
      *
      * @return A list of all active spans.
      */
-    fun getActiveSpans(): List<GenAIAgentSpan> {
-        return spansLock.read { activeSpans.toList() }
-    }
+    fun getActiveSpans(filter: (GenAIAgentSpan) -> Boolean = { true }): List<GenAIAgentSpan> =
+        spansLock.read { activeSpans.filter(filter).toList() }
 
-    fun addEventsToSpan(spanId: String, events: List<GenAIAgentEvent>) {
-        spansLock.read {
-            val spanNode = spanIndex[spanId] ?: error("Span with id '$spanId' not found")
-            spanNode.span.addEvents(events)
-        }
-    }
+    /**
+     * Adds a list of events to a specific span identified by its ID.
+     *
+     * @param spanId The ID of the span to which events should be added.
+     * @param events The list of events to add to the span.
+     */
+    fun addEventsToSpan(spanId: String, events: List<GenAIAgentEvent>) =
+        spansLock.read { getSpanCatching<GenAIAgentSpan>(spanId)?.addEvents(events) }
 
+    /**
+     * Starts a new span with the given details and adds it to the active spans list.
+     *
+     * @param span The span to start.
+     * @param instant The start timestamp for the span. Defaults to the current time if null.
+     */
     fun startSpan(
         span: GenAIAgentSpan,
         instant: Instant? = null,
@@ -118,11 +123,6 @@ internal class SpanCollector(
         // Update span context and span properties
         span.span = startedSpan
         span.context = startedSpan.storeInContext(parentContext)
-
-        // Add to active spans list
-        spansLock.write {
-            activeSpans.add(span)
-        }
 
         logger.debug { "Span has been started (name: ${span.name}, id: ${span.id})" }
     }
@@ -227,8 +227,7 @@ internal class SpanCollector(
             parentNode.children.add(newNode)
         }
 
-        // Root span (agent) has no parent.
-        // It doesn't need to be added to any parent's children list.
+        activeSpans.add(span)
         true
     }
 
