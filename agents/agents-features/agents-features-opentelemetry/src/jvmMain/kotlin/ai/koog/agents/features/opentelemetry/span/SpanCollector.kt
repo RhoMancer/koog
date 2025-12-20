@@ -18,41 +18,27 @@ internal class SpanCollector(
     private val verbose: Boolean = false
 ) {
 
-    internal data class SpanNode(
-        val span: GenAIAgentSpan,
-        val children: MutableList<SpanNode> = mutableListOf()
-    )
-
     companion object {
         private val logger = KotlinLogging.logger { }
     }
 
     /**
-     * A mutable map for tracking the hierarchical structure of spans within the system.
-     *
-     * Keys are span IDs, and values are [SpanNode] objects, which represent
-     * individual spans and their associated child spans in a tree-like format.
-     *
-     * This map is used internally to manage and maintain relationships between spans,
-     * enabling the system to properly construct and end spans during the tracing process.
+     * Maps span ID to its parent span, enabling tracking of hierarchical relationships.
      */
-    private val spanIndex = mutableMapOf<String, SpanNode>()
+    private val spanParents = mutableMapOf<String, GenAIAgentSpan>()
 
     /**
-     * A list tracking currently active (open) spans in chronological order.
-     * When a span is started, it's added to the end of the list.
-     * When a span is ended, it's removed from the list.
-     * This allows finding the most recently opened span that's still active.
+     * Set of currently active (open) spans.
      */
-    private val activeSpans = mutableListOf<GenAIAgentSpan>()
+    private val activeSpans = mutableSetOf<GenAIAgentSpan>()
 
     /**
-     * A read-write lock to ensure thread-safe access to the span index and active spans list.
+     * A read-write lock to ensure thread-safe access to the span collections.
      */
     private val spansLock = ReentrantReadWriteLock()
 
-    val spansCount: Int
-        get() = spansLock.read { spanIndex.size }
+    val activeSpansCount: Int
+        get() = spansLock.read { activeSpans.size }
 
     /**
      * Returns the most recently opened span that is still active (not yet ended).
@@ -72,7 +58,7 @@ internal class SpanCollector(
         spansLock.read { activeSpans.lastOrNull { it is T } as? T }
 
     /**
-     * Returns all currently active spans in chronological order (oldest first).
+     * Returns all currently active spans.
      *
      * @return A list of all active spans.
      */
@@ -89,7 +75,7 @@ internal class SpanCollector(
         spansLock.read { getSpanCatching<GenAIAgentSpan>(spanId)?.addEvents(events) }
 
     /**
-     * Starts a new span with the given details and adds it to the active spans list.
+     * Starts a new span with the given details and adds it to the active spans set.
      *
      * @param span The span to start.
      * @param instant The start timestamp for the span. Defaults to the current time if null.
@@ -141,32 +127,25 @@ internal class SpanCollector(
         spanToFinish.end()
 
         spansLock.write {
-            val removedNode = spanIndex.remove(span.id)
-            if (removedNode == null) {
+            if (!activeSpans.remove(span)) {
                 logger.warn {
                     "Span with id '${span.id}' not found. Make sure you do not delete span with same id several times"
                 }
                 return@write
             }
 
-            // Remove from parent's children
-            val parentSpan = span.parentSpan
-            if (parentSpan != null) {
-                val parentNode = spanIndex[parentSpan.id]
-                parentNode?.children?.remove(removedNode)
-            }
-
-            // Remove from active spans list
-            activeSpans.remove(span)
+            spanParents.remove(span.id)
         }
     }
 
     inline fun <reified T : GenAIAgentSpan> getSpan(spanId: String): T? {
-        return spansLock.read { spanIndex[spanId]?.span as? T }
+        return spansLock.read { activeSpans.firstOrNull { it.id == spanId } as? T }
     }
 
     inline fun <reified T : GenAIAgentSpan> getSpanOrThrow(spanId: String): T {
-        val span = spansLock.read { spanIndex[spanId]?.span } ?: error("Span with id: $spanId not found")
+        val span = spansLock.read { activeSpans.firstOrNull { it.id == spanId } }
+            ?: error("Span with id: $spanId not found")
+
         return span as? T
             ?: error(
                 "Span with id <$spanId> is not of expected type. Expected: <${T::class.simpleName}>, actual: <${span::class.simpleName}>"
@@ -187,10 +166,7 @@ internal class SpanCollector(
     fun endUnfinishedSpans(filter: (GenAIAgentSpan) -> Boolean = { true }) {
         // Take snapshot to avoid ConcurrentModificationException
         val spansToEnd = spansLock.read {
-            spanIndex.values
-                .map { it.span }
-                .filter(filter)
-                .toList()
+            activeSpans.filter(filter).toList()
         }
 
         spansToEnd.forEach { span ->
@@ -205,26 +181,19 @@ internal class SpanCollector(
     //region Private Methods
 
     /**
-     * Adds a span to the index.
+     * Adds a span to the active spans set and tracks its parent.
      *
      * @return true if successfully added, false if it already exists.
      */
     private fun addSpan(span: GenAIAgentSpan): Boolean = spansLock.write {
         // Check if already exists
-        if (spanIndex.containsKey(span.id)) {
+        if (activeSpans.any { it.id == span.id }) {
             return@write false
         }
 
-        val newNode = SpanNode(span)
-        spanIndex[span.id] = newNode
-
-        // Add to children
-        val parentSpan = span.parentSpan
-        if (parentSpan != null) {
-            val parentNode = spanIndex[parentSpan.id]
-                ?: error("Parent span with id '${parentSpan.id}' not found. Parent must be added before child.")
-
-            parentNode.children.add(newNode)
+        // Track parent relationship
+        span.parentSpan?.let { parent ->
+            spanParents[span.id] = parent
         }
 
         activeSpans.add(span)

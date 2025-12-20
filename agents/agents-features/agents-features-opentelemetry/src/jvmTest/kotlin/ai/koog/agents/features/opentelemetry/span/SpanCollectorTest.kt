@@ -24,7 +24,7 @@ class SpanCollectorTest {
     @Test
     fun `spanProcessor should have zero spans initially`() {
         val spanCollector = SpanCollector(MockTracer(), verbose = true)
-        assertEquals(0, spanCollector.spansCount)
+        assertEquals(0, spanCollector.activeSpansCount)
     }
 
     @Test
@@ -36,7 +36,7 @@ class SpanCollectorTest {
 
         spanCollector.startSpan(span)
 
-        assertEquals(1, spanCollector.spansCount)
+        assertEquals(1, spanCollector.activeSpansCount)
     }
 
     @Test
@@ -47,7 +47,7 @@ class SpanCollectorTest {
         val span = MockGenAIAgentSpan(spanId, spanName)
 
         spanCollector.startSpan(span)
-        assertEquals(1, spanCollector.spansCount)
+        assertEquals(1, spanCollector.activeSpansCount)
 
         val actualSpan = spanCollector.getSpan<GenAIAgentSpan>(spanId)
         assertEquals(spanId, actualSpan?.id)
@@ -57,12 +57,12 @@ class SpanCollectorTest {
     fun `getSpan should return null when no spans are added`() {
         val spanCollector = SpanCollector(MockTracer(), verbose = true)
         val spanId = "test-span-id"
-        assertEquals(0, spanCollector.spansCount)
+        assertEquals(0, spanCollector.activeSpansCount)
 
         val retrievedSpan = spanCollector.getSpan<GenAIAgentSpan>(spanId)
 
         assertNull(retrievedSpan)
-        assertEquals(0, spanCollector.spansCount)
+        assertEquals(0, spanCollector.activeSpansCount)
     }
 
     @Test
@@ -73,13 +73,13 @@ class SpanCollectorTest {
         val spanName = "test-span-name"
         val span = MockGenAIAgentSpan(spanId, spanName)
         spanCollector.startSpan(span)
-        assertEquals(1, spanCollector.spansCount)
+        assertEquals(1, spanCollector.activeSpansCount)
 
         val nonExistentSpanId = "non-existent-span"
         val retrievedSpan = spanCollector.getSpan<GenAIAgentSpan>(nonExistentSpanId)
 
         assertNull(retrievedSpan)
-        assertEquals(1, spanCollector.spansCount)
+        assertEquals(1, spanCollector.activeSpansCount)
     }
 
     @Test
@@ -88,27 +88,27 @@ class SpanCollectorTest {
         val spanId = "test-span-id"
         val spanName = "test-span-name"
         val span = MockGenAIAgentSpan(spanId, spanName)
-        assertEquals(0, spanCollector.spansCount)
+        assertEquals(0, spanCollector.activeSpansCount)
 
         spanCollector.startSpan(span)
-        assertEquals(1, spanCollector.spansCount)
+        assertEquals(1, spanCollector.activeSpansCount)
         val retrievedSpan = spanCollector.getSpanOrThrow<GenAIAgentSpan>(spanId)
 
         assertEquals(spanId, retrievedSpan.id)
-        assertEquals(1, spanCollector.spansCount)
+        assertEquals(1, spanCollector.activeSpansCount)
     }
 
     @Test
     fun `getSpanOrThrow should throw when span not found`() {
         val spanCollector = SpanCollector(MockTracer(), verbose = true)
         val nonExistentSpanId = "non-existent-span"
-        assertEquals(0, spanCollector.spansCount)
+        assertEquals(0, spanCollector.activeSpansCount)
 
         val exception = assertFailsWith<IllegalStateException> {
             spanCollector.getSpanOrThrow<GenAIAgentSpan>(nonExistentSpanId)
         }
         assertEquals("Span with id: $nonExistentSpanId not found", exception.message)
-        assertEquals(0, spanCollector.spansCount)
+        assertEquals(0, spanCollector.activeSpansCount)
     }
 
     @Test
@@ -117,10 +117,10 @@ class SpanCollectorTest {
         val spanId = "test-span-id"
         val spanName = "test-span-name"
         val span = MockGenAIAgentSpan(spanId, spanName)
-        assertEquals(0, spanCollector.spansCount)
+        assertEquals(0, spanCollector.activeSpansCount)
 
         spanCollector.startSpan(span)
-        assertEquals(1, spanCollector.spansCount)
+        assertEquals(1, spanCollector.activeSpansCount)
 
         // We can't test this with our mock span since we can't create different types,
         // but we can verify the error message format by creating a fake exception
@@ -133,7 +133,7 @@ class SpanCollectorTest {
             throwable.message
         )
 
-        assertEquals(1, spanCollector.spansCount)
+        assertEquals(1, spanCollector.activeSpansCount)
     }
 
     @Test
@@ -142,17 +142,17 @@ class SpanCollectorTest {
         val spanId = "test-span-id"
         val spanName = "test-span-name"
         val span = MockGenAIAgentSpan(spanId, spanName)
-        assertEquals(0, spanCollector.spansCount)
+        assertEquals(0, spanCollector.activeSpansCount)
 
         spanCollector.startSpan(span)
-        assertEquals(1, spanCollector.spansCount)
+        assertEquals(1, spanCollector.activeSpansCount)
 
         spanCollector.endSpan(span)
-        assertEquals(0, spanCollector.spansCount)
+        assertEquals(0, spanCollector.activeSpansCount)
 
         val retrievedSpan = spanCollector.getSpan<GenAIAgentSpan>(spanId)
         assertNull(retrievedSpan)
-        assertEquals(0, spanCollector.spansCount)
+        assertEquals(0, spanCollector.activeSpansCount)
     }
 
     @Test
@@ -177,11 +177,11 @@ class SpanCollectorTest {
         val span3 = MockGenAIAgentSpan(span3Id, span3Name)
         spanCollector.startSpan(span3)
 
-        assertEquals(3, spanCollector.spansCount)
+        assertEquals(3, spanCollector.activeSpansCount)
 
         // End one of the spans
         spanCollector.endSpan(span2)
-        assertEquals(2, spanCollector.spansCount)
+        assertEquals(2, spanCollector.activeSpansCount)
 
         // Verify initial state
         assertTrue(span1.isStarted)
@@ -248,7 +248,7 @@ class SpanCollectorTest {
         spanCollector.startSpan(agentRunSpan)
         spanCollector.startSpan(nodeSpan)
         spanCollector.startSpan(toolSpan)
-        assertEquals(4, spanCollector.spansCount)
+        assertEquals(4, spanCollector.activeSpansCount)
 
         // Verify initial state - all spans are started but not ended
         assertTrue(agentSpan.isStarted)
@@ -293,7 +293,7 @@ class SpanCollectorTest {
 
         // Start the span
         spanCollector.startSpan(span)
-        assertEquals(1, spanCollector.spansCount)
+        assertEquals(1, spanCollector.activeSpansCount)
 
         // Create test events
         val event1 = MockGenAIAgentEvent(name = "test_event_1").apply {
@@ -309,7 +309,7 @@ class SpanCollectorTest {
         spanCollector.addEventsToSpan(spanId, listOf(event1, event2))
 
         // Verify the span still exists
-        assertEquals(1, spanCollector.spansCount)
+        assertEquals(1, spanCollector.activeSpansCount)
         val retrievedSpan = spanCollector.getSpan<GenAIAgentSpan>(spanId)
         assertNotNull(retrievedSpan)
         assertEquals(spanId, retrievedSpan.id)
@@ -344,7 +344,7 @@ class SpanCollectorTest {
 
         // Start the span to replace the span instance later with a mocked value
         spanCollector.startSpan(span)
-        assertEquals(1, spanCollector.spansCount)
+        assertEquals(1, spanCollector.activeSpansCount)
 
         // Replace started span with the mock instance
         span.span = mockSpan
@@ -356,7 +356,7 @@ class SpanCollectorTest {
         span.addAttributes(attributes)
 
         spanCollector.endSpan(span)
-        assertEquals(0, spanCollector.spansCount)
+        assertEquals(0, spanCollector.activeSpansCount)
 
         // Verify exact converted values when verbose is set to 'false'
         val expectedAttributes = mapOf(
@@ -380,7 +380,7 @@ class SpanCollectorTest {
 
         // Start the span to replace the span instance later with a mocked value
         spanCollector.startSpan(span)
-        assertEquals(1, spanCollector.spansCount)
+        assertEquals(1, spanCollector.activeSpansCount)
 
         // Event with attribute HiddenString and a body field that contains HiddenString
         // Replace started span with the mock instance
@@ -392,7 +392,7 @@ class SpanCollectorTest {
         span.addEvent(event)
 
         spanCollector.endSpan(span)
-        assertEquals(0, spanCollector.spansCount)
+        assertEquals(0, spanCollector.activeSpansCount)
 
         // Assert collected event
         assertEquals(1, mockSpan.collectedEvents.size)
