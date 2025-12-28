@@ -26,7 +26,7 @@ public expect open class RollbackToolRegistryBuilder constructor(
     public override fun <TArgs> registerRollback(
         tool: Tool<TArgs, *>,
         rollbackTool: Tool<TArgs, *>
-    ): RollbackToolRegistryBuilderAPI
+    ): RollbackToolRegistryBuilder
 
     /**
      * Builds and returns an instance of [RollbackToolRegistry] initialized with the registered rollback tools.

@@ -4,13 +4,14 @@ package ai.koog.agents.snapshot.feature
 
 import ai.koog.agents.annotations.JavaAPI
 import ai.koog.agents.core.annotation.InternalAgentsApi
+import ai.koog.agents.core.tools.Tool
 import ai.koog.agents.core.tools.reflect.ToolSet
 import ai.koog.agents.core.tools.reflect.java.asJavaTools
 
 @Suppress("EXPECT_ACTUAL_CLASSIFIERS_ARE_IN_BETA_WARNING", "MissingKDocForPublicAPI")
 public actual open class RollbackToolRegistryBuilder actual constructor(
     internal actual val delegate: RollbackToolRegistryBuilderImpl
-) : RollbackToolRegistryBuilderAPI by delegate {
+) : RollbackToolRegistryBuilderAPI {
 
     /**
      * Registers relationships between tools in the given tool set and their corresponding rollback tools
@@ -44,4 +45,11 @@ public actual open class RollbackToolRegistryBuilder actual constructor(
             normalTools.zip(revertTools)
                 .forEach { (tool, revertTool) -> delegate.registerRollbackUnsafe(tool, revertTool) }
         }
+
+    actual override fun <TArgs> registerRollback(
+        tool: Tool<TArgs, *>,
+        rollbackTool: Tool<TArgs, *>
+    ): RollbackToolRegistryBuilder = apply { delegate.registerRollback(tool, rollbackTool) }
+
+    actual override fun build(): RollbackToolRegistry = delegate.build()
 }

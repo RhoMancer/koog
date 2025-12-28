@@ -1,3 +1,5 @@
+@file:Suppress("EXPECT_ACTUAL_CLASSIFIERS_ARE_IN_BETA_WARNING")
+
 package ai.koog.agents.core.agent
 
 import ai.koog.agents.annotations.JavaAPI
@@ -6,6 +8,7 @@ import ai.koog.agents.core.agent.config.AIAgentConfig
 import ai.koog.agents.core.agent.config.MissingToolsConversionStrategy
 import ai.koog.agents.core.agent.config.ToolCallDescriber
 import ai.koog.agents.core.agent.entity.AIAgentGraphStrategy
+import ai.koog.agents.core.annotation.InternalAgentsApi
 import ai.koog.agents.core.feature.AIAgentFunctionalFeature
 import ai.koog.agents.core.feature.AIAgentGraphFeature
 import ai.koog.agents.core.feature.config.FeatureConfig
@@ -18,7 +21,6 @@ import ai.koog.prompt.llm.LLModel
 import ai.koog.prompt.params.LLMParams
 import kotlinx.datetime.Clock
 import kotlin.reflect.KType
-import ai.koog.agents.core.annotation.InternalAgentsApi
 
 /**
  * Builder for creating AIAgentService instances.
@@ -27,189 +29,35 @@ import ai.koog.agents.core.annotation.InternalAgentsApi
  * - GraphAIAgentService<Input, Output>
  * - FunctionalAIAgentService<Input, Output>
  */
-public class AIAgentServiceBuilder internal constructor() {
-    internal var promptExecutor: PromptExecutor? = null
-    internal var toolRegistry: ToolRegistry = ToolRegistry.EMPTY
-    internal var prompt: Prompt = Prompt.Empty
-    internal var llmModel: LLModel? = null
-    internal var temperature: Double? = null
-    internal var numberOfChoices: Int = 1
-    internal var maxIterations: Int = 50
-    internal var clock: Clock = Clock.System
-    internal var missingToolsConversionStrategy: MissingToolsConversionStrategy =
-        MissingToolsConversionStrategy.Missing(ToolCallDescriber.JSON)
+public expect class AIAgentServiceBuilder internal constructor() : AIAgentServiceBuilderAPI {
+    public override fun promptExecutor(promptExecutor: PromptExecutor): AIAgentServiceBuilder
 
-    /**
-     * Sets the prompt executor for the `AIAgentServiceBuilder`.
-     *
-     * @param promptExecutor The instance of `PromptExecutor` to be used by the service.
-     * @return The current instance of `AIAgentServiceBuilder` for method chaining.
-     */
-    public fun promptExecutor(promptExecutor: PromptExecutor): AIAgentServiceBuilder = apply {
-        this.promptExecutor = promptExecutor
-    }
+    public override fun llmModel(model: LLModel): AIAgentServiceBuilder
 
-    /**
-     * Sets the Large Language Model (LLM) instance to be used by the service builder.
-     *
-     * @param model The LLM instance to be used, represented by an [LLModel] object.
-     * @return The current instance of [AIAgentServiceBuilder] for method chaining.
-     */
-    public fun llmModel(model: LLModel): AIAgentServiceBuilder = apply {
-        this.llmModel = model
-    }
+    public override fun toolRegistry(toolRegistry: ToolRegistry): AIAgentServiceBuilder
 
-    /**
-     * Configures the `ToolRegistry` for the `AIAgentServiceBuilder`.
-     *
-     * This method allows setting a `ToolRegistry`, which manages a collection of tools
-     * available for use by AI agents during their operation.
-     *
-     * @param toolRegistry The `ToolRegistry` instance to be used by the agent service.
-     * @return The current instance of `AIAgentServiceBuilder` for fluent method chaining.
-     */
-    public fun toolRegistry(toolRegistry: ToolRegistry): AIAgentServiceBuilder = apply {
-        this.toolRegistry = toolRegistry
-    }
+    public override fun systemPrompt(systemPrompt: String): AIAgentServiceBuilder
 
-    /**
-     * Sets a system-level instruction or context for the AI agent.
-     * The provided string serves as the system prompt, defining the
-     * role or behavior of the AI within the generated service.
-     *
-     * @param systemPrompt The system-level instruction to configure the prompt.
-     * @return The current instance of AIAgentServiceBuilder with the updated system prompt.
-     */
-    public fun systemPrompt(systemPrompt: String): AIAgentServiceBuilder = apply {
-        this.prompt = prompt(id = "agent") { system(systemPrompt) }
-    }
+    public override fun prompt(prompt: Prompt): AIAgentServiceBuilder
 
-    /**
-     * Sets the prompt to be used for the AI Agent service and returns the builder instance.
-     *
-     * @param prompt the Prompt object that defines the input or behavior for the AI Agent service
-     * @return the current instance of AIAgentServiceBuilder to allow method chaining
-     */
-    public fun prompt(prompt: Prompt): AIAgentServiceBuilder = apply {
-        this.prompt = prompt
-    }
+    public override fun temperature(temperature: Double): AIAgentServiceBuilder
 
-    /**
-     * Sets the temperature parameter, which adjusts the randomness of the model's outputs.
-     * A higher temperature value results in more varied and creative responses, whereas a lower
-     * temperature value yields more focused and deterministic responses.
-     *
-     * @param temperature The desired temperature value for controlling output randomness.
-     * @return The updated instance of AIAgentServiceBuilder.
-     */
-    public fun temperature(temperature: Double): AIAgentServiceBuilder = apply {
-        this.temperature = temperature
-    }
+    public override fun numberOfChoices(numberOfChoices: Int): AIAgentServiceBuilder
 
-    /**
-     * Sets the number of choices to be used in the AI agent service.
-     *
-     * @param numberOfChoices The number of choices to be configured for the AI agent service.
-     * @return The instance of AIAgentServiceBuilder with the number of choices configured.
-     */
-    public fun numberOfChoices(numberOfChoices: Int): AIAgentServiceBuilder = apply {
-        this.numberOfChoices = numberOfChoices
-    }
+    public override fun maxIterations(maxIterations: Int): AIAgentServiceBuilder
 
-    /**
-     * Sets the maximum number of iterations for the AI agent's process.
-     *
-     * @param maxIterations the maximum number of iterations to be performed
-     * @return the updated instance of AIAgentServiceBuilder
-     */
-    public fun maxIterations(maxIterations: Int): AIAgentServiceBuilder = apply {
-        this.maxIterations = maxIterations
-    }
-
-    /**
-     * Configures the AI agent service builder using the specified agent configuration.
-     *
-     * This method applies the parameters defined in the provided `AIAgentConfig` object
-     * to the current instance of the `AIAgentServiceBuilder`. It sets the prompt, language
-     * model, maximum number of iterations, and the strategy for handling missing tools during execution.
-     *
-     * @param config The configuration object containing the settings to be applied, including
-     *        the prompt, model, maximum agent iterations, and missing tools conversion strategy.
-     * @return The current instance of `AIAgentServiceBuilder` for method chaining.
-     */
     @JavaAPI
-    public fun agentConfig(config: AIAgentConfig): AIAgentServiceBuilder = apply {
-        this.prompt = config.prompt
-        this.llmModel = config.model
-        this.maxIterations = config.maxAgentIterations
-        this.missingToolsConversionStrategy = config.missingToolsConversionStrategy
-    }
+    public override fun agentConfig(config: AIAgentConfig): AIAgentServiceBuilder
 
-    /**
-     * Configure a graph strategy and continue with a graph service builder.
-     */
-    public fun <Input, Output> graphStrategy(
+    public override fun <Input, Output> graphStrategy(
         strategy: AIAgentGraphStrategy<Input, Output>
-    ): GraphAgentServiceBuilder<Input, Output> = GraphAgentServiceBuilder(
-        strategy = strategy,
-        inputType = strategy.inputType,
-        outputType = strategy.outputType,
-        prompt = this.prompt,
-        llmModel = this.llmModel,
-        temperature = this.temperature,
-        numberOfChoices = this.numberOfChoices,
-        maxIterations = this.maxIterations,
-        clock = this.clock,
-    ).also {
-        // carry promptExecutor/toolRegistry lazily
-        it.promptExecutor = this.promptExecutor
-        it.toolRegistry = this.toolRegistry
-    }
+    ): GraphAgentServiceBuilder<Input, Output>
 
-    /**
-     * Configure a functional strategy and continue with a functional service builder.
-     */
-    public fun <Input, Output> functionalStrategy(
+    public override fun <Input, Output> functionalStrategy(
         strategy: AIAgentFunctionalStrategy<Input, Output>
-    ): FunctionalAgentServiceBuilder<Input, Output> = FunctionalAgentServiceBuilder(
-        strategy = strategy,
-        prompt = this.prompt,
-        llmModel = this.llmModel,
-        temperature = this.temperature,
-        numberOfChoices = this.numberOfChoices,
-        maxIterations = this.maxIterations,
-        clock = this.clock,
-    ).also {
-        it.promptExecutor = this.promptExecutor
-        it.toolRegistry = this.toolRegistry
-    }
+    ): FunctionalAgentServiceBuilder<Input, Output>
 
-    /**
-     * Convenience build for GraphAIAgentService<String, String> using singleRunStrategy.
-     */
-    public fun build(): GraphAIAgentService<String, String> {
-        val executor = requireNotNull(promptExecutor) { "PromptExecutor must be provided" }
-        val model = requireNotNull(llmModel) { "LLModel must be provided" }
-        val config = AIAgentConfig(
-            prompt = if (prompt === Prompt.Empty) {
-                prompt(
-                    id = "chat", params = LLMParams(
-                        temperature = temperature,
-                        numberOfChoices = numberOfChoices
-                    )
-                ) {}
-            } else prompt,
-            model = model,
-            maxAgentIterations = maxIterations
-        )
-        return AIAgentServiceHelper.invoke(
-            promptExecutor = executor,
-            agentConfig = config,
-            strategy = singleRunStrategy(),
-            toolRegistry = toolRegistry,
-            installFeatures = {}
-        )
-    }
+    public override fun build(): GraphAIAgentService<String, String>
 }
 
 /**
@@ -257,9 +105,10 @@ public class GraphAgentServiceBuilder<Input, Output> internal constructor(
      * @param promptExecutor An instance of `PromptExecutor` that will handle the prompt execution logic.
      * @return The updated instance of `GraphServiceBuilder` with the prompt executor set.
      */
-    public fun promptExecutor(promptExecutor: PromptExecutor): GraphAgentServiceBuilder<Input, Output> = apply {
-        this.promptExecutor = promptExecutor
-    }
+    public fun promptExecutor(promptExecutor: PromptExecutor): GraphAgentServiceBuilder<Input, Output> =
+        apply {
+            this.promptExecutor = promptExecutor
+        }
 
     /**
      * Sets the Large Language Model (LLM) for the current `GraphServiceBuilder` instance.
@@ -450,9 +299,10 @@ public class FunctionalAgentServiceBuilder<Input, Output> internal constructor(
      * @param promptExecutor The `PromptExecutor` instance to use for executing prompts.
      * @return An updated `FunctionalServiceBuilder` instance configured with the given `PromptExecutor`.
      */
-    public fun promptExecutor(promptExecutor: PromptExecutor): FunctionalAgentServiceBuilder<Input, Output> = apply {
-        this.promptExecutor = promptExecutor
-    }
+    public fun promptExecutor(promptExecutor: PromptExecutor): FunctionalAgentServiceBuilder<Input, Output> =
+        apply {
+            this.promptExecutor = promptExecutor
+        }
 
     /**
      * Sets the specified Large Language Model (LLM) to be used by the Functional Service.

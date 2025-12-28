@@ -29,9 +29,9 @@ import kotlin.uuid.Uuid
 public data class AgentCheckpointData(
     val checkpointId: String,
     val createdAt: Instant,
-    val nodeId: String,
-    val lastInput: JsonElement,
-    val messageHistory: List<Message>,
+    val nodeId: String, // send tool result to llm
+    val lastInput: JsonElement, // 1+2=3
+    val messageHistory: List<Message>, // ... , 1+2, 3, 3
     val version: Long,
     val properties: Map<String, JsonElement>? = null
 )
