@@ -123,7 +123,8 @@ internal class SpanCollector(
 
         logger.trace { "Found ${spanNodes.size} span nodes for path: ${path.path()}" }
         val filter = filter ?: { true }
-        return spanNodes.singleOrNull(filter)?.span
+        val filteredNode = spanNodes.firstOrNull(filter)
+        return filteredNode?.span
     }
 
     /**

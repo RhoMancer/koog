@@ -216,7 +216,9 @@ class LangfuseSpanAdapterTest {
 
         val firstStep = assertIs<Int>(firstNode.attributes.requireValue("langfuse.observation.metadata.langgraph_step"))
         assertEquals(0, firstStep)
-        assertEquals("planner", firstNode.attributes.requireValue("langfuse.observation.metadata.langgraph_node"))
+
+        // Langfuse span adapter adds an attribute 'langgraph_node' with node name as a value.
+        assertEquals("planner-node-name", firstNode.attributes.requireValue("langfuse.observation.metadata.langgraph_node"))
 
         val secondNodeInput = "executor input"
         val secondNodeSpanId = "executor-node-id"
@@ -235,7 +237,9 @@ class LangfuseSpanAdapterTest {
 
         val secondStep = assertIs<Int>(secondNode.attributes.requireValue("langfuse.observation.metadata.langgraph_step"))
         assertEquals(1, secondStep)
-        assertEquals("executor", secondNode.attributes.requireValue("langfuse.observation.metadata.langgraph_node"))
+
+        // Langfuse span adapter adds an attribute 'langgraph_node' with node name as a value.
+        assertEquals("executor-node-name", secondNode.attributes.requireValue("langfuse.observation.metadata.langgraph_node"))
     }
 
     private fun createInferenceSpan(

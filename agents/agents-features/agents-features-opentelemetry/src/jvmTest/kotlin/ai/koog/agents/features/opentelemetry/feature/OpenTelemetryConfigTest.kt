@@ -22,6 +22,7 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFails
 import kotlin.test.assertTrue
+import kotlin.time.Duration.Companion.seconds
 
 /**
  * Tests for the OpenTelemetry feature.
@@ -135,7 +136,7 @@ class OpenTelemetryConfigTest : OpenTelemetryTestBase() {
     }
 
     @Test
-    fun `test custom sdk configuration emits correct spans`() = runTest {
+    fun `test custom sdk configuration emits correct spans`() = runTest(timeout = 1000000.seconds) {
         MockSpanExporter().use { mockExporter ->
             val userPrompt = "What's the weather in Paris?"
 

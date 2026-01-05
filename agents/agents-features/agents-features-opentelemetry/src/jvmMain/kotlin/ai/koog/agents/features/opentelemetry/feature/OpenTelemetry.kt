@@ -570,11 +570,14 @@ public class OpenTelemetry {
          * @return The parent span associated with the event if found, or null if no matching parent is found.
          */
         private inline fun <reified T : GenAIAgentSpan> SpanCollector.getParentSpanForEvent(eventContext: AgentLifecycleEventContext): T? {
+            // TODO: This should get closest parent.
+            //  Not the exact match !!!
             val executionInfo = eventContext.executionInfo
             val eventId = eventContext.eventId
 
             val parentPath = executionInfo.parent ?: return null
-            return this.getSpanCatching<T>(path = parentPath) { node ->
+            return this.getSpanCatching<T>(path = parentPath) filter@{ node ->
+                if (node.children.isEmpty()) { return@filter true }
                 node.children.any { it.span.id == eventId }
             }
         }
