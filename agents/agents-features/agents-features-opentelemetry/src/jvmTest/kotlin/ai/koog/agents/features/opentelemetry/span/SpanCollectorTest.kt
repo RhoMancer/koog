@@ -49,7 +49,7 @@ class SpanCollectorTest {
         spanCollector.startSpan(span)
         assertEquals(1, spanCollector.activeSpansCount)
 
-        val actualSpan = spanCollector.getSpan<GenAIAgentSpan>(spanId)
+        val actualSpan = spanCollector.getSpanById<GenAIAgentSpan>(spanId)
         assertEquals(spanId, actualSpan?.id)
     }
 
@@ -59,7 +59,7 @@ class SpanCollectorTest {
         val spanId = "test-span-id"
         assertEquals(0, spanCollector.activeSpansCount)
 
-        val retrievedSpan = spanCollector.getSpan<GenAIAgentSpan>(spanId)
+        val retrievedSpan = spanCollector.getSpanById<GenAIAgentSpan>(spanId)
 
         assertNull(retrievedSpan)
         assertEquals(0, spanCollector.activeSpansCount)
@@ -76,7 +76,7 @@ class SpanCollectorTest {
         assertEquals(1, spanCollector.activeSpansCount)
 
         val nonExistentSpanId = "non-existent-span"
-        val retrievedSpan = spanCollector.getSpan<GenAIAgentSpan>(nonExistentSpanId)
+        val retrievedSpan = spanCollector.getSpanById<GenAIAgentSpan>(nonExistentSpanId)
 
         assertNull(retrievedSpan)
         assertEquals(1, spanCollector.activeSpansCount)
@@ -150,7 +150,7 @@ class SpanCollectorTest {
         spanCollector.endSpan(span)
         assertEquals(0, spanCollector.activeSpansCount)
 
-        val retrievedSpan = spanCollector.getSpan<GenAIAgentSpan>(spanId)
+        val retrievedSpan = spanCollector.getSpanById<GenAIAgentSpan>(spanId)
         assertNull(retrievedSpan)
         assertEquals(0, spanCollector.activeSpansCount)
     }
@@ -310,7 +310,7 @@ class SpanCollectorTest {
 
         // Verify the span still exists
         assertEquals(1, spanCollector.activeSpansCount)
-        val retrievedSpan = spanCollector.getSpan<GenAIAgentSpan>(spanId)
+        val retrievedSpan = spanCollector.getSpanById<GenAIAgentSpan>(spanId)
         assertNotNull(retrievedSpan)
         assertEquals(spanId, retrievedSpan.id)
     }
