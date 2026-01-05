@@ -110,18 +110,16 @@ internal class SpanCollector(
         logger.debug { "Span has been finished (id: ${span.id})" }
     }
 
-    fun getSpan(path: AgentExecutionInfo, spanId: String): GenAIAgentSpan? = spansLock.read get@{
+    fun getSpan(path: AgentExecutionInfo, filter: ((SpanNode) -> Boolean)? = null): GenAIAgentSpan? = spansLock.read get@{
         val spanNodes = pathToNodeMap[path.path()]
 
         if (spanNodes.isNullOrEmpty()) {
             return@get null
         }
 
-        if (spanNodes.size == 1) {
-            return spanNodes.first().span
-        }
-
-        return spanNodes.find { it.span.id == spanId }?.span
+        logger.trace { "Found ${spanNodes.size} span nodes for path: ${path.path()}" }
+        val filter = filter ?: { true }
+        return spanNodes.singleOrNull(filter)?.span
     }
 
     /**
@@ -129,16 +127,18 @@ internal class SpanCollector(
      * Returns null if the span is not found or cannot be cast to the specified type.
      *
      * @param T The type to cast the span to.
-     * @param spanId The ID of the span to retrieve.
+     * @param path The execution path for the span.
+     * @param filter Optional filter for spans to search.
      * @return The span cast to type T if found and castable, null otherwise.
      */
-    inline fun <reified T : GenAIAgentSpan> getSpanCatching(path: AgentExecutionInfo, spanId: String): T? {
-        return try {
-            getSpan(path, spanId) as? T
-        } catch (e: Exception) {
-            logger.warn(e) { "Failed to get span with id: $spanId" }
-            null
-        }
+    inline fun <reified T : GenAIAgentSpan> getSpanCatching(
+        path: AgentExecutionInfo,
+        noinline filter: ((SpanNode) -> Boolean)? = null,
+    ): T? = try {
+        getSpan(path, filter) as? T
+    } catch (e: Exception) {
+        logger.warn(e) { "Failed to get span with path: ${path.path()}" }
+        null
     }
 
     /**

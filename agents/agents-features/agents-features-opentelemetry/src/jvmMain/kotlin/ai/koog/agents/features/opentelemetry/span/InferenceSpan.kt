@@ -17,7 +17,7 @@ internal class InferenceSpan(
     val runId: String,
     val model: LLModel,
     val content: String,
-    val temperature: Double,
+    val temperature: Double?,
     val maxTokens: Int? = null
 ) : GenAIAgentSpan() {
 
@@ -65,7 +65,9 @@ internal class InferenceSpan(
         addAttribute(SpanAttributes.Request.Model(model))
 
         // gen_ai.request.temperature
-        addAttribute(SpanAttributes.Request.Temperature(temperature))
+        temperature?.let {
+            addAttribute(SpanAttributes.Request.Temperature(it))
+        }
 
         // gen_ai.request.max_tokens
         maxTokens?.let {
