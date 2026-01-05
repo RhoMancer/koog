@@ -205,10 +205,10 @@ internal class SpanCollector(
     private fun addSpanToTree(span: GenAIAgentSpan, path: AgentExecutionInfo) = spansLock.write add@{
         val node = SpanNode(path, span)
 
-        // Add to path map - append to list for this path
+        // Add the crated span node to the map
         pathToNodeMap.getOrPut(path.path()) { mutableListOf() }.add(node)
 
-        // Find parent node from the agent execution path instance
+        // Find the parent node from the agent execution path instance
         val parentPath = path.parent
 
         // Add root node

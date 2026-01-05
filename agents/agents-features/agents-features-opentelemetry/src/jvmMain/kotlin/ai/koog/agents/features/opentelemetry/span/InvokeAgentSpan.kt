@@ -1,5 +1,6 @@
 package ai.koog.agents.features.opentelemetry.span
 
+import ai.koog.agents.core.agent.execution.AgentExecutionInfo
 import ai.koog.agents.features.opentelemetry.attribute.CommonAttributes
 import ai.koog.agents.features.opentelemetry.attribute.SpanAttributes
 import ai.koog.prompt.llm.LLMProvider
