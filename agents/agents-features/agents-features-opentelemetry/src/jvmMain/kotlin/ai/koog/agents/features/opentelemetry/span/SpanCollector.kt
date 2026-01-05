@@ -93,6 +93,7 @@ internal class SpanCollector(
      *
      * @param span The span to end.
      * @param spanEndStatus Optional status to set when ending the span.
+     * @throws IllegalStateException if the span has active children.
      */
     fun endSpan(
         span: GenAIAgentSpan,
@@ -106,6 +107,9 @@ internal class SpanCollector(
         spanToFinish.setEvents(span.events, verbose)
         spanToFinish.setSpanStatus(spanEndStatus)
         spanToFinish.end()
+
+        // Remove the span from the tree structure
+        removeSpanFromTree(span)
 
         logger.debug { "Span has been finished (id: ${span.id})" }
     }
@@ -223,6 +227,83 @@ internal class SpanCollector(
 
         parentNode.children.add(node)
         logger.debug { "Added child span: '${node.span.name}', for parent: '${parentPath.path()}'" }
+    }
+
+    /**
+     * Removes a span from the tree structure.
+     * Verifies that the span has no active children before removal.
+     *
+     * @param span The span to remove.
+     * @throws IllegalStateException if the span has active children.
+     */
+    private fun removeSpanFromTree(span: GenAIAgentSpan) = spansLock.write remove@{
+        // Find the node to remove
+        val node = findNodeBySpan(span) ?: run {
+            logger.warn { "Span node not found for removal (id: ${span.id})" }
+            return@remove
+        }
+
+        // Check if the node has active children
+        if (node.children.isNotEmpty()) {
+            logger.warn {
+                "The span '${span.id}' still contains active child span(s) of size <${node.children.size}>:\nActive child nodes:\n" +
+                    node.children.joinToString(separator = "\n") { " - ${it.span.name}" }
+            }
+        }
+
+        val path = node.path.path()
+
+        // Remove from path map
+        val spanNodesToRemove = pathToNodeMap[path]
+        if (spanNodesToRemove != null) {
+            spanNodesToRemove.removeIf { it.span.id == span.id }
+            if (spanNodesToRemove.isEmpty()) {
+                pathToNodeMap.remove(path)
+            }
+        }
+
+        // Remove from parent's children or from root nodes
+        val parentPath = node.path.parent
+        if (parentPath == null) {
+            rootNodes.removeIf { it.span.id == span.id }
+            logger.debug { "Removed root span '${span.name}'" }
+        } else {
+            val parentNodes = pathToNodeMap[parentPath.path()]
+            if (parentNodes != null) {
+                val parentNode = span.parentSpan?.let { parentSpan ->
+                    parentNodes.find { it.span.id == parentSpan.id }
+                } ?: parentNodes.singleOrNull()
+
+                parentNode?.children?.removeIf { it.span.id == span.id }
+                logger.trace { "Removed child span '${span.name}' from parent '${parentPath.path()}'" }
+            }
+        }
+    }
+
+    /**
+     * Finds a span node by the span reference.
+     *
+     * @param span The span to find.
+     * @return The span node if found, null otherwise.
+     */
+    private fun findNodeBySpan(span: GenAIAgentSpan): SpanNode? {
+        fun searchNode(node: SpanNode): SpanNode? {
+            if (node.span.id == span.id) {
+                return node
+            }
+
+            node.children.forEach { child ->
+                searchNode(child)?.let { return it }
+            }
+
+            return null
+        }
+
+        for (rootNode in rootNodes) {
+            searchNode(rootNode)?.let { return it }
+        }
+
+        return null
     }
 
     //endregion Private Methods
