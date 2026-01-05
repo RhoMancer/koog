@@ -311,4 +311,220 @@ class SpanCollectorTest {
         assertEquals(expectedEventAttributes.size, actualEventAttributes.size)
         assertMapsEqual(expectedEventAttributes, actualEventAttributes)
     }
+
+    @Test
+    fun `endSpan should remove node from tree`() {
+        val spanCollector = SpanCollector(MockTracer(), verbose = true)
+        val spanId = "test-span-id"
+        val spanName = "test-span-name"
+        val span = MockGenAIAgentSpan(spanId, spanName)
+        val executionInfo = AgentExecutionInfo(null, spanId)
+
+        spanCollector.startSpan(span, executionInfo)
+        assertEquals(1, spanCollector.activeSpansCount)
+        assertNotNull(spanCollector.getSpan(executionInfo))
+
+        spanCollector.endSpan(span)
+        assertEquals(0, spanCollector.activeSpansCount)
+        assertNull(spanCollector.getSpan(executionInfo))
+    }
+
+    @Test
+    fun `endSpan should throw exception when span has active children`() {
+        val spanCollector = SpanCollector(MockTracer(), verbose = true)
+
+        // Create parent and child spans
+        val parentSpanId = "parent-span"
+        val parentSpanName = "parent-span-name"
+        val parentSpan = MockGenAIAgentSpan(parentSpanId, parentSpanName)
+        val parentPath = AgentExecutionInfo(null, parentSpanId)
+
+        val childSpanId = "child-span"
+        val childSpanName = "child-span-name"
+        val childSpan = MockGenAIAgentSpan(childSpanId, childSpanName, parentSpan)
+        val childPath = AgentExecutionInfo(parentPath, childSpanId)
+
+        // Start both spans
+        spanCollector.startSpan(parentSpan, parentPath)
+        spanCollector.startSpan(childSpan, childPath)
+
+        assertEquals(2, spanCollector.activeSpansCount)
+
+        // Try to end parent span while child is still active
+        val exception = assertFailsWith<IllegalStateException> {
+            spanCollector.endSpan(parentSpan)
+        }
+
+        assertTrue(exception.message!!.contains("Cannot end span '$parentSpanName'"))
+        assertTrue(exception.message!!.contains("1 active child span(s)"))
+        assertEquals(2, spanCollector.activeSpansCount)
+    }
+
+    @Test
+    fun `endSpan should succeed when child spans are ended first`() {
+        val spanCollector = SpanCollector(MockTracer(), verbose = true)
+
+        // Create parent and child spans
+        val parentSpanId = "parent-span"
+        val parentSpanName = "parent-span-name"
+        val parentSpan = MockGenAIAgentSpan(parentSpanId, parentSpanName)
+        val parentPath = AgentExecutionInfo(null, parentSpanId)
+
+        val childSpanId = "child-span"
+        val childSpanName = "child-span-name"
+        val childSpan = MockGenAIAgentSpan(childSpanId, childSpanName, parentSpan)
+        val childPath = AgentExecutionInfo(parentPath, childSpanId)
+
+        // Start both spans
+        spanCollector.startSpan(parentSpan, parentPath)
+        spanCollector.startSpan(childSpan, childPath)
+
+        assertEquals(2, spanCollector.activeSpansCount)
+
+        // End child span first
+        spanCollector.endSpan(childSpan)
+        assertEquals(1, spanCollector.activeSpansCount)
+        assertNull(spanCollector.getSpan(childPath))
+
+        // Now parent can be ended
+        spanCollector.endSpan(parentSpan)
+        assertEquals(0, spanCollector.activeSpansCount)
+        assertNull(spanCollector.getSpan(parentPath))
+    }
+
+    @Test
+    fun `tree should maintain only active spans`() {
+        val spanCollector = SpanCollector(MockTracer(), verbose = true)
+
+        // Create a tree: parent -> child1, child2
+        val parentSpanId = "parent"
+        val parentSpan = MockGenAIAgentSpan(parentSpanId, "parent-span")
+        val parentPath = AgentExecutionInfo(null, parentSpanId)
+
+        val child1SpanId = "child1"
+        val child1Span = MockGenAIAgentSpan(child1SpanId, "child1-span", parentSpan)
+        val child1Path = AgentExecutionInfo(parentPath, child1SpanId)
+
+        val child2SpanId = "child2"
+        val child2Span = MockGenAIAgentSpan(child2SpanId, "child2-span", parentSpan)
+        val child2Path = AgentExecutionInfo(parentPath, child2SpanId)
+
+        // Start all spans
+        spanCollector.startSpan(parentSpan, parentPath)
+        spanCollector.startSpan(child1Span, child1Path)
+        spanCollector.startSpan(child2Span, child2Path)
+
+        assertEquals(3, spanCollector.activeSpansCount)
+
+        // End child1
+        spanCollector.endSpan(child1Span)
+        assertEquals(2, spanCollector.activeSpansCount)
+        assertNull(spanCollector.getSpan(child1Path))
+        assertNotNull(spanCollector.getSpan(child2Path))
+        assertNotNull(spanCollector.getSpan(parentPath))
+
+        // End child2
+        spanCollector.endSpan(child2Span)
+        assertEquals(1, spanCollector.activeSpansCount)
+        assertNull(spanCollector.getSpan(child1Path))
+        assertNull(spanCollector.getSpan(child2Path))
+        assertNotNull(spanCollector.getSpan(parentPath))
+
+        // End parent
+        spanCollector.endSpan(parentSpan)
+        assertEquals(0, spanCollector.activeSpansCount)
+        assertNull(spanCollector.getSpan(parentPath))
+    }
+
+    @Test
+    fun `endSpan should handle multiple children properly`() {
+        val spanCollector = SpanCollector(MockTracer(), verbose = true)
+
+        // Create a tree: parent -> child1, child2, child3
+        val parentSpanId = "parent"
+        val parentSpan = MockGenAIAgentSpan(parentSpanId, "parent-span")
+        val parentPath = AgentExecutionInfo(null, parentSpanId)
+
+        spanCollector.startSpan(parentSpan, parentPath)
+
+        val childSpans = (1..3).map { i ->
+            val childSpan = MockGenAIAgentSpan("child$i", "child-$i-span", parentSpan)
+            val childPath = AgentExecutionInfo(parentPath, "child-$i")
+            spanCollector.startSpan(childSpan, childPath)
+            childSpan
+        }
+
+        assertEquals(4, spanCollector.activeSpansCount)
+
+        // Try to end parent - should fail
+        val exception = assertFailsWith<IllegalStateException> {
+            spanCollector.endSpan(parentSpan)
+        }
+        assertTrue(exception.message!!.contains("3 active child span(s)"))
+
+        // End children one by one
+        childSpans.forEach { child ->
+            spanCollector.endSpan(child)
+        }
+
+        assertEquals(1, spanCollector.activeSpansCount)
+
+        // Now parent can be ended
+        spanCollector.endSpan(parentSpan)
+        assertEquals(0, spanCollector.activeSpansCount)
+    }
+
+    @Test
+    fun `endSpan should handle deep tree hierarchy`() {
+        val spanCollector = SpanCollector(MockTracer(), verbose = true)
+
+        // Create a deep tree: root -> level1 -> level2 -> level3
+        val rootSpan = MockGenAIAgentSpan("root", "root-span")
+        val rootPath = AgentExecutionInfo(null, "root")
+
+        val level1Span = MockGenAIAgentSpan("level1", "level1-span", rootSpan)
+        val level1Path = AgentExecutionInfo(rootPath, "level1")
+
+        val level2Span = MockGenAIAgentSpan("level2", "level2-span", level1Span)
+        val level2Path = AgentExecutionInfo(level1Path, "level2")
+
+        val level3Span = MockGenAIAgentSpan("level3", "level3-span", level2Span)
+        val level3Path = AgentExecutionInfo(level2Path, "level3")
+
+        // Start all spans
+        spanCollector.startSpan(rootSpan, rootPath)
+        spanCollector.startSpan(level1Span, level1Path)
+        spanCollector.startSpan(level2Span, level2Path)
+        spanCollector.startSpan(level3Span, level3Path)
+
+        assertEquals(4, spanCollector.activeSpansCount)
+
+        // Try to end root - should fail
+        assertFailsWith<IllegalStateException> {
+            spanCollector.endSpan(rootSpan)
+        }
+
+        // Try to end level1 - should fail
+        assertFailsWith<IllegalStateException> {
+            spanCollector.endSpan(level1Span)
+        }
+
+        // Try to end level2 - should fail
+        assertFailsWith<IllegalStateException> {
+            spanCollector.endSpan(level2Span)
+        }
+
+        // End from deepest to root
+        spanCollector.endSpan(level3Span)
+        assertEquals(3, spanCollector.activeSpansCount)
+
+        spanCollector.endSpan(level2Span)
+        assertEquals(2, spanCollector.activeSpansCount)
+
+        spanCollector.endSpan(level1Span)
+        assertEquals(1, spanCollector.activeSpansCount)
+
+        spanCollector.endSpan(rootSpan)
+        assertEquals(0, spanCollector.activeSpansCount)
+    }
 }

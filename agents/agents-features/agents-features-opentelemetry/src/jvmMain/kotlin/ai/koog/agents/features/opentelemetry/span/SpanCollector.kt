@@ -245,19 +245,19 @@ internal class SpanCollector(
 
         // Check if the node has active children
         if (node.children.isNotEmpty()) {
-            logger.warn {
-                "The span '${span.id}' still contains active child span(s) of size <${node.children.size}>:\nActive child nodes:\n" +
-                    node.children.joinToString(separator = "\n") { " - ${it.span.name}" }
-            }
+            throw IllegalStateException(
+                "Cannot end span '${span.name}' (id: ${span.id}): " +
+                "it has ${node.children.size} active child span(s)"
+            )
         }
 
         val path = node.path.path()
 
         // Remove from path map
-        val spanNodesToRemove = pathToNodeMap[path]
-        if (spanNodesToRemove != null) {
-            spanNodesToRemove.removeIf { it.span.id == span.id }
-            if (spanNodesToRemove.isEmpty()) {
+        val spanNodes = pathToNodeMap[path]
+        if (spanNodes != null) {
+            spanNodes.removeIf { it.span.id == span.id }
+            if (spanNodes.isEmpty()) {
                 pathToNodeMap.remove(path)
             }
         }
@@ -275,7 +275,7 @@ internal class SpanCollector(
                 } ?: parentNodes.singleOrNull()
 
                 parentNode?.children?.removeIf { it.span.id == span.id }
-                logger.trace { "Removed child span '${span.name}' from parent '${parentPath.path()}'" }
+                logger.debug { "Removed child span '${span.name}' from parent '${parentPath.path()}'" }
             }
         }
     }
@@ -291,11 +291,9 @@ internal class SpanCollector(
             if (node.span.id == span.id) {
                 return node
             }
-
-            node.children.forEach { child ->
+            for (child in node.children) {
                 searchNode(child)?.let { return it }
             }
-
             return null
         }
 
