@@ -12,7 +12,6 @@ import ai.koog.agents.utils.HiddenString
 import io.opentelemetry.api.common.AttributeKey
 import io.opentelemetry.api.trace.StatusCode
 import org.junit.jupiter.api.Test
-import org.junit.jupiter.api.assertThrows
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import kotlin.test.assertFalse
@@ -88,78 +87,22 @@ class SpanCollectorTest {
     }
 
     @Test
-    fun `getSpanOrThrow should return span when it exists`() {
+    fun `endSpan should decrease active span count`() {
         val spanCollector = SpanCollector(MockTracer(), verbose = true)
         val spanId = "test-span-id"
         val spanName = "test-span-name"
         val span = MockGenAIAgentSpan(spanId, spanName)
-        val executionInfo = AgentExecutionInfo(null, "test")
+        val executionInfo = AgentExecutionInfo(null, spanId)
         assertEquals(0, spanCollector.activeSpansCount)
 
         spanCollector.startSpan(span, executionInfo)
-
-        assertEquals(1, spanCollector.activeSpansCount)
-        val retrievedSpan = spanCollector.getSpan(executionInfo)
-
-        assertEquals(spanId, retrievedSpan.id)
-        assertEquals(1, spanCollector.activeSpansCount)
-    }
-
-    @Test
-    fun `getSpanOrThrow should throw when span not found`() {
-        val spanCollector = SpanCollector(MockTracer(), verbose = true)
-        val nonExistentSpanId = "non-existent-span"
-        assertEquals(0, spanCollector.activeSpansCount)
-
-        val exception = assertFailsWith<IllegalStateException> {
-            spanCollector.getSpanOrThrow<GenAIAgentSpan>(nonExistentSpanId)
-        }
-        assertEquals("Span with id: $nonExistentSpanId not found", exception.message)
-        assertEquals(0, spanCollector.activeSpansCount)
-    }
-
-    @Test
-    fun `getSpanOrThrow should throw when span is of wrong type`() {
-        val spanCollector = SpanCollector(MockTracer(), verbose = true)
-        val spanId = "test-span-id"
-        val spanName = "test-span-name"
-        val span = MockGenAIAgentSpan(spanId, spanName)
-        assertEquals(0, spanCollector.activeSpansCount)
-
-        spanCollector.startSpan(span)
-        assertEquals(1, spanCollector.activeSpansCount)
-
-        // We can't test this with our mock span since we can't create different types,
-        // but we can verify the error message format by creating a fake exception
-        val throwable = assertThrows<IllegalStateException> {
-            spanCollector.getSpanOrThrow<InvokeAgentSpan>(spanId)
-        }
-
-        assertEquals(
-            "Span with id <$spanId> is not of expected type. Expected: <${InvokeAgentSpan::class.simpleName}>, actual: <${MockGenAIAgentSpan::class.simpleName}>",
-            throwable.message
-        )
-
-        assertEquals(1, spanCollector.activeSpansCount)
-    }
-
-    @Test
-    fun `endSpan should remove span from processor`() {
-        val spanCollector = SpanCollector(MockTracer(), verbose = true)
-        val spanId = "test-span-id"
-        val spanName = "test-span-name"
-        val span = MockGenAIAgentSpan(spanId, spanName)
-        assertEquals(0, spanCollector.activeSpansCount)
-
-        spanCollector.startSpan(span)
         assertEquals(1, spanCollector.activeSpansCount)
 
         spanCollector.endSpan(span)
         assertEquals(0, spanCollector.activeSpansCount)
 
-        val retrievedSpan = spanCollector.getSpanById<GenAIAgentSpan>(spanId)
+        val retrievedSpan = spanCollector.getSpan(executionInfo)
         assertNull(retrievedSpan)
-        assertEquals(0, spanCollector.activeSpansCount)
     }
 
     @Test
@@ -176,13 +119,16 @@ class SpanCollectorTest {
 
         // Create and start spans
         val span1 = MockGenAIAgentSpan(span1Id, span1Name)
-        spanCollector.startSpan(span1)
+        val path1 = AgentExecutionInfo(null, span1Id)
+        spanCollector.startSpan(span1, path1)
 
         val span2 = MockGenAIAgentSpan(span2Id, span2Name)
-        spanCollector.startSpan(span2)
+        val path2 = AgentExecutionInfo(null, span2Id)
+        spanCollector.startSpan(span2, path2)
 
         val span3 = MockGenAIAgentSpan(span3Id, span3Name)
-        spanCollector.startSpan(span3)
+        val path3 = AgentExecutionInfo(null, span3Id)
+        spanCollector.startSpan(span3, path3)
 
         assertEquals(3, spanCollector.activeSpansCount)
 
@@ -219,14 +165,10 @@ class SpanCollectorTest {
         assertTrue(span2.isEnded)
         assertTrue(span3.isStarted)
         assertTrue(span3.isEnded)
-
-        // Verify status code is set to UNSET for spans ended by endUnfinishedSpans
-        assertEquals(StatusCode.UNSET, span1.currentStatus)
-        assertEquals(StatusCode.UNSET, span3.currentStatus)
     }
 
     @Test
-    fun `endUnfinishedInvokeAgentSpans should end all spans except agent and agent run spans`() {
+    fun `endUnfinishedSpans should end all spans`() {
         val spanCollector = SpanCollector(MockTracer(), verbose = true)
 
         val agentId = "test-agent"
@@ -238,11 +180,17 @@ class SpanCollectorTest {
         val agentRunSpanId = runId
         val agentRunSpanName = "agent-run-span-name"
 
-        val nodeSpanId = "agent.$agentId.run.$runId.node.testNode"
+        val nodeSpanId = "testNode"
         val nodeSpanName = "node-span-name"
 
-        val toolSpanId = "agent.$agentId.run.$runId.node.testNode.tool.testTool"
+        val toolSpanId = "testTool"
         val toolSpanName = "tool-span-name"
+
+        // Create paths
+        val agentPath = AgentExecutionInfo(null, agentSpanId)
+        val agentRunPath = AgentExecutionInfo(agentPath, agentRunSpanId)
+        val nodePath = AgentExecutionInfo(agentRunPath, nodeSpanId)
+        val toolPath = AgentExecutionInfo(nodePath, toolSpanId)
 
         // Create and start spans
         val agentSpan = MockGenAIAgentSpan(agentSpanId, agentSpanName)
@@ -251,10 +199,10 @@ class SpanCollectorTest {
         val toolSpan = MockGenAIAgentSpan(toolSpanId, toolSpanName)
 
         // Add spans to storage
-        spanCollector.startSpan(agentSpan)
-        spanCollector.startSpan(agentRunSpan)
-        spanCollector.startSpan(nodeSpan)
-        spanCollector.startSpan(toolSpan)
+        spanCollector.startSpan(agentSpan, agentPath)
+        spanCollector.startSpan(agentRunSpan, agentRunPath)
+        spanCollector.startSpan(nodeSpan, nodePath)
+        spanCollector.startSpan(toolSpan, toolPath)
         assertEquals(4, spanCollector.activeSpansCount)
 
         // Verify initial state - all spans are started but not ended
@@ -270,10 +218,10 @@ class SpanCollectorTest {
         assertTrue(toolSpan.isStarted)
         assertFalse(toolSpan.isEnded)
 
-        // End unfinished agent run spans
+        // End unfinished spans
         spanCollector.endUnfinishedSpans()
 
-        // Verify that node and tool spans are ended, but agent and agent run spans are not
+        // Verify that all spans are ended
         assertTrue(agentSpan.isStarted)
         assertTrue(agentSpan.isEnded)
 
@@ -285,59 +233,6 @@ class SpanCollectorTest {
 
         assertTrue(toolSpan.isStarted)
         assertTrue(toolSpan.isEnded)
-
-        // Verify status code is set to UNSET for spans ended by endUnfinishedAgentRunSpans
-        assertEquals(StatusCode.UNSET, nodeSpan.currentStatus)
-        assertEquals(StatusCode.UNSET, toolSpan.currentStatus)
-    }
-
-    @Test
-    fun `addEventsToSpan should add events to the span`() {
-        val spanCollector = SpanCollector(MockTracer(), verbose = true)
-        val spanId = "test-span-id"
-        val spanName = "test-span-name"
-        val span = MockGenAIAgentSpan(spanId, spanName)
-
-        // Start the span
-        spanCollector.startSpan(span)
-        assertEquals(1, spanCollector.activeSpansCount)
-
-        // Create test events
-        val event1 = MockGenAIAgentEvent(name = "test_event_1").apply {
-            addAttribute(MockAttribute("key1", "value1"))
-            addAttribute(MockAttribute("key2", 42))
-        }
-
-        val event2 = MockGenAIAgentEvent(name = "test_event_2").apply {
-            addAttribute(MockAttribute("key3", true))
-        }
-
-        // Add events to the span
-        spanCollector.addEventsToSpan(spanId, listOf(event1, event2))
-
-        // Verify the span still exists
-        assertEquals(1, spanCollector.activeSpansCount)
-        val retrievedSpan = spanCollector.getSpanById<GenAIAgentSpan>(spanId)
-        assertNotNull(retrievedSpan)
-        assertEquals(spanId, retrievedSpan.id)
-    }
-
-    @Test
-    fun `addEventsToSpan should throw when span not found`() {
-        val spanCollector = SpanCollector(MockTracer(), verbose = true)
-        val nonExistentSpanId = "non-existent-span"
-
-        // Create a test event
-        val event = MockGenAIAgentEvent(name = "test_event").apply {
-            addAttribute(MockAttribute("key1", "value1"))
-        }
-
-        // Try to add event to the non-existent span
-        val exception = assertFailsWith<IllegalStateException> {
-            spanCollector.addEventsToSpan(nonExistentSpanId, listOf(event))
-        }
-
-        assertEquals("Span with id '$nonExistentSpanId' not found", exception.message)
     }
 
     @Test
@@ -348,9 +243,10 @@ class SpanCollectorTest {
         val spanName = "test-span-name"
         val span = MockGenAIAgentSpan(spanId, spanName)
         val mockSpan = MockSpan()
+        val executionInfo = AgentExecutionInfo(null, spanId)
 
         // Start the span to replace the span instance later with a mocked value
-        spanCollector.startSpan(span)
+        spanCollector.startSpan(span, executionInfo)
         assertEquals(1, spanCollector.activeSpansCount)
 
         // Replace started span with the mock instance
@@ -384,9 +280,10 @@ class SpanCollectorTest {
         val spanName = "test-span-name"
         val span = MockGenAIAgentSpan(spanId, spanName)
         val mockSpan = MockSpan()
+        val executionInfo = AgentExecutionInfo(null, spanId)
 
         // Start the span to replace the span instance later with a mocked value
-        spanCollector.startSpan(span)
+        spanCollector.startSpan(span, executionInfo)
         assertEquals(1, spanCollector.activeSpansCount)
 
         // Event with attribute HiddenString and a body field that contains HiddenString
