@@ -107,9 +107,6 @@ internal class SpanCollector(
         spanToFinish.setSpanStatus(spanEndStatus)
         spanToFinish.end()
 
-        // Remove the span from the tree
-        removeSpanFromTree(span)
-
         logger.debug { "Span has been finished (id: ${span.id})" }
     }
 
@@ -226,59 +223,6 @@ internal class SpanCollector(
 
         parentNode.children.add(node)
         logger.debug { "Added child span: '${node.span.name}', for parent: '${parentPath.path()}'" }
-    }
-
-    /**
-     * Removes a span from the tree structure.
-     * Finds the span node by matching the span ID and removes it from both the path map and parent's children.
-     *
-     * @param span The span to remove.
-     */
-    private fun removeSpanFromTree(span: GenAIAgentSpan) = spansLock.write {
-        // Find and remove the node from pathToNodeMap
-        val pathIterator = pathToNodeMap.iterator()
-        var nodeToRemove: SpanNode? = null
-        var pathKey: String? = null
-
-        while (pathIterator.hasNext()) {
-            val entry = pathIterator.next()
-            val nodes = entry.value
-            val node = nodes.find { it.span.id == span.id }
-
-            if (node != null) {
-                nodeToRemove = node
-                pathKey = entry.key
-                nodes.remove(node)
-
-                // If this was the last node for this path, remove the path entry
-                if (nodes.isEmpty()) {
-                    pathIterator.remove()
-                }
-                break
-            }
-        }
-
-        if (nodeToRemove == null) {
-            logger.warn { "Attempted to remove span that was not found in tree: ${span.id}" }
-            return@write
-        }
-
-        // Remove from parent's children or from rootNodes
-        val parentPath = nodeToRemove.path.parent
-        if (parentPath == null) {
-            rootNodes.remove(nodeToRemove)
-            logger.debug { "Removed root span: '${span.name}'" }
-        } else {
-            val parentNodes = pathToNodeMap[parentPath.path()]
-            if (parentNodes != null) {
-                val parentNode = span.parentSpan?.let { parentSpan ->
-                    parentNodes.find { it.span.id == parentSpan.id }
-                } ?: parentNodes.singleOrNull()
-
-                parentNode?.children?.remove(nodeToRemove)
-                logger.debug { "Removed child span: '${span.name}' from parent: '${parentPath.path()}'" }
-            }
-        }
     }
 
     //endregion Private Methods
