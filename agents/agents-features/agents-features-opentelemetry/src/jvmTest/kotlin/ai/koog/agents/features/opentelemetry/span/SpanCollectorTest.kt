@@ -1,5 +1,6 @@
 package ai.koog.agents.features.opentelemetry.span
 
+import ai.koog.agents.core.agent.execution.AgentExecutionInfo
 import ai.koog.agents.features.opentelemetry.assertMapsEqual
 import ai.koog.agents.features.opentelemetry.event.EventBodyFields
 import ai.koog.agents.features.opentelemetry.mock.MockAttribute
@@ -33,8 +34,9 @@ class SpanCollectorTest {
         val spanId = "test-span-id"
         val spanName = "test-span-name"
         val span = MockGenAIAgentSpan(spanId, spanName)
+        val executionInfo = AgentExecutionInfo(null, "test")
 
-        spanCollector.startSpan(span)
+        spanCollector.startSpan(span, executionInfo)
 
         assertEquals(1, spanCollector.activeSpansCount)
     }
@@ -45,21 +47,22 @@ class SpanCollectorTest {
         val spanId = "test-span-id"
         val spanName = "test-span-name"
         val span = MockGenAIAgentSpan(spanId, spanName)
+        val executionInfo = AgentExecutionInfo(null, "test")
 
-        spanCollector.startSpan(span)
+        spanCollector.startSpan(span, executionInfo)
         assertEquals(1, spanCollector.activeSpansCount)
 
-        val actualSpan = spanCollector.getSpanById<GenAIAgentSpan>(spanId)
+        val actualSpan = spanCollector.getSpan(executionInfo)
         assertEquals(spanId, actualSpan?.id)
     }
 
     @Test
     fun `getSpan should return null when no spans are added`() {
         val spanCollector = SpanCollector(MockTracer(), verbose = true)
-        val spanId = "test-span-id"
+        val executionInfo = AgentExecutionInfo(null, "test")
         assertEquals(0, spanCollector.activeSpansCount)
 
-        val retrievedSpan = spanCollector.getSpanById<GenAIAgentSpan>(spanId)
+        val retrievedSpan = spanCollector.getSpan(executionInfo)
 
         assertNull(retrievedSpan)
         assertEquals(0, spanCollector.activeSpansCount)
@@ -72,11 +75,13 @@ class SpanCollectorTest {
         val spanId = "test-span-id"
         val spanName = "test-span-name"
         val span = MockGenAIAgentSpan(spanId, spanName)
-        spanCollector.startSpan(span)
+        val executionInfo = AgentExecutionInfo(null, "test")
+
+        spanCollector.startSpan(span, executionInfo)
         assertEquals(1, spanCollector.activeSpansCount)
 
-        val nonExistentSpanId = "non-existent-span"
-        val retrievedSpan = spanCollector.getSpanById<GenAIAgentSpan>(nonExistentSpanId)
+        val nonExistentSpanExecutionInfo = AgentExecutionInfo(null, "non-existent-span")
+        val retrievedSpan = spanCollector.getSpan(nonExistentSpanExecutionInfo)
 
         assertNull(retrievedSpan)
         assertEquals(1, spanCollector.activeSpansCount)
@@ -88,11 +93,13 @@ class SpanCollectorTest {
         val spanId = "test-span-id"
         val spanName = "test-span-name"
         val span = MockGenAIAgentSpan(spanId, spanName)
+        val executionInfo = AgentExecutionInfo(null, "test")
         assertEquals(0, spanCollector.activeSpansCount)
 
-        spanCollector.startSpan(span)
+        spanCollector.startSpan(span, executionInfo)
+
         assertEquals(1, spanCollector.activeSpansCount)
-        val retrievedSpan = spanCollector.getSpanOrThrow<GenAIAgentSpan>(spanId)
+        val retrievedSpan = spanCollector.getSpan(executionInfo)
 
         assertEquals(spanId, retrievedSpan.id)
         assertEquals(1, spanCollector.activeSpansCount)
