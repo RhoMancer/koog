@@ -87,39 +87,42 @@ internal abstract class GenAIAgentSpan {
     val events: List<GenAIAgentEvent>
         get() = _events
 
+    val logString: String
+        get() = "${this.javaClass.simpleName} (name: $name, id: $id)"
+
     fun addAttribute(attribute: Attribute) {
-        logger.debug { "Adding attribute to span (name: $name, id: $id): ${attribute.key}" }
+        logger.debug { "$logString Adding attribute to the span: ${attribute.key}" }
 
         val existingAttribute = attributes.find { it.key == attribute.key }
         if (existingAttribute != null) {
-            logger.debug { "Attribute with key '${attribute.key}' already exists. Overwriting existing attribute value." }
+            logger.debug { "$logString Attribute with key '${attribute.key}' already exists. Overwriting existing attribute value." }
             removeAttribute(existingAttribute)
         }
         _attributes.add(attribute)
     }
 
     fun addAttributes(attributes: List<Attribute>) {
-        logger.debug { "Adding ${attributes.size} attributes to span (name: $name, id: $id):\n${attributes.joinToString("\n") { "- ${it.key}" }}" }
+        logger.debug { "$logString Adding <${attributes.size}> attribute(s) to the span. Attributes:\n${attributes.joinToString("\n") { "- ${it.key}" }}" }
         attributes.forEach { addAttribute(it) }
     }
 
     fun removeAttribute(attribute: Attribute): Boolean {
-        logger.debug { "Removing attribute from span (name: $name, id: $id): ${attribute.key}" }
+        logger.debug { "$logString Removing attribute from span: ${attribute.key}" }
         return _attributes.remove(attribute)
     }
 
     fun addEvent(event: GenAIAgentEvent) {
-        logger.debug { "Adding event to span (name: $name, id: $id): ${event.name}" }
+        logger.debug { "$logString Adding event to the span: ${event.name}" }
         _events.add(event)
     }
 
     fun addEvents(events: List<GenAIAgentEvent>) {
-        logger.debug { "Adding ${events.size} events to span (name: $name, id: $id):\n${events.joinToString("\n") { "- ${it.name}" }}" }
+        logger.debug { "$logString Adding <${events.size}> event(s) to the span. Events:\n${events.joinToString("\n") { "- ${it.name}" }}" }
         _events.addAll(events)
     }
 
     fun removeEvent(event: GenAIAgentEvent): Boolean {
-        logger.debug { "Removing event from span (name: $name, id: $id): ${event.name}" }
+        logger.debug { "$logString Removing event from span: ${event.name}" }
         return _events.remove(event)
     }
 }

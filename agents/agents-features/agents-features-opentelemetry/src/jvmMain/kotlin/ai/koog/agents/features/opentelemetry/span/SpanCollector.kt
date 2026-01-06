@@ -99,7 +99,7 @@ internal class SpanCollector(
         span: GenAIAgentSpan,
         spanEndStatus: SpanEndStatus? = null
     ) {
-        logger.debug { "Finishing the span (id: ${span.id})" }
+        logger.debug { "${span.logString} Finishing the span" }
 
         val spanToFinish = span.span
 
@@ -111,7 +111,7 @@ internal class SpanCollector(
         // Remove the span from the tree structure
         removeSpanFromTree(span)
 
-        logger.debug { "Span has been finished (id: ${span.id})" }
+        logger.debug { "${span.logString} Span has been finished." }
     }
 
     fun getSpan(path: AgentExecutionInfo, filter: ((SpanNode) -> Boolean)? = null): GenAIAgentSpan? = spansLock.read get@{
@@ -178,7 +178,7 @@ internal class SpanCollector(
             try {
                 endSpan(spanNode.span)
             } catch (e: Exception) {
-                logger.warn(e) { "Failed to end span: ${spanNode.span.id}" }
+                logger.warn(e) { "${spanNode.span.logString} Failed to end span due to the error: ${e.message}" }
             }
         }
     }
@@ -214,7 +214,7 @@ internal class SpanCollector(
         // Add root node
         if (parentPath == null) {
             rootNodes.add(node)
-            logger.debug { "Added root span '${node.span.name}'" }
+            logger.debug { "${span.logString} Added as a root span" }
             return@add
         }
 
@@ -240,7 +240,7 @@ internal class SpanCollector(
     private fun removeSpanFromTree(span: GenAIAgentSpan) = spansLock.write remove@{
         // Find the node to remove
         val node = findNodeBySpan(span) ?: run {
-            logger.warn { "Span node not found for removal (id: ${span.id})" }
+            logger.warn { "${span.logString} Span node not found for removal." }
             return@remove
         }
 
