@@ -99,7 +99,7 @@ internal class SpanCollector(
         span: GenAIAgentSpan,
         spanEndStatus: SpanEndStatus? = null
     ) {
-        logger.debug { "${span.logString} Finishing the span" }
+        logger.debug { "${span.logString} Finishing the span." }
 
         val spanToFinish = span.span
 
@@ -224,7 +224,7 @@ internal class SpanCollector(
 
         val parentNode = span.parentSpan?.let { parentSpan ->
             parentNodes.find { it.span.id == parentSpan.id }
-        } ?: parentNodes.single()
+        } ?: parentNodes.first()
 
         parentNode.children.add(node)
         logger.debug { "Added child span: '${node.span.name}', for parent: '${parentPath.path()}'" }
@@ -247,14 +247,14 @@ internal class SpanCollector(
         // Check if the node has active children
         if (node.children.isNotEmpty()) {
             throw IllegalStateException(
-                "Cannot end span '${span.name}' (id: ${span.id}): " +
-                "it has ${node.children.size} active child span(s)"
+                "Cannot end span ${span.javaClass.simpleName} '${span.name}' (id: ${span.id}): " +
+                "it has ${node.children.size} active child span(s). Spans:\n${node.children.joinToString("\n") { it.span.logString }}"
             )
         }
 
         val path = node.path.path()
 
-        // Remove from path map
+        // Remove from a path map
         val spanNodes = pathToNodeMap[path]
         if (spanNodes != null) {
             spanNodes.removeIf { it.span.id == span.id }

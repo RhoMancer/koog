@@ -152,21 +152,22 @@ public class OpenTelemetry {
             pipeline.interceptStrategyStarting(this) intercept@{ eventContext ->
                 logger.debug { "Execute OpenTelemetry before subgraph handler" }
 
+                val patchedExecutionInfo = patchExecutionInfo(eventContext.executionInfo, eventContext.context.runId)
                 val parentSpan = spanCollector.getParentSpanForEvent<InvokeAgentSpan>(
-                    eventContext = eventContext,
-                    runId = eventContext.context.runId
+                    executionInfo = patchedExecutionInfo,
+                    eventId = eventContext.eventId
                 ) ?: return@intercept
 
                 val strategySpan = StrategySpan(
                     parentSpan = parentSpan,
-                    id = eventContext.executionInfo.path(),
+                    id = eventContext.eventId,
                     name = eventContext.strategy.name,
                     runId = eventContext.context.runId,
                     strategyName = eventContext.strategy.name
                 )
 
                 spanAdapter?.onBeforeSpanStarted(strategySpan)
-                spanCollector.startSpan(strategySpan, eventContext.executionInfo)
+                spanCollector.startSpan(strategySpan, patchedExecutionInfo)
             }
 
             pipeline.interceptStrategyCompleted(this) intercept@{ eventContext ->
@@ -188,16 +189,17 @@ public class OpenTelemetry {
             pipeline.interceptNodeExecutionStarting(this) intercept@{ eventContext ->
                 logger.debug { "Execute OpenTelemetry node starting handler" }
 
+                val patchedExecutionInfo = patchExecutionInfo(eventContext.executionInfo, eventContext.context.runId)
                 val parentSpan = spanCollector.getParentSpanForEvent<GenAIAgentSpan>(
-                    eventContext = eventContext,
-                    runId = eventContext.context.runId
+                    executionInfo = patchedExecutionInfo,
+                    eventId = eventContext.eventId
                 ) ?: return@intercept
 
                 val nodeInput = nodeDataToString(eventContext.input, eventContext.inputType)
 
                 val nodeExecuteSpan = NodeExecuteSpan(
                     parentSpan = parentSpan,
-                    id = eventContext.executionInfo.path(),
+                    id = eventContext.eventId,
                     name = eventContext.node.name,
                     runId = eventContext.context.runId,
                     nodeId = eventContext.node.id,
@@ -205,7 +207,7 @@ public class OpenTelemetry {
                 )
 
                 spanAdapter?.onBeforeSpanStarted(nodeExecuteSpan)
-                spanCollector.startSpan(nodeExecuteSpan, eventContext.executionInfo)
+                spanCollector.startSpan(nodeExecuteSpan, patchedExecutionInfo)
             }
 
             pipeline.interceptNodeExecutionCompleted(this) intercept@{ eventContext ->
@@ -252,16 +254,17 @@ public class OpenTelemetry {
             pipeline.interceptSubgraphExecutionStarting(this) intercept@{ eventContext ->
                 logger.debug { "Execute OpenTelemetry before subgraph handler" }
 
+                val patchedExecutionInfo = patchExecutionInfo(eventContext.executionInfo, eventContext.context.runId)
                 val parentSpan = spanCollector.getParentSpanForEvent<GenAIAgentSpan>(
-                    eventContext = eventContext,
-                    runId = eventContext.context.runId
+                    executionInfo = patchedExecutionInfo,
+                    eventId = eventContext.eventId
                 ) ?: return@intercept
 
                 val subgraphInput = nodeDataToString(eventContext.input, eventContext.inputType)
 
                 val subgraphExecuteSpan = SubgraphExecuteSpan(
                     parentSpan = parentSpan,
-                    id = eventContext.executionInfo.path(),
+                    id = eventContext.eventId,
                     name = eventContext.subgraph.name,
                     runId = eventContext.context.runId,
                     subgraphId = eventContext.subgraph.id,
@@ -269,7 +272,7 @@ public class OpenTelemetry {
                 )
 
                 spanAdapter?.onBeforeSpanStarted(subgraphExecuteSpan)
-                spanCollector.startSpan(subgraphExecuteSpan, eventContext.executionInfo)
+                spanCollector.startSpan(subgraphExecuteSpan, patchedExecutionInfo)
             }
 
             pipeline.interceptSubgraphExecutionCompleted(this) intercept@{ eventContext ->
@@ -318,14 +321,16 @@ public class OpenTelemetry {
                 logger.debug { "Execute OpenTelemetry before LLM call handler" }
 
                 val provider = eventContext.model.provider
+                val patchedExecutionInfo = patchExecutionInfo(eventContext.executionInfo, eventContext.runId)
+
                 val parentSpan = spanCollector.getParentSpanForEvent<NodeExecuteSpan>(
-                    eventContext = eventContext,
-                    runId = eventContext.runId
+                    executionInfo = patchedExecutionInfo,
+                    eventId = eventContext.eventId
                 ) ?: return@intercept
 
                 val inferenceSpan = InferenceSpan(
                     parentSpan = parentSpan,
-                    id = eventContext.executionInfo.path(),
+                    id = eventContext.eventId,
                     name = "inference",
                     provider = eventContext.model.provider,
                     runId = eventContext.runId,
@@ -368,7 +373,7 @@ public class OpenTelemetry {
 
                 // Start span
                 spanAdapter?.onBeforeSpanStarted(inferenceSpan)
-                spanCollector.startSpan(inferenceSpan, eventContext.executionInfo)
+                spanCollector.startSpan(inferenceSpan, patchedExecutionInfo)
             }
 
             pipeline.interceptLLMCallCompleted(this) intercept@{ eventContext ->
@@ -449,14 +454,15 @@ public class OpenTelemetry {
             pipeline.interceptToolCallStarting(this) intercept@{ eventContext ->
                 logger.debug { "Execute OpenTelemetry tool call handler" }
 
+                val patchedExecutionInfo = patchExecutionInfo(eventContext.executionInfo, eventContext.runId)
                 val parentSpan = spanCollector.getParentSpanForEvent<NodeExecuteSpan>(
-                    eventContext = eventContext,
-                    runId = eventContext.runId
+                    executionInfo = patchedExecutionInfo,
+                    eventId = eventContext.eventId
                 ) ?: return@intercept
 
                 val executeToolSpan = ExecuteToolSpan(
                     parentSpan = parentSpan,
-                    id = eventContext.executionInfo.path(),
+                    id = eventContext.eventId,
                     name = eventContext.toolName,
                     toolName = eventContext.toolName,
                     toolArgs = eventContext.toolArgs.toString(),
@@ -465,7 +471,7 @@ public class OpenTelemetry {
                 )
 
                 spanAdapter?.onBeforeSpanStarted(executeToolSpan)
-                spanCollector.startSpan(executeToolSpan, eventContext.executionInfo)
+                spanCollector.startSpan(executeToolSpan, patchedExecutionInfo)
             }
 
             pipeline.interceptToolCallCompleted(this) intercept@{ eventContext ->
@@ -609,16 +615,18 @@ public class OpenTelemetry {
          * Retrieves the parent span for a given event context if available.
          * Checks if the event ID matches any child spans of the parent span node.
          *
-         * @param eventContext The context of the agent lifecycle event.
+         * @param executionInfo The execution information of the current event context.
+         * @param eventId The event ID to search for within child spans of the parent.
          * @return The parent span associated with the event if found, or null if no matching parent is found.
          */
-        private inline fun <reified T : GenAIAgentSpan> SpanCollector.getParentSpanForEvent(eventContext: AgentLifecycleEventContext, runId: String?): T? {
+        private inline fun <reified T : GenAIAgentSpan> SpanCollector.getParentSpanForEvent(
+            executionInfo: AgentExecutionInfo,
+            eventId: String
+        ): T? {
             // TODO: This should get closest parent.
             //  Not the exact match !!!
-            val executionInfo = patchExecutionInfo(eventContext.executionInfo, runId)
-            val eventId = eventContext.eventId
-
             val parentPath = executionInfo.parent ?: return null
+
             return this.getSpanCatching<T>(path = parentPath) filter@{ node ->
                 if (node.children.isEmpty()) { return@filter true }
                 node.children.any { it.span.id == eventId }
