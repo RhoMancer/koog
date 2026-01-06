@@ -150,7 +150,7 @@ internal class SpanCollector(
     /**
      * Ends all unfinished spans that match the given predicate.
      * If no predicate is provided, ends all spans.
-     * Spans are closed from leaf nodes up to parent nodes to maintain proper hierarchy.
+     * Spans are closed from leaf nodes up to parent nodes to maintain a proper hierarchy.
      *
      * @param filter Optional filter for spans to end.
      */
@@ -177,7 +177,7 @@ internal class SpanCollector(
 
         spansToEnd.forEach { spanNode ->
             try {
-                endSpan(spanNode.span)
+                endSpan(spanNode.span, spanNode.path)
             } catch (e: Exception) {
                 logger.warn(e) { "${spanNode.span.logString} Failed to end span due to the error: ${e.message}" }
             }
@@ -206,10 +206,10 @@ internal class SpanCollector(
     private fun addSpanToTree(span: GenAIAgentSpan, path: AgentExecutionInfo) = spansLock.write add@{
         val node = SpanNode(path, span)
 
-        // Add to path map - append to list for this path
+        // Add to the path map-append to a list for this path
         pathToNodeMap.getOrPut(path.path()) { mutableListOf() }.add(node)
 
-        // Find parent node from the agent execution path instance
+        // Find the parent node from the agent execution path instance
         val parentPath = path.parent
 
         // Add root node
@@ -236,13 +236,25 @@ internal class SpanCollector(
      * Verifies that the span has no active children before removal.
      *
      * @param span The span to remove.
+     * @param path The execution path used to look up the node.
      * @throws IllegalStateException if the span has active children.
      */
     private fun removeSpanFromTree(span: GenAIAgentSpan, path: AgentExecutionInfo) = spansLock.write remove@{
-        // Find the node to remove
-        val node = findNodeBySpanId(span.id) ?: run {
-            logger.warn { "${span.logString} Span node not found for removal." }
+        // Look for nodes using the path
+        val spanNodes = pathToNodeMap[path.path()]
+        if (spanNodes.isNullOrEmpty()) {
+            logger.warn { "${span.logString} Span node not found for removal at path: ${path.path()}" }
             return@remove
+        }
+
+        // Find the node by span id if there are multiple nodes with the same path
+        val node = if (spanNodes.size == 1) {
+            spanNodes.find { it.span.id == span.id } ?: run {
+                logger.warn { "${span.logString} Span node not found for removal. Multiple nodes at path but none match span id." }
+                return@remove
+            }
+        } else {
+            spanNodes.first()
         }
 
         // Check if the node has active children
@@ -253,15 +265,12 @@ internal class SpanCollector(
             )
         }
 
-        val path = node.path.path()
+        val pathString = node.path.path()
 
         // Remove from a path map
-        val spanNodes = pathToNodeMap[path]
-        if (spanNodes != null) {
-            spanNodes.removeIf { it.span.id == span.id }
-            if (spanNodes.isEmpty()) {
-                pathToNodeMap.remove(path)
-            }
+        spanNodes.removeIf { it.span.id == span.id }
+        if (spanNodes.isEmpty()) {
+            pathToNodeMap.remove(pathString)
         }
 
         // Remove from parent's children or from root nodes
@@ -280,30 +289,6 @@ internal class SpanCollector(
                 logger.debug { "Removed child span '${span.name}' from parent '${parentPath.path()}'" }
             }
         }
-    }
-
-    /**
-     * Finds a span node by the span reference.
-     *
-     * @param spanId The ID of the span to find.
-     * @return The span node if found, null otherwise.
-     */
-    private fun findNodeBySpanId(spanId: String): SpanNode? {
-        fun searchNode(node: SpanNode): SpanNode? {
-            if (node.span.id == spanId) {
-                return node
-            }
-            for (child in node.children) {
-                searchNode(child)?.let { return it }
-            }
-            return null
-        }
-
-        for (rootNode in rootNodes) {
-            searchNode(rootNode)?.let { return it }
-        }
-
-        return null
     }
 
     //endregion Private Methods
