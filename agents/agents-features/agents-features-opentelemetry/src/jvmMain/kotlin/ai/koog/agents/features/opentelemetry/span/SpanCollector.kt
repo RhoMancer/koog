@@ -97,6 +97,7 @@ internal class SpanCollector(
      */
     fun endSpan(
         span: GenAIAgentSpan,
+        path: AgentExecutionInfo,
         spanEndStatus: SpanEndStatus? = null
     ) {
         logger.debug { "${span.logString} Finishing the span." }
