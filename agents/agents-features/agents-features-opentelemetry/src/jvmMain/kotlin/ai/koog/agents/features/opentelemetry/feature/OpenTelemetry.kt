@@ -69,7 +69,6 @@ public class OpenTelemetry {
                 val createAgentSpan = CreateAgentSpan(
                     parentSpan = null,
                     id = eventContext.eventId,
-                    name = eventContext.context.agentId,
                     model = eventContext.agent.agentConfig.model,
                     agentId = eventContext.context.agentId
                 )
@@ -84,7 +83,6 @@ public class OpenTelemetry {
                 val invokeAgentSpan = InvokeAgentSpan(
                     parentSpan = createAgentSpan,
                     id = eventContext.runId,
-                    name = eventContext.agent.id,
                     provider = eventContext.agent.agentConfig.model.provider,
                     agentId = eventContext.agent.id,
                     runId = eventContext.runId,
@@ -185,7 +183,6 @@ public class OpenTelemetry {
                 val strategySpan = StrategySpan(
                     parentSpan = parentSpan,
                     id = eventContext.eventId,
-                    name = eventContext.strategy.name,
                     runId = eventContext.context.runId,
                     strategyName = eventContext.strategy.name
                 )
@@ -230,7 +227,6 @@ public class OpenTelemetry {
                 val nodeExecuteSpan = NodeExecuteSpan(
                     parentSpan = parentSpan,
                     id = eventContext.eventId,
-                    name = eventContext.node.name,
                     runId = eventContext.context.runId,
                     nodeId = eventContext.node.id,
                     nodeInput = nodeInput
@@ -304,7 +300,6 @@ public class OpenTelemetry {
                 val subgraphExecuteSpan = SubgraphExecuteSpan(
                     parentSpan = parentSpan,
                     id = eventContext.eventId,
-                    name = eventContext.subgraph.name,
                     runId = eventContext.context.runId,
                     subgraphId = eventContext.subgraph.id,
                     subgraphInput = subgraphInput
@@ -378,7 +373,6 @@ public class OpenTelemetry {
                 val inferenceSpan = InferenceSpan(
                     parentSpan = parentSpan,
                     id = eventContext.eventId,
-                    name = "inference",
                     provider = eventContext.model.provider,
                     runId = eventContext.runId,
                     model = eventContext.model,
@@ -517,7 +511,6 @@ public class OpenTelemetry {
                 val executeToolSpan = ExecuteToolSpan(
                     parentSpan = parentSpan,
                     id = eventContext.eventId,
-                    name = eventContext.toolName,
                     toolName = eventContext.toolName,
                     toolArgs = eventContext.toolArgs.toString(),
                     toolDescription = eventContext.toolDescription,

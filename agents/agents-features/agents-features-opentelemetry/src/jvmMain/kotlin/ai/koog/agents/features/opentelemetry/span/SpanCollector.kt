@@ -259,10 +259,13 @@ internal class SpanCollector(
 
         // Check if the node has active children
         if (node.children.isNotEmpty()) {
-            throw IllegalStateException(
-                "Cannot end span ${span.javaClass.simpleName} '${span.name}' (id: ${span.id}): " +
-                "it has ${node.children.size} active child span(s). Spans:\n${node.children.joinToString("\n") { it.span.logString }}"
-            )
+            logger.error {
+                "${span.logString} Cannot end span at path ${path.path()}, " +
+                    "because it still include <${node.children.size}> active child span(s). Spans:\n" +
+                    node.children.joinToString("\n") { it.span.logString }
+            }
+
+            return@remove
         }
 
         val pathString = node.path.path()

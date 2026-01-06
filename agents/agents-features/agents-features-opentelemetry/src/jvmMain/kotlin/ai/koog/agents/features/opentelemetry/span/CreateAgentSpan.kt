@@ -10,13 +10,14 @@ import io.opentelemetry.api.trace.SpanKind
  */
 internal class CreateAgentSpan(
     override val id: String,
-    override val name: String,
     override val parentSpan: GenAIAgentSpan?,
     val model: LLModel,
     val agentId: String,
 ) : GenAIAgentSpan() {
 
     override val kind: SpanKind = SpanKind.CLIENT
+
+    override val name: String = agentId
 
     /**
      * Add the necessary attributes for the Create Agent Span according to the Open Telemetry Semantic Convention:

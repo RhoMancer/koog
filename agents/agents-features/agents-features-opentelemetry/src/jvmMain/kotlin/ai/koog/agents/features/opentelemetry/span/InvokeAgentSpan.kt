@@ -1,6 +1,5 @@
 package ai.koog.agents.features.opentelemetry.span
 
-import ai.koog.agents.core.agent.execution.AgentExecutionInfo
 import ai.koog.agents.features.opentelemetry.attribute.CommonAttributes
 import ai.koog.agents.features.opentelemetry.attribute.SpanAttributes
 import ai.koog.prompt.llm.LLMProvider
@@ -11,7 +10,6 @@ import io.opentelemetry.api.trace.SpanKind
  */
 internal class InvokeAgentSpan(
     override val id: String,
-    override val name: String,
     override val parentSpan: CreateAgentSpan,
     val provider: LLMProvider,
     val runId: String,
@@ -19,6 +17,8 @@ internal class InvokeAgentSpan(
 ) : GenAIAgentSpan() {
 
     override val kind: SpanKind = SpanKind.CLIENT
+
+    override val name: String = "invoke.$runId"
 
     /**
      * Add the necessary attributes for the Invoke Agent Span, according to the Open Telemetry Semantic Convention:

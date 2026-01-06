@@ -8,7 +8,6 @@ import io.opentelemetry.api.trace.SpanKind
  */
 internal class ExecuteToolSpan(
     override val id: String,
-    override val name: String,
     override val parentSpan: NodeExecuteSpan,
     val toolName: String,
     val toolArgs: String,
@@ -17,6 +16,8 @@ internal class ExecuteToolSpan(
 ) : GenAIAgentSpan() {
 
     override val kind: SpanKind = SpanKind.INTERNAL
+
+    override val name: String = "tool.$toolName"
 
     /**
      * Add the necessary attributes for the Execute Tool Span, according to the Open Telemetry Semantic Convention:

@@ -11,7 +11,6 @@ import io.opentelemetry.api.trace.SpanKind
  */
 internal class InferenceSpan(
     override val id: String,
-    override val name: String,
     override val parentSpan: NodeExecuteSpan,
     val provider: LLMProvider,
     val runId: String,
@@ -22,6 +21,8 @@ internal class InferenceSpan(
 ) : GenAIAgentSpan() {
 
     override val kind: SpanKind = SpanKind.CLIENT
+
+    override val name: String = "inference.$id"
 
     /**
      * Add the necessary attributes for the Inference Span according to the Open Telemetry Semantic Convention:

@@ -6,13 +6,14 @@ import io.opentelemetry.api.trace.SpanKind
 
 internal class StrategySpan(
     override val id: String,
-    override val name: String,
     override val parentSpan: GenAIAgentSpan,
     val runId: String,
     val strategyName: String,
 ) : GenAIAgentSpan() {
 
     override val kind: SpanKind = SpanKind.INTERNAL
+
+    override val name: String = strategyName
 
     /**
      * Add the necessary attributes for the Strategy Span:

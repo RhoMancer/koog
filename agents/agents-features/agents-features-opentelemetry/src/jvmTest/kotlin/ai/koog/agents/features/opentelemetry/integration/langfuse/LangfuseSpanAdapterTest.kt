@@ -40,24 +40,20 @@ class LangfuseSpanAdapterTest {
         val model = createTestModel(provider)
 
         val createAgentSpanId = "create-agent-span-id"
-        val createAgentSpanName = "create-agent-span-name"
         val agentId = "test-agent-id"
 
         val createAgentSpan = CreateAgentSpan(
             id = createAgentSpanId,
-            name = createAgentSpanName,
             parentSpan = null,
             model = model,
             agentId = agentId
         )
 
         val invokeAgentSpanId = "invoke-agent-span-id"
-        val invokeAgentSpanName = "invoke-agent-span-name"
         val runId = "run-id"
 
         val invokeSpan = InvokeAgentSpan(
             id = invokeAgentSpanId,
-            name = invokeAgentSpanName,
             parentSpan = createAgentSpan,
             provider = provider,
             runId = runId,
@@ -77,7 +73,7 @@ class LangfuseSpanAdapterTest {
         val adapter = LangfuseSpanAdapter(emptyList(), config)
 
         val provider = MockLLMProvider()
-        val inferenceSpan = createInferenceSpan(provider, promptId = "prompt-id", nodeId = "node-name", )
+        val inferenceSpan = createInferenceSpan(provider, promptId = "prompt-id", nodeId = "node-name")
 
         val systemContent = "You are Koog."
         val userContent = "What's the forecast for Paris?"
@@ -176,24 +172,20 @@ class LangfuseSpanAdapterTest {
         val model = createTestModel(provider)
 
         val createAgentSpanId = "create-agent-span-id"
-        val createAgentSpanName = "create-agent-span-name"
         val agentId = "test-agent-id"
 
         val createAgentSpan = CreateAgentSpan(
             id = createAgentSpanId,
-            name = createAgentSpanName,
             parentSpan = null,
             model = model,
             agentId = agentId
         )
 
         val invokeSpanId = "invoke-agent-span-id"
-        val invokeSpanName = "invoke-agent-span-name"
         val runId = "run-id"
 
         val invokeSpan = InvokeAgentSpan(
             id = invokeSpanId,
-            name = invokeSpanName,
             parentSpan = createAgentSpan,
             provider = provider,
             runId = runId,
@@ -202,11 +194,9 @@ class LangfuseSpanAdapterTest {
 
         val firstNodeInput = "planner input"
         val firstNodeSpanId = "planner-node-id"
-        val firstNodeSpanName = "planner-node-name"
 
         val firstNode = NodeExecuteSpan(
             id = firstNodeSpanId,
-            name = firstNodeSpanName,
             parentSpan = invokeSpan,
             runId = runId,
             nodeInput = firstNodeInput,
@@ -217,16 +207,14 @@ class LangfuseSpanAdapterTest {
         val firstStep = assertIs<Int>(firstNode.attributes.requireValue("langfuse.observation.metadata.langgraph_step"))
         assertEquals(0, firstStep)
 
-        // Langfuse span adapter adds an attribute 'langgraph_node' with node name as a value.
+        // Langfuse span adapter adds an attribute 'langgraph_node' with the node name as a value.
         assertEquals("planner-node-name", firstNode.attributes.requireValue("langfuse.observation.metadata.langgraph_node"))
 
         val secondNodeInput = "executor input"
         val secondNodeSpanId = "executor-node-id"
-        val secondNodeSpanName = "executor-node-name"
 
         val secondNode = NodeExecuteSpan(
             id = secondNodeSpanId,
-            name = secondNodeSpanName,
             parentSpan = firstNode,
             runId = runId,
             nodeInput = secondNodeInput,
@@ -238,7 +226,7 @@ class LangfuseSpanAdapterTest {
         val secondStep = assertIs<Int>(secondNode.attributes.requireValue("langfuse.observation.metadata.langgraph_step"))
         assertEquals(1, secondStep)
 
-        // Langfuse span adapter adds an attribute 'langgraph_node' with node name as a value.
+        // Langfuse span adapter adds an attribute 'langgraph_node' with the node name as a value.
         assertEquals("executor-node-name", secondNode.attributes.requireValue("langfuse.observation.metadata.langgraph_node"))
     }
 
@@ -254,20 +242,16 @@ class LangfuseSpanAdapterTest {
         val model = createTestModel(provider)
 
         val createAgentSpanId = "create-agent-span-id"
-        val createAgentSpanName = "create-agent-span-name"
-        val createAgentSpan = CreateAgentSpan(id = createAgentSpanId, createAgentSpanName, null, model, agentId)
+        val createAgentSpan = CreateAgentSpan(id = createAgentSpanId, null, model, agentId)
 
         val invokeSpanId = "invoke-agent-span-id"
-        val invokeSpanName = "invoke-agent-span-name"
-        val invokeSpan = InvokeAgentSpan(invokeSpanId, invokeSpanName, createAgentSpan, provider, runId, agentId)
+        val invokeSpan = InvokeAgentSpan(invokeSpanId, createAgentSpan, provider, runId, agentId)
 
         val nodeSpanId = "node-span-id"
-        val nodeSpanName = "node-span-name"
-        val nodeSpan = NodeExecuteSpan(nodeSpanId, nodeSpanName, invokeSpan, runId, nodeId, nodeInput)
+        val nodeSpan = NodeExecuteSpan(nodeSpanId, invokeSpan, runId, nodeId, nodeInput)
 
         val inferenceSpanId = "inference-span-id"
-        val inferenceSpanName = "inference-span-name"
-        val inferenceSpan = InferenceSpan(id = inferenceSpanId, inferenceSpanName, nodeSpan, provider, runId, model, promptId, temperature)
+        val inferenceSpan = InferenceSpan(id = inferenceSpanId, nodeSpan, provider, runId, model, promptId, temperature)
 
         return inferenceSpan
     }
