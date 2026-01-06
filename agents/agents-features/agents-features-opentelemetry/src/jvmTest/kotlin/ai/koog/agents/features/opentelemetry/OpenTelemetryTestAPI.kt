@@ -151,7 +151,6 @@ internal object OpenTelemetryTestAPI {
 
         return MockSpanExporter().use { mockExporter ->
             collectedTestData.collectedSpans = mockExporter.collectedSpans
-            collectedTestData.runIds = mockExporter.runIds
 
             val agentResult = createAgent(
                 agentId = agentId,
@@ -170,6 +169,7 @@ internal object OpenTelemetryTestAPI {
                 }
 
                 installNodeIdsCollector().also { collectedTestData.collectedNodeIds = it }
+                installLLMEventIdsCollector().also { collectedTestData.collectedLLMEventIds = it }
             }.use { agent ->
                 agent.run(userPrompt ?: USER_PROMPT_PARIS)
             }
@@ -269,6 +269,16 @@ internal object OpenTelemetryTestAPI {
             }
         }
         return nodesInfo
+    }
+
+    internal fun GraphAIAgent.FeatureContext.installLLMEventIdsCollector(): List<String> {
+        val llmEventIds = mutableListOf<String>()
+        install(EventHandler.Feature) {
+            onLLMCallStarting { eventContext ->
+                llmEventIds.add(eventContext.eventId)
+            }
+        }
+        return llmEventIds
     }
 
     //endregion Features

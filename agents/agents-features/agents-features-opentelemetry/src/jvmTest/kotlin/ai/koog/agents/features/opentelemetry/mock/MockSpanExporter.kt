@@ -19,9 +19,11 @@ internal class MockSpanExporter : SpanExporter {
         get() = _collectedSpans
 
     val runIds: List<String>
-        get() = collectedSpans.mapNotNull { span ->
-            span.attributes[AttributeKey.stringKey("gen_ai.conversation.id")]
-        }.distinct()
+        get() {
+            return collectedSpans.mapNotNull { span ->
+                span.attributes[AttributeKey.stringKey("gen_ai.conversation.id")]
+            }.distinct()
+        }
 
     val lastRunId: String
         get() = runIds.last()

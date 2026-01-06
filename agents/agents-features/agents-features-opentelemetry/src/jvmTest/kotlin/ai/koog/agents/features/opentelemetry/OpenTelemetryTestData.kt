@@ -8,11 +8,17 @@ import io.opentelemetry.sdk.trace.data.SpanData
 internal data class NodeInfo(val nodeName: String, val nodeId: String)
 
 internal data class OpenTelemetryTestData(
-    var runIds: List<String> = emptyList(),
     var result: String? = null,
     var collectedSpans: List<SpanData> = emptyList(),
     var collectedNodeIds: List<NodeInfo> = emptyList(),
+    var collectedLLMEventIds: List<String> = emptyList(),
 ) {
+
+    val runIds: List<String>
+        get() = collectedSpans.mapNotNull { span ->
+            span.attributes[AttributeKey.stringKey("gen_ai.conversation.id")]
+        }.distinct()
+
     val lastRunId: String
         get() = runIds.last()
 
@@ -58,7 +64,12 @@ internal data class OpenTelemetryTestData(
     }
 
     fun filterNodeExecutionSpans(): List<SpanData> {
-        val attributeKey = AttributeKey.stringKey("koog.node.name")
+        val attributeKey = AttributeKey.stringKey("koog.node.id")
+        return collectedSpans.filter { spanData -> spanData.attributes.get(attributeKey) != null }
+    }
+
+    fun filterSubgraphExecutionSpans(): List<SpanData> {
+        val attributeKey = AttributeKey.stringKey("koog.subgraph.id")
         return collectedSpans.filter { spanData -> spanData.attributes.get(attributeKey) != null }
     }
 }

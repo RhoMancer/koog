@@ -64,6 +64,8 @@ internal class SpanCollector(
         path: AgentExecutionInfo,
         instant: Instant? = null,
     ) {
+        // TODO: SD -- !!!!
+        //  path should be a part of GenAiSpan
         logger.debug { "Starting span (name: ${span.name}, id: ${span.id}, path: ${path.path()})" }
 
         val spanKind = span.kind

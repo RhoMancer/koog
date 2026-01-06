@@ -8,7 +8,6 @@ import ai.koog.agents.features.opentelemetry.assertSpans
 import ai.koog.agents.features.opentelemetry.attribute.SpanAttributes.Operation.OperationNameType
 import ai.koog.agents.features.opentelemetry.feature.OpenTelemetryTestBase
 import ai.koog.agents.features.opentelemetry.mock.TestGetWeatherTool
-import ai.koog.agents.features.opentelemetry.span.sha256base64
 import ai.koog.agents.utils.HiddenString
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
@@ -41,7 +40,7 @@ class OpenTelemetryExecuteToolSpanTest : OpenTelemetryTestBase() {
         val expectedSpans = listOf(
             mapOf(
                 // TODO: Replace sha256base64() with unique event id for the Tool Call event
-                "tool.${TestGetWeatherTool.name}.args.${serializedArgs.sha256base64()}" to mapOf(
+                "tool.${TestGetWeatherTool.name}" to mapOf(
                     "attributes" to mapOf(
                         "output.value" to TestGetWeatherTool.encodeResult(mockToolCallResponse.toolResult).toString(),
                         "input.value" to serializedArgs,
@@ -79,12 +78,10 @@ class OpenTelemetryExecuteToolSpanTest : OpenTelemetryTestBase() {
         val actualSpans = collectedTestData.filterExecuteToolSpans()
         assertTrue(actualSpans.isNotEmpty(), "Spans should be created during agent execution")
 
-        val serializedArgs = TestGetWeatherTool.encodeArgsToString(mockToolCallResponse.arguments)
-
         val expectedSpans = listOf(
             mapOf(
                 // TODO: Replace sha256base64() with unique event id for the Tool Call event
-                "tool.${TestGetWeatherTool.name}.args.${serializedArgs.sha256base64()}" to mapOf(
+                "tool.${TestGetWeatherTool.name}" to mapOf(
                     "attributes" to mapOf(
                         "output.value" to HiddenString.HIDDEN_STRING_PLACEHOLDER,
                         "input.value" to HiddenString.HIDDEN_STRING_PLACEHOLDER,
@@ -100,4 +97,6 @@ class OpenTelemetryExecuteToolSpanTest : OpenTelemetryTestBase() {
 
         assertSpans(expectedSpans, actualSpans)
     }
+
+    // TODO: SD -- add tests to write parallel tools execution
 }

@@ -49,7 +49,7 @@ class OpenTelemetryInferenceSpanTest : OpenTelemetryTestBase() {
         val expectedSpans = listOf(
             mapOf(
                 // TODO: Replace sha256base64() with unique event id for the LLM Call event
-                "llm.${userInput.sha256base64()}" to mapOf(
+                "inference.${userInput.sha256base64()}" to mapOf(
                     "attributes" to mapOf(
                         "gen_ai.operation.name" to OperationNameType.CHAT.id,
                         "gen_ai.system" to defaultModel.provider.id,
@@ -109,10 +109,12 @@ class OpenTelemetryInferenceSpanTest : OpenTelemetryTestBase() {
         val actualSpans = collectedTestData.filterInferenceSpans()
         assertTrue(actualSpans.isNotEmpty(), "Spans should be created during agent execution")
 
+        val llmEventIds = collectedTestData.collectedLLMEventIds
+        assertTrue(llmEventIds.isNotEmpty(), "LLM event IDs should be collected during agent execution")
+
         val expectedSpans = listOf(
             mapOf(
-                // TODO: Replace sha256base64() with unique event id for the LLM Call event
-                "llm.${mockToolCallResponse.toolResult.sha256base64()}" to mapOf(
+                "inference.${llmEventIds[0]}" to mapOf(
                     "attributes" to mapOf(
                         "gen_ai.operation.name" to OperationNameType.CHAT.id,
                         "gen_ai.system" to model.provider.id,
@@ -153,8 +155,7 @@ class OpenTelemetryInferenceSpanTest : OpenTelemetryTestBase() {
                 ),
             ),
             mapOf(
-                // TODO: Replace sha256base64() with unique event id for the LLM Call event
-                "llm.${userInput.sha256base64()}" to mapOf(
+                "inference.${llmEventIds[1]}" to mapOf(
                     "attributes" to mapOf(
                         "gen_ai.operation.name" to OperationNameType.CHAT.id,
                         "gen_ai.system" to model.provider.id,
@@ -217,10 +218,12 @@ class OpenTelemetryInferenceSpanTest : OpenTelemetryTestBase() {
         val actualSpans = collectedTestData.filterInferenceSpans()
         assertTrue(actualSpans.isNotEmpty(), "Spans should be created during agent execution")
 
+        val llmEventIds = collectedTestData.collectedLLMEventIds
+        assertTrue(llmEventIds.isNotEmpty(), "LLM event IDs should be collected during agent execution")
+
         val expectedSpans = listOf(
             mapOf(
-                // TODO: Replace sha256base64() with unique event id for the LLM Call event
-                "llm.${mockToolCallResponse.toolResult.sha256base64()}" to mapOf(
+                "inference.${llmEventIds[0]}" to mapOf(
                     "attributes" to mapOf(
                         "gen_ai.operation.name" to OperationNameType.CHAT.id,
                         "gen_ai.system" to model.provider.id,
@@ -261,8 +264,7 @@ class OpenTelemetryInferenceSpanTest : OpenTelemetryTestBase() {
                 ),
             ),
             mapOf(
-                // TODO: Replace sha256base64() with unique event id for the LLM Call event
-                "llm.${userInput.sha256base64()}" to mapOf(
+                "inference.${llmEventIds[1]}" to mapOf(
                     "attributes" to mapOf(
                         "gen_ai.operation.name" to OperationNameType.CHAT.id,
                         "gen_ai.system" to model.provider.id,
@@ -336,10 +338,12 @@ class OpenTelemetryInferenceSpanTest : OpenTelemetryTestBase() {
         val actualSpans = collectedTestData.filterInferenceSpans()
         assertTrue(actualSpans.isNotEmpty(), "Spans should be created during agent execution")
 
+        val llmEventIds = collectedTestData.collectedLLMEventIds
+        assertTrue(llmEventIds.isNotEmpty(), "LLM event IDs should be collected during agent execution")
+
         val expectedSpans = listOf(
             mapOf(
-                // TODO: Replace sha256base64() with unique event id for the LLM Call event
-                "llm.${subgraphLLMResponse.sha256base64()}" to mapOf(
+                "inference.${llmEventIds[0]}" to mapOf(
                     "attributes" to mapOf(
                         "gen_ai.operation.name" to OperationNameType.CHAT.id,
                         "gen_ai.system" to model.provider.id,
@@ -368,8 +372,7 @@ class OpenTelemetryInferenceSpanTest : OpenTelemetryTestBase() {
                 )
             ),
             mapOf(
-                // TODO: Replace sha256base64() with unique event id for the LLM Call event
-                "llm.${userInput.sha256base64()}" to mapOf(
+                "inference.${llmEventIds[1]}" to mapOf(
                     "attributes" to mapOf(
                         "gen_ai.operation.name" to OperationNameType.CHAT.id,
                         "gen_ai.system" to model.provider.id,
@@ -438,10 +441,12 @@ class OpenTelemetryInferenceSpanTest : OpenTelemetryTestBase() {
         val actualSpans = collectedTestData.filterInferenceSpans()
         assertTrue(actualSpans.isNotEmpty(), "Spans should be created during agent execution")
 
+        val llmEventIds = collectedTestData.collectedLLMEventIds
+        assertTrue(llmEventIds.isNotEmpty(), "LLM event IDs should be collected during agent execution")
+
         val expectedSpans = listOf(
             mapOf(
-                // TODO: Replace sha256base64() with unique event id for the LLM Call event
-                "llm.${userInput.sha256base64()}" to mapOf(
+                "inference.${llmEventIds[0]}" to mapOf(
                     "attributes" to mapOf(
                         "gen_ai.system" to model.provider.id,
                         "gen_ai.request.model" to model.id,
