@@ -98,7 +98,7 @@ class SpanCollectorTest {
         spanCollector.startSpan(span, executionInfo)
         assertEquals(1, spanCollector.activeSpansCount)
 
-        spanCollector.endSpan(span)
+        spanCollector.endSpan(span, executionInfo)
         assertEquals(0, spanCollector.activeSpansCount)
 
         val retrievedSpan = spanCollector.getSpan(executionInfo)
@@ -133,7 +133,7 @@ class SpanCollectorTest {
         assertEquals(3, spanCollector.activeSpansCount)
 
         // End one of the spans
-        spanCollector.endSpan(span2)
+        spanCollector.endSpan(span2, path2)
         assertEquals(2, spanCollector.activeSpansCount)
 
         // Verify initial state
@@ -258,7 +258,7 @@ class SpanCollectorTest {
         )
         span.addAttributes(attributes)
 
-        spanCollector.endSpan(span)
+        spanCollector.endSpan(span, executionInfo)
         assertEquals(0, spanCollector.activeSpansCount)
 
         // Verify exact converted values when verbose is set to 'false'
@@ -295,7 +295,7 @@ class SpanCollectorTest {
         }
         span.addEvent(event)
 
-        spanCollector.endSpan(span)
+        spanCollector.endSpan(span, executionInfo)
         assertEquals(0, spanCollector.activeSpansCount)
 
         // Assert collected event
@@ -324,7 +324,7 @@ class SpanCollectorTest {
         assertEquals(1, spanCollector.activeSpansCount)
         assertNotNull(spanCollector.getSpan(executionInfo))
 
-        spanCollector.endSpan(span)
+        spanCollector.endSpan(span, executionInfo)
         assertEquals(0, spanCollector.activeSpansCount)
         assertNull(spanCollector.getSpan(executionInfo))
     }
@@ -350,9 +350,9 @@ class SpanCollectorTest {
 
         assertEquals(2, spanCollector.activeSpansCount)
 
-        // Try to end parent span while child is still active
+        // Try to end parent span while the child is still active
         val exception = assertFailsWith<IllegalStateException> {
-            spanCollector.endSpan(parentSpan)
+            spanCollector.endSpan(parentSpan, parentPath)
         }
 
         assertTrue(exception.message!!.contains("Cannot end span '$parentSpanName'"))
@@ -382,12 +382,12 @@ class SpanCollectorTest {
         assertEquals(2, spanCollector.activeSpansCount)
 
         // End child span first
-        spanCollector.endSpan(childSpan)
+        spanCollector.endSpan(childSpan, childPath)
         assertEquals(1, spanCollector.activeSpansCount)
         assertNull(spanCollector.getSpan(childPath))
 
         // Now parent can be ended
-        spanCollector.endSpan(parentSpan)
+        spanCollector.endSpan(parentSpan, parentPath)
         assertEquals(0, spanCollector.activeSpansCount)
         assertNull(spanCollector.getSpan(parentPath))
     }
@@ -417,21 +417,21 @@ class SpanCollectorTest {
         assertEquals(3, spanCollector.activeSpansCount)
 
         // End child1
-        spanCollector.endSpan(child1Span)
+        spanCollector.endSpan(child1Span, child1Path)
         assertEquals(2, spanCollector.activeSpansCount)
         assertNull(spanCollector.getSpan(child1Path))
         assertNotNull(spanCollector.getSpan(child2Path))
         assertNotNull(spanCollector.getSpan(parentPath))
 
         // End child2
-        spanCollector.endSpan(child2Span)
+        spanCollector.endSpan(child2Span, child2Path)
         assertEquals(1, spanCollector.activeSpansCount)
         assertNull(spanCollector.getSpan(child1Path))
         assertNull(spanCollector.getSpan(child2Path))
         assertNotNull(spanCollector.getSpan(parentPath))
 
         // End parent
-        spanCollector.endSpan(parentSpan)
+        spanCollector.endSpan(parentSpan, parentPath)
         assertEquals(0, spanCollector.activeSpansCount)
         assertNull(spanCollector.getSpan(parentPath))
     }
@@ -458,19 +458,19 @@ class SpanCollectorTest {
 
         // Try to end parent - should fail
         val exception = assertFailsWith<IllegalStateException> {
-            spanCollector.endSpan(parentSpan)
+            spanCollector.endSpan(parentSpan, parentPath)
         }
         assertTrue(exception.message!!.contains("3 active child span(s)"))
 
         // End children one by one
         childSpans.forEach { child ->
-            spanCollector.endSpan(child)
+            spanCollector.endSpan(child, parentPath)
         }
 
         assertEquals(1, spanCollector.activeSpansCount)
 
         // Now parent can be ended
-        spanCollector.endSpan(parentSpan)
+        spanCollector.endSpan(parentSpan, parentPath)
         assertEquals(0, spanCollector.activeSpansCount)
     }
 
@@ -501,30 +501,30 @@ class SpanCollectorTest {
 
         // Try to end root - should fail
         assertFailsWith<IllegalStateException> {
-            spanCollector.endSpan(rootSpan)
+            spanCollector.endSpan(rootSpan, rootPath)
         }
 
         // Try to end level1 - should fail
         assertFailsWith<IllegalStateException> {
-            spanCollector.endSpan(level1Span)
+            spanCollector.endSpan(level1Span, level1Path)
         }
 
         // Try to end level2 - should fail
         assertFailsWith<IllegalStateException> {
-            spanCollector.endSpan(level2Span)
+            spanCollector.endSpan(level2Span, level2Path)
         }
 
         // End from deepest to root
-        spanCollector.endSpan(level3Span)
+        spanCollector.endSpan(level3Span, level3Path)
         assertEquals(3, spanCollector.activeSpansCount)
 
-        spanCollector.endSpan(level2Span)
+        spanCollector.endSpan(level2Span, level2Path)
         assertEquals(2, spanCollector.activeSpansCount)
 
-        spanCollector.endSpan(level1Span)
+        spanCollector.endSpan(level1Span, level1Path)
         assertEquals(1, spanCollector.activeSpansCount)
 
-        spanCollector.endSpan(rootSpan)
+        spanCollector.endSpan(rootSpan, rootPath)
         assertEquals(0, spanCollector.activeSpansCount)
     }
 }
