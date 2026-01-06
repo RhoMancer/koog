@@ -9,6 +9,7 @@ nav:
           - Glossary: glossary.md
       - Getting started: getting-started.md
       - Agent types:
+          - Agent configuration: agent-configuration.md
           - Basic agents: basic-agents.md
           - Functional agents: functional-agents.md
           - Complex workflow agents: complex-workflow-agents.md
@@ -139,7 +140,8 @@ plugins:
         Getting started:
           - getting-started.md: This page provides a guide on installing Koog and creating a minimal AI agent.
         Agent types:
-          - basic-agents.md: This guide lets you build a basic agent with minimum required configuration.
+          - agent-configuration.md: This page provides details about configuring agents by using the AIAgentConfig class.
+          - basic-agents.md: This guide lets you build a basic agent with the minimum required configuration.
           - functional-agents.md: This guide shows you how to build a lightweight, non‑graph agent that you control with a simple loop.
           - complex-workflow-agents.md: This page explains how you can create agents that handle complex workflows by defining custom strategies, tools, configurations, and custom input and output types.
         Prompts:
