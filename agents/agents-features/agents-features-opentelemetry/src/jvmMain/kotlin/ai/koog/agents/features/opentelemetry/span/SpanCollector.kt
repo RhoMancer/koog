@@ -110,7 +110,7 @@ internal class SpanCollector(
         spanToFinish.end()
 
         // Remove the span from the tree structure
-        removeSpanFromTree(span)
+        removeSpanFromTree(span, path)
 
         logger.debug { "${span.logString} Span has been finished." }
     }
@@ -238,9 +238,9 @@ internal class SpanCollector(
      * @param span The span to remove.
      * @throws IllegalStateException if the span has active children.
      */
-    private fun removeSpanFromTree(span: GenAIAgentSpan) = spansLock.write remove@{
+    private fun removeSpanFromTree(span: GenAIAgentSpan, path: AgentExecutionInfo) = spansLock.write remove@{
         // Find the node to remove
-        val node = findNodeBySpan(span) ?: run {
+        val node = findNodeBySpanId(span.id) ?: run {
             logger.warn { "${span.logString} Span node not found for removal." }
             return@remove
         }
@@ -285,12 +285,12 @@ internal class SpanCollector(
     /**
      * Finds a span node by the span reference.
      *
-     * @param span The span to find.
+     * @param spanId The ID of the span to find.
      * @return The span node if found, null otherwise.
      */
-    private fun findNodeBySpan(span: GenAIAgentSpan): SpanNode? {
+    private fun findNodeBySpanId(spanId: String): SpanNode? {
         fun searchNode(node: SpanNode): SpanNode? {
-            if (node.span.id == span.id) {
+            if (node.span.id == spanId) {
                 return node
             }
             for (child in node.children) {
