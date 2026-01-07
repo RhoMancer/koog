@@ -74,7 +74,6 @@ import java.util.Base64
 import java.util.stream.Stream
 import kotlin.io.path.readBytes
 import kotlin.reflect.typeOf
-import kotlin.test.assertContains
 import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
 
@@ -1346,7 +1345,7 @@ class AIAgentIntegrationTest : AIAgentTestBase() {
 
             val result = agent.run("2 * 7")
 
-            assertContains(result, "14")
+            result.shouldContain("14")
         }
     }
 }
