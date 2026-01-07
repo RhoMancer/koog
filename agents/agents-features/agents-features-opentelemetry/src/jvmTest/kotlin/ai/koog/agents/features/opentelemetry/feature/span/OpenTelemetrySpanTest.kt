@@ -11,7 +11,7 @@ import ai.koog.agents.features.opentelemetry.OpenTelemetryTestAPI.Parameter.SYST
 import ai.koog.agents.features.opentelemetry.OpenTelemetryTestAPI.Parameter.USER_PROMPT_LONDON
 import ai.koog.agents.features.opentelemetry.OpenTelemetryTestAPI.Parameter.USER_PROMPT_PARIS
 import ai.koog.agents.features.opentelemetry.OpenTelemetryTestAPI.Parameter.defaultModel
-import ai.koog.agents.features.opentelemetry.OpenTelemetryTestAPI.installNodeIdsCollector
+import ai.koog.agents.features.opentelemetry.OpenTelemetryTestAPI.installEventDataCollector
 import ai.koog.agents.features.opentelemetry.OpenTelemetryTestData
 import ai.koog.agents.features.opentelemetry.assertSpans
 import ai.koog.agents.features.opentelemetry.attribute.SpanAttributes.Operation.OperationNameType
@@ -76,11 +76,11 @@ class OpenTelemetrySpanTest : OpenTelemetryTestBase() {
                     setVerbose(true)
                 }
 
-                installNodeIdsCollector().also {
+                installEventDataCollector().also {
                     if (index == 0) {
-                        nodesInfo0 = it
+                        nodesInfo0 = it.nodeData
                     } else {
-                        nodesInfo1 = it
+                        nodesInfo1 = it.nodeData
                     }
                 }
             }

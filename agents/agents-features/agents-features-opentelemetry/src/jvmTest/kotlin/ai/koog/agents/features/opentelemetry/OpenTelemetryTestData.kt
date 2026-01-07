@@ -15,6 +15,7 @@ internal data class OpenTelemetryTestData(
     var collectedSpans: List<SpanData> = emptyList(),
     var collectedNodeIds: List<NodeInfo> = emptyList(),
     var collectedLLMEventIds: List<String> = emptyList(),
+    var collectedToolEventIds: List<String> = emptyList(),
 ) {
 
     val runIds: List<String>
@@ -74,11 +75,5 @@ internal data class OpenTelemetryTestData(
     fun filterSubgraphExecutionSpans(): List<SpanData> {
         val attributeKey = AttributeKey.stringKey("koog.subgraph.id")
         return collectedSpans.filter { spanData -> spanData.attributes.get(attributeKey) != null }
-    }
-
-    suspend fun awaitSpansCollected(expectedNumber: Int, timeout: Duration = 5.seconds) {
-        withTimeoutOrNull(timeout) {
-
-        }
     }
 }

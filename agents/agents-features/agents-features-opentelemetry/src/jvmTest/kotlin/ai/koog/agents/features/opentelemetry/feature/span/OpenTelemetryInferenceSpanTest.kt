@@ -19,7 +19,6 @@ import ai.koog.agents.features.opentelemetry.attribute.SpanAttributes.Operation.
 import ai.koog.agents.features.opentelemetry.attribute.SpanAttributes.Response.FinishReasonType
 import ai.koog.agents.features.opentelemetry.feature.OpenTelemetryTestBase
 import ai.koog.agents.features.opentelemetry.mock.TestGetWeatherTool
-import ai.koog.agents.features.opentelemetry.span.sha256base64
 import ai.koog.agents.testing.tools.getMockExecutor
 import ai.koog.agents.utils.HiddenString
 import ai.koog.prompt.message.Message
@@ -44,12 +43,14 @@ class OpenTelemetryInferenceSpanTest : OpenTelemetryTestBase() {
         val result = collectedTestData.result
 
         val actualSpans = collectedTestData.filterInferenceSpans()
-        assertTrue(actualSpans.isNotEmpty(), "Spans should be created during agent execution")
+        assertTrue(actualSpans.isNotEmpty(), "Inference spans should be created during agent execution")
+
+        val actualLLMCallEventIds = collectedTestData.collectedLLMEventIds
+        assertTrue(actualLLMCallEventIds.isNotEmpty(), "LLM Call event ids should be collected during agent execution")
 
         val expectedSpans = listOf(
             mapOf(
-                // TODO: Replace sha256base64() with unique event id for the LLM Call event
-                "inference.${userInput.sha256base64()}" to mapOf(
+                "inference.${actualLLMCallEventIds[0]}" to mapOf(
                     "attributes" to mapOf(
                         "gen_ai.operation.name" to OperationNameType.CHAT.id,
                         "gen_ai.system" to defaultModel.provider.id,
@@ -107,14 +108,45 @@ class OpenTelemetryInferenceSpanTest : OpenTelemetryTestBase() {
         val model = defaultModel
 
         val actualSpans = collectedTestData.filterInferenceSpans()
-        assertTrue(actualSpans.isNotEmpty(), "Spans should be created during agent execution")
+        assertTrue(actualSpans.isNotEmpty(), "Inference spans should be created during agent execution")
 
-        val llmEventIds = collectedTestData.collectedLLMEventIds
-        assertTrue(llmEventIds.isNotEmpty(), "LLM event IDs should be collected during agent execution")
+        val actualLLMCallEventIds = collectedTestData.collectedLLMEventIds
+        assertTrue(actualLLMCallEventIds.isNotEmpty(), "LLM event IDs should be collected during agent execution")
 
         val expectedSpans = listOf(
             mapOf(
-                "inference.${llmEventIds[0]}" to mapOf(
+                "inference.${actualLLMCallEventIds[0]}" to mapOf(
+                    "attributes" to mapOf(
+                        "gen_ai.operation.name" to OperationNameType.CHAT.id,
+                        "gen_ai.system" to model.provider.id,
+                        "gen_ai.conversation.id" to runId,
+                        "gen_ai.request.temperature" to TEMPERATURE,
+                        "gen_ai.request.model" to model.id,
+                        "gen_ai.response.finish_reasons" to listOf(FinishReasonType.ToolCalls.id)
+                    ),
+                    "events" to mapOf(
+                        "gen_ai.system.message" to mapOf(
+                            "gen_ai.system" to model.provider.id,
+                            "role" to Message.Role.System.name.lowercase(),
+                            "content" to SYSTEM_PROMPT,
+                        ),
+                        "gen_ai.user.message" to mapOf(
+                            "gen_ai.system" to model.provider.id,
+                            "role" to Message.Role.User.name.lowercase(),
+                            "content" to userInput,
+                        ),
+                        "gen_ai.choice" to mapOf(
+                            "gen_ai.system" to model.provider.id,
+                            "role" to Message.Role.Tool.name.lowercase(),
+                            "tool_calls" to """[{"function":{"name":"${TestGetWeatherTool.name}","arguments":"{\"location\":\"$location\"}"},"id":"$toolCallId","type":"function"}]""",
+                            "index" to 0L,
+                            "finish_reason" to FinishReasonType.ToolCalls.id,
+                        )
+                    )
+                )
+            ),
+            mapOf(
+                "inference.${actualLLMCallEventIds[1]}" to mapOf(
                     "attributes" to mapOf(
                         "gen_ai.operation.name" to OperationNameType.CHAT.id,
                         "gen_ai.system" to model.provider.id,
@@ -154,37 +186,6 @@ class OpenTelemetryInferenceSpanTest : OpenTelemetryTestBase() {
                     )
                 ),
             ),
-            mapOf(
-                "inference.${llmEventIds[1]}" to mapOf(
-                    "attributes" to mapOf(
-                        "gen_ai.operation.name" to OperationNameType.CHAT.id,
-                        "gen_ai.system" to model.provider.id,
-                        "gen_ai.conversation.id" to runId,
-                        "gen_ai.request.temperature" to TEMPERATURE,
-                        "gen_ai.request.model" to model.id,
-                        "gen_ai.response.finish_reasons" to listOf(FinishReasonType.ToolCalls.id)
-                    ),
-                    "events" to mapOf(
-                        "gen_ai.system.message" to mapOf(
-                            "gen_ai.system" to model.provider.id,
-                            "role" to Message.Role.System.name.lowercase(),
-                            "content" to SYSTEM_PROMPT,
-                        ),
-                        "gen_ai.user.message" to mapOf(
-                            "gen_ai.system" to model.provider.id,
-                            "role" to Message.Role.User.name.lowercase(),
-                            "content" to userInput,
-                        ),
-                        "gen_ai.choice" to mapOf(
-                            "gen_ai.system" to model.provider.id,
-                            "role" to Message.Role.Tool.name.lowercase(),
-                            "tool_calls" to """[{"function":{"name":"${TestGetWeatherTool.name}","arguments":"{\"location\":\"$location\"}"},"id":"$toolCallId","type":"function"}]""",
-                            "index" to 0L,
-                            "finish_reason" to FinishReasonType.ToolCalls.id,
-                        )
-                    )
-                )
-            )
         )
 
         assertSpans(expectedSpans, actualSpans)
@@ -216,14 +217,45 @@ class OpenTelemetryInferenceSpanTest : OpenTelemetryTestBase() {
         val model = defaultModel
 
         val actualSpans = collectedTestData.filterInferenceSpans()
-        assertTrue(actualSpans.isNotEmpty(), "Spans should be created during agent execution")
+        assertTrue(actualSpans.isNotEmpty(), "Inference spans should be created during agent execution")
 
-        val llmEventIds = collectedTestData.collectedLLMEventIds
-        assertTrue(llmEventIds.isNotEmpty(), "LLM event IDs should be collected during agent execution")
+        val actualLLMCallEventIds = collectedTestData.collectedLLMEventIds
+        assertTrue(actualLLMCallEventIds.isNotEmpty(), "LLM event IDs should be collected during agent execution")
 
         val expectedSpans = listOf(
             mapOf(
-                "inference.${llmEventIds[0]}" to mapOf(
+                "inference.${actualLLMCallEventIds[0]}" to mapOf(
+                    "attributes" to mapOf(
+                        "gen_ai.operation.name" to OperationNameType.CHAT.id,
+                        "gen_ai.system" to model.provider.id,
+                        "gen_ai.conversation.id" to runId,
+                        "gen_ai.request.temperature" to TEMPERATURE,
+                        "gen_ai.request.model" to model.id,
+                        "gen_ai.response.finish_reasons" to listOf(FinishReasonType.ToolCalls.id)
+                    ),
+                    "events" to mapOf(
+                        "gen_ai.system.message" to mapOf(
+                            "gen_ai.system" to model.provider.id,
+                            "role" to Message.Role.System.name.lowercase(),
+                            "content" to HiddenString.HIDDEN_STRING_PLACEHOLDER,
+                        ),
+                        "gen_ai.user.message" to mapOf(
+                            "gen_ai.system" to model.provider.id,
+                            "role" to Message.Role.User.name.lowercase(),
+                            "content" to HiddenString.HIDDEN_STRING_PLACEHOLDER,
+                        ),
+                        "gen_ai.choice" to mapOf(
+                            "gen_ai.system" to model.provider.id,
+                            "role" to Message.Role.Tool.name.lowercase(),
+                            "tool_calls" to "[{\"function\":{\"name\":\"${HiddenString.HIDDEN_STRING_PLACEHOLDER}\",\"arguments\":\"${HiddenString.HIDDEN_STRING_PLACEHOLDER}\"},\"id\":\"$toolCallId\",\"type\":\"function\"}]",
+                            "index" to 0L,
+                            "finish_reason" to FinishReasonType.ToolCalls.id,
+                        )
+                    )
+                )
+            ),
+            mapOf(
+                "inference.${actualLLMCallEventIds[1]}" to mapOf(
                     "attributes" to mapOf(
                         "gen_ai.operation.name" to OperationNameType.CHAT.id,
                         "gen_ai.system" to model.provider.id,
@@ -263,37 +295,6 @@ class OpenTelemetryInferenceSpanTest : OpenTelemetryTestBase() {
                     )
                 ),
             ),
-            mapOf(
-                "inference.${llmEventIds[1]}" to mapOf(
-                    "attributes" to mapOf(
-                        "gen_ai.operation.name" to OperationNameType.CHAT.id,
-                        "gen_ai.system" to model.provider.id,
-                        "gen_ai.conversation.id" to runId,
-                        "gen_ai.request.temperature" to TEMPERATURE,
-                        "gen_ai.request.model" to model.id,
-                        "gen_ai.response.finish_reasons" to listOf(FinishReasonType.ToolCalls.id)
-                    ),
-                    "events" to mapOf(
-                        "gen_ai.system.message" to mapOf(
-                            "gen_ai.system" to model.provider.id,
-                            "role" to Message.Role.System.name.lowercase(),
-                            "content" to HiddenString.HIDDEN_STRING_PLACEHOLDER,
-                        ),
-                        "gen_ai.user.message" to mapOf(
-                            "gen_ai.system" to model.provider.id,
-                            "role" to Message.Role.User.name.lowercase(),
-                            "content" to HiddenString.HIDDEN_STRING_PLACEHOLDER,
-                        ),
-                        "gen_ai.choice" to mapOf(
-                            "gen_ai.system" to model.provider.id,
-                            "role" to Message.Role.Tool.name.lowercase(),
-                            "tool_calls" to "[{\"function\":{\"name\":\"${HiddenString.HIDDEN_STRING_PLACEHOLDER}\",\"arguments\":\"${HiddenString.HIDDEN_STRING_PLACEHOLDER}\"},\"id\":\"$toolCallId\",\"type\":\"function\"}]",
-                            "index" to 0L,
-                            "finish_reason" to FinishReasonType.ToolCalls.id,
-                        )
-                    )
-                )
-            )
         )
 
         assertSpans(expectedSpans, actualSpans)
@@ -336,43 +337,14 @@ class OpenTelemetryInferenceSpanTest : OpenTelemetryTestBase() {
         val runId = collectedTestData.lastRunId
 
         val actualSpans = collectedTestData.filterInferenceSpans()
-        assertTrue(actualSpans.isNotEmpty(), "Spans should be created during agent execution")
+        assertTrue(actualSpans.isNotEmpty(), "Inference spans should be created during agent execution")
 
-        val llmEventIds = collectedTestData.collectedLLMEventIds
-        assertTrue(llmEventIds.isNotEmpty(), "LLM event IDs should be collected during agent execution")
+        val actualLLMCallEventIds = collectedTestData.collectedLLMEventIds
+        assertTrue(actualLLMCallEventIds.isNotEmpty(), "LLM event IDs should be collected during agent execution")
 
         val expectedSpans = listOf(
             mapOf(
-                "inference.${llmEventIds[0]}" to mapOf(
-                    "attributes" to mapOf(
-                        "gen_ai.operation.name" to OperationNameType.CHAT.id,
-                        "gen_ai.system" to model.provider.id,
-                        "gen_ai.conversation.id" to runId,
-                        "gen_ai.request.temperature" to TEMPERATURE,
-                        "gen_ai.request.model" to model.id,
-                        "gen_ai.response.finish_reasons" to listOf(FinishReasonType.Stop.id)
-                    ),
-                    "events" to mapOf(
-                        "gen_ai.system.message" to mapOf(
-                            "gen_ai.system" to model.provider.id,
-                            "role" to Message.Role.System.name.lowercase(),
-                            "content" to SYSTEM_PROMPT,
-                        ),
-                        "gen_ai.user.message" to mapOf(
-                            "gen_ai.system" to model.provider.id,
-                            "role" to Message.Role.User.name.lowercase(),
-                            "content" to subgraphLLMResponse,
-                        ),
-                        "gen_ai.assistant.message" to mapOf(
-                            "gen_ai.system" to model.provider.id,
-                            "role" to Message.Role.Assistant.name.lowercase(),
-                            "content" to rootLLMResponse,
-                        )
-                    )
-                )
-            ),
-            mapOf(
-                "inference.${llmEventIds[1]}" to mapOf(
+                "inference.${actualLLMCallEventIds[0]}" to mapOf(
                     "attributes" to mapOf(
                         "gen_ai.operation.name" to OperationNameType.CHAT.id,
                         "gen_ai.system" to model.provider.id,
@@ -396,6 +368,35 @@ class OpenTelemetryInferenceSpanTest : OpenTelemetryTestBase() {
                             "gen_ai.system" to model.provider.id,
                             "role" to Message.Role.Assistant.name.lowercase(),
                             "content" to subgraphLLMResponse,
+                        )
+                    )
+                )
+            ),
+            mapOf(
+                "inference.${actualLLMCallEventIds[1]}" to mapOf(
+                    "attributes" to mapOf(
+                        "gen_ai.operation.name" to OperationNameType.CHAT.id,
+                        "gen_ai.system" to model.provider.id,
+                        "gen_ai.conversation.id" to runId,
+                        "gen_ai.request.temperature" to TEMPERATURE,
+                        "gen_ai.request.model" to model.id,
+                        "gen_ai.response.finish_reasons" to listOf(FinishReasonType.Stop.id)
+                    ),
+                    "events" to mapOf(
+                        "gen_ai.system.message" to mapOf(
+                            "gen_ai.system" to model.provider.id,
+                            "role" to Message.Role.System.name.lowercase(),
+                            "content" to SYSTEM_PROMPT,
+                        ),
+                        "gen_ai.user.message" to mapOf(
+                            "gen_ai.system" to model.provider.id,
+                            "role" to Message.Role.User.name.lowercase(),
+                            "content" to subgraphLLMResponse,
+                        ),
+                        "gen_ai.assistant.message" to mapOf(
+                            "gen_ai.system" to model.provider.id,
+                            "role" to Message.Role.Assistant.name.lowercase(),
+                            "content" to rootLLMResponse,
                         )
                     )
                 )
@@ -439,14 +440,14 @@ class OpenTelemetryInferenceSpanTest : OpenTelemetryTestBase() {
         val result = collectedTestData.result
 
         val actualSpans = collectedTestData.filterInferenceSpans()
-        assertTrue(actualSpans.isNotEmpty(), "Spans should be created during agent execution")
+        assertTrue(actualSpans.isNotEmpty(), "Inference spans should be created during agent execution")
 
-        val llmEventIds = collectedTestData.collectedLLMEventIds
-        assertTrue(llmEventIds.isNotEmpty(), "LLM event IDs should be collected during agent execution")
+        val actualLLMCallEventIds = collectedTestData.collectedLLMEventIds
+        assertTrue(actualLLMCallEventIds.isNotEmpty(), "LLM event IDs should be collected during agent execution")
 
         val expectedSpans = listOf(
             mapOf(
-                "inference.${llmEventIds[0]}" to mapOf(
+                "inference.${actualLLMCallEventIds[0]}" to mapOf(
                     "attributes" to mapOf(
                         "gen_ai.system" to model.provider.id,
                         "gen_ai.request.model" to model.id,

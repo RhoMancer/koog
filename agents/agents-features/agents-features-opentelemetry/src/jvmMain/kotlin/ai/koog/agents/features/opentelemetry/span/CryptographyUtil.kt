@@ -5,6 +5,7 @@ import java.security.MessageDigest
 import kotlin.io.encoding.Base64
 import kotlin.io.encoding.ExperimentalEncodingApi
 
+// TODO: SD -- delete!!!
 /**
  * Computes the SHA-256 hash of the current string, encodes the resulting hash in base64 using
  * URL-safe encoding, and returns the encoded string.

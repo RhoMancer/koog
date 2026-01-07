@@ -176,8 +176,11 @@ internal object OpenTelemetryTestAPI {
                     setVerbose(verbose)
                 }
 
-                installNodeIdsCollector().also { collectedTestData.collectedNodeIds = it }
-                installLLMEventIdsCollector().also { collectedTestData.collectedLLMEventIds = it }
+                installEventDataCollector().also {
+                    collectedTestData.collectedNodeIds = it.nodeData
+                    collectedTestData.collectedLLMEventIds = it.llmCallsEventIds
+                    collectedTestData.collectedToolEventIds = it.toolCallEventIds
+                }
             }.use { agent ->
                 agent.run(userPrompt ?: USER_PROMPT_PARIS)
             }
@@ -282,8 +285,17 @@ internal object OpenTelemetryTestAPI {
 
     //region Features
 
-    internal fun GraphAIAgent.FeatureContext.installNodeIdsCollector(): List<NodeInfo> {
+    internal data class CollectedEventData(
+        val nodeData: List<NodeInfo>,
+        val llmCallsEventIds: List<String>,
+        val toolCallEventIds: List<String>,
+    )
+
+    internal fun GraphAIAgent.FeatureContext.installEventDataCollector(): CollectedEventData {
         val nodesInfo = mutableListOf<NodeInfo>()
+        val llmCallEventIds = mutableListOf<String>()
+        val toolCallEventIds = mutableListOf<String>()
+
         install(EventHandler.Feature) {
             onNodeExecutionStarting { eventContext ->
                 nodesInfo.add(NodeInfo(nodeName = eventContext.node.name, nodeId = eventContext.node.id))
@@ -292,18 +304,17 @@ internal object OpenTelemetryTestAPI {
             onSubgraphExecutionStarting { eventContext ->
                 nodesInfo.add(NodeInfo(nodeName = eventContext.subgraph.name, nodeId = eventContext.subgraph.id))
             }
-        }
-        return nodesInfo
-    }
 
-    internal fun GraphAIAgent.FeatureContext.installLLMEventIdsCollector(): List<String> {
-        val llmEventIds = mutableListOf<String>()
-        install(EventHandler.Feature) {
             onLLMCallStarting { eventContext ->
-                llmEventIds.add(eventContext.eventId)
+                llmCallEventIds.add(eventContext.eventId)
+            }
+
+            onToolCallStarting { eventContext ->
+                toolCallEventIds.add(eventContext.eventId)
             }
         }
-        return llmEventIds
+
+        return CollectedEventData(nodesInfo, llmCallEventIds, toolCallEventIds)
     }
 
     //endregion Features

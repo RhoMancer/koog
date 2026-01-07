@@ -45,13 +45,16 @@ class OpenTelemetryExecuteToolSpanTest : OpenTelemetryTestBase() {
         )
 
         val actualSpans = collectedTestData.filterExecuteToolSpans()
-        assertTrue(actualSpans.isNotEmpty(), "Spans should be created during agent execution")
+        assertTrue(actualSpans.isNotEmpty(), "ExecuteTool spans should be created during agent execution")
+
+        val actualToolCallEventIds = collectedTestData.collectedToolEventIds
+        assertTrue(actualSpans.isNotEmpty(), "Tool Call event ids should be collected during agent execution")
 
         val serializedArgs = TestGetWeatherTool.encodeArgsToString(mockToolCallResponse.arguments)
 
         val expectedSpans = listOf(
             mapOf(
-                "tool.${TestGetWeatherTool.name}" to mapOf(
+                "${TestGetWeatherTool.name}.${actualToolCallEventIds[0]}" to mapOf(
                     "attributes" to mapOf(
                         "output.value" to TestGetWeatherTool.encodeResult(mockToolCallResponse.toolResult).toString(),
                         "input.value" to serializedArgs,
@@ -89,9 +92,12 @@ class OpenTelemetryExecuteToolSpanTest : OpenTelemetryTestBase() {
         val actualSpans = collectedTestData.filterExecuteToolSpans()
         assertTrue(actualSpans.isNotEmpty(), "Spans should be created during agent execution")
 
+        val actualToolCallEventIds = collectedTestData.collectedToolEventIds
+        assertTrue(actualSpans.isNotEmpty(), "Tool Call event ids should be collected during agent execution")
+
         val expectedSpans = listOf(
             mapOf(
-                "tool.${TestGetWeatherTool.name}" to mapOf(
+                "${TestGetWeatherTool.name}.${actualToolCallEventIds[0]}" to mapOf(
                     "attributes" to mapOf(
                         "output.value" to HiddenString.HIDDEN_STRING_PLACEHOLDER,
                         "input.value" to HiddenString.HIDDEN_STRING_PLACEHOLDER,
@@ -175,11 +181,14 @@ class OpenTelemetryExecuteToolSpanTest : OpenTelemetryTestBase() {
 
         assertTrue(actualSpans.isNotEmpty(), "Spans should be created during agent execution")
 
+        val actualToolCallEventIds = collectedTestData.collectedToolEventIds
+        assertTrue(actualSpans.isNotEmpty(), "Tool Call event ids should be collected during agent execution")
+
         val expectedSpans = listOf(
             mapOf(
                 // London
                 // Note! Do not include the 'toolCallId' property as it is not provided for a case on multiple tools calls
-                "tool.${TestGetWeatherTool.name}" to mapOf(
+                "${TestGetWeatherTool.name}.${actualToolCallEventIds[1]}" to mapOf(
                     "attributes" to mapOf(
                         "output.value" to "\"$serializedToolResultLondon\"",
                         "input.value" to serializedToolArgsLondon,
@@ -193,7 +202,7 @@ class OpenTelemetryExecuteToolSpanTest : OpenTelemetryTestBase() {
             // Paris
             // Note! Do not include the 'toolCallId' property as it is not provided for a case on multiple tools calls
             mapOf(
-                "tool.${TestGetWeatherTool.name}" to mapOf(
+                "${TestGetWeatherTool.name}.${actualToolCallEventIds[0]}" to mapOf(
                     "attributes" to mapOf(
                         "output.value" to "\"$serializedToolResultParis\"",
                         "input.value" to serializedToolArgsParis,
