@@ -26,14 +26,11 @@ import ai.koog.agents.features.opentelemetry.feature.OpenTelemetry
 import ai.koog.agents.features.opentelemetry.mock.MockSpanExporter
 import ai.koog.agents.testing.tools.getMockExecutor
 import ai.koog.prompt.dsl.prompt
-import ai.koog.prompt.executor.clients.anthropic.models.AnthropicThinking
 import ai.koog.prompt.executor.clients.openai.OpenAIModels
 import ai.koog.prompt.executor.model.PromptExecutor
 import ai.koog.prompt.llm.LLModel
 import ai.koog.prompt.params.LLMParams
 import ai.koog.utils.io.use
-import aws.smithy.kotlin.runtime.telemetry.metrics.MeterProvider
-import io.opentelemetry.sdk.trace.export.BatchSpanProcessor
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withContext
@@ -82,10 +79,10 @@ internal object OpenTelemetryTestAPI {
         verbose: Boolean = true,
     ): OpenTelemetryTestData {
         val strategy = strategy("test-single-llm-strategy") {
-            val nodeSendInput by nodeLLMRequest("test-llm-call")
+            val nodeCallLLM by nodeLLMRequest("test-llm-call")
 
-            edge(nodeStart forwardTo nodeSendInput)
-            edge(nodeSendInput forwardTo nodeFinish onAssistantMessage { true })
+            edge(nodeStart forwardTo nodeCallLLM)
+            edge(nodeCallLLM forwardTo nodeFinish onAssistantMessage { true })
         }
 
         val executor = getMockExecutor(clock = testClock) {
@@ -107,13 +104,13 @@ internal object OpenTelemetryTestAPI {
         verbose: Boolean = true,
     ): OpenTelemetryTestData {
         val strategy = strategy("test-tool-calls-strategy") {
-            val nodeSendInput by nodeLLMRequest("test-llm-call")
+            val nodeCallLLM by nodeLLMRequest("test-llm-call")
             val nodeExecuteTool by nodeExecuteTool("test-tool-call")
             val nodeSendToolResult by nodeLLMSendToolResult("test-node-llm-send-tool-result")
 
-            edge(nodeStart forwardTo nodeSendInput)
-            edge(nodeSendInput forwardTo nodeExecuteTool onToolCall { true })
-            edge(nodeSendInput forwardTo nodeFinish onAssistantMessage { true })
+            edge(nodeStart forwardTo nodeCallLLM)
+            edge(nodeCallLLM forwardTo nodeExecuteTool onToolCall { true })
+            edge(nodeCallLLM forwardTo nodeFinish onAssistantMessage { true })
             edge(nodeExecuteTool forwardTo nodeSendToolResult)
             edge(nodeSendToolResult forwardTo nodeFinish onAssistantMessage { true })
             edge(nodeSendToolResult forwardTo nodeExecuteTool onToolCall { true })
