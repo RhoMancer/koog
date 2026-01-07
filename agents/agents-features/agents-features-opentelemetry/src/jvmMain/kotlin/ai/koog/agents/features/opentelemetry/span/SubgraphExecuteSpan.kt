@@ -20,7 +20,7 @@ internal class SubgraphExecuteSpan(
 
     override val kind: SpanKind = SpanKind.INTERNAL
 
-    override val name: String = subgraphId
+    override val name: String = "$subgraphId.$id"
 
     /**
      * Add the necessary attributes for the Subgraph Execute Span:

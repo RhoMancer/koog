@@ -117,6 +117,13 @@ public class OpenTelemetry {
             pipeline.interceptAgentExecutionFailed(this) intercept@{ eventContext ->
                 logger.debug { "Execute OpenTelemetry agent run error handler" }
 
+                // Stop all unfinished spans, except InvokeAgentSpan and AgentCreateSpan
+                spanCollector.endUnfinishedSpans { span ->
+                    span !is CreateAgentSpan &&
+                        span !is InvokeAgentSpan &&
+                        span.id != eventContext.eventId
+                }
+
                 // Finish current InvokeAgentSpan
                 val patchedExecutionInfo = eventContext.executionInfo.appendRunId(eventContext.runId)
                 val invokeAgentSpan = spanCollector.getStartedSpan<InvokeAgentSpan>(
@@ -144,7 +151,7 @@ public class OpenTelemetry {
                 // Stop all unfinished spans, except the AgentCreateSpan
                 spanCollector.endUnfinishedSpans { span ->
                     span !is CreateAgentSpan &&
-                    span.id != eventContext.eventId
+                        span.id != eventContext.eventId
                 }
 
                 // Stop agent create span
@@ -695,14 +702,20 @@ public class OpenTelemetry {
             executionInfo: AgentExecutionInfo,
             eventId: String
         ): T? {
-            // TODO: SD -- This should get closest parent.
-            //  Not the exact match !!!
-            val parentPath = executionInfo.parent ?: return null
+            var parentPath: AgentExecutionInfo? = executionInfo.parent ?: return null
+            var parentSpan: T? = null
 
-            return this.getSpanCatching<T>(path = parentPath) filter@{ node ->
-                if (node.children.isEmpty()) { return@filter true }
-                node.children.any { it.span.id == eventId }
+            while (parentSpan == null && parentPath != null) {
+                parentSpan = this.getSpanCatching<T>(path = parentPath) filter@{ node ->
+                    if (node.children.isEmpty()) {
+                        return@filter true
+                    }
+                    node.children.any { it.span.id == eventId }
+                }
+                parentPath = parentPath.parent
             }
+
+            return parentSpan
         }
 
         /**

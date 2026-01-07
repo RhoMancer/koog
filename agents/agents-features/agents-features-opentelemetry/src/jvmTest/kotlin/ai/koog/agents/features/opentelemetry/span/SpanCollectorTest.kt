@@ -10,7 +10,6 @@ import ai.koog.agents.features.opentelemetry.mock.MockSpan
 import ai.koog.agents.features.opentelemetry.mock.MockTracer
 import ai.koog.agents.utils.HiddenString
 import io.opentelemetry.api.common.AttributeKey
-import io.opentelemetry.api.trace.StatusCode
 import org.junit.jupiter.api.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
@@ -331,6 +330,7 @@ class SpanCollectorTest {
 
     @Test
     fun `endSpan should throw exception when span has active children`() {
+
         val spanCollector = SpanCollector(MockTracer(), verbose = true)
 
         // Create parent and child spans
@@ -355,8 +355,15 @@ class SpanCollectorTest {
             spanCollector.endSpan(parentSpan, parentPath)
         }
 
-        assertTrue(exception.message!!.contains("Cannot end span '$parentSpanName'"))
-        assertTrue(exception.message!!.contains("1 active child span(s)"))
+        val expectedError =
+            "${parentSpan.logString} Error deleting span node from the tree (path: ${parentPath.path()}). " +
+                "Node still have <1> child span(s). Spans:\n" +
+                " - ${childSpan.logString}, active: ${childSpan.span.isRecording}"
+
+        val actualError = exception.message
+        assertNotNull(actualError)
+        assertEquals(expectedError, actualError)
+
         assertEquals(2, spanCollector.activeSpansCount)
     }
 
@@ -447,24 +454,49 @@ class SpanCollectorTest {
 
         spanCollector.startSpan(parentSpan, parentPath)
 
-        val childSpans = (1..3).map { i ->
-            val childSpan = MockGenAIAgentSpan("child$i", "child-$i-span", parentSpan)
-            val childPath = AgentExecutionInfo(parentPath, "child-$i")
-            spanCollector.startSpan(childSpan, childPath)
-            childSpan
+        val childSpan1 = Pair(
+            MockGenAIAgentSpan("child-id-1", "child-span-1", parentSpan),
+            AgentExecutionInfo(parentPath, "child-id-1")
+        )
+
+        val childSpan2 = Pair(
+            MockGenAIAgentSpan("child-id-2", "child-span-2", parentSpan),
+            AgentExecutionInfo(parentPath, "child-id-2")
+        )
+
+        val childSpan3 = Pair(
+            MockGenAIAgentSpan("child-id-3", "child-span-3", parentSpan),
+            AgentExecutionInfo(parentPath, "child-id-3")
+        )
+
+        // Start child spans
+        val childSpans = listOf(childSpan1, childSpan2, childSpan3)
+        childSpans.forEach { spanData ->
+            spanCollector.startSpan(spanData.first, spanData.second)
         }
 
-        assertEquals(4, spanCollector.activeSpansCount)
+        assertEquals((childSpans + parentSpan).size, spanCollector.activeSpansCount)
 
-        // Try to end parent - should fail
+        // Try to end parent while child spans are active
         val exception = assertFailsWith<IllegalStateException> {
             spanCollector.endSpan(parentSpan, parentPath)
         }
-        assertTrue(exception.message!!.contains("3 active child span(s)"))
 
-        // End children one by one
+        val expectedError =
+            "${parentSpan.logString} Error deleting span node from the tree (path: ${parentPath.path()}). " +
+                "Node still have <3> child span(s). Spans:\n" +
+                " - ${childSpan1.first.logString}, active: ${childSpan1.first.span.isRecording}\n" +
+                " - ${childSpan2.first.logString}, active: ${childSpan2.first.span.isRecording}\n" +
+                " - ${childSpan3.first.logString}, active: ${childSpan3.first.span.isRecording}"
+
+        val actualError = exception.message
+        assertNotNull(actualError)
+
+        assertEquals(expectedError, actualError)
+
+        // End all span children
         childSpans.forEach { child ->
-            spanCollector.endSpan(child, parentPath)
+            spanCollector.endSpan(child.first, child.second)
         }
 
         assertEquals(1, spanCollector.activeSpansCount)

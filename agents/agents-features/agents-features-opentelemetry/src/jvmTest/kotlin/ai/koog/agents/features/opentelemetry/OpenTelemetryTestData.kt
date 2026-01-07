@@ -4,16 +4,14 @@ import ai.koog.agents.features.opentelemetry.attribute.SpanAttributes
 import ai.koog.agents.features.opentelemetry.attribute.SpanAttributes.Operation.OperationNameType
 import io.opentelemetry.api.common.AttributeKey
 import io.opentelemetry.sdk.trace.data.SpanData
-import kotlinx.coroutines.withTimeoutOrNull
-import kotlin.time.Duration
-import kotlin.time.Duration.Companion.seconds
 
-internal data class NodeInfo(val nodeName: String, val nodeId: String)
+internal data class NodeInfo(val nodeId: String, val eventId: String)
 
 internal data class OpenTelemetryTestData(
     var result: String? = null,
     var collectedSpans: List<SpanData> = emptyList(),
     var collectedNodeIds: List<NodeInfo> = emptyList(),
+    var collectedSubgraphIds: List<NodeInfo> = emptyList(),
     var collectedLLMEventIds: List<String> = emptyList(),
     var collectedToolEventIds: List<String> = emptyList(),
 ) {
@@ -26,10 +24,15 @@ internal data class OpenTelemetryTestData(
     val lastRunId: String
         get() = runIds.last()
 
-    fun singleNodeInfoByName(nodeName: String): NodeInfo = collectedNodeIds.singleOrNull { it.nodeName == nodeName }
-        ?: throw NoSuchElementException("Expected collected node with name '$nodeName' to be present.")
+    fun singleNodeInfoById(nodeId: String): NodeInfo = collectedNodeIds.singleOrNull { it.nodeId == nodeId }
+        ?: throw NoSuchElementException("Expected collected node with node id '$nodeId' to be present.")
 
-    fun singleNodeIdByName(nodeName: String): String = singleNodeInfoByName(nodeName).nodeId
+    fun singleSubgraphInfoById(nodeId: String): NodeInfo = collectedSubgraphIds.singleOrNull { it.nodeId == nodeId }
+        ?: throw NoSuchElementException("Expected collected subgraphs with subgraph id '$nodeId' to be present.")
+
+    fun filterNodeInfoById(nodeId: String): List<NodeInfo> = collectedNodeIds.filter { it.nodeId == nodeId }
+
+    fun filterSubgraphInfoById(nodeId: String): List<NodeInfo> = collectedSubgraphIds.filter { it.nodeId == nodeId }
 
     fun filterCreateAgentSpans(): List<SpanData> {
         val createAgentAttribute = SpanAttributes.Operation.Name(OperationNameType.CREATE_AGENT)

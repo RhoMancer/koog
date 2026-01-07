@@ -39,7 +39,7 @@ class OpenTelemetrySubgraphTest : OpenTelemetryTestBase() {
 
         val expectedSubgraphSpans = listOf(
             mapOf(
-                subgraphName to mapOf(
+                "$subgraphName.${collectedTestData.singleSubgraphInfoById(subgraphName).eventId}" to mapOf(
                     "attributes" to mapOf(
                         "gen_ai.conversation.id" to runId,
                         "koog.subgraph.id" to subgraphName,
@@ -58,7 +58,7 @@ class OpenTelemetrySubgraphTest : OpenTelemetryTestBase() {
 
         val expectedNodeSpans = listOf(
             mapOf(
-                START_NODE_PREFIX to mapOf(
+                "$START_NODE_PREFIX.${collectedTestData.singleNodeInfoById(START_NODE_PREFIX).eventId}" to mapOf(
                     "attributes" to mapOf(
                         "gen_ai.conversation.id" to runId,
                         "koog.node.id" to START_NODE_PREFIX,
@@ -69,7 +69,7 @@ class OpenTelemetrySubgraphTest : OpenTelemetryTestBase() {
                 )
             ),
             mapOf(
-                "$START_NODE_PREFIX$subgraphName" to mapOf(
+                "$START_NODE_PREFIX$subgraphName.${collectedTestData.singleNodeInfoById("$START_NODE_PREFIX$subgraphName").eventId}" to mapOf(
                     "attributes" to mapOf(
                         "gen_ai.conversation.id" to runId,
                         "koog.node.id" to "$START_NODE_PREFIX$subgraphName",
@@ -80,7 +80,7 @@ class OpenTelemetrySubgraphTest : OpenTelemetryTestBase() {
                 )
             ),
             mapOf(
-                subgraphNodeName to mapOf(
+                "$subgraphNodeName.${collectedTestData.singleNodeInfoById(subgraphNodeName).eventId}" to mapOf(
                     "attributes" to mapOf(
                         "gen_ai.conversation.id" to runId,
                         "koog.node.id" to subgraphNodeName,
@@ -91,7 +91,7 @@ class OpenTelemetrySubgraphTest : OpenTelemetryTestBase() {
                 )
             ),
             mapOf(
-                "$FINISH_NODE_PREFIX$subgraphName" to mapOf(
+                "$FINISH_NODE_PREFIX$subgraphName.${collectedTestData.singleNodeInfoById("$FINISH_NODE_PREFIX$subgraphName").eventId}" to mapOf(
                     "attributes" to mapOf(
                         "gen_ai.conversation.id" to runId,
                         "koog.node.id" to "$FINISH_NODE_PREFIX$subgraphName",
@@ -102,7 +102,7 @@ class OpenTelemetrySubgraphTest : OpenTelemetryTestBase() {
                 )
             ),
             mapOf(
-                FINISH_NODE_PREFIX to mapOf(
+                "$FINISH_NODE_PREFIX.${collectedTestData.singleNodeInfoById(FINISH_NODE_PREFIX).eventId}" to mapOf(
                     "attributes" to mapOf(
                         "gen_ai.conversation.id" to runId,
                         "koog.node.id" to FINISH_NODE_PREFIX,
@@ -146,7 +146,7 @@ class OpenTelemetrySubgraphTest : OpenTelemetryTestBase() {
 
         val expectedSubgraphSpans = listOf(
             mapOf(
-                subgraphName to mapOf(
+                "$subgraphName.${collectedTestData.singleSubgraphInfoById(subgraphName).eventId}" to mapOf(
                     "attributes" to mapOf(
                         "gen_ai.conversation.id" to runId,
                         "koog.subgraph.id" to subgraphName,
@@ -167,7 +167,7 @@ class OpenTelemetrySubgraphTest : OpenTelemetryTestBase() {
 
         val expectedNodeSpans = listOf(
             mapOf(
-                START_NODE_PREFIX to mapOf(
+                "$START_NODE_PREFIX.${collectedTestData.singleNodeInfoById(START_NODE_PREFIX).eventId}" to mapOf(
                     "attributes" to mapOf(
                         "gen_ai.conversation.id" to runId,
                         "koog.node.id" to START_NODE_PREFIX,
@@ -178,7 +178,7 @@ class OpenTelemetrySubgraphTest : OpenTelemetryTestBase() {
                 )
             ),
             mapOf(
-                "$START_NODE_PREFIX$subgraphName" to mapOf(
+                "$START_NODE_PREFIX$subgraphName.${collectedTestData.singleNodeInfoById("$START_NODE_PREFIX$subgraphName").eventId}" to mapOf(
                     "attributes" to mapOf(
                         "gen_ai.conversation.id" to runId,
                         "koog.node.id" to "$START_NODE_PREFIX$subgraphName",
@@ -189,7 +189,7 @@ class OpenTelemetrySubgraphTest : OpenTelemetryTestBase() {
                 )
             ),
             mapOf(
-                subgraphNodeName to mapOf(
+                "$subgraphNodeName.${collectedTestData.singleNodeInfoById(subgraphNodeName).eventId}" to mapOf(
                     "attributes" to mapOf(
                         "gen_ai.conversation.id" to runId,
                         "koog.node.id" to subgraphNodeName,
@@ -200,7 +200,7 @@ class OpenTelemetrySubgraphTest : OpenTelemetryTestBase() {
                 )
             ),
             mapOf(
-                "$FINISH_NODE_PREFIX$subgraphName" to mapOf(
+                "$FINISH_NODE_PREFIX$subgraphName.${collectedTestData.singleNodeInfoById("$FINISH_NODE_PREFIX$subgraphName").eventId}" to mapOf(
                     "attributes" to mapOf(
                         "gen_ai.conversation.id" to runId,
                         "koog.node.id" to "$FINISH_NODE_PREFIX$subgraphName",
@@ -211,7 +211,7 @@ class OpenTelemetrySubgraphTest : OpenTelemetryTestBase() {
                 )
             ),
             mapOf(
-                FINISH_NODE_PREFIX to mapOf(
+                "$FINISH_NODE_PREFIX.${collectedTestData.singleNodeInfoById(FINISH_NODE_PREFIX).eventId}" to mapOf(
                     "attributes" to mapOf(
                         "gen_ai.conversation.id" to runId,
                         "koog.node.id" to FINISH_NODE_PREFIX,
@@ -256,7 +256,7 @@ class OpenTelemetrySubgraphTest : OpenTelemetryTestBase() {
 
         val expectedSubgraphSpans = listOf(
             mapOf(
-                subgraphName to mapOf(
+                "$subgraphName.${collectedTestData.singleSubgraphInfoById(subgraphName).eventId}" to mapOf(
                     "attributes" to mapOf(
                         "gen_ai.conversation.id" to runId,
                         "koog.subgraph.id" to subgraphName,
@@ -275,7 +275,7 @@ class OpenTelemetrySubgraphTest : OpenTelemetryTestBase() {
 
         val expectedNodeSpans = listOf(
             mapOf(
-                START_NODE_PREFIX to mapOf(
+                "$START_NODE_PREFIX.${collectedTestData.singleNodeInfoById(START_NODE_PREFIX).eventId}" to mapOf(
                     "attributes" to mapOf(
                         "gen_ai.conversation.id" to runId,
                         "koog.node.id" to START_NODE_PREFIX,
@@ -286,7 +286,7 @@ class OpenTelemetrySubgraphTest : OpenTelemetryTestBase() {
                 )
             ),
             mapOf(
-                "$START_NODE_PREFIX$subgraphName" to mapOf(
+                "$START_NODE_PREFIX$subgraphName.${collectedTestData.singleNodeInfoById("$START_NODE_PREFIX$subgraphName").eventId}" to mapOf(
                     "attributes" to mapOf(
                         "gen_ai.conversation.id" to runId,
                         "koog.node.id" to "$START_NODE_PREFIX$subgraphName",
@@ -297,7 +297,7 @@ class OpenTelemetrySubgraphTest : OpenTelemetryTestBase() {
                 )
             ),
             mapOf(
-                subgraphNodeName to mapOf(
+                "$subgraphNodeName.${collectedTestData.singleNodeInfoById(subgraphNodeName).eventId}" to mapOf(
                     "attributes" to mapOf(
                         "gen_ai.conversation.id" to runId,
                         "koog.node.id" to subgraphNodeName,
@@ -308,7 +308,7 @@ class OpenTelemetrySubgraphTest : OpenTelemetryTestBase() {
                 )
             ),
             mapOf(
-                "$FINISH_NODE_PREFIX$subgraphName" to mapOf(
+                "$FINISH_NODE_PREFIX$subgraphName.${collectedTestData.singleNodeInfoById("$FINISH_NODE_PREFIX$subgraphName").eventId}" to mapOf(
                     "attributes" to mapOf(
                         "gen_ai.conversation.id" to runId,
                         "koog.node.id" to "$FINISH_NODE_PREFIX$subgraphName",
@@ -319,7 +319,7 @@ class OpenTelemetrySubgraphTest : OpenTelemetryTestBase() {
                 )
             ),
             mapOf(
-                rootNodeName to mapOf(
+                "$rootNodeName.${collectedTestData.singleNodeInfoById(rootNodeName).eventId}" to mapOf(
                     "attributes" to mapOf(
                         "gen_ai.conversation.id" to runId,
                         "koog.node.id" to rootNodeName,
@@ -330,7 +330,7 @@ class OpenTelemetrySubgraphTest : OpenTelemetryTestBase() {
                 )
             ),
             mapOf(
-                FINISH_NODE_PREFIX to mapOf(
+                "$FINISH_NODE_PREFIX.${collectedTestData.singleNodeInfoById(FINISH_NODE_PREFIX).eventId}" to mapOf(
                     "attributes" to mapOf(
                         "gen_ai.conversation.id" to runId,
                         "koog.node.id" to FINISH_NODE_PREFIX,

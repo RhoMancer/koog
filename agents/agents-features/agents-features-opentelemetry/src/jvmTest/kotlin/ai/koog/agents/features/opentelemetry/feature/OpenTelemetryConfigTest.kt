@@ -168,7 +168,7 @@ class OpenTelemetryConfigTest : OpenTelemetryTestBase() {
             val collectedSpans = mockExporter.collectedSpans
             agent.close()
 
-            assertEquals(6, collectedSpans.size)
+            assertEquals(7, collectedSpans.size)
         }
     }
 

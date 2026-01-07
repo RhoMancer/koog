@@ -178,6 +178,7 @@ internal object OpenTelemetryTestAPI {
 
                 installEventDataCollector().also {
                     collectedTestData.collectedNodeIds = it.nodeData
+                    collectedTestData.collectedSubgraphIds = it.subgraphData
                     collectedTestData.collectedLLMEventIds = it.llmCallsEventIds
                     collectedTestData.collectedToolEventIds = it.toolCallEventIds
                 }
@@ -287,22 +288,24 @@ internal object OpenTelemetryTestAPI {
 
     internal data class CollectedEventData(
         val nodeData: List<NodeInfo>,
+        val subgraphData: List<NodeInfo>,
         val llmCallsEventIds: List<String>,
         val toolCallEventIds: List<String>,
     )
 
     internal fun GraphAIAgent.FeatureContext.installEventDataCollector(): CollectedEventData {
         val nodesInfo = mutableListOf<NodeInfo>()
+        val subgraphInfo = mutableListOf<NodeInfo>()
         val llmCallEventIds = mutableListOf<String>()
         val toolCallEventIds = mutableListOf<String>()
 
         install(EventHandler.Feature) {
             onNodeExecutionStarting { eventContext ->
-                nodesInfo.add(NodeInfo(nodeName = eventContext.node.name, nodeId = eventContext.node.id))
+                nodesInfo.add(NodeInfo(nodeId = eventContext.node.id, eventId = eventContext.eventId))
             }
 
             onSubgraphExecutionStarting { eventContext ->
-                nodesInfo.add(NodeInfo(nodeName = eventContext.subgraph.name, nodeId = eventContext.subgraph.id))
+                subgraphInfo.add(NodeInfo(nodeId = eventContext.subgraph.id, eventId = eventContext.eventId))
             }
 
             onLLMCallStarting { eventContext ->
@@ -314,7 +317,7 @@ internal object OpenTelemetryTestAPI {
             }
         }
 
-        return CollectedEventData(nodesInfo, llmCallEventIds, toolCallEventIds)
+        return CollectedEventData(nodesInfo, subgraphInfo, llmCallEventIds, toolCallEventIds)
     }
 
     //endregion Features

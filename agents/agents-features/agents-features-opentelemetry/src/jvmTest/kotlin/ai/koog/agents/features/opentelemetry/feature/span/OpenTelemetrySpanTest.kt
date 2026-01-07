@@ -44,11 +44,12 @@ class OpenTelemetrySpanTest : OpenTelemetryTestBase() {
             val agentId = "test-agent-id"
             val promptId = "test-prompt-id"
 
+            val strategyName = "test-strategy"
             val nodeName = "test-node"
 
             var index = 0
 
-            val strategy = strategy<String, String>("test-strategy") {
+            val strategy = strategy<String, String>(strategyName) {
                 val nodeBlank by node<String, String>(nodeName) {
                     if (index == 0) {
                         nodeOutput0
@@ -101,12 +102,109 @@ class OpenTelemetrySpanTest : OpenTelemetryTestBase() {
             val expectedSpans = listOf(
                 // First run
                 mapOf(
+                    "$START_NODE_PREFIX.${nodesInfo0.single { it.nodeId == START_NODE_PREFIX }.eventId}" to mapOf(
+                        "attributes" to mapOf(
+                            "gen_ai.conversation.id" to mockExporter.runIds[0],
+                            "koog.node.id" to START_NODE_PREFIX,
+                            "koog.node.input" to "\"$userPrompt0\"",
+                            "koog.node.output" to "\"$userPrompt0\"",
+                        ),
+                        "events" to emptyMap()
+                    )
+                ),
+                mapOf(
+                    "$nodeName.${nodesInfo0.single { it.nodeId == nodeName }.eventId}" to mapOf(
+                        "attributes" to mapOf(
+                            "gen_ai.conversation.id" to mockExporter.runIds[0],
+                            "koog.node.id" to nodeName,
+                            "koog.node.input" to "\"$userPrompt0\"",
+                            "koog.node.output" to "\"$nodeOutput0\"",
+                        ),
+                        "events" to emptyMap()
+                    )
+                ),
+                mapOf(
+                    "$FINISH_NODE_PREFIX.${nodesInfo0.single { it.nodeId == FINISH_NODE_PREFIX }.eventId}" to mapOf(
+                        "attributes" to mapOf(
+                            "gen_ai.conversation.id" to mockExporter.runIds[0],
+                            "koog.node.id" to FINISH_NODE_PREFIX,
+                            "koog.node.input" to "\"$nodeOutput0\"",
+                            "koog.node.output" to "\"$nodeOutput0\"",
+                        ),
+                        "events" to emptyMap()
+                    )
+                ),
+                mapOf(
+                    strategyName to mapOf(
+                        "attributes" to mapOf(
+                            "koog.strategy.name" to strategyName,
+                            "gen_ai.conversation.id" to mockExporter.runIds[0]
+                        ),
+                        "events" to emptyMap()
+                    )
+                ),
+                mapOf(
+                    "invoke.${mockExporter.runIds[0]}" to mapOf(
+                        "attributes" to mapOf(
+                            "gen_ai.operation.name" to OperationNameType.INVOKE_AGENT.id,
+                            "gen_ai.system" to model.provider.id,
+                            "gen_ai.agent.id" to agentId,
+                            "gen_ai.conversation.id" to mockExporter.runIds[0]
+                        ),
+                        "events" to emptyMap()
+                    )
+                ),
+                mapOf(
                     agentId to mapOf(
                         "attributes" to mapOf(
                             "gen_ai.operation.name" to OperationNameType.CREATE_AGENT.id,
                             "gen_ai.system" to model.provider.id,
                             "gen_ai.agent.id" to agentId,
                             "gen_ai.request.model" to model.id
+                        ),
+                        "events" to emptyMap()
+                    )
+                ),
+
+                // Second run
+                mapOf(
+                    "$START_NODE_PREFIX.${nodesInfo1.single { it.nodeId == START_NODE_PREFIX }.eventId}" to mapOf(
+                        "attributes" to mapOf(
+                            "gen_ai.conversation.id" to mockExporter.runIds[1],
+                            "koog.node.id" to START_NODE_PREFIX,
+                            "koog.node.input" to "\"$userPrompt1\"",
+                            "koog.node.output" to "\"$userPrompt1\"",
+                        ),
+                        "events" to emptyMap()
+                    )
+                ),
+                mapOf(
+                    "$nodeName.${nodesInfo1.single { it.nodeId == nodeName }.eventId}" to mapOf(
+                        "attributes" to mapOf(
+                            "gen_ai.conversation.id" to mockExporter.runIds[1],
+                            "koog.node.id" to nodeName,
+                            "koog.node.input" to "\"$userPrompt1\"",
+                            "koog.node.output" to "\"$nodeOutput1\"",
+                        ),
+                        "events" to emptyMap()
+                    )
+                ),
+                mapOf(
+                    "$FINISH_NODE_PREFIX.${nodesInfo1.single { it.nodeId == FINISH_NODE_PREFIX}.eventId}" to mapOf(
+                        "attributes" to mapOf(
+                            "gen_ai.conversation.id" to mockExporter.runIds[1],
+                            "koog.node.id" to FINISH_NODE_PREFIX,
+                            "koog.node.input" to "\"$nodeOutput1\"",
+                            "koog.node.output" to "\"$nodeOutput1\"",
+                        ),
+                        "events" to emptyMap()
+                    )
+                ),
+                mapOf(
+                    strategyName to mapOf(
+                        "attributes" to mapOf(
+                            "koog.strategy.name" to strategyName,
+                            "gen_ai.conversation.id" to mockExporter.runIds[1]
                         ),
                         "events" to emptyMap()
                     )
@@ -123,43 +221,7 @@ class OpenTelemetrySpanTest : OpenTelemetryTestBase() {
                     )
                 ),
                 mapOf(
-                    FINISH_NODE_PREFIX to mapOf(
-                        "attributes" to mapOf(
-                            "gen_ai.conversation.id" to mockExporter.runIds[1],
-                            "koog.node.id" to FINISH_NODE_PREFIX,
-                            "koog.node.input" to "\"$nodeOutput1\"",
-                            "koog.node.output" to "\"$nodeOutput1\"",
-                        ),
-                        "events" to emptyMap()
-                    )
-                ),
-                mapOf(
-                    "node.$nodeName.${nodesInfo1.single { it.nodeName == nodeName }.nodeId}" to mapOf(
-                        "attributes" to mapOf(
-                            "gen_ai.conversation.id" to mockExporter.runIds[1],
-                            "koog.node.id" to nodeName,
-                            "koog.node.input" to "\"$userPrompt1\"",
-                            "koog.node.output" to "\"$nodeOutput1\"",
-                        ),
-                        "events" to emptyMap()
-                    )
-                ),
-
-                mapOf(
-                    START_NODE_PREFIX to mapOf(
-                        "attributes" to mapOf(
-                            "gen_ai.conversation.id" to mockExporter.runIds[1],
-                            "koog.node.id" to START_NODE_PREFIX,
-                            "koog.node.input" to "\"$userPrompt1\"",
-                            "koog.node.output" to "\"$userPrompt1\"",
-                        ),
-                        "events" to emptyMap()
-                    )
-                ),
-
-                // Second run
-                mapOf(
-                    "agent.$agentId" to mapOf(
+                    agentId to mapOf(
                         "attributes" to mapOf(
                             "gen_ai.operation.name" to OperationNameType.CREATE_AGENT.id,
                             "gen_ai.system" to model.provider.id,
@@ -169,53 +231,6 @@ class OpenTelemetrySpanTest : OpenTelemetryTestBase() {
                         "events" to emptyMap()
                     )
                 ),
-                mapOf(
-                    "run.${mockExporter.runIds[0]}" to mapOf(
-                        "attributes" to mapOf(
-                            "gen_ai.operation.name" to OperationNameType.INVOKE_AGENT.id,
-                            "gen_ai.system" to model.provider.id,
-                            "gen_ai.agent.id" to agentId,
-                            "gen_ai.conversation.id" to mockExporter.runIds[0]
-                        ),
-                        "events" to emptyMap()
-                    )
-                ),
-
-                mapOf(
-                    FINISH_NODE_PREFIX to mapOf(
-                        "attributes" to mapOf(
-                            "gen_ai.conversation.id" to mockExporter.runIds[0],
-                            "koog.node.id" to FINISH_NODE_PREFIX,
-                            "koog.node.input" to "\"$nodeOutput0\"",
-                            "koog.node.output" to "\"$nodeOutput0\"",
-                        ),
-                        "events" to emptyMap()
-                    )
-                ),
-
-                mapOf(
-                    "node.$nodeName.${nodesInfo0.single { it.nodeName == nodeName }.nodeId}" to mapOf(
-                        "attributes" to mapOf(
-                            "gen_ai.conversation.id" to mockExporter.runIds[0],
-                            "koog.node.id" to nodeName,
-                            "koog.node.input" to "\"$userPrompt0\"",
-                            "koog.node.output" to "\"$nodeOutput0\"",
-                        ),
-                        "events" to emptyMap()
-                    )
-                ),
-
-                mapOf(
-                    START_NODE_PREFIX to mapOf(
-                        "attributes" to mapOf(
-                            "gen_ai.conversation.id" to mockExporter.runIds[0],
-                            "koog.node.id" to START_NODE_PREFIX,
-                            "koog.node.input" to "\"$userPrompt0\"",
-                            "koog.node.output" to "\"$userPrompt0\"",
-                        ),
-                        "events" to emptyMap()
-                    )
-                )
             )
 
             assertSpans(expectedSpans, collectedSpans)

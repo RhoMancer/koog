@@ -10,11 +10,15 @@ import ai.koog.agents.features.opentelemetry.OpenTelemetryTestData
 import ai.koog.agents.features.opentelemetry.assertSpans
 import ai.koog.agents.features.opentelemetry.feature.OpenTelemetryTestBase
 import ai.koog.agents.utils.HiddenString
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.test.runTest
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFails
 import kotlin.test.assertTrue
+import kotlin.time.Duration.Companion.seconds
 
 class OpenTelemetryNodeExecuteSpanTest : OpenTelemetryTestBase() {
 
@@ -38,11 +42,14 @@ class OpenTelemetryNodeExecuteSpanTest : OpenTelemetryTestBase() {
         val result = collectedTestData.result
 
         val actualSpans = collectedTestData.filterNodeExecutionSpans()
-        assertTrue(actualSpans.isNotEmpty(), "Spans should be created during agent execution")
+        assertTrue(actualSpans.isNotEmpty(), "Node spans should be created during agent execution")
+
+        val actualNodeEventIds = collectedTestData.collectedNodeIds
+        assertTrue(actualNodeEventIds.isNotEmpty(), "Node event ids should be collected during agent execution")
 
         val expectedSpans = listOf(
             mapOf(
-                START_NODE_PREFIX to mapOf(
+                "$START_NODE_PREFIX.${collectedTestData.singleNodeInfoById(START_NODE_PREFIX).eventId}" to mapOf(
                     "attributes" to mapOf(
                         "gen_ai.conversation.id" to runId,
                         "koog.node.id" to START_NODE_PREFIX,
@@ -53,7 +60,7 @@ class OpenTelemetryNodeExecuteSpanTest : OpenTelemetryTestBase() {
                 )
             ),
             mapOf(
-                nodeName to mapOf(
+                "$nodeName.${collectedTestData.singleNodeInfoById(nodeName).eventId}" to mapOf(
                     "attributes" to mapOf(
                         "gen_ai.conversation.id" to runId,
                         "koog.node.id" to nodeName,
@@ -64,7 +71,7 @@ class OpenTelemetryNodeExecuteSpanTest : OpenTelemetryTestBase() {
                 )
             ),
             mapOf(
-                FINISH_NODE_PREFIX to mapOf(
+                "$FINISH_NODE_PREFIX.${collectedTestData.singleNodeInfoById(FINISH_NODE_PREFIX).eventId}" to mapOf(
                     "attributes" to mapOf(
                         "gen_ai.conversation.id" to runId,
                         "koog.node.id" to FINISH_NODE_PREFIX,
@@ -101,9 +108,12 @@ class OpenTelemetryNodeExecuteSpanTest : OpenTelemetryTestBase() {
         val actualSpans = collectedTestData.filterNodeExecutionSpans()
         assertTrue(actualSpans.isNotEmpty(), "Spans should be created during agent execution")
 
+        val actualNodeEventIds = collectedTestData.collectedNodeIds
+        assertTrue(actualNodeEventIds.isNotEmpty(), "Node event ids should be collected during agent execution")
+
         val expectedSpans = listOf(
             mapOf(
-                START_NODE_PREFIX to mapOf(
+                "$START_NODE_PREFIX.${collectedTestData.singleNodeInfoById(START_NODE_PREFIX).eventId}" to mapOf(
                     "attributes" to mapOf(
                         "gen_ai.conversation.id" to runId,
                         "koog.node.id" to START_NODE_PREFIX,
@@ -114,7 +124,7 @@ class OpenTelemetryNodeExecuteSpanTest : OpenTelemetryTestBase() {
                 )
             ),
             mapOf(
-                nodeName to mapOf(
+                "$nodeName.${collectedTestData.singleNodeInfoById(nodeName).eventId}" to mapOf(
                     "attributes" to mapOf(
                         "gen_ai.conversation.id" to runId,
                         "koog.node.id" to nodeName,
@@ -125,7 +135,7 @@ class OpenTelemetryNodeExecuteSpanTest : OpenTelemetryTestBase() {
                 )
             ),
             mapOf(
-                FINISH_NODE_PREFIX to mapOf(
+                "$FINISH_NODE_PREFIX.${collectedTestData.singleNodeInfoById(FINISH_NODE_PREFIX).eventId}" to mapOf(
                     "attributes" to mapOf(
                         "gen_ai.conversation.id" to runId,
                         "koog.node.id" to FINISH_NODE_PREFIX,
@@ -178,6 +188,13 @@ class OpenTelemetryNodeExecuteSpanTest : OpenTelemetryTestBase() {
         val runId = collectedTestData.lastRunId
         val result = collectedTestData.result
 
+        val isJokeNodeSpansCollected = withContext(Dispatchers.Default) {
+            withTimeoutOrNull(5.seconds) {
+                collectedTestData.filterNodeExecutionSpans().count { it.name.contains("-joke") } == 3
+            } != null
+        }
+        assertTrue(isJokeNodeSpansCollected, "Spans should be created during agent execution")
+
         val actualSpans = collectedTestData.filterNodeExecutionSpans()
             .sortedWith { one, other ->
                 if (one.name.contains("-joke") && other.name.contains("-joke")) {
@@ -191,7 +208,7 @@ class OpenTelemetryNodeExecuteSpanTest : OpenTelemetryTestBase() {
 
         val expectedSpans = listOf(
             mapOf(
-                START_NODE_PREFIX to mapOf(
+                "$START_NODE_PREFIX.${collectedTestData.singleNodeInfoById(START_NODE_PREFIX).eventId}" to mapOf(
                     "attributes" to mapOf(
                         "gen_ai.conversation.id" to runId,
                         "koog.node.id" to START_NODE_PREFIX,
@@ -202,7 +219,7 @@ class OpenTelemetryNodeExecuteSpanTest : OpenTelemetryTestBase() {
                 )
             ),
             mapOf(
-                nodeFirstJokeName to mapOf(
+                "$nodeFirstJokeName.${collectedTestData.singleNodeInfoById(nodeFirstJokeName).eventId}" to mapOf(
                     "attributes" to mapOf(
                         "gen_ai.conversation.id" to runId,
                         "koog.node.id" to nodeFirstJokeName,
@@ -213,7 +230,7 @@ class OpenTelemetryNodeExecuteSpanTest : OpenTelemetryTestBase() {
                 )
             ),
             mapOf(
-                nodeSecondJokeName to mapOf(
+                "$nodeSecondJokeName.${collectedTestData.singleNodeInfoById(nodeSecondJokeName).eventId}" to mapOf(
                     "attributes" to mapOf(
                         "gen_ai.conversation.id" to runId,
                         "koog.node.id" to nodeSecondJokeName,
@@ -224,7 +241,7 @@ class OpenTelemetryNodeExecuteSpanTest : OpenTelemetryTestBase() {
                 )
             ),
             mapOf(
-                nodeThirdJokeName to mapOf(
+                "$nodeThirdJokeName.${collectedTestData.singleNodeInfoById(nodeThirdJokeName).eventId}" to mapOf(
                     "attributes" to mapOf(
                         "gen_ai.conversation.id" to runId,
                         "koog.node.id" to nodeThirdJokeName,
@@ -235,7 +252,7 @@ class OpenTelemetryNodeExecuteSpanTest : OpenTelemetryTestBase() {
                 )
             ),
             mapOf(
-                nodeGenerateJokesName to mapOf(
+                "$nodeGenerateJokesName.${collectedTestData.singleNodeInfoById(nodeGenerateJokesName).eventId}" to mapOf(
                     "attributes" to mapOf(
                         "gen_ai.conversation.id" to runId,
                         "koog.node.id" to nodeGenerateJokesName,
@@ -246,7 +263,7 @@ class OpenTelemetryNodeExecuteSpanTest : OpenTelemetryTestBase() {
                 )
             ),
             mapOf(
-                FINISH_NODE_PREFIX to mapOf(
+                "$FINISH_NODE_PREFIX.${collectedTestData.singleNodeInfoById(FINISH_NODE_PREFIX).eventId}" to mapOf(
                     "attributes" to mapOf(
                         "gen_ai.conversation.id" to runId,
                         "koog.node.id" to FINISH_NODE_PREFIX,
@@ -293,7 +310,7 @@ class OpenTelemetryNodeExecuteSpanTest : OpenTelemetryTestBase() {
 
         val expectedSpans = listOf(
             mapOf(
-                START_NODE_PREFIX to mapOf(
+                "$START_NODE_PREFIX.${collectedTestData.singleNodeInfoById(START_NODE_PREFIX).eventId}" to mapOf(
                     "attributes" to mapOf(
                         "gen_ai.conversation.id" to runId,
                         "koog.node.id" to START_NODE_PREFIX,
@@ -304,7 +321,7 @@ class OpenTelemetryNodeExecuteSpanTest : OpenTelemetryTestBase() {
                 )
             ),
             mapOf(
-                nodeWithErrorName to mapOf(
+                "$nodeWithErrorName.${collectedTestData.singleNodeInfoById(nodeWithErrorName).eventId}" to mapOf(
                     "attributes" to mapOf(
                         "gen_ai.conversation.id" to runId,
                         "koog.node.id" to nodeWithErrorName,
