@@ -1,5 +1,6 @@
 package ai.koog.gradle.plugins
 
+import org.gradle.api.GradleException
 import org.gradle.api.Plugin
 import org.gradle.api.Project
 import org.gradle.api.file.RegularFile
@@ -8,7 +9,6 @@ import org.gradle.api.provider.MapProperty
 import org.gradle.api.provider.Provider
 import org.gradle.kotlin.dsl.mapProperty
 import org.gradle.process.ExecOperations
-import org.gradle.process.internal.ExecException
 import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
 import java.io.File
@@ -48,8 +48,8 @@ class CredentialsResolverExtension(
                 }
                 it.toByteArray()
             }
-        } catch (e: ExecException) {
-            logger.warn("Cannot use 1password CLI 2, reading file without credentials injection")
+        } catch (e: GradleException) {
+            logger.warn("Cannot use 1password CLI 2, reading file without credentials injection", e)
             file.readBytes()
         }
 
@@ -63,11 +63,13 @@ class CredentialsResolverExtension(
 
     @Suppress("unused")
     fun resolve(file: Provider<RegularFile>): MapProperty<String, String> = project.objects.mapProperty<String, String>().apply {
-        convention(file.map { file ->
-            file.asFile.takeIf { it.name.endsWith(".properties") }
-                ?.let { doResolve(it) }
-                ?: throw IllegalArgumentException("Credentials file must be properties file")
-        })
+        convention(
+            file.map { file ->
+                file.asFile.takeIf { it.name.endsWith(".properties") }
+                    ?.let { doResolve(it) }
+                    ?: throw IllegalArgumentException("Credentials file must be properties file")
+            }
+        )
 
         disallowChanges()
     }

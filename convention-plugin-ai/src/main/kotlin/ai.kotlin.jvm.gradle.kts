@@ -1,4 +1,4 @@
-import ai.koog.gradle.tests.configureJvmTests
+import ai.koog.gradle.tests.configureCommonTestSettings
 
 plugins {
     kotlin("jvm")
@@ -6,4 +6,6 @@ plugins {
     id("ai.kotlin.dokka")
 }
 
-configureJvmTests()
+tasks.test {
+    configureCommonTestSettings()
+}
