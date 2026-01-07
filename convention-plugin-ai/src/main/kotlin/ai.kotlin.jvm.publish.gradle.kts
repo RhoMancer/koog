@@ -1,9 +1,11 @@
+import ai.koog.gradle.publish.maven.Publishing.publishToMaven
 import ai.koog.gradle.publish.maven.configureJvmJarManifest
 import jetbrains.sign.GpgSignSignatoryProvider
 
 plugins {
     kotlin("jvm")
     id("ai.kotlin.configuration")
+    id("ai.kotlin.dokka")
     `maven-publish`
     id("signing")
 }
@@ -30,3 +32,5 @@ signing {
         sign(publishing.publications)
     }
 }
+
+publishToMaven()

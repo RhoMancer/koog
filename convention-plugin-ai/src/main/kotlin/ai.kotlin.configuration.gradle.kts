@@ -15,7 +15,7 @@ val libs = the<LibrariesForLibs>()
  */
 val kotlinLanguageVersion = KotlinVersion.KOTLIN_2_1
 val kotlinApiVersion = KotlinVersion.KOTLIN_2_1
-val javaTarget: String = libs.versions.jdkVersion.get()!!
+val javaTarget: String = libs.versions.jdkVersion.get()
 
 val kotlinLibrariesVersion = project.properties["kotlin.coreLibrariesVersion"] as String
 

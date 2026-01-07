@@ -14,8 +14,7 @@ public data class Vector(val values: List<Double>) {
     /**
      * Returns the dimension (size) of the vector.
      */
-    public val dimension: Int
-        get() = values.size
+    public val dimension: Int by lazy { values.size }
 
     private companion object {
         /**
