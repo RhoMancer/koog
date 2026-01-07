@@ -3,6 +3,7 @@ import jetbrains.sign.GpgSignSignatoryProvider
 
 plugins {
     kotlin("jvm")
+    id("ai.kotlin.configuration")
     `maven-publish`
     id("signing")
 }

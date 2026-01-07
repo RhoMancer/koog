@@ -17,10 +17,6 @@ kotlin {
     jvm {
         configureTests()
     }
-
-    compilerOptions {
-        coreLibrariesVersion = "2.1.21"
-    }
 }
 
 configureJvmJarManifest("jvmJar")

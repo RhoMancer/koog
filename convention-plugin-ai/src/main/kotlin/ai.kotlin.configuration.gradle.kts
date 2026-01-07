@@ -1,8 +1,8 @@
 import org.gradle.accessors.dm.LibrariesForLibs
+import org.jetbrains.kotlin.gradle.dsl.JvmDefaultMode
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import org.jetbrains.kotlin.gradle.dsl.KotlinProjectExtension
 import org.jetbrains.kotlin.gradle.dsl.KotlinVersion
-import org.jetbrains.kotlin.gradle.tasks.KotlinCompilationTask
 import org.jetbrains.kotlin.gradle.tasks.KotlinJvmCompile
 
 val libs = the<LibrariesForLibs>()
@@ -15,12 +15,17 @@ val libs = the<LibrariesForLibs>()
  */
 val kotlinLanguageVersion = KotlinVersion.KOTLIN_2_1
 val kotlinApiVersion = KotlinVersion.KOTLIN_2_1
+val javaTarget: String = libs.versions.jdkVersion.get()!!
+
+val kotlinLibrariesVersion = project.properties["kotlin.coreLibrariesVersion"] as String
+
 val kotlinBomVersion = requireNotNull(libs.kotlin.bom.get().version)
 
 extensions.getByType<KotlinProjectExtension>().apply {
     jvmToolchain {
         languageVersion.set(JavaLanguageVersion.of(libs.versions.jdkVersion.get().toInt()))
     }
+    coreLibrariesVersion = kotlinLibrariesVersion
 
     sourceSets.all {
         languageSettings {
@@ -45,25 +50,17 @@ extensions.getByType<KotlinProjectExtension>().apply {
     }
 }
 
-tasks.withType<KotlinCompilationTask<*>>().configureEach {
-    compilerOptions {
-        languageVersion.set(kotlinLanguageVersion)
-        logger.info("'$path' Kotlin language version: $kotlinLanguageVersion")
-        apiVersion.set(kotlinApiVersion)
-        logger.info("'$path' Kotlin API version: $kotlinApiVersion")
-    }
-}
-
 tasks.withType<KotlinJvmCompile>().configureEach {
     compilerOptions {
-        jvmTarget.set(JvmTarget.JVM_11)
-        freeCompilerArgs.add("-Xjvm-default=all")
+        jvmTarget = JvmTarget.fromTarget(javaTarget)
+        jvmDefault = JvmDefaultMode.ENABLE
+        javaParameters = true
     }
 }
 
 tasks.withType<JavaCompile>().configureEach {
-    sourceCompatibility = JavaVersion.VERSION_11.toString()
-    targetCompatibility = JavaVersion.VERSION_11.toString()
+    sourceCompatibility = javaTarget
+    targetCompatibility = javaTarget
 }
 
 configurations.all {
