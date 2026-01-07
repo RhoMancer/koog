@@ -4,6 +4,9 @@ import ai.koog.agents.features.opentelemetry.attribute.SpanAttributes
 import ai.koog.agents.features.opentelemetry.attribute.SpanAttributes.Operation.OperationNameType
 import io.opentelemetry.api.common.AttributeKey
 import io.opentelemetry.sdk.trace.data.SpanData
+import kotlinx.coroutines.withTimeoutOrNull
+import kotlin.time.Duration
+import kotlin.time.Duration.Companion.seconds
 
 internal data class NodeInfo(val nodeName: String, val nodeId: String)
 
@@ -55,11 +58,11 @@ internal data class OpenTelemetryTestData(
     }
 
     fun filterExecuteToolSpans(): List<SpanData> {
-        val executeToolAttribute = SpanAttributes.Operation.Name(OperationNameType.EXECUTE_TOOL)
-        val attributeKey = AttributeKey.stringKey(executeToolAttribute.key)
+        val executeToolOperationAttribute = SpanAttributes.Operation.Name(OperationNameType.EXECUTE_TOOL)
+        val attributeKey = AttributeKey.stringKey(executeToolOperationAttribute.key)
 
         return collectedSpans.filter { spanData ->
-            spanData.attributes.get(attributeKey) == executeToolAttribute.value
+            spanData.attributes.get(attributeKey) == executeToolOperationAttribute.value
         }
     }
 
@@ -71,5 +74,11 @@ internal data class OpenTelemetryTestData(
     fun filterSubgraphExecutionSpans(): List<SpanData> {
         val attributeKey = AttributeKey.stringKey("koog.subgraph.id")
         return collectedSpans.filter { spanData -> spanData.attributes.get(attributeKey) != null }
+    }
+
+    suspend fun awaitSpansCollected(expectedNumber: Int, timeout: Duration = 5.seconds) {
+        withTimeoutOrNull(timeout) {
+
+        }
     }
 }

@@ -39,7 +39,6 @@ class OpenTelemetryExecuteToolSpanTest : OpenTelemetryTestBase() {
 
         val expectedSpans = listOf(
             mapOf(
-                // TODO: Replace sha256base64() with unique event id for the Tool Call event
                 "tool.${TestGetWeatherTool.name}" to mapOf(
                     "attributes" to mapOf(
                         "output.value" to TestGetWeatherTool.encodeResult(mockToolCallResponse.toolResult).toString(),
@@ -80,7 +79,6 @@ class OpenTelemetryExecuteToolSpanTest : OpenTelemetryTestBase() {
 
         val expectedSpans = listOf(
             mapOf(
-                // TODO: Replace sha256base64() with unique event id for the Tool Call event
                 "tool.${TestGetWeatherTool.name}" to mapOf(
                     "attributes" to mapOf(
                         "output.value" to HiddenString.HIDDEN_STRING_PLACEHOLDER,

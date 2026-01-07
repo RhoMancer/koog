@@ -34,21 +34,10 @@ class OpenTelemetrySubgraphTest : OpenTelemetryTestBase() {
 
         val runId = collectedTestData.lastRunId
 
-        val actualSpans = collectedTestData.filterSubgraphExecutionSpans()
-        assertTrue(actualSpans.isNotEmpty(), "Spans should be created during agent execution")
+        val actualSubgraphSpans = collectedTestData.filterSubgraphExecutionSpans()
+        assertTrue(actualSubgraphSpans.isNotEmpty(), "Subgraph spans should be created during agent execution")
 
-        val expectedSpans = listOf(
-            mapOf(
-                FINISH_NODE_PREFIX to mapOf(
-                    "attributes" to mapOf(
-                        "gen_ai.conversation.id" to runId,
-                        "koog.subgraph.id" to FINISH_NODE_PREFIX,
-                        "koog.subgraph.output" to "\"$subgraphNodeOutput\"",
-                        "koog.subgraph.input" to "\"$subgraphNodeOutput\"",
-                    ),
-                    "events" to emptyMap()
-                )
-            ),
+        val expectedSubgraphSpans = listOf(
             mapOf(
                 subgraphName to mapOf(
                     "attributes" to mapOf(
@@ -60,13 +49,32 @@ class OpenTelemetrySubgraphTest : OpenTelemetryTestBase() {
                     "events" to emptyMap()
                 )
             ),
+        )
+
+        assertSpans(expectedSubgraphSpans, actualSubgraphSpans)
+
+        val actualNodeSpans = collectedTestData.filterNodeExecutionSpans()
+        assertTrue(actualNodeSpans.isNotEmpty(), "Node spans should be created during agent execution")
+
+        val expectedNodeSpans = listOf(
             mapOf(
-                "$FINISH_NODE_PREFIX.$subgraphName" to mapOf(
+                START_NODE_PREFIX to mapOf(
                     "attributes" to mapOf(
                         "gen_ai.conversation.id" to runId,
-                        "koog.subgraph.id" to "$FINISH_NODE_PREFIX.$subgraphName",
-                        "koog.subgraph.output" to "\"$subgraphNodeOutput\"",
-                        "koog.subgraph.input" to "\"$subgraphNodeOutput\"",
+                        "koog.node.id" to START_NODE_PREFIX,
+                        "koog.node.input" to "\"$userInput\"",
+                        "koog.node.output" to "\"$userInput\"",
+                    ),
+                    "events" to emptyMap()
+                )
+            ),
+            mapOf(
+                "$START_NODE_PREFIX$subgraphName" to mapOf(
+                    "attributes" to mapOf(
+                        "gen_ai.conversation.id" to runId,
+                        "koog.node.id" to "$START_NODE_PREFIX$subgraphName",
+                        "koog.node.input" to "\"$userInput\"",
+                        "koog.node.output" to "\"$userInput\"",
                     ),
                     "events" to emptyMap()
                 )
@@ -75,39 +83,38 @@ class OpenTelemetrySubgraphTest : OpenTelemetryTestBase() {
                 subgraphNodeName to mapOf(
                     "attributes" to mapOf(
                         "gen_ai.conversation.id" to runId,
-                        "koog.subgraph.id" to subgraphNodeName,
-                        "koog.subgraph.output" to "\"$subgraphNodeOutput\"",
-                        "koog.subgraph.input" to "\"$userInput\"",
-                    ),
-                    "events" to emptyMap()
-                )
-            ),
-
-            mapOf(
-                "$START_NODE_PREFIX.$subgraphName" to mapOf(
-                    "attributes" to mapOf(
-                        "gen_ai.conversation.id" to runId,
-                        "koog.subgraph.id" to "$START_NODE_PREFIX.$subgraphName",
-                        "koog.subgraph.input" to "\"$userInput\"",
-                        "koog.subgraph.output" to "\"$userInput\"",
+                        "koog.node.id" to subgraphNodeName,
+                        "koog.node.output" to "\"$subgraphNodeOutput\"",
+                        "koog.node.input" to "\"$userInput\"",
                     ),
                     "events" to emptyMap()
                 )
             ),
             mapOf(
-                START_NODE_PREFIX to mapOf(
+                "$FINISH_NODE_PREFIX$subgraphName" to mapOf(
                     "attributes" to mapOf(
                         "gen_ai.conversation.id" to runId,
-                        "koog.subgraph.id" to START_NODE_PREFIX,
-                        "koog.subgraph.input" to "\"$userInput\"",
-                        "koog.subgraph.output" to "\"$userInput\"",
+                        "koog.node.id" to "$FINISH_NODE_PREFIX$subgraphName",
+                        "koog.node.output" to "\"$subgraphNodeOutput\"",
+                        "koog.node.input" to "\"$subgraphNodeOutput\"",
                     ),
                     "events" to emptyMap()
                 )
-            )
+            ),
+            mapOf(
+                FINISH_NODE_PREFIX to mapOf(
+                    "attributes" to mapOf(
+                        "gen_ai.conversation.id" to runId,
+                        "koog.node.id" to FINISH_NODE_PREFIX,
+                        "koog.node.output" to "\"$subgraphNodeOutput\"",
+                        "koog.node.input" to "\"$subgraphNodeOutput\"",
+                    ),
+                    "events" to emptyMap()
+                )
+            ),
         )
 
-        assertSpans(expectedSpans, actualSpans)
+        assertSpans(expectedNodeSpans, actualNodeSpans)
     }
 
     @Test
@@ -134,21 +141,10 @@ class OpenTelemetrySubgraphTest : OpenTelemetryTestBase() {
 
         val runId = collectedTestData.lastRunId
 
-        val actualSpans = collectedTestData.filterSubgraphExecutionSpans()
-        assertTrue(actualSpans.isNotEmpty(), "Spans should be created during agent execution")
+        val actualSubgraphSpans = collectedTestData.filterSubgraphExecutionSpans()
+        assertTrue(actualSubgraphSpans.isNotEmpty(), "Subgraph spans should be created during agent execution")
 
-        val expectedSpans = listOf(
-            mapOf(
-                FINISH_NODE_PREFIX to mapOf(
-                    "attributes" to mapOf(
-                        "gen_ai.conversation.id" to runId,
-                        "koog.subgraph.id" to FINISH_NODE_PREFIX,
-                        "koog.subgraph.output" to HiddenString.HIDDEN_STRING_PLACEHOLDER,
-                        "koog.subgraph.input" to HiddenString.HIDDEN_STRING_PLACEHOLDER,
-                    ),
-                    "events" to emptyMap()
-                )
-            ),
+        val expectedSubgraphSpans = listOf(
             mapOf(
                 subgraphName to mapOf(
                     "attributes" to mapOf(
@@ -160,13 +156,34 @@ class OpenTelemetrySubgraphTest : OpenTelemetryTestBase() {
                     "events" to emptyMap()
                 )
             ),
+        )
+
+        assertSpans(expectedSubgraphSpans, actualSubgraphSpans)
+
+
+
+        val actualNodeSpans = collectedTestData.filterNodeExecutionSpans()
+        assertTrue(actualNodeSpans.isNotEmpty(), "Node spans should be created during agent execution")
+
+        val expectedNodeSpans = listOf(
             mapOf(
-                "$FINISH_NODE_PREFIX.$subgraphName" to mapOf(
+                START_NODE_PREFIX to mapOf(
                     "attributes" to mapOf(
                         "gen_ai.conversation.id" to runId,
-                        "koog.subgraph.id" to "$FINISH_NODE_PREFIX.$subgraphName",
-                        "koog.subgraph.output" to HiddenString.HIDDEN_STRING_PLACEHOLDER,
-                        "koog.subgraph.input" to HiddenString.HIDDEN_STRING_PLACEHOLDER,
+                        "koog.node.id" to START_NODE_PREFIX,
+                        "koog.node.input" to HiddenString.HIDDEN_STRING_PLACEHOLDER,
+                        "koog.node.output" to HiddenString.HIDDEN_STRING_PLACEHOLDER,
+                    ),
+                    "events" to emptyMap()
+                )
+            ),
+            mapOf(
+                "$START_NODE_PREFIX$subgraphName" to mapOf(
+                    "attributes" to mapOf(
+                        "gen_ai.conversation.id" to runId,
+                        "koog.node.id" to "$START_NODE_PREFIX$subgraphName",
+                        "koog.node.input" to HiddenString.HIDDEN_STRING_PLACEHOLDER,
+                        "koog.node.output" to HiddenString.HIDDEN_STRING_PLACEHOLDER,
                     ),
                     "events" to emptyMap()
                 )
@@ -175,39 +192,38 @@ class OpenTelemetrySubgraphTest : OpenTelemetryTestBase() {
                 subgraphNodeName to mapOf(
                     "attributes" to mapOf(
                         "gen_ai.conversation.id" to runId,
-                        "koog.subgraph.id" to subgraphNodeName,
-                        "koog.subgraph.output" to HiddenString.HIDDEN_STRING_PLACEHOLDER,
-                        "koog.subgraph.input" to HiddenString.HIDDEN_STRING_PLACEHOLDER,
-                    ),
-                    "events" to emptyMap()
-                )
-            ),
-
-            mapOf(
-                "$START_NODE_PREFIX.$subgraphName" to mapOf(
-                    "attributes" to mapOf(
-                        "gen_ai.conversation.id" to runId,
-                        "koog.subgraph.id" to "$START_NODE_PREFIX.$subgraphName",
-                        "koog.subgraph.input" to HiddenString.HIDDEN_STRING_PLACEHOLDER,
-                        "koog.subgraph.output" to HiddenString.HIDDEN_STRING_PLACEHOLDER,
+                        "koog.node.id" to subgraphNodeName,
+                        "koog.node.output" to HiddenString.HIDDEN_STRING_PLACEHOLDER,
+                        "koog.node.input" to HiddenString.HIDDEN_STRING_PLACEHOLDER,
                     ),
                     "events" to emptyMap()
                 )
             ),
             mapOf(
-                START_NODE_PREFIX to mapOf(
+                "$FINISH_NODE_PREFIX$subgraphName" to mapOf(
                     "attributes" to mapOf(
                         "gen_ai.conversation.id" to runId,
-                        "koog.subgraph.id" to START_NODE_PREFIX,
-                        "koog.subgraph.input" to HiddenString.HIDDEN_STRING_PLACEHOLDER,
-                        "koog.subgraph.output" to HiddenString.HIDDEN_STRING_PLACEHOLDER,
+                        "koog.node.id" to "$FINISH_NODE_PREFIX$subgraphName",
+                        "koog.node.output" to HiddenString.HIDDEN_STRING_PLACEHOLDER,
+                        "koog.node.input" to HiddenString.HIDDEN_STRING_PLACEHOLDER,
                     ),
                     "events" to emptyMap()
                 )
-            )
+            ),
+            mapOf(
+                FINISH_NODE_PREFIX to mapOf(
+                    "attributes" to mapOf(
+                        "gen_ai.conversation.id" to runId,
+                        "koog.node.id" to FINISH_NODE_PREFIX,
+                        "koog.node.output" to HiddenString.HIDDEN_STRING_PLACEHOLDER,
+                        "koog.node.input" to HiddenString.HIDDEN_STRING_PLACEHOLDER,
+                    ),
+                    "events" to emptyMap()
+                )
+            ),
         )
 
-        assertSpans(expectedSpans, actualSpans)
+        assertSpans(expectedNodeSpans, actualNodeSpans)
     }
 
     @Test
@@ -235,32 +251,10 @@ class OpenTelemetrySubgraphTest : OpenTelemetryTestBase() {
 
         val runId = collectedTestData.lastRunId
 
-        val actualSpans = collectedTestData.filterSubgraphExecutionSpans()
-        assertTrue(actualSpans.isNotEmpty(), "Spans should be created during agent execution")
+        val actualSubgraphSpans = collectedTestData.filterSubgraphExecutionSpans()
+        assertTrue(actualSubgraphSpans.isNotEmpty(), "Subgraph Spans should be created during agent execution")
 
-        val expectedSpans = listOf(
-            mapOf(
-                FINISH_NODE_PREFIX to mapOf(
-                    "attributes" to mapOf(
-                        "gen_ai.conversation.id" to runId,
-                        "koog.subgraph.id" to FINISH_NODE_PREFIX,
-                        "koog.subgraph.output" to "\"$rootNodeOutput\"",
-                        "koog.subgraph.input" to "\"$rootNodeOutput\"",
-                    ),
-                    "events" to emptyMap()
-                )
-            ),
-            mapOf(
-                rootNodeName to mapOf(
-                    "attributes" to mapOf(
-                        "gen_ai.conversation.id" to runId,
-                        "koog.subgraph.id" to rootNodeName,
-                        "koog.subgraph.output" to "\"$rootNodeOutput\"",
-                        "koog.subgraph.input" to "\"$subgraphNodeOutput\"",
-                    ),
-                    "events" to emptyMap()
-                )
-            ),
+        val expectedSubgraphSpans = listOf(
             mapOf(
                 subgraphName to mapOf(
                     "attributes" to mapOf(
@@ -272,13 +266,32 @@ class OpenTelemetrySubgraphTest : OpenTelemetryTestBase() {
                     "events" to emptyMap()
                 )
             ),
+        )
+
+        assertSpans(expectedSubgraphSpans, actualSubgraphSpans)
+
+        val actualNodeSpans = collectedTestData.filterNodeExecutionSpans()
+        assertTrue(actualNodeSpans.isNotEmpty(), "Node spans should be created during agent execution")
+
+        val expectedNodeSpans = listOf(
             mapOf(
-                "$FINISH_NODE_PREFIX.$subgraphName" to mapOf(
+                START_NODE_PREFIX to mapOf(
                     "attributes" to mapOf(
                         "gen_ai.conversation.id" to runId,
-                        "koog.subgraph.id" to "$FINISH_NODE_PREFIX.$subgraphName",
-                        "koog.subgraph.output" to "\"$subgraphNodeOutput\"",
-                        "koog.subgraph.input" to "\"$subgraphNodeOutput\"",
+                        "koog.node.id" to START_NODE_PREFIX,
+                        "koog.node.output" to "\"$userInput\"",
+                        "koog.node.input" to "\"$userInput\"",
+                    ),
+                    "events" to emptyMap()
+                )
+            ),
+            mapOf(
+                "$START_NODE_PREFIX$subgraphName" to mapOf(
+                    "attributes" to mapOf(
+                        "gen_ai.conversation.id" to runId,
+                        "koog.node.id" to "$START_NODE_PREFIX$subgraphName",
+                        "koog.node.input" to "\"$userInput\"",
+                        "koog.node.output" to "\"$userInput\"",
                     ),
                     "events" to emptyMap()
                 )
@@ -287,38 +300,48 @@ class OpenTelemetrySubgraphTest : OpenTelemetryTestBase() {
                 subgraphNodeName to mapOf(
                     "attributes" to mapOf(
                         "gen_ai.conversation.id" to runId,
-                        "koog.subgraph.id" to subgraphNodeName,
-                        "koog.subgraph.output" to "\"$subgraphNodeOutput\"",
-                        "koog.subgraph.input" to "\"$userInput\"",
-                    ),
-                    "events" to emptyMap()
-                )
-            ),
-
-            mapOf(
-                "$START_NODE_PREFIX.$subgraphName" to mapOf(
-                    "attributes" to mapOf(
-                        "gen_ai.conversation.id" to runId,
-                        "koog.subgraph.id" to "$START_NODE_PREFIX.$subgraphName",
-                        "koog.subgraph.input" to "\"$userInput\"",
-                        "koog.subgraph.output" to "\"$userInput\"",
+                        "koog.node.id" to subgraphNodeName,
+                        "koog.node.output" to "\"$subgraphNodeOutput\"",
+                        "koog.node.input" to "\"$userInput\"",
                     ),
                     "events" to emptyMap()
                 )
             ),
             mapOf(
-                START_NODE_PREFIX to mapOf(
+                "$FINISH_NODE_PREFIX$subgraphName" to mapOf(
                     "attributes" to mapOf(
                         "gen_ai.conversation.id" to runId,
-                        "koog.subgraph.id" to START_NODE_PREFIX,
-                        "koog.subgraph.input" to "\"$userInput\"",
-                        "koog.subgraph.output" to "\"$userInput\"",
+                        "koog.node.id" to "$FINISH_NODE_PREFIX$subgraphName",
+                        "koog.node.output" to "\"$subgraphNodeOutput\"",
+                        "koog.node.input" to "\"$subgraphNodeOutput\"",
                     ),
                     "events" to emptyMap()
                 )
-            )
+            ),
+            mapOf(
+                rootNodeName to mapOf(
+                    "attributes" to mapOf(
+                        "gen_ai.conversation.id" to runId,
+                        "koog.node.id" to rootNodeName,
+                        "koog.node.output" to "\"$rootNodeOutput\"",
+                        "koog.node.input" to "\"$subgraphNodeOutput\"",
+                    ),
+                    "events" to emptyMap()
+                )
+            ),
+            mapOf(
+                FINISH_NODE_PREFIX to mapOf(
+                    "attributes" to mapOf(
+                        "gen_ai.conversation.id" to runId,
+                        "koog.node.id" to FINISH_NODE_PREFIX,
+                        "koog.node.output" to "\"$rootNodeOutput\"",
+                        "koog.node.input" to "\"$rootNodeOutput\"",
+                    ),
+                    "events" to emptyMap()
+                )
+            ),
         )
 
-        assertSpans(expectedSpans, actualSpans)
+        assertSpans(expectedNodeSpans, actualNodeSpans)
     }
 }

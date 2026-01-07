@@ -42,12 +42,12 @@ class OpenTelemetryNodeExecuteSpanTest : OpenTelemetryTestBase() {
 
         val expectedSpans = listOf(
             mapOf(
-                FINISH_NODE_PREFIX to mapOf(
+                START_NODE_PREFIX to mapOf(
                     "attributes" to mapOf(
                         "gen_ai.conversation.id" to runId,
-                        "koog.node.id" to FINISH_NODE_PREFIX,
-                        "koog.node.output" to "\"$result\"",
-                        "koog.node.input" to "\"$result\"",
+                        "koog.node.id" to START_NODE_PREFIX,
+                        "koog.node.input" to "\"$userInput\"",
+                        "koog.node.output" to "\"$userInput\"",
                     ),
                     "events" to emptyMap()
                 )
@@ -64,16 +64,16 @@ class OpenTelemetryNodeExecuteSpanTest : OpenTelemetryTestBase() {
                 )
             ),
             mapOf(
-                START_NODE_PREFIX to mapOf(
+                FINISH_NODE_PREFIX to mapOf(
                     "attributes" to mapOf(
                         "gen_ai.conversation.id" to runId,
-                        "koog.node.id" to START_NODE_PREFIX,
-                        "koog.node.input" to "\"$userInput\"",
-                        "koog.node.output" to "\"$userInput\"",
+                        "koog.node.id" to FINISH_NODE_PREFIX,
+                        "koog.node.output" to "\"$result\"",
+                        "koog.node.input" to "\"$result\"",
                     ),
                     "events" to emptyMap()
                 )
-            )
+            ),
         )
 
         assertSpans(expectedSpans, actualSpans)
@@ -103,12 +103,12 @@ class OpenTelemetryNodeExecuteSpanTest : OpenTelemetryTestBase() {
 
         val expectedSpans = listOf(
             mapOf(
-                FINISH_NODE_PREFIX to mapOf(
+                START_NODE_PREFIX to mapOf(
                     "attributes" to mapOf(
                         "gen_ai.conversation.id" to runId,
-                        "koog.node.id" to FINISH_NODE_PREFIX,
-                        "koog.node.output" to HiddenString.HIDDEN_STRING_PLACEHOLDER,
+                        "koog.node.id" to START_NODE_PREFIX,
                         "koog.node.input" to HiddenString.HIDDEN_STRING_PLACEHOLDER,
+                        "koog.node.output" to HiddenString.HIDDEN_STRING_PLACEHOLDER,
                     ),
                     "events" to emptyMap()
                 )
@@ -125,16 +125,16 @@ class OpenTelemetryNodeExecuteSpanTest : OpenTelemetryTestBase() {
                 )
             ),
             mapOf(
-                START_NODE_PREFIX to mapOf(
+                FINISH_NODE_PREFIX to mapOf(
                     "attributes" to mapOf(
                         "gen_ai.conversation.id" to runId,
-                        "koog.node.id" to START_NODE_PREFIX,
-                        "koog.node.input" to HiddenString.HIDDEN_STRING_PLACEHOLDER,
+                        "koog.node.id" to FINISH_NODE_PREFIX,
                         "koog.node.output" to HiddenString.HIDDEN_STRING_PLACEHOLDER,
+                        "koog.node.input" to HiddenString.HIDDEN_STRING_PLACEHOLDER,
                     ),
                     "events" to emptyMap()
                 )
-            )
+            ),
         )
 
         assertSpans(expectedSpans, actualSpans)
@@ -145,9 +145,9 @@ class OpenTelemetryNodeExecuteSpanTest : OpenTelemetryTestBase() {
         val userInput = "Generate a joke"
 
         val nodeGenerateJokesName = "node-generate-jokes"
-        val nodeFirstJokeName = "node-first-joke"
-        val nodeSecondJokeName = "node-second-joke"
-        val nodeThirdJokeName = "node-third-joke"
+        val nodeFirstJokeName = "node-1-joke"
+        val nodeSecondJokeName = "node-2-joke"
+        val nodeThirdJokeName = "node-3-joke"
 
         val nodeFirstJokeOutput = "First joke: Why do programmers prefer dark mode? Because light attracts bugs!"
         val nodeSecondJokeOutput = "Second joke: Why do Java developers wear glasses? Because they don't C#!"
@@ -180,7 +180,7 @@ class OpenTelemetryNodeExecuteSpanTest : OpenTelemetryTestBase() {
 
         val actualSpans = collectedTestData.filterNodeExecutionSpans()
             .sortedWith { one, other ->
-                if (one.name.contains("-joke.") && other.name.contains("-joke.")) {
+                if (one.name.contains("-joke") && other.name.contains("-joke")) {
                     one.name.compareTo(other.name)
                 } else {
                     0
@@ -191,23 +191,12 @@ class OpenTelemetryNodeExecuteSpanTest : OpenTelemetryTestBase() {
 
         val expectedSpans = listOf(
             mapOf(
-                FINISH_NODE_PREFIX to mapOf(
+                START_NODE_PREFIX to mapOf(
                     "attributes" to mapOf(
                         "gen_ai.conversation.id" to runId,
-                        "koog.node.id" to FINISH_NODE_PREFIX,
-                        "koog.node.output" to "\"$result\"",
-                        "koog.node.input" to "\"$result\"",
-                    ),
-                    "events" to emptyMap()
-                )
-            ),
-            mapOf(
-                nodeGenerateJokesName to mapOf(
-                    "attributes" to mapOf(
-                        "gen_ai.conversation.id" to runId,
-                        "koog.node.id" to nodeGenerateJokesName,
-                        "koog.node.output" to "\"$nodeFirstJokeOutput\"",
+                        "koog.node.id" to START_NODE_PREFIX,
                         "koog.node.input" to "\"$userInput\"",
+                        "koog.node.output" to "\"$userInput\"",
                     ),
                     "events" to emptyMap()
                 )
@@ -246,16 +235,27 @@ class OpenTelemetryNodeExecuteSpanTest : OpenTelemetryTestBase() {
                 )
             ),
             mapOf(
-                START_NODE_PREFIX to mapOf(
+                nodeGenerateJokesName to mapOf(
                     "attributes" to mapOf(
                         "gen_ai.conversation.id" to runId,
-                        "koog.node.id" to START_NODE_PREFIX,
+                        "koog.node.id" to nodeGenerateJokesName,
+                        "koog.node.output" to "\"$nodeFirstJokeOutput\"",
                         "koog.node.input" to "\"$userInput\"",
-                        "koog.node.output" to "\"$userInput\"",
                     ),
                     "events" to emptyMap()
                 )
-            )
+            ),
+            mapOf(
+                FINISH_NODE_PREFIX to mapOf(
+                    "attributes" to mapOf(
+                        "gen_ai.conversation.id" to runId,
+                        "koog.node.id" to FINISH_NODE_PREFIX,
+                        "koog.node.output" to "\"$result\"",
+                        "koog.node.input" to "\"$result\"",
+                    ),
+                    "events" to emptyMap()
+                )
+            ),
         )
 
         assertSpans(expectedSpans, actualSpans)
@@ -293,17 +293,6 @@ class OpenTelemetryNodeExecuteSpanTest : OpenTelemetryTestBase() {
 
         val expectedSpans = listOf(
             mapOf(
-                nodeWithErrorName to mapOf(
-                    "attributes" to mapOf(
-                        "gen_ai.conversation.id" to runId,
-                        "koog.node.id" to nodeWithErrorName,
-                        "koog.node.input" to "\"$userInput\"",
-                    ),
-                    "events" to emptyMap()
-                )
-            ),
-
-            mapOf(
                 START_NODE_PREFIX to mapOf(
                     "attributes" to mapOf(
                         "gen_ai.conversation.id" to runId,
@@ -313,7 +302,17 @@ class OpenTelemetryNodeExecuteSpanTest : OpenTelemetryTestBase() {
                     ),
                     "events" to emptyMap()
                 )
-            )
+            ),
+            mapOf(
+                nodeWithErrorName to mapOf(
+                    "attributes" to mapOf(
+                        "gen_ai.conversation.id" to runId,
+                        "koog.node.id" to nodeWithErrorName,
+                        "koog.node.input" to "\"$userInput\"",
+                    ),
+                    "events" to emptyMap()
+                )
+            ),
         )
 
         assertSpans(expectedSpans, actualSpans)

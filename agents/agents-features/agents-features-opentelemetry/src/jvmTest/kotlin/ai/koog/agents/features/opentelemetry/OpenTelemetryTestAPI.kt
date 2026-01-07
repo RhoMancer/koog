@@ -26,19 +26,30 @@ import ai.koog.agents.features.opentelemetry.feature.OpenTelemetry
 import ai.koog.agents.features.opentelemetry.mock.MockSpanExporter
 import ai.koog.agents.testing.tools.getMockExecutor
 import ai.koog.prompt.dsl.prompt
+import ai.koog.prompt.executor.clients.anthropic.models.AnthropicThinking
 import ai.koog.prompt.executor.clients.openai.OpenAIModels
 import ai.koog.prompt.executor.model.PromptExecutor
 import ai.koog.prompt.llm.LLModel
 import ai.koog.prompt.params.LLMParams
 import ai.koog.utils.io.use
+import aws.smithy.kotlin.runtime.telemetry.metrics.MeterProvider
+import io.opentelemetry.sdk.trace.export.BatchSpanProcessor
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
+import kotlin.test.assertTrue
+import kotlin.time.Duration.Companion.seconds
 
 internal object OpenTelemetryTestAPI {
 
     internal val testClock: Clock = object : Clock {
         override fun now(): Instant = Instant.parse("2023-01-01T00:00:00Z")
     }
+
+    private val spansCollectionTimeout = 5.seconds
 
     internal object Parameter {
         internal const val DEFAULT_AGENT_ID = "test-agent-id"
@@ -174,9 +185,26 @@ internal object OpenTelemetryTestAPI {
                 agent.run(userPrompt ?: USER_PROMPT_PARIS)
             }
 
+            waitSpansCollected(mockExporter)
+
             collectedTestData.result = agentResult
             collectedTestData
         }
+    }
+
+    /**
+     * Waits for spans to be collected within a specified timeout period.
+     *
+     * Note! Use default dispatcher because the [kotlinx.coroutines.test.runTest] wrapper override thread scheduler
+     *       and [withTimeoutOrNull] does not wait for a specified timeout.
+     */
+    private suspend fun waitSpansCollected(mockExporter: MockSpanExporter) = withContext(Dispatchers.Default) {
+        val isSpanDataCollected = withTimeoutOrNull(spansCollectionTimeout) {
+            // Wait until all spans are collected
+            mockExporter.isCollected.first { it }
+        } != null
+
+        assertTrue(isSpanDataCollected, "Spans were not collected within the timeout: $spansCollectionTimeout")
     }
 
     //endregion Agents With Strategies

@@ -137,7 +137,7 @@ class OpenTelemetryConfigTest : OpenTelemetryTestBase() {
     }
 
     @Test
-    fun `test custom sdk configuration emits correct spans`() = runTest(timeout = 1000000.seconds) {
+    fun `test custom sdk configuration emits correct spans`() = runTest {
         MockSpanExporter().use { mockExporter ->
             val userPrompt = "What's the weather in Paris?"
 
