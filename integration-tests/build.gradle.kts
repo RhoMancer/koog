@@ -2,61 +2,54 @@ group = "${rootProject.group}.integration-tests"
 version = rootProject.version
 
 plugins {
-    id("ai.kotlin.multiplatform.server")
+    id("ai.kotlin.jvm")
     alias(libs.plugins.kotlin.serialization)
     id("ai.koog.gradle.plugins.credentialsresolver")
     id("netty-convention")
 }
 
 kotlin {
-    sourceSets {
-        jvmMain {
-            dependencies {
-                implementation(project(":prompt:prompt-executor:prompt-executor-llms-all"))
+    dependencies {
 
-                implementation(libs.testcontainers)
-                implementation(libs.ktor.server.netty)
-                implementation(kotlin("test-junit5"))
-                runtimeOnly(libs.ktor.client.cio)
-                runtimeOnly(libs.slf4j.simple)
-            }
-        }
+        implementation(project(":prompt:prompt-executor:prompt-executor-llms-all"))
 
-        jvmTest {
-            dependencies {
-                implementation(project(":agents:agents-ext"))
-                implementation(project(":agents:agents-features:agents-features-event-handler"))
-                implementation(project(":agents:agents-features:agents-features-trace"))
-                implementation(project(":agents:agents-features:agents-features-snapshot"))
-                implementation(project(":agents:agents-mcp"))
-                implementation(project(":agents:agents-mcp-server"))
-                implementation(project(":agents:agents-test"))
-                implementation(
-                    project(":prompt:prompt-executor:prompt-executor-clients:prompt-executor-anthropic-client")
-                )
-                implementation(project(":prompt:prompt-executor:prompt-executor-clients:prompt-executor-openai-client"))
-                implementation(
-                    project(":prompt:prompt-executor:prompt-executor-clients:prompt-executor-openrouter-client")
-                )
-                implementation(project(":prompt:prompt-executor:prompt-executor-clients:prompt-executor-google-client"))
-                implementation(
-                    project(":prompt:prompt-executor:prompt-executor-clients:prompt-executor-mistralai-client")
-                )
-                implementation(libs.junit.jupiter.params)
-                implementation(libs.kotlinx.coroutines.test)
-                implementation(libs.kotlinx.serialization.json)
-                implementation(libs.kotest.assertions.core)
-                implementation(libs.aws.sdk.kotlin.sts)
-                implementation(libs.aws.sdk.kotlin.bedrock)
-                implementation(libs.aws.sdk.kotlin.bedrockruntime)
-                implementation(libs.ktor.client.content.negotiation)
-            }
-        }
+        implementation(libs.testcontainers)
+        implementation(libs.ktor.server.netty)
+        implementation(kotlin("test-junit5"))
+        runtimeOnly(libs.ktor.client.cio)
+        runtimeOnly(libs.slf4j.simple)
+
+        testImplementation(project(":agents:agents-ext"))
+        testImplementation(project(":agents:agents-features:agents-features-event-handler"))
+        testImplementation(project(":agents:agents-features:agents-features-trace"))
+        testImplementation(project(":agents:agents-features:agents-features-snapshot"))
+        testImplementation(project(":agents:agents-mcp"))
+        testImplementation(project(":agents:agents-mcp-server"))
+        testImplementation(project(":agents:agents-test"))
+        testImplementation(
+            project(":prompt:prompt-executor:prompt-executor-clients:prompt-executor-anthropic-client")
+        )
+        testImplementation(project(":prompt:prompt-executor:prompt-executor-clients:prompt-executor-openai-client"))
+        testImplementation(
+            project(":prompt:prompt-executor:prompt-executor-clients:prompt-executor-openrouter-client")
+        )
+        testImplementation(project(":prompt:prompt-executor:prompt-executor-clients:prompt-executor-google-client"))
+        testImplementation(
+            project(":prompt:prompt-executor:prompt-executor-clients:prompt-executor-mistralai-client")
+        )
+        testImplementation(libs.junit.jupiter.params)
+        testImplementation(libs.kotlinx.coroutines.test)
+        testImplementation(libs.kotlinx.serialization.json)
+        testImplementation(libs.kotest.assertions.core)
+        testImplementation(libs.aws.sdk.kotlin.sts)
+        testImplementation(libs.aws.sdk.kotlin.bedrock)
+        testImplementation(libs.aws.sdk.kotlin.bedrockruntime)
+        testImplementation(libs.ktor.client.content.negotiation)
     }
 }
 
 configurations.all {
-    // make sure we have Netty as a server, not CIO
+// make sure we have Netty as a server, not CIO
     exclude(group = "io.ktor", module = "ktor-server-cio")
 }
 
@@ -65,7 +58,7 @@ val envs = credentialsResolver.resolve(
 )
 
 tasks.withType<Test> {
-    // Forward system properties to the test JVM
+// Forward system properties to the test JVM
     System.getProperties().forEach { key, value ->
         systemProperty(key.toString(), value)
     }
@@ -80,9 +73,3 @@ tasks.withType<Test>()
             environment(envs.get())
         }
     }
-
-dokka {
-    dokkaSourceSets.configureEach {
-        suppress.set(true)
-    }
-}

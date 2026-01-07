@@ -1,7 +1,7 @@
 import ai.koog.gradle.publish.maven.Publishing.publishToMaven
 
 plugins {
-    id("ai.kotlin.jvm")
+    id("ai.kotlin.jvm.publish")
     alias(libs.plugins.kotlin.serialization)
 }
 

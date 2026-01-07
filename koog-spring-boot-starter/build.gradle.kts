@@ -6,7 +6,6 @@ group = rootProject.group
 version = rootProject.version
 
 plugins {
-    id("ai.kotlin.jvm")
     id("ai.kotlin.jvm.publish")
     alias(libs.plugins.kotlin.spring)
     alias(libs.plugins.spring.management)
