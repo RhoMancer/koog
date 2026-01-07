@@ -17,7 +17,6 @@ import ai.koog.agents.core.dsl.extension.nodeLLMSendMultipleToolResults
 import ai.koog.agents.core.dsl.extension.setToolChoiceRequired
 import ai.koog.agents.core.environment.ReceivedToolResult
 import ai.koog.agents.core.environment.ToolResultKind
-import ai.koog.agents.core.environment.executeTools
 import ai.koog.agents.core.environment.toSafeResult
 import ai.koog.agents.core.tools.Tool
 import ai.koog.agents.core.tools.ToolDescriptor
@@ -99,6 +98,17 @@ public object SubgraphWithTaskUtils {
      * to prevent redundancy in responses and ensure conciseness in communication.
      */
     public const val ASSISTANT_RESPONSE_REPEAT_MAX: Int = 3
+
+    /**
+     * A message shown to the model when it does not return a tool call during the subgraphWithTask execution.
+     *
+     * The message clarifies to the model that a tool call is required here,
+     * And if the task is finished, the finish tool has to be called.
+     */
+    public fun messageOnAssistantResponse(finishToolName: String): String = markdown {
+        h1("DO NOT CHAT WITH ME DIRECTLY! CALL TOOLS, INSTEAD.")
+        h2("IF YOU HAVE FINISHED, CALL `$finishToolName` TOOL!")
+    }
 }
 
 /**
@@ -478,36 +488,18 @@ public inline fun <reified Input, reified Output, reified OutputTransformed> AIA
     val nodeCallLLM by nodeLLMRequestMultiple()
 
     val callToolsHacked by node<List<Message.Tool.Call>, List<ReceivedToolResult>> { toolCalls ->
-        val (finishToolCalls, regularToolCalls) = toolCalls.partition { it.tool == finishTool.name }
-
-        // Execute finish tool
-        val finishToolResult = finishToolCalls.firstOrNull()?.let { toolCall ->
-            executeFinishTool<Output, OutputTransformed>(toolCall, finishTool)
-        }
-
-        // Execute regular tools
-        val regularToolsResults = when (runMode) {
-            ToolCalls.PARALLEL -> {
-                environment.executeTools(regularToolCalls)
-            }
-            ToolCalls.SEQUENTIAL,
-            ToolCalls.SINGLE_RUN_SEQUENTIAL -> {
-                regularToolCalls.map { toolCall ->
-                    environment.executeTool(toolCall)
-                }
-            }
-        }
-
-        buildList {
-            finishToolResult?.let { add(it) }
-            addAll(regularToolsResults)
-        }
+        // use a method for the subtask to avoid code duplication
+        executeMultipleToolsHacked<Output, OutputTransformed>(
+            toolCalls,
+            finishTool,
+            runMode == ToolCalls.PARALLEL
+        )
     }
 
     val sendToolsResults by nodeLLMSendMultipleToolResults()
 
     @OptIn(DetachedPromptExecutorAPI::class)
-    val handleAssistantMessage by node<Message.Assistant, List<Message.Response>> { response ->
+    val handleAssistantMessage by node<Message.Assistant, String> { response ->
         if (llm.model.capabilities.contains(LLMCapability.ToolChoice)) {
             error(
                 "Subgraph with task must always call tools, but no ${Message.Tool.Call::class.simpleName} was generated, " +
@@ -526,19 +518,7 @@ public inline fun <reified Input, reified Output, reified OutputTransformed> AIA
             )
         }
 
-        llm.writeSession {
-            // append a new message to the history with feedback:
-            appendPrompt {
-                user {
-                    markdown {
-                        h1("DO NOT CHAT WITH ME DIRECTLY! CALL TOOLS, INSTEAD.")
-                        h2("IF YOU HAVE FINISHED, CALL `${finishTool.name}` TOOL!")
-                    }
-                }
-            }
-
-            requestLLMMultiple()
-        }
+        SubgraphWithTaskUtils.messageOnAssistantResponse(finishTool.name)
     }
 
     nodeStart then setupTask then nodeCallLLM then nodeDecide
@@ -555,7 +535,7 @@ public inline fun <reified Input, reified Output, reified OutputTransformed> AIA
             transformed { responses -> responses.first() as Message.Assistant }
     )
 
-    edge(handleAssistantMessage forwardTo nodeDecide)
+    edge(handleAssistantMessage forwardTo nodeCallLLM)
 
     // throw to terminate the agent early with exception
     edge(

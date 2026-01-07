@@ -4,6 +4,7 @@ import ai.koog.agents.core.agent.AIAgent
 import ai.koog.agents.core.agent.ToolCalls
 import ai.koog.agents.core.agent.config.AIAgentConfig
 import ai.koog.agents.core.agent.execution.path
+import ai.koog.agents.core.agent.functionalStrategy
 import ai.koog.agents.core.agent.singleRunStrategy
 import ai.koog.agents.core.dsl.builder.ParallelNodeExecutionResult
 import ai.koog.agents.core.dsl.builder.forwardTo
@@ -15,8 +16,11 @@ import ai.koog.agents.core.dsl.extension.nodeLLMRequest
 import ai.koog.agents.core.dsl.extension.nodeLLMSendToolResult
 import ai.koog.agents.core.dsl.extension.onAssistantMessage
 import ai.koog.agents.core.dsl.extension.onToolCall
+import ai.koog.agents.core.dsl.extension.requestLLM
+import ai.koog.agents.core.environment.ReceivedToolResult
 import ai.koog.agents.core.tools.ToolRegistry
 import ai.koog.agents.ext.agent.reActStrategy
+import ai.koog.agents.ext.agent.subtask
 import ai.koog.agents.features.eventHandler.feature.EventHandler
 import ai.koog.agents.features.eventHandler.feature.EventHandlerConfig
 import ai.koog.agents.snapshot.feature.Persistence
@@ -26,6 +30,7 @@ import ai.koog.agents.snapshot.providers.file.JVMFilePersistenceStorageProvider
 import ai.koog.integration.tests.utils.Models
 import ai.koog.integration.tests.utils.RetryUtils.withRetry
 import ai.koog.integration.tests.utils.tools.CalculateSumTool
+import ai.koog.integration.tests.utils.tools.CalculatorTool
 import ai.koog.integration.tests.utils.tools.CalculatorToolNoArgs
 import ai.koog.integration.tests.utils.tools.DelayTool
 import ai.koog.integration.tests.utils.tools.GetTransactionsTool
@@ -69,6 +74,7 @@ import java.util.Base64
 import java.util.stream.Stream
 import kotlin.io.path.readBytes
 import kotlin.reflect.typeOf
+import kotlin.test.assertContains
 import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
 
@@ -111,6 +117,13 @@ class AIAgentIntegrationTest : AIAgentTestBase() {
                 Arguments.of(HistoryCompressionStrategy.Chunked(2), "Chunked(2)")
             )
         }
+
+        @JvmStatic
+        fun runModes(): Stream<ToolCalls> = Stream.of(
+            ToolCalls.SEQUENTIAL,
+            ToolCalls.PARALLEL,
+            ToolCalls.SINGLE_RUN_SEQUENTIAL,
+        )
     }
 
     val twoToolsRegistry = ToolRegistry {
@@ -171,7 +184,7 @@ class AIAgentIntegrationTest : AIAgentTestBase() {
             name = "compress_history",
             strategy = strategy
         )
-        val compressToolResult by nodeLLMCompressHistory<ai.koog.agents.core.environment.ReceivedToolResult>(
+        val compressToolResult by nodeLLMCompressHistory<ReceivedToolResult>(
             name = "compress_history",
             strategy = strategy
         )
@@ -1074,7 +1087,7 @@ class AIAgentIntegrationTest : AIAgentTestBase() {
                 agent.run("Hi")
 
                 with(state) {
-                    errors.shouldBeEmpty() // There should be no errors during parallel execution}
+                    errors.shouldBeEmpty() // There should be no errors during parallel execution
                     results.shouldNotBeEmpty().first() as String should {
                         contain("Math result: 56")
                         contain("Text result: Hello World")
@@ -1300,6 +1313,40 @@ class AIAgentIntegrationTest : AIAgentTestBase() {
                     strategyName = strategyName
                 )
             }
+        }
+    }
+
+    @ParameterizedTest
+    @MethodSource("runModes")
+    fun integration_testSubtaskCorrectlySavesToolMessages(runMode: ToolCalls) = runTest(timeout = 3600.seconds) {
+        withRetry {
+            val model = OpenAIModels.Chat.GPT4o
+            val executor = getExecutor(model)
+            val toolRegistry = ToolRegistry {
+                tool(CalculatorTool)
+            }
+
+            val strategy = functionalStrategy<String, String>("subtask-test") { input ->
+                subtask<String, Int>(input, runMode = runMode) { it }
+                requestLLM("What's the result?").content
+            }
+
+            val agent = AIAgent(
+                strategy = strategy,
+                promptExecutor = executor,
+                agentConfig = AIAgentConfig(
+                    prompt = prompt("subtask-test") {
+                        system("You are a helpful assistant specialized in simple calculations.")
+                    },
+                    model = model,
+                    maxAgentIterations = 10
+                ),
+                toolRegistry = toolRegistry
+            )
+
+            val result = agent.run("2 * 7")
+
+            assertContains(result, "14")
         }
     }
 }

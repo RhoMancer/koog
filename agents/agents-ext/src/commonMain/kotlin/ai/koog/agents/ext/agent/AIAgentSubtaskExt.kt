@@ -1,6 +1,7 @@
 package ai.koog.agents.ext.agent
 
 import ai.koog.agents.core.agent.ToolCalls
+import ai.koog.agents.core.agent.context.AIAgentContext
 import ai.koog.agents.core.agent.context.AIAgentFunctionalContext
 import ai.koog.agents.core.agent.context.DetachedPromptExecutorAPI
 import ai.koog.agents.core.annotation.InternalAgentsApi
@@ -13,6 +14,7 @@ import ai.koog.agents.core.dsl.extension.sendToolResult
 import ai.koog.agents.core.dsl.extension.setToolChoiceRequired
 import ai.koog.agents.core.environment.ReceivedToolResult
 import ai.koog.agents.core.environment.executeTools
+import ai.koog.agents.core.environment.result
 import ai.koog.agents.core.environment.toSafeResult
 import ai.koog.agents.core.tools.Tool
 import ai.koog.agents.core.tools.annotations.InternalAgentToolsApi
@@ -208,12 +210,13 @@ internal suspend inline fun <reified Output, reified OutputTransformed> AIAgentF
                 val toolCalls = extractToolCalls(responses)
                 val toolResults =
                     executeMultipleToolsHacked(toolCalls, finishTool, parallelTools = runMode == ToolCalls.PARALLEL)
-                responses = sendMultipleToolResults(toolResults)
 
                 toolResults.firstOrNull { it.tool == finishTool.descriptor.name }
                     ?.let { finishResult ->
                         return finishResult.toSafeResult(finishTool).asSuccessful().result
                     }
+
+                responses = sendMultipleToolResults(toolResults)
             }
 
             else -> {
@@ -249,11 +252,12 @@ internal suspend inline fun <reified Output, reified OutputTransformed> AIAgentF
         when {
             response is Message.Tool.Call -> {
                 val toolResult = executeToolHacked(response, finishTool)
-                response = sendToolResult(toolResult)
 
                 if (toolResult.tool == finishTool.descriptor.name) {
                     return toolResult.toSafeResult(finishTool).asSuccessful().result
                 }
+
+                response = sendToolResult(toolResult)
             }
 
             else -> {
@@ -266,10 +270,7 @@ internal suspend inline fun <reified Output, reified OutputTransformed> AIAgentF
                 }
 
                 response = requestLLM(
-                    message = markdown {
-                        h1("DO NOT CHAT WITH ME DIRECTLY! CALL TOOLS, INSTEAD.")
-                        h2("IF YOU HAVE FINISHED, CALL `${finishTool.name}` TOOL!")
-                    }
+                    SubgraphWithTaskUtils.messageOnAssistantResponse(finishTool.name)
                 )
             }
         }
@@ -278,17 +279,12 @@ internal suspend inline fun <reified Output, reified OutputTransformed> AIAgentF
 
 @OptIn(InternalAgentToolsApi::class, InternalAgentsApi::class)
 @PublishedApi
-internal suspend inline fun <reified Output, reified OutputTransformed> AIAgentFunctionalContext.executeMultipleToolsHacked(
+internal suspend inline fun <reified Output, reified OutputTransformed> AIAgentContext.executeMultipleToolsHacked(
     toolCalls: List<Message.Tool.Call>,
     finishTool: Tool<Output, OutputTransformed>,
     parallelTools: Boolean = false
 ): List<ReceivedToolResult> {
-    val finishTools = toolCalls.filter { it.tool == finishTool.descriptor.name }
-    val normalTools = toolCalls.filterNot { it.tool == finishTool.descriptor.name }
-
-    val finishToolResults = finishTools.map { toolCall ->
-        executeFinishTool(toolCall, finishTool)
-    }
+    val (finishTools, normalTools) = toolCalls.partition { it.tool == finishTool.name }
 
     val normalToolResults = if (parallelTools) {
         environment.executeTools(normalTools)
@@ -296,7 +292,24 @@ internal suspend inline fun <reified Output, reified OutputTransformed> AIAgentF
         normalTools.map { environment.executeTool(it) }
     }
 
-    return finishToolResults + normalToolResults
+    // if a finish tool was called, the subtask execution will be finished,
+    // and the normal tool results have to be appended to the prompt here,
+    // otherwise they will be lost
+    if (finishTools.isNotEmpty()) {
+        llm.writeSession {
+            appendPrompt {
+                tool {
+                    normalToolResults.forEach { result(it) }
+                }
+            }
+        }
+    }
+
+    val finishToolResults = finishTools.map { toolCall ->
+        executeFinishTool(toolCall, finishTool)
+    }
+
+    return normalToolResults + finishToolResults
 }
 
 @OptIn(InternalAgentToolsApi::class)
