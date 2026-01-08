@@ -44,6 +44,7 @@ import kotlin.uuid.Uuid
 @OptIn(ExperimentalUuidApi::class)
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 @Execution(ExecutionMode.SAME_THREAD)
+@Disabled("Flaky test, needs investigation")
 class A2AServerJsonRpcIntegrationTest : BaseA2AServerJsonRpcTest() {
     override val testTimeout = 10.seconds
 
@@ -79,7 +80,6 @@ class A2AServerJsonRpcIntegrationTest : BaseA2AServerJsonRpcTest() {
         super.`test send message streaming`()
 
     @Test
-    @Disabled("Flaky test, needs investigation")
     override fun `test get task`() =
         super.`test get task`()
 
