@@ -1,5 +1,6 @@
 package ai.koog.agents.core.system.feature
 
+import ai.koog.agents.core.agent.entity.AIAgentGraphStrategy
 import ai.koog.agents.core.agent.entity.AIAgentSubgraph.Companion.FINISH_NODE_PREFIX
 import ai.koog.agents.core.agent.entity.AIAgentSubgraph.Companion.START_NODE_PREFIX
 import ai.koog.agents.core.annotation.ExperimentalAgentsApi
@@ -32,6 +33,7 @@ import ai.koog.agents.core.feature.model.events.StrategyStartingEvent
 import ai.koog.agents.core.feature.model.events.ToolCallCompletedEvent
 import ai.koog.agents.core.feature.model.events.ToolCallStartingEvent
 import ai.koog.agents.core.feature.remote.client.FeatureMessageRemoteClient
+import ai.koog.agents.core.feature.remote.client.config.ClientConnectionConfig
 import ai.koog.agents.core.feature.remote.client.config.DefaultClientConnectionConfig
 import ai.koog.agents.core.feature.writer.FeatureMessageRemoteWriter
 import ai.koog.agents.core.system.feature.DebuggerTestAPI.HOST
@@ -47,6 +49,7 @@ import ai.koog.agents.core.system.mock.toolResultMessage
 import ai.koog.agents.core.system.mock.userMessage
 import ai.koog.agents.core.tools.ToolRegistry
 import ai.koog.agents.core.utils.SerializationUtils
+import ai.koog.agents.features.eventHandler.feature.handleEvents
 import ai.koog.agents.testing.agent.agentExecutionInfo
 import ai.koog.agents.testing.feature.message.findEvents
 import ai.koog.agents.testing.feature.message.singleEvent
@@ -55,25 +58,30 @@ import ai.koog.agents.testing.network.NetUtil.findAvailablePort
 import ai.koog.agents.testing.tools.DummyTool
 import ai.koog.agents.testing.tools.getMockExecutor
 import ai.koog.prompt.dsl.Prompt
+import ai.koog.prompt.executor.model.PromptExecutor
 import ai.koog.prompt.llm.toModelInfo
 import ai.koog.prompt.message.Message
 import ai.koog.prompt.message.RequestMetaInfo
 import ai.koog.utils.io.use
 import io.ktor.http.URLProtocol
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.joinAll
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeoutOrNull
-import org.junit.jupiter.api.Disabled
 import kotlin.reflect.typeOf
 import kotlin.test.Test
 import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
+import kotlin.time.DurationUnit
+import kotlin.time.toDuration
 
-@Disabled("Flaky, see #1124")
 class DebuggerTest {
 
     @OptIn(InternalAgentsApi::class)
@@ -558,4 +566,196 @@ class DebuggerTest {
         )
         assertContentEquals(expectedFilteredEvents, actualFilteredEvents)
     }
+
+    @Test
+    fun `test two clients connected to one server`() = runBlocking {
+
+        // Test Data
+        val port1 = findAvailablePort()
+        val port2 = findAvailablePort()
+
+        val client1Config = DefaultClientConnectionConfig(host = HOST, port = port1, protocol = URLProtocol.HTTP)
+        val client1Events = mutableListOf<FeatureMessage>()
+
+        val client2Config = DefaultClientConnectionConfig(host = HOST, port = port2, protocol = URLProtocol.HTTP)
+        val client2Events = mutableListOf<FeatureMessage>()
+
+        val isClient1Connected = MutableStateFlow(false)
+        val isClient2Connected = MutableStateFlow(false)
+
+        // Server 1
+        val serger1AgentId = "server-1-test-agent-multiple-clients"
+        val server1UserPrompt = "server-1 Test prompt for multiple clients"
+        val server1MockResponse = "server-1 Response for multiple clients"
+
+        val server1Strategy = strategy("server-1-test-strategy") {
+            val nodeLLMCall by nodeLLMRequest("server-1-node")
+            val nodeDelay by node<String, String>("server-1-node-delay") {
+                delay(10000)
+                it
+            }
+
+            edge(nodeStart forwardTo nodeDelay)
+            edge(nodeDelay forwardTo nodeLLMCall)
+            edge(nodeLLMCall forwardTo nodeFinish onAssistantMessage { true })
+        }
+
+        val server1MockExecutor = getMockExecutor(clock = testClock) {
+            mockLLMAnswer(server1MockResponse) onRequestEquals server1UserPrompt
+        }
+
+        val server1StartTime = System.currentTimeMillis()
+        val server1Job = launchServerOnPort(
+            port = port1,
+            agentId = serger1AgentId,
+            strategy = server1Strategy,
+            executor = server1MockExecutor,
+            userPrompt = server1UserPrompt,
+        )
+
+        server1Job.invokeOnCompletion {
+            println("SD -- [S] Server 1 finished after: ${(System.currentTimeMillis() - server1StartTime).toDuration(
+                DurationUnit.MILLISECONDS).inWholeSeconds} s")
+        }
+
+        // Server 2
+        val serger2AgentId = "server-2-test-agent-multiple-clients"
+        val server2UserPrompt = "server-2 Test prompt for multiple clients"
+        val server2MockResponse = "server-2 Response for multiple clients"
+
+        val server2Strategy = strategy("server-2-test-strategy") {
+            val node by nodeLLMRequest("server-2-node")
+
+            edge(nodeStart forwardTo node)
+            edge(node forwardTo nodeFinish onAssistantMessage { true })
+        }
+
+        val server2MockExecutor = getMockExecutor(clock = testClock) {
+            mockLLMAnswer(server2MockResponse) onRequestEquals server1UserPrompt
+        }
+
+        val server2StartTime = System.currentTimeMillis()
+        val server2Job = launchServerOnPort(
+            port = port2,
+            agentId = serger2AgentId,
+            strategy = server2Strategy,
+            executor = server2MockExecutor,
+            userPrompt = server2UserPrompt,
+        )
+
+        server2Job.invokeOnCompletion {
+            println("SD -- [S] Server 2 finished after: ${(System.currentTimeMillis() - server2StartTime).toDuration(
+                DurationUnit.MILLISECONDS).inWholeSeconds} s")
+        }
+
+        // Client 1
+        val client1Job = connectClient(
+            clientConfig = client1Config,
+            isClientConnected = isClient1Connected,
+            clientEvents = client1Events,
+        )
+
+        // Client 2
+        val client2Job = connectClient(
+            clientConfig = client2Config,
+            isClientConnected = isClient2Connected,
+            clientEvents = client2Events,
+        )
+
+        val isFinishedOrNull = withTimeoutOrNull(defaultClientServerTimeout) {
+            listOf(client1Job, client2Job, server1Job, server2Job).joinAll()
+        }
+
+        assertNotNull(isFinishedOrNull, "Clients or server did not finish in time")
+
+        // Verify both clients received events
+        assertTrue(client1Events.isNotEmpty(), "Client 1 should have received events")
+        assertTrue(client2Events.isNotEmpty(), "Client 2 should have received events")
+
+        // Verify key events are present in both clients
+        val client1StartEvents = client1Events.filterIsInstance<AgentStartingEvent>()
+        val client2StartEvents = client2Events.filterIsInstance<AgentStartingEvent>()
+        assertEquals(1, client1StartEvents.size, "Client 1 should receive exactly one AgentStartingEvent")
+        assertEquals(1, client2StartEvents.size, "Client 2 should receive exactly one AgentStartingEvent")
+
+        val client1CompletedEvents = client1Events.filterIsInstance<AgentCompletedEvent>()
+        val client2CompletedEvents = client2Events.filterIsInstance<AgentCompletedEvent>()
+        assertEquals(1, client1CompletedEvents.size, "Client 1 should receive exactly one AgentCompletedEvent")
+        assertEquals(1, client2CompletedEvents.size, "Client 2 should receive exactly one AgentCompletedEvent")
+    }
+
+    //region Private Methods
+
+    private fun CoroutineScope.launchServerOnPort(
+        port: Int,
+        agentId: String,
+        userPrompt: String,
+        strategy: AIAgentGraphStrategy<String, String>? = null,
+        executor: PromptExecutor? = null,
+    ): Job {
+        val job = launch {
+            val mockStrategy = strategy("test-strategy") {
+                val node by nodeLLMRequest("test-node")
+
+                edge(nodeStart forwardTo node)
+                edge(node forwardTo nodeFinish onAssistantMessage { true })
+            }
+
+            val mockExecutor = getMockExecutor(clock = testClock) {
+                mockLLMAnswer("Test response") onRequestEquals userPrompt
+            }
+
+            createAgent(
+                agentId = agentId,
+                strategy = strategy ?: mockStrategy,
+                promptId = "test-prompt-id",
+                userPrompt = userPrompt,
+                toolRegistry = ToolRegistry {},
+                promptExecutor = executor ?: mockExecutor,
+                model = mockLLModel,
+            ) {
+                @OptIn(ExperimentalAgentsApi::class)
+                install(Debugger) {
+                    setPort(port)
+                }
+
+                handleEvents {
+                    onAgentStarting {
+
+                    }
+                }
+            }.use { agent ->
+                agent.run(userPrompt)
+            }
+        }
+
+        println("SD -- [S] launched server on port $port")
+        return job
+    }
+
+    private fun CoroutineScope.connectClient(
+        clientConfig: ClientConnectionConfig,
+        isClientConnected: MutableStateFlow<Boolean>,
+        clientEvents: MutableList<FeatureMessage>
+    ): Job {
+        val job = launch {
+            FeatureMessageRemoteClient(
+                connectionConfig = clientConfig,
+                baseClient = testBaseClient,
+                scope = this
+            ).use { client ->
+                val clientEventsCollector = ClientEventsCollector(client = client, clientEvents)
+                val collectEventsJob = clientEventsCollector.startCollectEvents(coroutineScope = this)
+
+                client.connect()
+                collectEventsJob.join()
+                isClientConnected.value = true
+            }
+        }
+
+        println("SD -- [C] launched client on port ${clientConfig.port}")
+        return job
+    }
+
+    //endregion Private Methods
 }
