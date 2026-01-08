@@ -94,13 +94,26 @@ jobs:
 
   tests:
 
+    name: tests (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
     permissions:
       contents: read
 
     strategy:
       matrix:
-        os: [ ubuntu-latest, windows-latest, macos-latest ]
+        include:
+          - os: ubuntu-latest
+            job-name: "Linux Tests"
+            gradle-tasks: "jvmTest jsTest :koverBinaryReport jvmJar checkSplitPackages"
+            max-workers: 3
+          - os: windows-latest
+            job-name: "Windows jvmTest"
+            gradle-tasks: "jvmTest"
+            max-workers: 3
+          - os: macos-latest
+            job-name: "iOS Simulator tests"
+            gradle-tasks: "linkIosSimulatorArm64 iosSimulatorArm64Test"
+            max-workers: 2
 
     steps:
       - name: Configure Git
@@ -118,23 +131,9 @@ jobs:
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v5
 
-      - name: JvmTest with Gradle Wrapper and Kover coverage
-        if: matrix.os == 'ubuntu-latest'
+      - name:  ${{ matrix.job-name }}
         run: |-
-          ./gradlew jvmTest :koverBinaryReport --continue
-
-      - name: Check Split Packages
-        if: matrix.os == 'ubuntu-latest' && github.event.pull_request.draft == false
-        run: |-
-          ./gradlew jvmJar && ./gradlew checkSplitPackages
-
-      - name: JvmTest with Gradle Wrapper
-        if: matrix.os != 'ubuntu-latest'
-        run: ./gradlew jvmTest --continue
-
-      - name: iosSimulatorArm64Test with Gradle Wrapper
-        if: matrix.os == 'macos-latest' && github.event.pull_request.draft == false && github.repository == 'jetbrains/koog'
-        run: ./gradlew linkIosSimulatorArm64 iosSimulatorArm64Test --continue
+          ./gradlew ${{ matrix.gradle-tasks }} --max-workers ${{ matrix.max-workers }} --continue --no-daemon --configure-on-demand --parallel    
 
       - name: Archive coverage data
         if: matrix.os == 'ubuntu-latest'
