@@ -70,6 +70,7 @@ tasks.withType<JavaCompile>().configureEach {
 }
 
 configurations.all {
+    if (name.startsWith("detekt")) return@all
     resolutionStrategy {
         eachDependency {
             /*

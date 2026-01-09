@@ -1,6 +1,7 @@
 import ai.koog.gradle.fixups.DisableDistTasks.disableDistTasks
 import ai.koog.gradle.plugins.CheckSplitPackagesExtension
 import ai.koog.gradle.plugins.CheckSplitPackagesPlugin
+import io.gitlab.arturbosch.detekt.Detekt
 import okhttp3.MultipartBody
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -88,6 +89,7 @@ plugins {
     id("ai.kotlin.dokka")
     alias(libs.plugins.kotlinx.kover)
     alias(libs.plugins.ktlint)
+    alias(libs.plugins.detekt)
 }
 
 allprojects {
@@ -99,16 +101,34 @@ allprojects {
 
 disableDistTasks()
 
-// Apply Kover and ktlint to all subprojects
 subprojects {
-    apply(plugin = "org.jetbrains.kotlinx.kover")
-    apply(plugin = "org.jlleitschuh.gradle.ktlint")
-}
 
-subprojects {
+    apply {
+        plugin("org.jetbrains.kotlinx.kover")
+        plugin("org.jlleitschuh.gradle.ktlint")
+        plugin("io.gitlab.arturbosch.detekt")
+    }
+
     extensions.configure<KtlintExtension> {
         outputToConsole = true
         coloredOutput = true
+    }
+
+    detekt {
+        buildUponDefaultConfig = true
+        config.from(rootProject.files("config/detekt.yml"))
+        basePath = rootProject.projectDir.absolutePath
+        parallel = true
+        ignoreFailures = true // TODO: fix issues and re-enable
+    }
+
+    tasks.withType<Detekt>().configureEach {
+        reports {
+            html.required = true
+            sarif.required = false
+            txt.required = false
+            xml.required = true
+        }
     }
 
     tasks.withType<Test> {

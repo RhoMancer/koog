@@ -31,7 +31,7 @@ concurrency:
 env:
   JAVA_VERSION: 17
   JAVA_DISTRIBUTION: 'corretto'
-  JAVA_OPTS: "-Xms8g -Xmx8g -Dfile.encoding=UTF-8 -Djava.awt.headless=true -Dkotlin.daemon.jvm.options=-Xmx6g"
+  JAVA_OPTS: "-Xmx8g -Dfile.encoding=UTF-8 -Djava.awt.headless=true -Dkotlin.daemon.jvm.options=-Xmx6g"
 
 jobs:
   compilation:
@@ -48,6 +48,7 @@ jobs:
       - name: Set up JDK ${{ env.JAVA_VERSION }}
         uses: actions/setup-java@v5
         with:
+          cache: gradle
           java-version: ${{ env.JAVA_VERSION }}
           distribution: ${{ env.JAVA_DISTRIBUTION }}
 
@@ -56,11 +57,18 @@ jobs:
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v5
 
-      - name: Assemble with Gradle Wrapper
-        run: ./gradlew assemble ktlintCheck
-
-      - name: TestClasses with Gradle Wrapper
-        run: ./gradlew jvmTestClasses jsTestClasses
+      - name: Assemble and Checks
+        run: |-
+          ./gradlew assemble jvmTestClasses jsTestClasses detekt ktlintCheck \
+            --no-daemon --parallel --max-workers 3
+          
+      - name: Collect reports
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: reports-compilation
+          path: |
+            **/build/reports/
 
   docs:
     runs-on: ubuntu-latest

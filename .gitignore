@@ -1,6 +1,8 @@
 .gradle
 **/.kotlin
 .idea
+!.idea/detekt.xml
+!.idea/externalDependencies.xml
 build
 **/.claude/settings.local.json
 env.properties

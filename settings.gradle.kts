@@ -9,6 +9,8 @@ pluginManagement {
     }
 }
 
+enableFeaturePreview("TYPESAFE_PROJECT_ACCESSORS")
+
 include(":agents:agents-core")
 include(":agents:agents-ext")
 include(":agents:agents-planner")
