@@ -27,11 +27,30 @@ kotlin {
             }
         }
 
+        jvmMain {
+            dependencies {
+                api(libs.exposed.core)
+                api(libs.exposed.dao)
+                api(libs.exposed.jdbc)
+                api(libs.exposed.json)
+                api(libs.exposed.kotlin.datetime)
+                compileOnly(libs.postgresql)
+                implementation(libs.hikaricp)
+            }
+        }
+
         jvmTest {
             dependencies {
                 implementation(kotlin("test-junit5"))
                 implementation(libs.junit.jupiter.params)
                 implementation(libs.kotlinx.coroutines.test)
+                implementation(project(":agents:agents-test"))
+                implementation(project(":test-utils"))
+                implementation(libs.mockk)
+                implementation(libs.testcontainers)
+                implementation(libs.testcontainers.postgresql)
+
+                runtimeOnly(libs.postgresql)
             }
         }
     }
