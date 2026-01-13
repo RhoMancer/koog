@@ -483,4 +483,163 @@ class AIAgentBuilderIntegrationTest : AIAgentTestBase() {
             }
         }
     }
+
+    // ============================================================================
+    // ADDITIONAL TEST SCENARIOS FROM COMPREHENSIVE PLAN
+    // ============================================================================
+
+    @ParameterizedTest
+    @MethodSource("latestModels")
+    fun integration_BuilderWithTemperatureControl(model: LLModel) = runTest(timeout = 120.seconds) {
+        Models.assumeAvailable(model.provider)
+
+        withRetry {
+            runWithTracking { eventHandlerConfig, state ->
+                // Test low temperature (deterministic)
+                val deterministicAgent = AIAgent.builder()
+                    .promptExecutor(getExecutor(model))
+                    .llmModel(model)
+                    .systemPrompt("You are a helpful assistant. Answer with exactly '42'.")
+                    .temperature(0.0) // Deterministic
+                    .install(EventHandler.Feature, eventHandlerConfig)
+                    .build()
+
+                val result = deterministicAgent.run("What is the answer to life, the universe, and everything?")
+
+                with(state) {
+                    errors.shouldBeEmpty()
+                    result shouldNotBeNull {
+                        shouldNotBeBlank()
+                        shouldContain("42")
+                    }
+                }
+            }
+        }
+    }
+
+    @ParameterizedTest
+    @MethodSource("latestModels")
+    fun integration_BuilderWithMaxIterations(model: LLModel) = runTest(timeout = 120.seconds) {
+        Models.assumeAvailable(model.provider)
+
+        withRetry {
+            runWithTracking { eventHandlerConfig, state ->
+                val agent = AIAgent.builder()
+                    .promptExecutor(getExecutor(model))
+                    .llmModel(model)
+                    .systemPrompt("You are a helpful assistant.")
+                    .maxIterations(3) // Very low to test limit
+                    .install(EventHandler.Feature, eventHandlerConfig)
+                    .build()
+
+                val result = agent.run("List 5 numbers from 1 to 5.")
+
+                with(state) {
+                    // Should complete even with low iteration limit for simple task
+                    result.shouldNotBeBlank()
+                }
+            }
+        }
+    }
+
+    @ParameterizedTest
+    @MethodSource("latestModels")
+    fun integration_FunctionalStrategyWithExceptionHandling(model: LLModel) = runTest(timeout = 120.seconds) {
+        Models.assumeAvailable(model.provider)
+
+        withRetry {
+            runWithTracking { eventHandlerConfig, state ->
+                val strategyWithErrorHandling = functionalStrategy<String, String>("error-handling") { input ->
+                    try {
+                        val response = requestLLM(input)
+                        when (response) {
+                            is Message.Assistant -> response.content
+                            else -> "Unexpected response type: ${response::class.simpleName}"
+                        }
+                    } catch (e: Exception) {
+                        "Error occurred: ${e.message}"
+                    }
+                }
+
+                val agent = AIAgent.builder()
+                    .promptExecutor(getExecutor(model))
+                    .llmModel(model)
+                    .systemPrompt("You are a helpful assistant.")
+                    .functionalStrategy(strategyWithErrorHandling)
+                    .install(EventHandler.Feature, eventHandlerConfig)
+                    .build()
+
+                val result = agent.run("Say hello")
+
+                with(state) {
+                    result.shouldNotBeBlank()
+                    // Should not contain error message for simple request
+                    (result.contains("Error occurred")).shouldBe(false)
+                }
+            }
+        }
+    }
+
+    @ParameterizedTest
+    @MethodSource("latestModels")
+    fun integration_BuilderWithNumberOfChoices(model: LLModel) = runTest(timeout = 120.seconds) {
+        Models.assumeAvailable(model.provider)
+
+        withRetry {
+            runWithTracking { eventHandlerConfig, state ->
+                val agent = AIAgent.builder()
+                    .promptExecutor(getExecutor(model))
+                    .llmModel(model)
+                    .systemPrompt("You are a creative assistant.")
+                    .numberOfChoices(1) // Single choice for deterministic testing
+                    .temperature(0.7)
+                    .install(EventHandler.Feature, eventHandlerConfig)
+                    .build()
+
+                val result = agent.run("Say 'test passed' in a creative way.")
+
+                with(state) {
+                    errors.shouldBeEmpty()
+                    result.shouldNotBeBlank()
+                }
+            }
+        }
+    }
+
+    @ParameterizedTest
+    @MethodSource("latestModels")
+    fun integration_FunctionalStrategyWithContextAccess(model: LLModel) = runTest(timeout = 120.seconds) {
+        Models.assumeAvailable(model.provider)
+
+        withRetry {
+            runWithTracking { eventHandlerConfig, state ->
+                val strategyWithContext = functionalStrategy<String, String>("context-aware") { input ->
+                    // Access context information
+                    val agentId = agentId
+                    val response = requestLLM("Agent $agentId processing: $input")
+
+                    when (response) {
+                        is Message.Assistant -> "Processed by $agentId: ${response.content}"
+                        else -> "Unexpected response"
+                    }
+                }
+
+                val agent = AIAgent.builder()
+                    .promptExecutor(getExecutor(model))
+                    .llmModel(model)
+                    .systemPrompt("You are a helpful assistant.")
+                    .functionalStrategy(strategyWithContext)
+                    .install(EventHandler.Feature, eventHandlerConfig)
+                    .build()
+
+                val result = agent.run("Say hello")
+
+                with(state) {
+                    errors.shouldBeEmpty()
+                    result.shouldNotBeBlank()
+                    result shouldContain "Processed by"
+                }
+            }
+        }
+    }
 }
