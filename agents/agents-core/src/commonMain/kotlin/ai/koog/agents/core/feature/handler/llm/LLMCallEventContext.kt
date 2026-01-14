@@ -1,5 +1,6 @@
 package ai.koog.agents.core.feature.handler.llm
 
+import ai.koog.agents.core.agent.context.AIAgentContext
 import ai.koog.agents.core.agent.execution.AgentExecutionInfo
 import ai.koog.agents.core.feature.handler.AgentLifecycleEventContext
 import ai.koog.agents.core.feature.handler.AgentLifecycleEventType
@@ -22,6 +23,7 @@ public interface LLMCallEventContext : AgentLifecycleEventContext
  * @property prompt The prompt that will be sent to the language model.
  * @property model The language model instance being used.
  * @property tools The list of tool descriptors available for the LLM call.
+ * @property context The AI agent context in which the LLM call is being executed.
  */
 public data class LLMCallStartingContext(
     override val eventId: String,
@@ -30,6 +32,7 @@ public data class LLMCallStartingContext(
     val prompt: Prompt,
     val model: LLModel,
     val tools: List<ToolDescriptor>,
+    val context: AIAgentContext
 ) : LLMCallEventContext {
     override val eventType: AgentLifecycleEventType = AgentLifecycleEventType.LLMCallStarting
 }
@@ -44,6 +47,7 @@ public data class LLMCallStartingContext(
  * @property tools The list of tool descriptors that were available for the LLM call.
  * @property responses The response messages received from the language model.
  * @property moderationResponse The moderation response, if any, received from the language model.
+ * @property context The AI agent context in which the LLM call was executed.
  */
 public data class LLMCallCompletedContext(
     override val eventId: String,
@@ -53,7 +57,8 @@ public data class LLMCallCompletedContext(
     val model: LLModel,
     val tools: List<ToolDescriptor>,
     val responses: List<Message.Response>,
-    val moderationResponse: ModerationResult?
+    val moderationResponse: ModerationResult?,
+    val context: AIAgentContext
 ) : LLMCallEventContext {
     override val eventType: AgentLifecycleEventType = AgentLifecycleEventType.LLMCallCompleted
 }

@@ -1,5 +1,6 @@
 package ai.koog.agents.core.feature.handler.tool
 
+import ai.koog.agents.core.agent.context.AIAgentContext
 import ai.koog.agents.core.agent.execution.AgentExecutionInfo
 import ai.koog.agents.core.feature.handler.AgentLifecycleEventContext
 import ai.koog.agents.core.feature.handler.AgentLifecycleEventType
@@ -19,7 +20,9 @@ public interface ToolCallEventContext : AgentLifecycleEventContext
  * @property runId The unique identifier for this tool call session;
  * @property toolCallId The unique identifier for this tool call;
  * @property toolName The tool name that is being executed;
- * @property toolArgs The arguments provided for the tool execution, adhering to the tool's expected input structure.
+ * @property toolArgs The arguments provided for the tool execution, adhering to the tool's expected input structure;
+ * @property toolDescription A description of the tool being executed;
+ * @property context The AI agent context associated with the tool call.
  */
 public data class ToolCallStartingContext(
     override val eventId: String,
@@ -29,6 +32,7 @@ public data class ToolCallStartingContext(
     val toolName: String,
     val toolDescription: String?,
     val toolArgs: JsonObject,
+    val context: AIAgentContext
 ) : ToolCallEventContext {
     override val eventType: AgentLifecycleEventType = AgentLifecycleEventType.ToolCallStarting
 }
@@ -42,8 +46,9 @@ public data class ToolCallStartingContext(
  * @property toolName The name of the tool associated with the validation error;
  * @property toolDescription A description of the tool being executed;
  * @property toolArgs The arguments passed to the tool when the error occurred;
- * @property message A message describing the validation error.
- * @property error The [AIAgentError] error describing the validation issue.
+ * @property message A message describing the validation error;
+ * @property error The [AIAgentError] error describing the validation issue;
+ * @property context The AI agent context associated with the tool call.
  */
 public data class ToolValidationFailedContext(
     override val eventId: String,
@@ -54,7 +59,8 @@ public data class ToolValidationFailedContext(
     val toolDescription: String?,
     val toolArgs: JsonObject,
     val message: String,
-    val error: AIAgentError
+    val error: AIAgentError,
+    val context: AIAgentContext
 ) : ToolCallEventContext {
     override val eventType: AgentLifecycleEventType = AgentLifecycleEventType.ToolValidationFailed
 }
@@ -68,8 +74,9 @@ public data class ToolValidationFailedContext(
  * @property toolName The name of the tool being executed when the failure occurred;
  * @property toolDescription A description of the tool being executed;
  * @property toolArgs The arguments that were passed to the tool during execution;
- * @property message A message describing the failure that occurred.
- * @property error The [AIAgentError] instance describing the tool call failure.
+ * @property message A message describing the failure that occurred;
+ * @property error The [AIAgentError] instance describing the tool call failure;
+ * @property context The AI agent context associated with the tool call.
  */
 public data class ToolCallFailedContext(
     override val eventId: String,
@@ -80,7 +87,8 @@ public data class ToolCallFailedContext(
     val toolDescription: String?,
     val toolArgs: JsonObject,
     val message: String,
-    val error: AIAgentError?
+    val error: AIAgentError?,
+    val context: AIAgentContext
 ) : ToolCallEventContext {
     override val eventType: AgentLifecycleEventType = AgentLifecycleEventType.ToolCallFailed
 }
@@ -94,7 +102,8 @@ public data class ToolCallFailedContext(
  * @property toolName The name of the tool being executed;
  * @property toolDescription A description of the tool being executed;
  * @property toolArgs The arguments required by the tool for execution;
- * @property toolResult An optional result produced by the tool after execution can be null if not applicable.
+ * @property toolResult An optional result produced by the tool after execution can be null if not applicable;
+ * @property context The AI agent context associated with the tool call.
  */
 public data class ToolCallCompletedContext(
     override val eventId: String,
@@ -104,7 +113,8 @@ public data class ToolCallCompletedContext(
     val toolName: String,
     val toolDescription: String?,
     val toolArgs: JsonObject,
-    val toolResult: JsonElement?
+    val toolResult: JsonElement?,
+    val context: AIAgentContext
 ) : ToolCallEventContext {
     override val eventType: AgentLifecycleEventType = AgentLifecycleEventType.ToolCallCompleted
 }

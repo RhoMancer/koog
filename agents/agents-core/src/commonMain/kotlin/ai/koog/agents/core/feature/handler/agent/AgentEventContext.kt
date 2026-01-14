@@ -42,6 +42,7 @@ public data class AgentStartingContext(
  * @property agentId The unique identifier of the agent that completed its execution.
  * @property runId The identifier of the session in which the agent was executed.
  * @property result The optional result of the agent's execution, if available.
+ * @property context The agent context containing additional information about the agent's execution.
  */
 public data class AgentCompletedContext(
     override val eventId: String,
@@ -49,6 +50,7 @@ public data class AgentCompletedContext(
     public val agentId: String,
     public val runId: String,
     public val result: Any?,
+    public val context: AIAgentContext,
 ) : AgentEventContext {
     override val eventType: AgentLifecycleEventType = AgentLifecycleEventType.AgentCompleted
 }
@@ -60,13 +62,15 @@ public data class AgentCompletedContext(
  * @property agentId The unique identifier of the agent associated with the error.
  * @property runId The identifier for the session during which the error occurred.
  * @property throwable The exception or error thrown during the execution.
+ * @property context The context associated with the agent's execution.
  */
 public data class AgentExecutionFailedContext(
     override val eventId: String,
     override val executionInfo: AgentExecutionInfo,
     val agentId: String,
     val runId: String,
-    val throwable: Throwable
+    val throwable: Throwable,
+    public val context: AIAgentContext,
 ) : AgentEventContext {
     override val eventType: AgentLifecycleEventType = AgentLifecycleEventType.AgentExecutionFailed
 }
@@ -89,7 +93,7 @@ public data class AgentClosingContext(
  * Provides a context for executing transformations and operations within an AI agent's environment.
  *
  * @property executionInfo The execution information containing parentId and current execution path;
- * @property agent The AI agent being managed or operated upon in the context.
+ * @property agent The AI agent being managed or operated upon in the context;
  */
 public class AgentEnvironmentTransformingContext(
     override val eventId: String,
