@@ -104,13 +104,13 @@ public abstract class StatefulSingleUseAIAgent<Input, Output, TContext : AIAgent
                 strategy.execute(context = context, input = agentInput)
             } catch (e: Throwable) {
                 logger.error(e) { "Execution exception reported by server!" }
-                pipeline.onAgentExecutionFailed(agentRunEventId, context.executionInfo, id, runId, e)
+                pipeline.onAgentExecutionFailed(agentRunEventId, context.executionInfo, id, runId, e, context)
                 agentStateMutex.withLock { state = State.Failed(e) }
                 throw e
             }
 
             logger.debug { formatLog(id, runId, "Finished agent execution") }
-            pipeline.onAgentCompleted(agentRunEventId, context.executionInfo, id, runId, result)
+            pipeline.onAgentCompleted(agentRunEventId, context.executionInfo, id, runId, result, context)
 
             agentStateMutex.withLock {
                 state = if (result != null) {
