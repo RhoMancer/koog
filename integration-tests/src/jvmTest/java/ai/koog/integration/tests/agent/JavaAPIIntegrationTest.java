@@ -2,7 +2,6 @@ package ai.koog.integration.tests.agent;
 
 import ai.koog.agents.core.agent.AIAgent;
 import ai.koog.agents.core.agent.AIAgentBuilder;
-import ai.koog.agents.core.agent.context.AIAgentFunctionalContext;
 import ai.koog.agents.core.environment.ReceivedToolResult;
 import ai.koog.agents.core.tools.Tool;
 import ai.koog.agents.core.tools.ToolRegistry;
@@ -17,11 +16,9 @@ import ai.koog.prompt.executor.clients.anthropic.AnthropicModels;
 import ai.koog.prompt.executor.clients.openai.OpenAILLMClient;
 import ai.koog.prompt.executor.clients.openai.OpenAIModels;
 import ai.koog.prompt.executor.llms.MultiLLMPromptExecutor;
-import ai.koog.prompt.executor.llms.SingleLLMPromptExecutor;
 import ai.koog.prompt.llm.LLMProvider;
 import ai.koog.prompt.llm.LLModel;
 import ai.koog.prompt.message.Message;
-import kotlinx.coroutines.BuildersKt;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
@@ -29,6 +26,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -65,140 +63,85 @@ public class JavaAPIIntegrationTest extends KoogJavaTestBase {
 
     @Test
     @Disabled("Java/Kotlin interop issue: Continuation type incompatibility with client.execute()")
-    public void testOpenAILLMClient() throws Exception {
+    public void testOpenAILLMClient() {
         String apiKey = TestCredentials.INSTANCE.readTestOpenAIKeyFromEnv();
-        OpenAILLMClient client = new OpenAILLMClient(apiKey);
-        resourcesToClose.add(client);
+        OpenAILLMClient client = JavaInteropUtils.createOpenAIClient(apiKey);
+        resourcesToClose.add((AutoCloseable) client);
 
         assertEquals(LLMProvider.OpenAI.INSTANCE, client.llmProvider());
 
-        Prompt prompt = Prompt.builder("test-openai")
-                .system("You are a helpful assistant.")
-                .user("Say 'Hello from OpenAI'")
-                .build();
-
-        @SuppressWarnings("unchecked")
-        List<Message.Response> responses = (List<Message.Response>) BuildersKt.runBlocking(
-                kotlin.coroutines.EmptyCoroutineContext.INSTANCE,
-                (scope, continuation) -> client.execute(prompt, OpenAIModels.Chat.GPT4o, List.of(), continuation)
+        Prompt prompt = JavaInteropUtils.buildSimplePrompt(
+            "test-openai",
+            "You are a helpful assistant.",
+            "Say 'Hello from OpenAI'"
         );
+
+        List<Message.Response> responses = JavaInteropUtils.executeClientBlocking(client, prompt, OpenAIModels.Chat.GPT4o, Collections.emptyList());
 
         assertNotNull(responses);
         assertFalse(responses.isEmpty());
-        assertTrue(responses.get(0) instanceof Message.Assistant);
-        assertFalse(((Message.Assistant) responses.get(0)).getContent().isEmpty());
+        assertInstanceOf(Message.Assistant.class, responses.get(0));
+        String content = JavaInteropUtils.getAssistantContent((Message.Assistant) responses.get(0));
+        assertFalse(content.isEmpty());
     }
 
     @Test
     @Disabled("Java/Kotlin interop issue: Continuation type incompatibility with client.execute()")
-    public void testAnthropicLLMClient() throws Exception {
+    public void testAnthropicLLMClient() {
         String apiKey = TestCredentials.INSTANCE.readTestAnthropicKeyFromEnv();
-        AnthropicLLMClient client = new AnthropicLLMClient(apiKey);
-        resourcesToClose.add(client);
+        AnthropicLLMClient client = JavaInteropUtils.createAnthropicClient(apiKey);
+        resourcesToClose.add((AutoCloseable) client);
 
         assertEquals(LLMProvider.Anthropic.INSTANCE, client.llmProvider());
 
-        Prompt prompt = Prompt.builder("test-anthropic")
-                .system("You are a helpful assistant.")
-                .user("Say 'Hello from Anthropic'")
-                .build();
-
-        @SuppressWarnings("unchecked")
-        List<Message.Response> responses = (List<Message.Response>) BuildersKt.runBlocking(
-                kotlin.coroutines.EmptyCoroutineContext.INSTANCE,
-                (scope, continuation) -> client.execute(prompt, AnthropicModels.Haiku_4_5, List.of(), continuation)
+        Prompt prompt = JavaInteropUtils.buildSimplePrompt(
+            "test-anthropic",
+            "You are a helpful assistant.",
+            "Say 'Hello from Anthropic'"
         );
+
+        List<Message.Response> responses = JavaInteropUtils.executeClientBlocking(client, prompt, AnthropicModels.Haiku_4_5, Collections.emptyList());
 
         assertNotNull(responses);
         assertFalse(responses.isEmpty());
-        assertTrue(responses.get(0) instanceof Message.Assistant);
-        assertFalse(((Message.Assistant) responses.get(0)).getContent().isEmpty());
+        assertInstanceOf(Message.Assistant.class, responses.get(0));
+        String content = JavaInteropUtils.getAssistantContent((Message.Assistant) responses.get(0));
+        assertFalse(content.isEmpty());
     }
 
     @Test
     @Disabled("Java/Kotlin interop issue: Continuation type incompatibility with executor.execute()")
-    public void testSingleLLMPromptExecutor() throws Exception {
-        String apiKey = TestCredentials.INSTANCE.readTestOpenAIKeyFromEnv();
-        LLMClient client = new OpenAILLMClient(apiKey);
-        resourcesToClose.add(client);
-
-        SingleLLMPromptExecutor executor = new SingleLLMPromptExecutor(client);
-
-        Prompt prompt = Prompt.builder("test-single-executor")
-                .system("You are a helpful assistant.")
-                .user("What is 2+2?")
-                .build();
-
-        @SuppressWarnings("unchecked")
-        List<Message.Response> responses = (List<Message.Response>) BuildersKt.runBlocking(
-                kotlin.coroutines.EmptyCoroutineContext.INSTANCE,
-                (scope, continuation) -> executor.execute(
-                        prompt,
-                        OpenAIModels.Chat.GPT4o,
-                        List.of(),
-                        continuation
-                )
-        );
-
-        assertNotNull(responses);
-        assertFalse(responses.isEmpty());
-        assertTrue(responses.get(0) instanceof Message.Assistant);
-        String content = ((Message.Assistant) responses.get(0)).getContent();
-        assertTrue(content.contains("4"));
-    }
-
-    @Test
-    @Disabled("Java/Kotlin interop issue: Continuation type incompatibility with executor.execute()")
-    public void testMultiLLMPromptExecutor() throws Exception {
+    public void testMultiLLMPromptExecutor() {
         String openAIKey = TestCredentials.INSTANCE.readTestOpenAIKeyFromEnv();
         String anthropicKey = TestCredentials.INSTANCE.readTestAnthropicKeyFromEnv();
 
-        OpenAILLMClient openAIClient = new OpenAILLMClient(openAIKey);
-        AnthropicLLMClient anthropicClient = new AnthropicLLMClient(anthropicKey);
+        OpenAILLMClient openAIClient = JavaInteropUtils.createOpenAIClient(openAIKey);
+        AnthropicLLMClient anthropicClient = JavaInteropUtils.createAnthropicClient(anthropicKey);
 
-        resourcesToClose.add(openAIClient);
-        resourcesToClose.add(anthropicClient);
+        resourcesToClose.add((AutoCloseable) openAIClient);
+        resourcesToClose.add((AutoCloseable) anthropicClient);
 
-        MultiLLMPromptExecutor executor = new MultiLLMPromptExecutor(
-                new kotlin.Pair<>(LLMProvider.OpenAI.INSTANCE, openAIClient),
-                new kotlin.Pair<>(LLMProvider.Anthropic.INSTANCE, anthropicClient)
-        );
+        MultiLLMPromptExecutor executor = JavaInteropUtils.createMultiLLMPromptExecutor(openAIClient, anthropicClient);
 
         // Test with OpenAI model
-        Prompt openAIPrompt = Prompt.builder("test-multi-openai")
-                .system("You are a helpful assistant.")
-                .user("Say 'OpenAI response'")
-                .build();
-
-        @SuppressWarnings("unchecked")
-        List<Message.Response> openAIResponses = (List<Message.Response>) BuildersKt.runBlocking(
-                kotlin.coroutines.EmptyCoroutineContext.INSTANCE,
-                (scope, continuation) -> executor.execute(
-                        openAIPrompt,
-                        OpenAIModels.Chat.GPT4o,
-                        List.of(),
-                        continuation
-                )
+        Prompt openAIPrompt = JavaInteropUtils.buildSimplePrompt(
+            "test-multi-openai",
+            "You are a helpful assistant.",
+            "Say 'OpenAI response'"
         );
+
+        List<Message.Response> openAIResponses = JavaInteropUtils.executeExecutorBlocking(executor, openAIPrompt, OpenAIModels.Chat.GPT4o, Collections.emptyList());
 
         assertNotNull(openAIResponses);
         assertFalse(openAIResponses.isEmpty());
 
-        Prompt anthropicPrompt = Prompt.builder("test-multi-anthropic")
-                .system("You are a helpful assistant.")
-                .user("Say 'Anthropic response'")
-                .build();
-
-        @SuppressWarnings("unchecked")
-        List<Message.Response> anthropicResponses = (List<Message.Response>) BuildersKt.runBlocking(
-                kotlin.coroutines.EmptyCoroutineContext.INSTANCE,
-                (scope, continuation) -> executor.execute(
-                        anthropicPrompt,
-                        AnthropicModels.Haiku_4_5,
-                        List.of(),
-                        continuation
-                )
+        Prompt anthropicPrompt = JavaInteropUtils.buildSimplePrompt(
+            "test-multi-anthropic",
+            "You are a helpful assistant.",
+            "Say 'Anthropic response'"
         );
+
+        List<Message.Response> anthropicResponses = JavaInteropUtils.executeExecutorBlocking(executor, anthropicPrompt, AnthropicModels.Haiku_4_5, Collections.emptyList());
 
         assertNotNull(anthropicResponses);
         assertFalse(anthropicResponses.isEmpty());
@@ -294,38 +237,28 @@ public class JavaAPIIntegrationTest extends KoogJavaTestBase {
     @ParameterizedTest
     @MethodSource("ai.koog.integration.tests.agent.AIAgentTestBase#getLatestModels")
     @Disabled("BUG #3: Nested runBlocking in Java lambda causes InterruptedException")
-    public void testSimpleFunctionalStrategy(LLModel model) throws Exception {
+    public void testSimpleFunctionalStrategy(LLModel model) {
         Models.assumeAvailable(model.getProvider());
 
-        SingleLLMPromptExecutor executor = createSingleExecutor(model);
+        MultiLLMPromptExecutor executor = createExecutor(model);
 
-        AIAgent<String, String> agent = AIAgent.builder()
+        AIAgent<String, String> agent = JavaInteropUtils.buildFunctionalAgent(
+            JavaInteropUtils.createAgentBuilder()
                 .promptExecutor(executor)
                 .llmModel(model)
                 .systemPrompt("You are a helpful assistant.")
-                .functionalStrategy((AIAgentFunctionalContext context, String input) -> {
-                    try {
-                        // Simple strategy: just request LLM once
-                        Message.Response response = BuildersKt.runBlocking(
-                                kotlin.coroutines.EmptyCoroutineContext.INSTANCE,
-                                (scope, continuation) -> context.requestLLM(input, true, continuation)
-                        );
+                .functionalStrategy((context, input) -> {
+                    // Simple strategy: just request LLM once
+                    Message.Response response = JavaInteropUtils.requestLLMBlocking(context, input, true);
 
-                        if (response instanceof Message.Assistant) {
-                            return ((Message.Assistant) response).getContent();
-                        }
-                        return "Unexpected response type";
-                    } catch (InterruptedException e) {
-                        Thread.currentThread().interrupt();
-                        throw new RuntimeException(e);
+                    if (response instanceof Message.Assistant) {
+                        return JavaInteropUtils.getAssistantContent((Message.Assistant) response);
                     }
+                    return "Unexpected response type";
                 })
-                .build();
-
-        String result = BuildersKt.runBlocking(
-                kotlin.coroutines.EmptyCoroutineContext.INSTANCE,
-                (scope, continuation) -> agent.run("Say hello", continuation)
         );
+
+        String result = JavaInteropUtils.runAgentBlocking(agent, "Say hello");
 
         assertNotNull(result);
         assertFalse(result.isEmpty());
@@ -335,54 +268,41 @@ public class JavaAPIIntegrationTest extends KoogJavaTestBase {
     @ParameterizedTest
     @MethodSource("ai.koog.integration.tests.agent.AIAgentTestBase#getLatestModels")
     @Disabled("BUG #3: Nested runBlocking in Java lambda causes InterruptedException")
-    public void testMultiStepFunctionalStrategy(LLModel model) throws Exception {
+    public void testMultiStepFunctionalStrategy(LLModel model) {
         Models.assumeAvailable(model.getProvider());
 
-        SingleLLMPromptExecutor executor = createSingleExecutor(model);
+        MultiLLMPromptExecutor executor = createExecutor(model);
 
-        AIAgent<String, String> agent = AIAgent.builder()
+        AIAgent<String, String> agent = JavaInteropUtils.buildFunctionalAgent(
+            JavaInteropUtils.createAgentBuilder()
                 .promptExecutor(executor)
                 .llmModel(model)
                 .systemPrompt("You are a helpful assistant.")
-                .functionalStrategy((AIAgentFunctionalContext context, String input) -> {
-                    try {
-                        // Multi-step strategy: request LLM multiple times
-                        Message.Response response1 = BuildersKt.runBlocking(
-                                kotlin.coroutines.EmptyCoroutineContext.INSTANCE,
-                                (scope, continuation) -> context.requestLLM("First step: " + input, true, continuation)
-                        );
+                .functionalStrategy((context, input) -> {
+                    // Multi-step strategy: request LLM multiple times
+                    Message.Response response1 = JavaInteropUtils.requestLLMBlocking(context, "First step: " + input, true);
 
-                        final String step1Result;
-                        if (response1 instanceof Message.Assistant) {
-                            step1Result = ((Message.Assistant) response1).getContent();
-                        } else {
-                            step1Result = "";
-                        }
-
-                        Message.Response response2 = BuildersKt.runBlocking(
-                                kotlin.coroutines.EmptyCoroutineContext.INSTANCE,
-                                (scope, continuation) -> context.requestLLM(
-                                        "Second step, previous result was: " + step1Result,
-                                        true,
-                                        continuation
-                                )
-                        );
-
-                        if (response2 instanceof Message.Assistant) {
-                            return ((Message.Assistant) response2).getContent();
-                        }
-                        return "Unexpected response type";
-                    } catch (InterruptedException e) {
-                        Thread.currentThread().interrupt();
-                        throw new RuntimeException(e);
+                    final String step1Result;
+                    if (response1 instanceof Message.Assistant) {
+                        step1Result = JavaInteropUtils.getAssistantContent((Message.Assistant) response1);
+                    } else {
+                        step1Result = "";
                     }
-                })
-                .build();
 
-        String result = BuildersKt.runBlocking(
-                kotlin.coroutines.EmptyCoroutineContext.INSTANCE,
-                (scope, continuation) -> agent.run("Count to 3", continuation)
+                    Message.Response response2 = JavaInteropUtils.requestLLMBlocking(
+                        context,
+                        "Second step, previous result was: " + step1Result,
+                        true
+                    );
+
+                    if (response2 instanceof Message.Assistant) {
+                        return JavaInteropUtils.getAssistantContent((Message.Assistant) response2);
+                    }
+                    return "Unexpected response type";
+                })
         );
+
+        String result = JavaInteropUtils.runAgentBlocking(agent, "Count to 3");
 
         assertNotNull(result);
         assertFalse(result.isEmpty());
@@ -391,10 +311,10 @@ public class JavaAPIIntegrationTest extends KoogJavaTestBase {
     @ParameterizedTest
     @MethodSource("ai.koog.integration.tests.agent.AIAgentTestBase#getLatestModels")
     @Disabled("BUG #3: Nested runBlocking in Java lambda causes InterruptedException")
-    public void testFunctionalStrategyWithManualToolHandling(LLModel model) throws Exception {
+    public void testFunctionalStrategyWithManualToolHandling(LLModel model) {
         Models.assumeAvailable(model.getProvider());
 
-        SingleLLMPromptExecutor executor = createSingleExecutor(model);
+        MultiLLMPromptExecutor executor = createExecutor(model);
 
         JavaInteropUtils.CalculatorTools calculator = new JavaInteropUtils.CalculatorTools();
 
@@ -402,20 +322,17 @@ public class JavaAPIIntegrationTest extends KoogJavaTestBase {
 
         // DESIGN LIMITATION: functionalStrategy requires manual tool call handling
         // The strategy must implement the tool execution loop manually
-        AIAgent<String, String> agent = AIAgent.builder()
+        AIAgent<String, String> agent = JavaInteropUtils.buildFunctionalAgent(
+            JavaInteropUtils.createAgentBuilder()
                 .promptExecutor(executor)
                 .llmModel(model)
                 .systemPrompt("You are a calculator. Use the add tool to perform calculations.")
                 .toolRegistry(toolRegistry)
-                .functionalStrategy((AIAgentFunctionalContext context, String input) -> {
-                    try {
-                    Message.Response currentResponse = BuildersKt.runBlocking(
-                            kotlin.coroutines.EmptyCoroutineContext.INSTANCE,
-                            (scope, continuation) -> context.requestLLM(
-                                    "Calculate: " + input + ". You MUST use the add tool.",
-                                    true,
-                                    continuation
-                            )
+                .functionalStrategy((context, input) -> {
+                    Message.Response currentResponse = JavaInteropUtils.requestLLMBlocking(
+                        context,
+                        "Calculate: " + input + ". You MUST use the add tool.",
+                        true
                     );
 
                     int iterations = 0;
@@ -426,37 +343,24 @@ public class JavaAPIIntegrationTest extends KoogJavaTestBase {
                         Message.Tool.Call toolCall = (Message.Tool.Call) currentResponse;
 
                         // Execute the tool
-                        ReceivedToolResult toolResult = BuildersKt.runBlocking(
-                                kotlin.coroutines.EmptyCoroutineContext.INSTANCE,
-                                (scope, continuation) -> context.executeTool(toolCall, continuation)
-                        );
+                        ReceivedToolResult toolResult = JavaInteropUtils.executeToolBlocking(context, toolCall);
 
                         // Send result back to LLM
-                        currentResponse = BuildersKt.runBlocking(
-                                kotlin.coroutines.EmptyCoroutineContext.INSTANCE,
-                                (scope, continuation) -> context.sendToolResult(toolResult, continuation)
-                        );
+                        currentResponse = JavaInteropUtils.sendToolResultBlocking(context, toolResult);
 
                         iterations++;
                     }
 
                     if (currentResponse instanceof Message.Assistant) {
-                        return ((Message.Assistant) currentResponse).getContent();
+                        return JavaInteropUtils.getAssistantContent((Message.Assistant) currentResponse);
                     } else if (currentResponse instanceof Message.Tool.Call) {
-                        return "Max iterations reached, last tool: " + ((Message.Tool.Call) currentResponse).getTool();
+                        return "Max iterations reached, last tool: " + JavaInteropUtils.getToolName((Message.Tool.Call) currentResponse);
                     }
                     return "Unexpected response type";
-                } catch (InterruptedException e) {
-                    Thread.currentThread().interrupt();
-                    throw new RuntimeException(e);
-                }
                 })
-                .build();
-
-        String result = BuildersKt.runBlocking(
-                kotlin.coroutines.EmptyCoroutineContext.INSTANCE,
-                (scope, continuation) -> agent.run("10 + 5", continuation)
         );
+
+        String result = JavaInteropUtils.runAgentBlocking(agent, "10 + 5");
 
         assertNotNull(result);
         assertFalse(result.isBlank());
@@ -466,49 +370,40 @@ public class JavaAPIIntegrationTest extends KoogJavaTestBase {
     @ParameterizedTest
     @MethodSource("ai.koog.integration.tests.agent.AIAgentTestBase#getLatestModels")
     @Disabled("BUG #3: Nested runBlocking in Java lambda causes InterruptedException")
-    public void testSubtask(LLModel model) throws Exception {
+    public void testSubtask(LLModel model) {
         Models.assumeAvailable(model.getProvider());
 
-        SingleLLMPromptExecutor executor = createSingleExecutor(model);
+        MultiLLMPromptExecutor executor = createExecutor(model);
 
         JavaInteropUtils.CalculatorTools calculator = new JavaInteropUtils.CalculatorTools();
 
         List<Tool<?, ?>> calculatorTools = List.of(
-                calculator.getAddTool(),
-                calculator.getMultiplyTool()
+            calculator.getAddTool(),
+            calculator.getMultiplyTool()
         );
 
-        AIAgent<String, String> agent = AIAgent.builder()
+        AIAgent<String, String> agent = JavaInteropUtils.buildFunctionalAgent(
+            JavaInteropUtils.createAgentBuilder()
                 .promptExecutor(executor)
                 .llmModel(model)
                 .systemPrompt("You are a helpful assistant that coordinates calculations.")
                 .toolRegistry(JavaInteropUtils.createToolRegistry(calculator))
-                .functionalStrategy((AIAgentFunctionalContext context, String input) -> {
-                    try {
+                .functionalStrategy((context, input) -> {
                     // Use subtask to delegate calculation
-                    String subtaskResult = BuildersKt.runBlocking(
-                            kotlin.coroutines.EmptyCoroutineContext.INSTANCE,
-                            (scope, continuation) -> context
-                                    .subtask("Calculate: " + input)
-                                    .withInput(input)
-                                    .withOutput(String.class)
-                                    .withTools(calculatorTools)
-                                    .useLLM(model)
-                                    .run()
+                    String subtaskResult = JavaInteropUtils.runSubtaskBlocking(
+                        context,
+                        "Calculate: " + input,
+                        input,
+                        String.class,
+                        calculatorTools,
+                        model
                     );
 
                     return "Calculation result: " + subtaskResult;
-                } catch (InterruptedException e) {
-                    Thread.currentThread().interrupt();
-                    throw new RuntimeException(e);
-                }
                 })
-                .build();
-
-        String result = BuildersKt.runBlocking(
-                kotlin.coroutines.EmptyCoroutineContext.INSTANCE,
-                (scope, continuation) -> agent.run("What is 5 + 3?", continuation)
         );
+
+        String result = JavaInteropUtils.runAgentBlocking(agent, "What is 5 + 3?");
 
         assertNotNull(result);
         assertFalse(result.isEmpty());
@@ -517,29 +412,26 @@ public class JavaAPIIntegrationTest extends KoogJavaTestBase {
     @ParameterizedTest
     @MethodSource("ai.koog.integration.tests.agent.AIAgentTestBase#getLatestModels")
     @Disabled("BUG #3: Nested runBlocking in Java lambda causes InterruptedException")
-    public void testCustomStrategyWithRetry(LLModel model) throws Exception {
+    public void testCustomStrategyWithRetry(LLModel model) {
         Models.assumeAvailable(model.getProvider());
 
-        SingleLLMPromptExecutor executor = createSingleExecutor(model);
+        MultiLLMPromptExecutor executor = createExecutor(model);
 
-        AIAgent<String, String> agent = AIAgent.builder()
+        AIAgent<String, String> agent = JavaInteropUtils.buildFunctionalAgent(
+            JavaInteropUtils.createAgentBuilder()
                 .promptExecutor(executor)
                 .llmModel(model)
                 .systemPrompt("You are a helpful assistant.")
-                .functionalStrategy((AIAgentFunctionalContext context, String input) -> {
-                    try {
+                .functionalStrategy((context, input) -> {
                     // Custom strategy with retry logic
                     int maxRetries = 3;
                     String result = null;
 
                     for (int i = 0; i < maxRetries; i++) {
-                        Message.Response response = BuildersKt.runBlocking(
-                                kotlin.coroutines.EmptyCoroutineContext.INSTANCE,
-                                (scope, continuation) -> context.requestLLM(input, true, continuation)
-                        );
+                        Message.Response response = JavaInteropUtils.requestLLMBlocking(context, input, true);
 
                         if (response instanceof Message.Assistant) {
-                            result = ((Message.Assistant) response).getContent();
+                            result = JavaInteropUtils.getAssistantContent((Message.Assistant) response);
                             if (!result.isEmpty()) {
                                 break;
                             }
@@ -547,17 +439,10 @@ public class JavaAPIIntegrationTest extends KoogJavaTestBase {
                     }
 
                     return result != null ? result : "Failed after retries";
-                } catch (InterruptedException e) {
-                    Thread.currentThread().interrupt();
-                    throw new RuntimeException(e);
-                }
                 })
-                .build();
-
-        String result = BuildersKt.runBlocking(
-                kotlin.coroutines.EmptyCoroutineContext.INSTANCE,
-                (scope, continuation) -> agent.run("Hello", continuation)
         );
+
+        String result = JavaInteropUtils.runAgentBlocking(agent, "Hello");
 
         assertNotNull(result);
         assertFalse(result.isEmpty());
@@ -566,29 +451,26 @@ public class JavaAPIIntegrationTest extends KoogJavaTestBase {
     @ParameterizedTest
     @MethodSource("ai.koog.integration.tests.agent.AIAgentTestBase#getLatestModels")
     @Disabled("BUG #3: Nested runBlocking in Java lambda causes InterruptedException")
-    public void testCustomStrategyWithValidation(LLModel model) throws Exception {
+    public void testCustomStrategyWithValidation(LLModel model) {
         Models.assumeAvailable(model.getProvider());
 
-        SingleLLMPromptExecutor executor = createSingleExecutor(model);
+        MultiLLMPromptExecutor executor = createExecutor(model);
 
-        AIAgent<String, String> agent = AIAgent.builder()
+        AIAgent<String, String> agent = JavaInteropUtils.buildFunctionalAgent(
+            JavaInteropUtils.createAgentBuilder()
                 .promptExecutor(executor)
                 .llmModel(model)
                 .systemPrompt("You are a helpful assistant that generates JSON.")
-                .functionalStrategy((AIAgentFunctionalContext context, String input) -> {
-                    try {
+                .functionalStrategy((context, input) -> {
                     // Custom strategy with validation
-                    Message.Response response = BuildersKt.runBlocking(
-                            kotlin.coroutines.EmptyCoroutineContext.INSTANCE,
-                            (scope, continuation) -> context.requestLLM(
-                                    "Generate a JSON object with 'status' field set to 'success'",
-                                    true,
-                                    continuation
-                            )
+                    Message.Response response = JavaInteropUtils.requestLLMBlocking(
+                        context,
+                        "Generate a JSON object with 'status' field set to 'success'",
+                        true
                     );
 
                     if (response instanceof Message.Assistant) {
-                        String content = ((Message.Assistant) response).getContent();
+                        String content = JavaInteropUtils.getAssistantContent((Message.Assistant) response);
 
                         // Validate response contains expected content
                         if (content.contains("status") && content.contains("success")) {
@@ -598,17 +480,10 @@ public class JavaAPIIntegrationTest extends KoogJavaTestBase {
                         }
                     }
                     return "Unexpected response type";
-                } catch (InterruptedException e) {
-                    Thread.currentThread().interrupt();
-                    throw new RuntimeException(e);
-                }
                 })
-                .build();
-
-        String result = BuildersKt.runBlocking(
-                kotlin.coroutines.EmptyCoroutineContext.INSTANCE,
-                (scope, continuation) -> agent.run("Generate status JSON", continuation)
         );
+
+        String result = JavaInteropUtils.runAgentBlocking(agent, "Generate status JSON");
 
         assertNotNull(result);
         assertFalse(result.isEmpty());
@@ -625,18 +500,5 @@ public class JavaAPIIntegrationTest extends KoogJavaTestBase {
         }
         resourcesToClose.add((AutoCloseable) client);
         return new MultiLLMPromptExecutor(client);
-    }
-
-    private SingleLLMPromptExecutor createSingleExecutor(LLModel model) {
-        LLMClient client;
-        if (model.getProvider() == LLMProvider.OpenAI.INSTANCE) {
-            client = new OpenAILLMClient(TestCredentials.INSTANCE.readTestOpenAIKeyFromEnv());
-        } else if (model.getProvider() == LLMProvider.Anthropic.INSTANCE) {
-            client = new AnthropicLLMClient(TestCredentials.INSTANCE.readTestAnthropicKeyFromEnv());
-        } else {
-            throw new IllegalArgumentException("Unsupported provider: " + model.getProvider());
-        }
-        resourcesToClose.add(client);
-        return new SingleLLMPromptExecutor(client);
     }
 }
