@@ -27,7 +27,7 @@ import ai.koog.prompt.executor.clients.openai.OpenAILLMClient
 import ai.koog.prompt.executor.llms.MultiLLMPromptExecutor
 -->
 ```kotlin
-val openAIClient = OpenAILLMClient(System.getenv("OPENAI_KEY"))
+val openAIClient = OpenAILLMClient(System.getenv("OPENAI_API_KEY"))
 val promptExecutor = MultiLLMPromptExecutor(openAIClient)
 ```
 <!--- KNIT example-prompt-executors-01.kt -->
@@ -47,7 +47,7 @@ import ai.koog.prompt.executor.llms.MultiLLMPromptExecutor
 import ai.koog.prompt.llm.LLMProvider
 -->
 ```kotlin
-val openAIClient = OpenAILLMClient(System.getenv("OPENAI_KEY"))
+val openAIClient = OpenAILLMClient(System.getenv("OPENAI_API_KEY"))
 val ollamaClient = OllamaClient()
 
 val multiExecutor = MultiLLMPromptExecutor(
@@ -88,12 +88,12 @@ import kotlinx.coroutines.runBlocking
 -->
 ```kotlin
 // Create an OpenAI executor
-val promptExecutor = simpleOpenAIExecutor("OPENAI_KEY")
+val promptExecutor = simpleOpenAIExecutor("OPENAI_API_KEY")
 
 // Create a MultiLLMPromptExecutor with OpenAI, Anthropic, and Google LLM clients
-val openAIClient = OpenAILLMClient("OPENAI_KEY")
-val anthropicClient = AnthropicLLMClient("ANTHROPIC_KEY")
-val googleClient = GoogleLLMClient("GOOGLE_KEY")
+val openAIClient = OpenAILLMClient("OPENAI_API_KEY")
+val anthropicClient = AnthropicLLMClient("ANTHROPIC_API_KEY")
+val googleClient = GoogleLLMClient("GOOGLE_API_KEY")
 val multiExecutor = MultiLLMPromptExecutor(openAIClient, anthropicClient, googleClient)
 ```
 <!--- KNIT example-prompt-executors-03.kt -->
@@ -122,7 +122,7 @@ fun main() {
 -->
 ```kotlin
 // Create an OpenAI executor
-val promptExecutor = simpleOpenAIExecutor("OPENAI_KEY")
+val promptExecutor = simpleOpenAIExecutor("OPENAI_API_KEY")
 
 // Execute a prompt
 val response = promptExecutor.execute(
@@ -208,7 +208,7 @@ import ai.koog.prompt.llm.OllamaModels
 import ai.koog.prompt.llm.LLMProvider
 -->
 ```kotlin
-val openAIClient = OpenAILLMClient(System.getenv("OPENAI_KEY"))
+val openAIClient = OpenAILLMClient(System.getenv("OPENAI_API_KEY"))
 val ollamaClient = OllamaClient()
 
 val multiExecutor = MultiLLMPromptExecutor(
@@ -235,7 +235,7 @@ import ai.koog.prompt.llm.OllamaModels
 import ai.koog.prompt.llm.LLMProvider
 import kotlinx.coroutines.runBlocking
 
-val openAIClient = OpenAILLMClient(System.getenv("OPENAI_KEY"))
+val openAIClient = OpenAILLMClient(System.getenv("OPENAI_API_KEY"))
 val ollamaClient = OllamaClient()
 
 val multiExecutor = MultiLLMPromptExecutor(
