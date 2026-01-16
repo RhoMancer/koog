@@ -282,7 +282,7 @@ For details on processing structured data, see [Structured output](../structured
 To execute an agent, you call the `run()` method with the initial input.
 
 ```kotlin
-val result = agent.run("Calculate the total revenue for Q4.")
+val result = agent.run("Classify the sentiment of this review: Overall the product is good, but the packaging is too bright.")
 ```
 
 When `agent.run()` is called:
