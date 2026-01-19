@@ -12,7 +12,7 @@ import ai.koog.agents.features.opentelemetry.OpenTelemetryTestAPI.getSystemInstr
 import ai.koog.agents.features.opentelemetry.OpenTelemetryTestAPI.testClock
 import ai.koog.agents.features.opentelemetry.assertSpans
 import ai.koog.agents.features.opentelemetry.attribute.CustomAttribute
-import ai.koog.agents.features.opentelemetry.attribute.SpanAttributes
+import ai.koog.agents.features.opentelemetry.attribute.GenAIAttributes
 import ai.koog.agents.features.opentelemetry.integration.SpanAdapter
 import ai.koog.agents.features.opentelemetry.mock.MockSpanExporter
 import ai.koog.agents.features.opentelemetry.span.GenAIAgentSpan
@@ -237,8 +237,8 @@ class OpenTelemetryConfigTest : OpenTelemetryTestBase() {
             val collectedSpans = mockExporter.collectedSpans
             assertTrue(collectedSpans.isNotEmpty(), "Spans should be created during agent execution")
 
-            val conversationIdAttribute = SpanAttributes.Conversation.Id(mockExporter.lastRunId)
-            val operationNameAttribute = SpanAttributes.Operation.Name(SpanAttributes.Operation.OperationNameType.INVOKE_AGENT)
+            val conversationIdAttribute = GenAIAttributes.Conversation.Id(mockExporter.lastRunId)
+            val operationNameAttribute = GenAIAttributes.Operation.Name(GenAIAttributes.Operation.OperationNameType.INVOKE_AGENT)
 
             fun attributesMatches(attributes: Map<AttributeKey<*>, Any>): Boolean {
                 var conversationIdAttributeExists = false
@@ -263,9 +263,9 @@ class OpenTelemetryConfigTest : OpenTelemetryTestBase() {
 
             val expectedInvokeAgentSpans = listOf(
                 mapOf(
-                    "${SpanAttributes.Operation.OperationNameType.INVOKE_AGENT.id} $agentId" to mapOf(
+                    "${GenAIAttributes.Operation.OperationNameType.INVOKE_AGENT.id} $agentId" to mapOf(
                         "attributes" to mapOf(
-                            "gen_ai.operation.name" to SpanAttributes.Operation.OperationNameType.INVOKE_AGENT.id,
+                            "gen_ai.operation.name" to GenAIAttributes.Operation.OperationNameType.INVOKE_AGENT.id,
                             "gen_ai.provider.name" to model.provider.id,
                             "gen_ai.agent.id" to agentId,
                             "gen_ai.conversation.id" to mockExporter.lastRunId,
