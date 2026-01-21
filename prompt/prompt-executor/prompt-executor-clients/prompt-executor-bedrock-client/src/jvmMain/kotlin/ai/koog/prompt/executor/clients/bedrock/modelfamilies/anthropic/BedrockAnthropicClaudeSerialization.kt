@@ -24,6 +24,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.datetime.Clock
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonNamingStrategy
+import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.buildJsonArray
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.encodeToJsonElement
@@ -106,7 +107,7 @@ internal object BedrockAnthropicClaudeSerialization {
                                     BedrockAnthropicInvokeModelContent.ToolCall(
                                         msg.id!!,
                                         msg.tool,
-                                        json.decodeFromString(msg.content)
+                                        msg.contentJsonResult.getOrElse { JsonObject(emptyMap()) }
                                     )
                                 )
                             )

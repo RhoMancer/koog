@@ -23,6 +23,7 @@ import io.github.oshai.kotlinlogging.KotlinLogging
 import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
 import kotlinx.serialization.json.JsonElement
+import kotlin.coroutines.cancellation.CancellationException
 import kotlin.reflect.KType
 import kotlin.time.ExperimentalTime
 import kotlin.uuid.ExperimentalUuidApi
@@ -368,7 +369,13 @@ public class Persistence(
                         .reversed()
                         .forEach { toolCall ->
                             rollbackToolRegistry.getRollbackTool(toolCall.tool)?.let { rollbackTool ->
-                                val toolArgs = rollbackTool.decodeArgs(toolCall.contentJson)
+                                val toolArgs = try {
+                                    toolCall.contentJsonResult.getOrNull()?.let { rollbackTool.decodeArgs(it) }
+                                } catch (e: CancellationException) {
+                                    throw e
+                                } catch (_: Exception) {
+                                    null
+                                }
 
                                 rollbackTool.executeUnsafe(toolArgs)
                             }
