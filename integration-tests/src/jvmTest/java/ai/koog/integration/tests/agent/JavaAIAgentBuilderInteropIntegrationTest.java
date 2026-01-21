@@ -32,7 +32,7 @@ public class JavaAIAgentBuilderInteropIntegrationTest extends KoogJavaTestBase {
             .build();
 
         String result = runBlocking(continuation ->
-            agent.run("What is the capital of France?", continuation)
+            agent.run("What is the capital of France?", null, continuation)
         );
 
         assertNotNull(result);
@@ -52,7 +52,7 @@ public class JavaAIAgentBuilderInteropIntegrationTest extends KoogJavaTestBase {
             .temperature(0.5)
             .build();
 
-        String result = runBlocking(continuation -> agent.run("Say hello", continuation));
+        String result = runBlocking(continuation -> agent.run("Say hello", null, continuation));
 
         assertNotNull(result);
         assertFalse(result.isEmpty());
@@ -75,7 +75,7 @@ public class JavaAIAgentBuilderInteropIntegrationTest extends KoogJavaTestBase {
             .build();
 
         // Test with complex expression using both tools
-        String result = runBlocking(continuation -> agent.run("Calculate (5 + 3) * 2", continuation));
+        String result = runBlocking(continuation -> agent.run("Calculate (5 + 3) * 2", null, continuation));
 
         assertNotNull(result);
         assertFalse(result.isEmpty());
@@ -106,7 +106,7 @@ public class JavaAIAgentBuilderInteropIntegrationTest extends KoogJavaTestBase {
             .build();
 
         String result = runBlocking(continuation ->
-            agent.run("What is 8 + 12?", continuation)
+            agent.run("What is 8 + 12?", null, continuation)
         );
 
         assertNotNull(result);
@@ -131,7 +131,7 @@ public class JavaAIAgentBuilderInteropIntegrationTest extends KoogJavaTestBase {
             .maxIterations(5)
             .build();
 
-        String result = runBlocking(continuation -> agent.run("What is 5 + 3?", continuation));
+        String result = runBlocking(continuation -> agent.run("What is 5 + 3?", null, continuation));
 
         assertNotNull(result);
         assertFalse(result.isEmpty());

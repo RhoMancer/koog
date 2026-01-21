@@ -1,6 +1,6 @@
 package ai.koog.agents.planner
 
-import ai.koog.agents.core.agent.StatefulSingleUseAIAgent
+import ai.koog.agents.core.agent.AIAgentBase
 import ai.koog.agents.core.agent.config.AIAgentConfig
 import ai.koog.agents.core.agent.context.AIAgentFunctionalContext
 import ai.koog.agents.core.agent.context.AIAgentLLMContext
@@ -43,7 +43,7 @@ public class PlannerAIAgent<State, Plan>(
     public val clock: Clock = Clock.System,
     @property:InternalAgentsApi
     public val installFeatures: FeatureContext.() -> Unit = {}
-) : StatefulSingleUseAIAgent<State, State, AIAgentFunctionalContext>(
+) : AIAgentBase<State, State, AIAgentFunctionalContext>(
     logger = logger,
     id = id,
 ) {

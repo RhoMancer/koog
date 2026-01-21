@@ -179,7 +179,7 @@ class PostgresPersistenceAgentRunTest {
         }
 
         // Act: run
-        val output = agent.run("Start the test")
+        val output = agent.run("Start the test", null)
         val latest = provider.getLatestCheckpoint(agentId)
 
         output shouldBe "History: You are a test agent.\n" +
@@ -223,7 +223,7 @@ class PostgresPersistenceAgentRunTest {
         }
 
         // Act: run
-        val output = agent.run("Start the test")
+        val output = agent.run("Start the test", null)
 
         output shouldBeEqual "History: You are a test agent.\n" +
             "Node 1 output\n" +
@@ -265,7 +265,7 @@ class PostgresPersistenceAgentRunTest {
         }
 
         // Act: run
-        val output = agent.run("Start the test")
+        val output = agent.run("Start the test", null)
         val latest = provider.getLatestCheckpoint(agentId)
 
         output shouldBe "History: You are a test agent.\n" +

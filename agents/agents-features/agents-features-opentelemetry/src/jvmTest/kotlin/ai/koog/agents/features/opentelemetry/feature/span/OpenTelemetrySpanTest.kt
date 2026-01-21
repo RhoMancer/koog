@@ -85,8 +85,6 @@ class OpenTelemetrySpanTest : OpenTelemetryTestBase() {
             val collectedSpans = mockExporter.collectedSpans
             assertTrue(collectedSpans.isNotEmpty(), "Spans should be created during agent execution")
 
-            agentService.closeAll()
-
             // Check spans
             val model = defaultModel
 

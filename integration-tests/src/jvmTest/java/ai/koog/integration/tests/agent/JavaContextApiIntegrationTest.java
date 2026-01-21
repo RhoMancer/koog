@@ -113,7 +113,7 @@ public class JavaContextApiIntegrationTest extends KoogJavaTestBase {
                 })
         );
 
-        String result = runBlocking(continuation -> agent.run("Create person profile", continuation));
+        String result = runBlocking(continuation -> agent.run("Create person profile", null, continuation));
 
         assertNotNull(result);
         assertFalse(result.isEmpty());

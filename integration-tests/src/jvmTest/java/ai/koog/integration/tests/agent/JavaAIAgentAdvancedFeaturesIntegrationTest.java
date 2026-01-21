@@ -1,7 +1,6 @@
 package ai.koog.integration.tests.agent;
 
 import ai.koog.agents.core.agent.AIAgent;
-import ai.koog.agents.core.agent.AIAgentState;
 import ai.koog.agents.core.tools.ToolRegistry;
 import ai.koog.agents.features.eventHandler.feature.EventHandler;
 import ai.koog.integration.tests.base.KoogJavaTestBase;
@@ -49,53 +48,11 @@ public class JavaAIAgentAdvancedFeaturesIntegrationTest extends KoogJavaTestBase
             })
             .build();
 
-        String result = runBlocking(continuation -> agent.run("What is the transaction ID for order number 12345? You must use the getTransactionId tool.", continuation));
+        String result = runBlocking(continuation -> agent.run("What is the transaction ID for order number 12345? You must use the getTransactionId tool.", null, continuation));
 
         assertNotNull(result);
         assertTrue(agentStarted.get(), "Agent should have started");
         assertTrue(agentCompleted.get(), "Agent should have completed");
         assertTrue(llmInterceptCount.get() > 0, "LLM interceptor should have been called");
-    }
-
-    @ParameterizedTest
-    @MethodSource("ai.koog.integration.tests.agent.AIAgentTestBase#getLatestModels")
-    public void integration_GetAgentState(LLModel model) {
-        Models.assumeAvailable(model.getProvider());
-
-        AIAgent<String, String> agent = AIAgent.builder()
-            .promptExecutor(createExecutor(model))
-            .llmModel(model)
-            .systemPrompt("You are a helpful assistant.")
-            .build();
-
-        String result = runBlocking(continuation -> agent.run("Say hello", continuation));
-
-        assertNotNull(result);
-
-        var state = agent.getState();
-        assertNotNull(state);
-        assertInstanceOf(AIAgentState.Finished.class, state);
-        AIAgentState.Finished<String> finishedState = (AIAgentState.Finished<String>) state;
-        assertEquals(result, finishedState.getResult());
-    }
-
-    @ParameterizedTest
-    @MethodSource("ai.koog.integration.tests.agent.AIAgentTestBase#getLatestModels")
-    public void integration_GetAgentResult(LLModel model) {
-        Models.assumeAvailable(model.getProvider());
-
-        AIAgent<String, String> agent = AIAgent.builder()
-            .promptExecutor(createExecutor(model))
-            .llmModel(model)
-            .systemPrompt("You are a helpful assistant.")
-            .build();
-
-        String result = runBlocking(continuation -> agent.run("Say hello", continuation));
-
-        assertNotNull(result);
-
-        String agentResult = runBlocking(continuation -> agent.result(continuation));
-        assertNotNull(agentResult);
-        assertEquals(result, agentResult);
     }
 }

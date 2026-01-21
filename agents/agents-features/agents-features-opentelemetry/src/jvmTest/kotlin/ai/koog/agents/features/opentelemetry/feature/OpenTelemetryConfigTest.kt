@@ -169,7 +169,7 @@ class OpenTelemetryConfigTest : OpenTelemetryTestBase() {
                 }
             }
 
-            agent.run(userPrompt)
+            agent.run(userPrompt, null)
             val collectedSpans = mockExporter.collectedSpans
             agent.close()
 
@@ -231,7 +231,7 @@ class OpenTelemetryConfigTest : OpenTelemetryTestBase() {
                     setVerbose(true)
                 }
             }.use { agent ->
-                agent.run("")
+                agent.run("", null)
             }
 
             val collectedSpans = mockExporter.collectedSpans

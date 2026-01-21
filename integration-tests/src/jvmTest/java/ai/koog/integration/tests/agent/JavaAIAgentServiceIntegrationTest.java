@@ -39,13 +39,6 @@ public class JavaAIAgentServiceIntegrationTest extends KoogJavaTestBase {
         assertNotNull(agent2);
         assertEquals("agent-1", agent1.getId());
         assertEquals("agent-2", agent2.getId());
-
-        List<GraphAIAgent<String, String>> allAgents = service.listAllAgents();
-        assertEquals(2, allAgents.size());
-        assertTrue(allAgents.contains(agent1));
-        assertTrue(allAgents.contains(agent2));
-
-        service.closeAll();
     }
 
     @ParameterizedTest
@@ -68,8 +61,6 @@ public class JavaAIAgentServiceIntegrationTest extends KoogJavaTestBase {
 
         GraphAIAgent<String, String> nonExistent = service.agentById("non-existent");
         assertNull(nonExistent);
-
-        service.closeAll();
     }
 
     @ParameterizedTest
@@ -85,55 +76,12 @@ public class JavaAIAgentServiceIntegrationTest extends KoogJavaTestBase {
 
         // Test removing by agent instance
         GraphAIAgent<String, String> agent = service.createAgent("removable-agent");
-        assertEquals(1, service.listAllAgents().size());
 
         boolean removed = service.removeAgent(agent);
         assertTrue(removed);
-        assertEquals(0, service.listAllAgents().size());
 
         boolean removedAgain = service.removeAgent(agent);
         assertFalse(removedAgain);
-
-        // Test removing by agent ID
-        service.createAgent("agent-to-remove");
-        assertEquals(1, service.listAllAgents().size());
-
-        boolean removedById = service.removeAgentWithId("agent-to-remove");
-        assertTrue(removedById);
-        assertEquals(0, service.listAllAgents().size());
-
-        boolean removedByIdAgain = service.removeAgentWithId("agent-to-remove");
-        assertFalse(removedByIdAgain);
-
-        service.closeAll();
-    }
-
-    @ParameterizedTest
-    @MethodSource("ai.koog.integration.tests.agent.AIAgentTestBase#getLatestModels")
-    public void integration_AIAgentServiceStateTracking(LLModel model) {
-        Models.assumeAvailable(model.getProvider());
-
-        GraphAIAgentService<String, String> service = AIAgentService.builder()
-            .promptExecutor(createExecutor(model))
-            .llmModel(model)
-            .systemPrompt("You are a helpful assistant.")
-            .build();
-
-        GraphAIAgent<String, String> agent = service.createAgent("state-test-agent");
-
-        List<GraphAIAgent<String, String>> inactiveAgents = service.listInactiveAgents();
-        assertTrue(inactiveAgents.contains(agent));
-
-        List<GraphAIAgent<String, String>> activeAgents = service.listActiveAgents();
-        assertFalse(activeAgents.contains(agent));
-
-        String result = runBlocking(continuation -> agent.run("Say hello", continuation));
-        assertNotNull(result);
-
-        List<GraphAIAgent<String, String>> finishedAgents = service.listFinishedAgents();
-        assertTrue(finishedAgents.contains(agent));
-
-        service.closeAll();
     }
 
     @ParameterizedTest
@@ -153,12 +101,6 @@ public class JavaAIAgentServiceIntegrationTest extends KoogJavaTestBase {
 
         assertNotNull(result);
         assertFalse(result.isEmpty());
-
-        List<GraphAIAgent<String, String>> allAgents = service.listAllAgents();
-        assertEquals(1, allAgents.size());
-        assertEquals("one-shot-agent", allAgents.get(0).getId());
-
-        service.closeAll();
     }
 
     @ParameterizedTest
@@ -178,11 +120,9 @@ public class JavaAIAgentServiceIntegrationTest extends KoogJavaTestBase {
 
         GraphAIAgent<String, String> agent = service.createAgent("calculator-agent");
 
-        String result = runBlocking(continuation -> agent.run("Calculate 10 + 15", continuation));
+        String result = runBlocking(continuation -> agent.run("Calculate 10 + 15", null, continuation));
         assertNotNull(result);
         assertFalse(result.isBlank());
-
-        service.closeAll();
     }
 
     @ParameterizedTest
@@ -197,13 +137,11 @@ public class JavaAIAgentServiceIntegrationTest extends KoogJavaTestBase {
             .maxIterations(5)
             .build();
 
-        GraphAIAgent<String, String> agent = service.createAgent();
+        GraphAIAgent<String, String> agent = service.createAgent("agent-id");
 
         assertNotNull(agent);
         assertEquals(0.7, service.getAgentConfig().getPrompt().getParams().getTemperature());
         assertEquals(5, service.getAgentConfig().getMaxAgentIterations());
-
-        service.closeAll();
     }
 
     @ParameterizedTest
@@ -225,8 +163,6 @@ public class JavaAIAgentServiceIntegrationTest extends KoogJavaTestBase {
         GraphAIAgent<String, String> retrievedAgent = service.agentById("custom-test-id");
         assertNotNull(retrievedAgent);
         assertEquals(agent, retrievedAgent);
-
-        service.closeAll();
     }
 
     @ParameterizedTest
@@ -250,12 +186,10 @@ public class JavaAIAgentServiceIntegrationTest extends KoogJavaTestBase {
 
         var agent = service.createAgent("functional-agent");
 
-        String result = runBlocking(continuation -> agent.run("Say hello", continuation));
+        String result = runBlocking(continuation -> agent.run("Say hello"));
 
         assertNotNull(result);
         assertFalse(result.isEmpty());
         assertTrue(result.toLowerCase().contains("hello"));
-
-        service.closeAll();
     }
 }

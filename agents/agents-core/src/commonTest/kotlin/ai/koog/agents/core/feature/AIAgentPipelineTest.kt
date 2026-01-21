@@ -87,7 +87,7 @@ class AIAgentPipelineTest {
                 runIds = interceptedRunIds
             }
         }.use { agent ->
-            agent.run("Hello World!")
+            agent.run("Hello World!", null)
         }
 
         val actualEvents = interceptedEvents.filter { collectedEvent ->
@@ -142,7 +142,7 @@ class AIAgentPipelineTest {
                 runIds = interceptedRunIds
             }
         }.use { agent ->
-            val throwable = assertFails { agent.run(agentInput) }
+            val throwable = assertFails { agent.run(agentInput, null) }
             assertEquals(testErrorMessage, throwable.message)
         }
 
@@ -194,7 +194,7 @@ class AIAgentPipelineTest {
                     runIds = interceptedRunIds
                 }
             }.use { agent ->
-                agent.run(agentInput)
+                agent.run(agentInput, null)
             }
         }
 
@@ -249,7 +249,7 @@ class AIAgentPipelineTest {
                 runIds = interceptedRunIds
             }
         }.use { agent ->
-            agent.run(agentInput)
+            agent.run(agentInput, null)
         }
 
         val actualEvents = interceptedEvents.filter { collectedEvent ->
@@ -306,7 +306,7 @@ class AIAgentPipelineTest {
                 }
             }.use { agent ->
                 assertFailsWith<IllegalStateException> {
-                    agent.run(agentInput)
+                    agent.run(agentInput, null)
                 }
             }
 
@@ -363,7 +363,7 @@ class AIAgentPipelineTest {
                 }
             }.use { agent ->
                 assertFailsWith<CancellationException> {
-                    agent.run(agentInput)
+                    agent.run(agentInput, null)
                 }
             }
 
@@ -422,7 +422,7 @@ class AIAgentPipelineTest {
                 runIds = interceptedRunIds
             }
         }.use { agent ->
-            agent.run(agentInput)
+            agent.run(agentInput, null)
         }
 
         val actualEvents = interceptedEvents.filter { collectedEvent ->
@@ -483,7 +483,7 @@ class AIAgentPipelineTest {
                 runIds = interceptedRunIds
             }
         }.use { agent ->
-            agent.run(agentInput)
+            agent.run(agentInput, null)
         }
 
         val actualEvents = interceptedEvents.filter { collectedEvent ->
@@ -531,7 +531,7 @@ class AIAgentPipelineTest {
                 runIds = interceptedRunIds
             }
         }.use { agent ->
-            agent.run(agentInput)
+            agent.run(agentInput, null)
         }
 
         val actualEvents = interceptedEvents.filter { collectedEvent ->
@@ -579,7 +579,7 @@ class AIAgentPipelineTest {
                 runIds = interceptedRunIds
             }
         }.use { agent ->
-            agent.run(agentInput)
+            agent.run(agentInput, null)
         }
 
         val actualEvents = interceptedEvents.filter { collectedEvent ->
@@ -692,7 +692,7 @@ class AIAgentPipelineTest {
                 runIds = interceptedRunIds
             }
         }.use { agent ->
-            agent.run(agentInput)
+            agent.run(agentInput, null)
         }
 
         val actualEvents = interceptedEvents.filter { collectedEvent ->
@@ -749,7 +749,7 @@ class AIAgentPipelineTest {
                 runIds = interceptedRunIds
             }
         }.use { agent ->
-            agent.run(agentInput)
+            agent.run(agentInput, null)
         }
 
         val actualEvents = interceptedEvents.filter { collectedEvent ->
@@ -815,7 +815,7 @@ class AIAgentPipelineTest {
                 runIds = interceptedRunIds
             }
         }.use { agent ->
-            agent.run(agentInput)
+            agent.run(agentInput, null)
         }
 
         val actualEvents = interceptedEvents.filter { collectedEvent ->
