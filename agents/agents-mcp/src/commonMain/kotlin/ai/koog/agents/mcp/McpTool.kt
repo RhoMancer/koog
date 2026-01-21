@@ -19,7 +19,7 @@ import kotlinx.serialization.json.jsonObject
  * 2. Calling the MCP tool through the MCP client
  * 3. Converting MCP tool results back to agent framework tool results
  */
-public class McpTool(
+internal class McpTool(
     private val mcpClient: Client,
     descriptor: ToolDescriptor,
 ) : Tool<JsonObject, CallToolResult?>(

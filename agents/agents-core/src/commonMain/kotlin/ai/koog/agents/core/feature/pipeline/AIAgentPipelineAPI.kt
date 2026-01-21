@@ -393,7 +393,7 @@ public interface AIAgentPipelineAPI {
     //endregion
 
     @InternalAgentsApi
-    public suspend fun prepareFeatures()
+    public suspend fun prepareFeatures(context: AIAgentContext)
 
     @InternalAgentsApi
     public suspend fun closeAllFeaturesMessageProcessors()

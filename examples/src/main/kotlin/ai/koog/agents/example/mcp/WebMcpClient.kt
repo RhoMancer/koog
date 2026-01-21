@@ -4,7 +4,11 @@
 package koog
 
 import ai.koog.agents.core.agent.AIAgent
-import ai.koog.agents.mcp.McpToolRegistryProvider
+import ai.koog.agents.features.mcp.McpToolRegistryProvider
+import ai.koog.agents.features.mcp.defaultStdioTransport
+import ai.koog.agents.features.mcp.feature.Mcp
+import ai.koog.agents.features.mcp.feature.McpFeatureConfig
+import ai.koog.agents.features.mcp.feature.mcpToolRegistry
 import ai.koog.prompt.executor.clients.openai.OpenAIModels
 import ai.koog.prompt.executor.llms.all.simpleOpenAIExecutor
 import kotlinx.coroutines.runBlocking
@@ -48,36 +52,27 @@ fun main() = runBlocking {
     // Give the process a moment to start
     Thread.sleep(2000)
 
-    println("Creating STDIO transport...")
-
     try {
-        // Create the STDIO transport
-        val transport = McpToolRegistryProvider.defaultStdioTransport(process)
+        println("Creating STDIO transport...")
 
-        println("Creating tool registry...")
-
-        // Create a tool registry with tools from the Bright Data MCP server
-        val toolRegistry = McpToolRegistryProvider.fromTransport(
-            transport = transport,
-            name = "bright-data-client",
-            version = "1.0.0"
-        )
-
-        // Print available tools (optional - for debugging)
-        println("Available tools from Bright Data MCP server:")
-        toolRegistry.tools.forEach { tool ->
-            println("- ${tool.name}")
-        }
-
-        // Create the agent with MCP tools
+        // Create the agent with MCP feature
         val agent = AIAgent(
             executor = simpleOpenAIExecutor(openAIApiKey),
             systemPrompt = "You are a helpful assistant with access to web scraping and data collection tools from Bright Data. You can help users gather information from websites, analyze web data, and provide insights.",
             llmModel = OpenAIModels.Chat.GPT4o,
             temperature = 0.7,
-            toolRegistry = toolRegistry,
             maxIterations = 100
-        )
+        ) {
+            // Install MCP feature with the same configuration
+            install(Mcp) {
+                addServerTransport(
+                    transport = McpToolRegistryProvider.defaultStdioTransport(process),
+                    name = "bright-data-client",
+                    version = "1.0.0",
+                    id = "bright-data"
+                )
+            }
+        }
         val result = agent.run("Please search for Koog.ai and tell me what is it and who invented it")
         println("\nAgent response:")
         println(result)

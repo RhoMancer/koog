@@ -1054,7 +1054,7 @@ public expect abstract class AIAgentPipeline(agentConfig: AIAgentConfig, clock: 
     public override fun FeatureConfig.isAccepted(eventContext: AgentLifecycleEventContext): Boolean
 
     @InternalAgentsApi
-    public override suspend fun prepareFeatures()
+    public override suspend fun prepareFeatures(context: AIAgentContext)
 
     @InternalAgentsApi
     public override suspend fun closeAllFeaturesMessageProcessors()

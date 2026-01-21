@@ -24,6 +24,7 @@ include(":agents:agents-features:agents-features-snapshot")
 include(":agents:agents-features:agents-features-a2a-core")
 include(":agents:agents-features:agents-features-a2a-server")
 include(":agents:agents-features:agents-features-a2a-client")
+include(":agents:agents-features:agents-features-mcp")
 
 include(":agents:agents-mcp")
 include(":agents:agents-mcp-server")

@@ -8,9 +8,10 @@ import ai.koog.agents.core.dsl.extension.nodeLLMRequest
 import ai.koog.agents.core.dsl.extension.onAssistantMessage
 import ai.koog.agents.ext.agent.subgraphWithTask
 import ai.koog.agents.features.eventHandler.feature.EventHandler
+import ai.koog.agents.features.mcp.feature.Mcp
+import ai.koog.agents.features.mcp.feature.McpServerInfo
+import ai.koog.agents.features.mcp.stdioClientTransport
 import ai.koog.agents.features.tracing.feature.Tracing
-import ai.koog.agents.mcp.McpToolRegistryProvider
-import ai.koog.agents.mcp.defaultStdioTransport
 import ai.koog.prompt.dsl.prompt
 import ai.koog.prompt.executor.clients.openai.OpenAIModels
 import ai.koog.prompt.executor.llms.all.simpleOpenAIExecutor
@@ -55,16 +56,6 @@ fun main() {
 
     try {
         runBlocking {
-            // Create the ToolRegistry with tools from the MCP server
-            val toolRegistry = McpToolRegistryProvider.fromTransport(
-                transport = McpToolRegistryProvider.defaultStdioTransport(process)
-            )
-
-            toolRegistry.tools.forEach {
-                println(it.name)
-                println(it.descriptor)
-            }
-
             val agentConfig = AIAgentConfig(
                 prompt = prompt("cook_agent_system_prompt") {
                     system {
@@ -80,19 +71,13 @@ fun main() {
 
             val strategy = strategy<String, String>("unity_interaction") {
                 val nodePlanIngredients by nodeLLMRequest(allowToolCalls = false)
-                val interactionWithUnity by subgraphWithTask<String, String>(
-                    // work with plan
-                    tools = toolRegistry.tools,
-                ) { input ->
+                val interactionWithUnity by subgraphWithTask<String, String>() { input ->
                     "Start interact with Unity according to the plan: $input"
                 }
 
                 edge(
                     nodeStart forwardTo nodePlanIngredients transformed {
-                        "Create detailed plan for $agentInput" +
-                            "unsing next tools: ${toolRegistry.tools.joinToString("\n") {
-                                it.name + "\ndescription:" + it.descriptor
-                            }}"
+                        "Create detailed plan for $agentInput"
                     }
                 )
                 edge(nodePlanIngredients forwardTo interactionWithUnity onAssistantMessage { true })
@@ -102,9 +87,16 @@ fun main() {
             val agent = AIAgent(
                 promptExecutor = executor,
                 strategy = strategy,
-                agentConfig = agentConfig,
-                toolRegistry = toolRegistry
+                agentConfig = agentConfig
             ) {
+                // Install MCP feature with the same configuration
+                install(Mcp) {
+                    addMcpServerFromTransport(
+                        transport = stdioClientTransport(process),
+                        serverInfo = McpServerInfo("unity-mcp")
+                    )
+                }
+
                 install(Tracing)
 
                 install(EventHandler) {

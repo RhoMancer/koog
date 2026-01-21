@@ -297,6 +297,7 @@ The OpenTelemetry feature automatically creates different types of spans to trac
 - **SubgraphExecuteSpan**: the execution of a subgraph within the agent strategy. This is a custom, Koog-specific span.
 - **InferenceSpan**: an LLM call.
 - **ExecuteToolSpan**: a tool call.
+- **McpClientSpan**: an MCP (Model Context Protocol) client operation. This span follows OpenTelemetry semantic conventions for MCP.
 
 Spans are organized in a nested, hierarchical structure. Here is an example of a span structure:
 
@@ -665,3 +666,175 @@ fun main() {
 
 4. **Span adapters override each other**
     - Currently, the OpenTelemetry agent feature does not support applying multiple span adapters [KG-265](https://youtrack.jetbrains.com/issue/KG-265/Adding-Weave-exporter-breaks-Langfuse-exporter).
+
+## MCP (Model Context Protocol) telemetry support
+
+Koog provides comprehensive OpenTelemetry instrumentation for MCP operations following the [official OpenTelemetry semantic conventions for MCP](https://github.com/open-telemetry/semantic-conventions/pull/2083).
+
+### Overview
+
+The MCP telemetry support includes:
+
+- **Automatic enrichment** of tool execution spans with MCP-specific attributes
+- **Client-side instrumentation** for MCP client operations (tools/call, resources/read, prompts/get, etc.)
+- **Server-side instrumentation** for MCP server operations
+- **Metrics collection** for operation and session durations
+- **Full semantic convention compliance** with all required, conditionally required, and recommended attributes
+
+### MCP attributes
+
+MCP telemetry follows OpenTelemetry semantic conventions and includes the following attribute groups:
+
+**Required attributes:**
+- `mcp.method.name`: The MCP method name (e.g., "tools/call", "resources/read", "prompts/get")
+
+**Conditionally required attributes:**
+- `gen_ai.tool.name`: When operation involves a tool
+- `gen_ai.prompt.name`: When operation involves a prompt
+- `jsonrpc.request.id`: When executing a request (not a notification)
+- `mcp.resource.uri`: When request includes a resource URI
+- `error.type`: When operation fails
+- `rpc.response.status_code`: If response contains error code
+
+**Recommended attributes:**
+- `mcp.session.id`: Session identifier
+- `mcp.protocol.version`: MCP protocol version (e.g., "2025-06-18")
+- `jsonrpc.protocol.version`: JSON-RPC version (if not 2.0)
+- `network.protocol.name`: Network protocol (e.g., "http", "websocket")
+- `network.protocol.version`: Protocol version
+- `network.transport`: Transport type ("pipe" for stdio, "tcp" for HTTP, "quic" for HTTP/3)
+- `server.address` and `server.port`: For client operations
+- `client.address` and `client.port`: For server operations
+
+### Client-side instrumentation
+
+To instrument MCP client operations, wrap your MCP client with `McpClientTelemetryWrapper`:
+
+```kotlin
+// Create your MCP client
+val mcpClient: Client
+
+// Wrap it with telemetry
+val telemetryWrapper = McpClientTelemetryWrapper(
+    client = mcpClient,
+    sessionId = "session-123",
+    mcpProtocolVersion = "2025-06-18",
+    serverAddress = "localhost",
+    serverPort = 3000,
+    networkTransport = "tcp",
+    networkProtocolName = "http",
+    networkProtocolVersion = "1.1"
+)
+
+// Use the wrapper for MCP operations
+val result = telemetryWrapper.callTool("my-tool", arguments)
+```
+
+The wrapper automatically sets the appropriate MCP telemetry context before each operation, which is then picked up by the OpenTelemetry feature to enrich spans with MCP-specific attributes.
+
+**Supported operations:**
+- `callTool()`: Call an MCP tool (method: "tools/call")
+
+
+### MCP metrics
+
+The MCP metrics support provides histogram metrics for tracking operation and session durations:
+
+**Available metrics:**
+- `mcp.client.operation.duration`: Duration of MCP client operations (in seconds)
+- `mcp.client.session.duration`: Duration of MCP client sessions (in seconds)
+
+**Recommended bucket boundaries:** `[0.01, 0.02, 0.05, 0.1, 0.2, 0.5, 1, 2, 5, 10, 30, 60, 120, 300]`
+
+Example usage:
+
+```kotlin
+// Initialize MCP metrics with your meter
+val meter = openTelemetry.getMeter("my-service")
+val mcpMetrics = McpMetrics(meter)
+
+// Record a client operation duration
+mcpMetrics.recordClientOperationDuration(
+    duration = 150.milliseconds,
+    methodName = "tools/call",
+    toolName = "search",
+    sessionId = "session-123",
+    mcpProtocolVersion = "2025-06-18",
+    serverAddress = "localhost",
+    serverPort = 3000
+)
+```
+
+### Span naming convention
+
+MCP spans follow the naming convention: `{mcp.method.name} {target}`
+
+Where `{target}` is the tool name or prompt name when applicable. Examples:
+- `"tools/call search"` - calling a tool named "search"
+- `"prompts/get code-review"` - getting a prompt named "code-review"
+- `"resources/read"` - reading a resource (no specific target name)
+
+### Context propagation
+
+MCP telemetry uses thread-local context to propagate MCP-specific information without modifying the tool interface. The telemetry context is automatically:
+
+1. Set before executing MCP operations
+2. Picked up by the OpenTelemetry feature
+3. Used to enrich spans with MCP attributes
+4. Cleared after operation completes
+
+This design ensures clean separation between MCP operations and telemetry instrumentation.
+
+### Best practices
+
+1. **Always set session IDs** when working with persistent MCP sessions to enable session tracking
+2. **Include protocol versions** to help identify compatibility issues
+3. **Use appropriate network transport values**: "pipe" for stdio, "tcp" for HTTP, "quic" for HTTP/3
+4. **Propagate request IDs** from JSON-RPC requests for complete request tracing
+5. **Include resource URIs** in resource operations for detailed tracking
+6. **Monitor metrics** to identify performance bottlenecks in MCP operations
+
+### Example: Full MCP client with telemetry
+
+```kotlin
+// Create MCP client with telemetry wrapper
+val mcpClient: Client
+val telemetryClient = McpClientTelemetryWrapper(
+    client = mcpClient,
+    sessionId = "session-123",
+    mcpProtocolVersion = "2025-06-18",
+    serverAddress = "localhost",
+    serverPort = 3000,
+    networkTransport = "tcp"
+)
+
+// List available tools
+val toolsList = telemetryClient.listTools()
+
+// Create tool registry with MCP tools
+val toolRegistry = ToolRegistry().apply {
+    toolsList.tools.forEach { tool ->
+        registerTool(McpTool(mcpClient, tool.toToolDescriptor()))
+    }
+}
+
+// Create agent with OpenTelemetry enabled
+val agent = AIAgent(
+    promptExecutor = simpleOpenAIExecutor(apiKey),
+    llmModel = OpenAIModels.Chat.GPT4o,
+    systemPrompt = "You are a helpful assistant.",
+    toolRegistry = toolRegistry
+) {
+    install(OpenTelemetry) {
+        setServiceInfo("mcp-agent-service", "1.0.0")
+        addSpanExporter(LoggingSpanExporter.create())
+    }
+}
+
+// Run agent - MCP tool calls will be automatically instrumented
+agent.use {
+    it.run("Use the search tool to find information")
+}
+```
+
+This setup provides complete observability for MCP operations with minimal code changes, following OpenTelemetry best practices and semantic conventions.

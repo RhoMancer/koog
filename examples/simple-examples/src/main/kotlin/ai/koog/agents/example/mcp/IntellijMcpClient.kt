@@ -1,7 +1,9 @@
 package ai.koog.agents.example.mcp
 
 import ai.koog.agents.core.agent.AIAgent
-import ai.koog.agents.mcp.McpToolRegistryProvider
+import ai.koog.agents.features.mcp.feature.Mcp
+import ai.koog.agents.features.mcp.feature.McpServerInfo
+import ai.koog.agents.features.mcp.feature.sseClientTransport
 import ai.koog.prompt.executor.clients.openai.OpenAIModels
 import ai.koog.prompt.executor.llms.all.simpleOpenAIExecutor
 import kotlinx.coroutines.runBlocking
@@ -31,22 +33,19 @@ fun main() {
 
     try {
         runBlocking {
-            // Create the ToolRegistry with tools from the MCP server
-            val toolRegistry = McpToolRegistryProvider.fromTransport(
-                transport = McpToolRegistryProvider.defaultSseTransport("http://localhost:64342/sse")
-            )
-
-            toolRegistry.tools.forEach {
-                println(it.name)
-                println(it.descriptor)
-            }
-
-            // Create the runner
+            // Create the agent with MCP feature
             val agent = AIAgent(
                 promptExecutor = simpleOpenAIExecutor(openAIApiToken),
                 llmModel = OpenAIModels.Chat.GPT4o,
-                toolRegistry = toolRegistry,
-            )
+            ) {
+                // Install MCP feature with the same configuration
+                install(Mcp) {
+                    addMcpServerFromTransport(
+                        transport = sseClientTransport(64342, "http://localhost:64342/sse"),
+                        serverInfo = McpServerInfo("intellij", "http://localhost:64342/sse", 64342),
+                    )
+                }
+            }
             val request = "Count number of files in koog project"
             println(request)
             agent.run(request + "You can only call tools. Get it by calling intellij tools.")

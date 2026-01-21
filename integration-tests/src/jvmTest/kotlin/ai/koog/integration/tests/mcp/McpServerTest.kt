@@ -1,10 +1,13 @@
 package ai.koog.integration.tests.mcp
 
 import ai.koog.agents.core.agent.AIAgent
+import ai.koog.agents.core.agent.GraphAIAgent
 import ai.koog.agents.core.agent.singleRunStrategy
+import ai.koog.agents.core.annotation.InternalAgentsApi
+import ai.koog.agents.core.feature.handler.tool.McpTool
 import ai.koog.agents.core.tools.ToolRegistry
-import ai.koog.agents.mcp.McpTool
-import ai.koog.agents.mcp.McpToolRegistryProvider
+import ai.koog.agents.features.mcp.feature.Mcp
+import ai.koog.agents.features.mcp.feature.McpServerInfo
 import ai.koog.agents.mcp.server.startSseMcpServer
 import ai.koog.agents.testing.network.NetUtil.isPortAvailable
 import ai.koog.agents.testing.tools.RandomNumberTool
@@ -19,7 +22,10 @@ import io.kotest.matchers.shouldNotBe
 import io.kotest.matchers.string.shouldContain
 import io.kotest.matchers.types.shouldBeTypeOf
 import io.kotest.matchers.types.shouldNotBeTypeOf
+import io.ktor.client.HttpClient
+import io.ktor.client.plugins.sse.SSE
 import io.ktor.server.netty.Netty
+import io.modelcontextprotocol.kotlin.sdk.client.SseClientTransport
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.withContext
@@ -40,11 +46,12 @@ class McpServerTest {
         )
     }
 
+    @OptIn(InternalAgentsApi::class)
     @ParameterizedTest
     @MethodSource("getModels")
     fun integration_testMcpServerWithSSETransport(model: LLModel) = runTest(timeout = 1.minutes) {
         val randomNumberTool = RandomNumberTool()
-        randomNumberTool.shouldNotBeTypeOf<McpTool>()
+        randomNumberTool.shouldNotBeTypeOf<McpTool<*, *>>()
 
         val (server, connectors) = startSseMcpServer(
             factory = Netty,
@@ -57,27 +64,32 @@ class McpServerTest {
         port shouldNotBe 0
 
         try {
-            val toolRegistry = withContext(Dispatchers.Default.limitedParallelism(1)) {
-                withTimeout(20.seconds) {
-                    McpToolRegistryProvider.fromTransport(
-                        transport = McpToolRegistryProvider.defaultSseTransport("http://localhost:$port")
-                    )
-                }
-            }
-
-            toolRegistry.tools.map { it.descriptor }.shouldContainExactly(randomNumberTool.descriptor)
-            toolRegistry.tools.forEach { it.shouldBeTypeOf<McpTool>() }
-
             withContext(Dispatchers.Default.limitedParallelism(1)) {
                 withTimeout(40.seconds) {
-                    AIAgent(
+                    val aiAgent = AIAgent(
                         promptExecutor = SingleLLMPromptExecutor(getLLMClientForProvider(model.provider)),
                         strategy = singleRunStrategy(),
                         llmModel = model,
-                        toolRegistry = toolRegistry,
-                    ).run("Provide random number using ${randomNumberTool.name}, YOU MUST USE TOOLS!")
+                    ) {
+                        install(Mcp) {
+                            addMcpServerFromTransport(
+                                transport = SseClientTransport(HttpClient {
+                                    install(SSE)
+                                }, "http://localhost:$port"),
+                                serverInfo = McpServerInfo("http://localhost:$port", "http://localhost:$port", port)
+                            )
+                        }
+                    }
+                    val result = aiAgent.run(
+                        agentInput = "Provide random number using ${randomNumberTool.name}, YOU MUST USE TOOLS!"
+                    )
+                    val toolRegistry = (aiAgent as GraphAIAgent).toolRegistry
+
+                    toolRegistry.tools.map { it.descriptor }.shouldContainExactly(randomNumberTool.descriptor)
+                    toolRegistry.tools.forEach { it.shouldBeTypeOf<McpTool<*, *>>() }
+                    result.replace("[\\s,_]+".toRegex(), "").shouldContain(randomNumberTool.last.toString())
                 }
-            }.replace("[\\s,_]+".toRegex(), "").shouldContain(randomNumberTool.last.toString())
+            }
         } finally {
             server.close()
 

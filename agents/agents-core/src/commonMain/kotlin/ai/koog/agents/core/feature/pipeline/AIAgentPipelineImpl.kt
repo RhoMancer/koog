@@ -151,7 +151,9 @@ public class AIAgentPipelineImpl(
 
     //region Internal Handlers
 
-    internal suspend fun prepareFeature(featureConfig: FeatureConfig) {
+    internal suspend fun prepareFeature(featureConfig: FeatureConfig, context: AIAgentContext) {
+        featureConfig.initialize(context)
+
         featureConfig.messageProcessors.forEach { processor ->
             logger.debug { "Start preparing processor: ${processor::class.simpleName}" }
             processor.initialize()
@@ -160,13 +162,13 @@ public class AIAgentPipelineImpl(
     }
 
     @InternalAgentsApi
-    override suspend fun prepareFeatures() {
+    override suspend fun prepareFeatures(context: AIAgentContext) {
         // Install system features (if exist)
         installFeaturesFromSystemConfig()
 
         // Prepare features
         registeredFeatures.values.forEach { featureConfig ->
-            prepareFeature(featureConfig.featureConfig)
+            prepareFeature(featureConfig.featureConfig, context)
         }
     }
 

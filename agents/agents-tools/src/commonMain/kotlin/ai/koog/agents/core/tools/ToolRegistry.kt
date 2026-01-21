@@ -187,7 +187,13 @@ public class ToolRegistry private constructor(tools: List<Tool<*, *>> = emptyLis
 
         /**
          * A constant representing an empty registry with no tools.
+         * TODO: ToolRegistry is mutable but stored as an immutable object.
          */
         public val EMPTY: ToolRegistry = ToolRegistry(emptyList())
+
+        /**
+         * Creates an empty ToolRegistry instance.
+         */
+        public fun empty(): ToolRegistry = ToolRegistry(emptyList())
     }
 }

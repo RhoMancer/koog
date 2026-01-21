@@ -1,5 +1,6 @@
 package ai.koog.agents.core.feature.config
 
+import ai.koog.agents.core.agent.context.AIAgentContext
 import ai.koog.agents.core.feature.handler.AgentLifecycleEventContext
 import ai.koog.agents.core.feature.message.FeatureMessageProcessor
 
@@ -55,4 +56,9 @@ public abstract class FeatureConfig {
     public open fun setEventFilter(filter: (AgentLifecycleEventContext) -> Boolean) {
         _eventFilter = filter
     }
+
+    /**
+     * Initializes the feature configuration.
+     */
+    public open suspend fun initialize(context: AIAgentContext) {}
 }

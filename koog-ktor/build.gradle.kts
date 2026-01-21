@@ -22,7 +22,7 @@ kotlin {
 
         jvmMain {
             dependencies {
-                api(project(":agents:agents-mcp"))
+                api(project(":agents:agents-features:agents-features-mcp"))
             }
         }
 

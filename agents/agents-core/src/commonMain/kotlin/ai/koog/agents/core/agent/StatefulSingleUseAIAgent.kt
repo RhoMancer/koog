@@ -101,6 +101,7 @@ public abstract class StatefulSingleUseAIAgent<Input, Output, TContext : AIAgent
         // Unique identifier for a group of agent-run events
         val agentRunEventId = Uuid.random().toString()
         val context = prepareContext(agentInput, runId, agentRunEventId)
+        pipeline.prepareFeatures(context)
 
         return withPreparedPipeline(context, agentRunEventId) {
             agentStateMutex.withLock {
@@ -223,7 +224,6 @@ public abstract class StatefulSingleUseAIAgent<Input, Output, TContext : AIAgent
         }
 
         return try {
-            pipeline.prepareFeatures()
             block.invoke()
         } finally {
             pipeline.onAgentClosing(

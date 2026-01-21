@@ -15,6 +15,7 @@ import io.modelcontextprotocol.kotlin.sdk.types.Tool as SDKTool
 /**
  * Parsers tool definition from MCP SDK to our tool descriptor format.
  */
+@Deprecated("Mcp support moved to feature plugin", ReplaceWith("ai.koog.agents.features.mcp.McpToolDescriptorParser"))
 public interface McpToolDescriptorParser {
     /**
      * Parses an SDK tool representation into a standardized ToolDescriptor format.
@@ -28,6 +29,7 @@ public interface McpToolDescriptorParser {
 /**
  * Default implementation of [McpToolDescriptorParser].
  */
+@Deprecated("Mcp support moved to feature plugin", ReplaceWith("ai.koog.agents.features.mcp.DefaultMcpToolDescriptorParser"))
 public object DefaultMcpToolDescriptorParser : McpToolDescriptorParser {
     // Maximum depth of recursive parsing
     private const val MAX_DEPTH = 30

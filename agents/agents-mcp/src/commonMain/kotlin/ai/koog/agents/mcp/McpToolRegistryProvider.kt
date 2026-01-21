@@ -18,6 +18,7 @@ import io.modelcontextprotocol.kotlin.sdk.types.Implementation
  * 3. Transforming MCP tools into the agent framework's Tool interface
  * 4. Registering the transformed tools in a ToolRegistry
  */
+@Deprecated("Mcp support moved to feature plugin", ReplaceWith("ai.koog.agents.features.mcp.McpToolRegistryProvider"))
 public object McpToolRegistryProvider {
     private val logger = KotlinLogging.logger {}
 

@@ -1,15 +1,27 @@
 package ai.koog.ktor
 
-import ai.koog.agents.mcp.DefaultMcpToolDescriptorParser
-import ai.koog.agents.mcp.McpToolDescriptorParser
-import ai.koog.agents.mcp.McpToolRegistryProvider
-import ai.koog.agents.mcp.McpToolRegistryProvider.DEFAULT_MCP_CLIENT_NAME
-import ai.koog.agents.mcp.McpToolRegistryProvider.DEFAULT_MCP_CLIENT_VERSION
-import ai.koog.agents.mcp.defaultStdioTransport
+import ai.koog.agents.core.annotation.InternalAgentsApi
+import ai.koog.agents.core.tools.Tool
+import ai.koog.agents.core.tools.ToolDescriptor
+import ai.koog.agents.core.tools.ToolRegistry
+import ai.koog.agents.features.mcp.DefaultMcpToolDescriptorParser
+import ai.koog.agents.features.mcp.McpToolDescriptorParser
+import ai.koog.agents.features.mcp.feature.sseClientTransport
+import ai.koog.agents.features.mcp.stdioClientTransport
+import io.ktor.http.Url
 import io.modelcontextprotocol.kotlin.sdk.client.Client
+import io.modelcontextprotocol.kotlin.sdk.types.CallToolResult
+import io.modelcontextprotocol.kotlin.sdk.types.Implementation
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import kotlinx.serialization.builtins.nullable
+import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonNull
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.jsonObject
+import kotlin.collections.component1
+import kotlin.collections.component2
 
 /**
  * Configuration class for MCPTools that manages the integration of various tool registries
@@ -17,6 +29,7 @@ import kotlinx.coroutines.sync.withLock
  *
  * @param agentConfig Configuration for the Koog agent server, which includes tool registry details.
  */
+@OptIn(InternalAgentsApi::class)
 public class McpToolsConfig(private val agentConfig: KoogAgentsConfig.AgentConfig) {
     private val mutex = Mutex()
 
@@ -39,17 +52,14 @@ public class McpToolsConfig(private val agentConfig: KoogAgentsConfig.AgentConfi
     public fun process(
         process: Process,
         mcpToolParser: McpToolDescriptorParser = DefaultMcpToolDescriptorParser,
-        name: String = DEFAULT_MCP_CLIENT_NAME,
-        version: String = DEFAULT_MCP_CLIENT_VERSION,
+        name: String = "mcp-client-cli",
+        version: String = "1.0.0",
     ) {
         agentConfig.scope.launch {
-            val transport = McpToolRegistryProvider.fromTransport(
-                transport = McpToolRegistryProvider.defaultStdioTransport(process),
-                mcpToolParser = mcpToolParser,
-                name = name,
-                version = version,
-            )
-            mutex.withLock { agentConfig.toolRegistry += transport }
+            val client = Client(Implementation(name, version)).apply {
+                connect(stdioClientTransport(process))
+            }
+            fromClient(client, mcpToolParser)
         }
     }
 
@@ -68,17 +78,14 @@ public class McpToolsConfig(private val agentConfig: KoogAgentsConfig.AgentConfi
     public fun sse(
         url: String,
         mcpToolParser: McpToolDescriptorParser = DefaultMcpToolDescriptorParser,
-        name: String = DEFAULT_MCP_CLIENT_NAME,
-        version: String = DEFAULT_MCP_CLIENT_VERSION,
+        name: String = "mcp-client-cli",
+        version: String = "1.0.0",
     ) {
         agentConfig.scope.launch {
-            val transport = McpToolRegistryProvider.fromTransport(
-                transport = McpToolRegistryProvider.defaultSseTransport(url),
-                mcpToolParser = mcpToolParser,
-                name = name,
-                version = version,
-            )
-            mutex.withLock { agentConfig.toolRegistry += transport }
+            val client = Client(Implementation(name, version)).apply {
+                connect(sseClientTransport(Url(url).port, url))
+            }
+            fromClient(client, mcpToolParser)
         }
     }
 
@@ -97,8 +104,45 @@ public class McpToolsConfig(private val agentConfig: KoogAgentsConfig.AgentConfi
         mcpToolParser: McpToolDescriptorParser = DefaultMcpToolDescriptorParser
     ) {
         agentConfig.scope.launch {
-            val fromClient = McpToolRegistryProvider.fromClient(mcpClient, mcpToolParser)
-            mutex.withLock { agentConfig.toolRegistry += fromClient }
+            fromClient(mcpClient, mcpToolParser)
+        }
+    }
+
+    private suspend fun fromClient(client: Client, mcpToolParser: McpToolDescriptorParser) {
+        val sdkTools = client.listTools().tools
+        val mcpTools = ToolRegistry {
+            tools(sdkTools.map { McpTool(client, mcpToolParser.parse(it)) })
+        }
+        mutex.withLock { agentConfig.toolRegistry += mcpTools }
+    }
+
+    private class McpTool(
+        private val mcpClient: Client,
+        descriptor: ToolDescriptor,
+    ) : Tool<JsonObject, CallToolResult?>(
+        argsSerializer = JsonObject.serializer(),
+        resultSerializer = CallToolResult.serializer().nullable,
+        descriptor = descriptor,
+    ) {
+        override suspend fun execute(args: JsonObject): CallToolResult {
+            return mcpClient.callTool(
+                name = descriptor.name,
+                arguments = args
+            )
+        }
+
+        override fun encodeResultToString(result: CallToolResult?): String {
+            val preparedResultJson: JsonElement = result
+                ?.let {
+                    JsonObject(
+                        json.encodeToJsonElement(resultSerializer, it).jsonObject
+                            // LLM doesn't need "meta" fields, leave only actual data
+                            .filter { (key, _) -> key !in listOf("type", "_meta") }
+                    )
+                }
+                ?: JsonNull
+
+            return json.encodeToString(preparedResultJson)
         }
     }
 }
