@@ -459,7 +459,7 @@ public class OpenTelemetry {
                         }
 
                         is Message.Tool.Call -> {
-                            ChoiceEvent(provider, message, arguments = message.contentJson)
+                            ChoiceEvent(provider, message, arguments = message.contentJsonResult.getOrNull())
                         }
 
                         is Message.Tool.Result -> {
@@ -507,7 +507,7 @@ public class OpenTelemetry {
                             }
 
                             is Message.Tool.Call -> {
-                                add(ChoiceEvent(provider, message, arguments = message.contentJson, index = index))
+                                add(ChoiceEvent(provider, message, arguments = message.contentJsonResult.getOrNull(), index = index))
                             }
                         }
                     }

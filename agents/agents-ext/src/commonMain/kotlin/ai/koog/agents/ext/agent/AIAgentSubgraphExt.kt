@@ -21,6 +21,7 @@ import ai.koog.agents.core.environment.ReceivedToolResult
 import ai.koog.agents.core.environment.ToolResultKind
 import ai.koog.agents.core.environment.executeTools
 import ai.koog.agents.core.environment.toSafeResult
+import ai.koog.agents.core.feature.model.toAgentError
 import ai.koog.agents.core.tools.Tool
 import ai.koog.agents.core.tools.ToolDescriptor
 import ai.koog.agents.core.tools.annotations.InternalAgentToolsApi
@@ -31,7 +32,9 @@ import ai.koog.prompt.markdown.markdown
 import ai.koog.prompt.message.Message
 import ai.koog.prompt.params.LLMParams
 import ai.koog.prompt.processor.ResponseProcessor
+import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.serializer
+import kotlin.coroutines.cancellation.CancellationException
 
 /**
  * Utility object providing tools and methods for working with subgraphs and tasks in a controlled
@@ -574,7 +577,7 @@ public inline fun <reified Input, reified Output, reified OutputTransformed> AIA
 
     edge(
         callToolsHacked forwardTo finalizeTask
-            onCondition { toolResults -> toolResults.firstOrNull()?.let { it.tool == finishTool.name } == true }
+            onCondition { toolResults -> toolResults.firstOrNull()?.let { it.tool == finishTool.name && it.resultKind is ToolResultKind.Success } == true }
             transformed { toolsResults -> toolsResults.first() }
     )
 
@@ -596,11 +599,26 @@ internal suspend inline fun <reified Output, reified OutputTransformed> AIAgentC
     toolCall: Message.Tool.Call,
     finishTool: Tool<Output, OutputTransformed>,
 ): ReceivedToolResult {
+    val toolDescription = finishTool.descriptor.description
     // Execute Finish tool directly and get a result
-    val args = finishTool.decodeArgs(toolCall.contentJson)
-    val toolResult = finishTool.execute(args = args)
+    val encodedResult = try {
+        val args = finishTool.decodeArgs(toolCall.contentJson)
+        val toolResult = finishTool.execute(args = args)
+        finishTool.encodeResult(toolResult)
+    } catch (e: CancellationException) {
+        throw e
+    } catch (e: Exception) {
+        return ReceivedToolResult(
+            id = toolCall.id,
+            tool = finishTool.name,
+            toolArgs = toolCall.contentJsonResult.getOrElse { JsonObject(emptyMap()) },
+            toolDescription = toolDescription,
+            content = "Failed to execute '${finishTool.name}' with error: ${e.message}'",
+            resultKind = ToolResultKind.Failure(e.toAgentError()),
+            result = null,
+        )
+    }
 
-    val encodedResult = finishTool.encodeResult(toolResult)
     // Append a final tool call result to the prompt for further LLM calls
     // to see it (otherwise they would fail)
     llm.writeSession {
@@ -617,7 +635,7 @@ internal suspend inline fun <reified Output, reified OutputTransformed> AIAgentC
         toolArgs = toolCall.contentJson,
         content = toolCall.content,
         resultKind = ToolResultKind.Success,
-        toolDescription = finishTool.descriptor.description,
+        toolDescription = toolDescription,
         result = encodedResult
     )
 }
