@@ -310,9 +310,26 @@ public class JavaApiIntegrationTest extends KoogJavaTestBase {
         assertFalse(result.isBlank());
     }
 
+    /**
+     * This test is currently disabled due to library-level issues.
+     * Bug 1: Deadlock in Nested runBlocking.
+     * SubtaskBuilder.run() in jvmMain uses runBlocking(Dispatchers.Default). Since agent strategies are executed
+     * on Dispatchers.Default (via NonSuspendAIAgentStrategy and submitToMainDispatcher), calling SubtaskBuilder.run()
+     * from a Java lambda strategy leads to nested runBlocking on the same dispatcher pool, causing deadlocks
+     * in resource-constrained environments.
+     * Potential fix: SubtaskBuilder.run() should check if it's already on the correct dispatcher or avoid runBlocking
+     * if possible. Using a custom strategyExecutorService (e.g., CachedThreadPool) in AIAgentConfig can mitigate this.
+     * <p>
+     * Bug 2: Tool Registry in Subtasks.
+     * AIAgentFunctionalContextImpl.subtask() allows passing a list of tools, but these tools are only used for
+     * LLM prompting and are not registered in the AIAgentEnvironment used for tool execution. This leads to
+     * 'Tool not found' errors when the subtask LLM tries to call them.
+     * Potential fix: AIAgentFunctionalContextImpl.subtask() should ensure that passed tools are available in the
+     * execution environment's tool registry.
+     */
     @ParameterizedTest
     @MethodSource("ai.koog.integration.tests.agent.AIAgentTestBase#getLatestModels")
-    @Disabled("BUG #3: Nested runBlocking in Java lambda causes InterruptedException")
+    @Disabled("See JavaDoc above")
     public void integration_testSubtask(LLModel model) {
         Models.assumeAvailable(model.getProvider());
 
@@ -332,7 +349,7 @@ public class JavaApiIntegrationTest extends KoogJavaTestBase {
                 .systemPrompt("You are a helpful assistant that coordinates calculations.")
                 .toolRegistry(JavaInteropUtils.createToolRegistry(calculator))
                 .functionalStrategy((context, input) -> {
-                    String subtaskResult = JavaInteropUtils.runSubtaskBlocking(
+                    String subtaskResult = JavaInteropUtils.runSubtask(
                         context,
                         "Calculate: " + input,
                         input,

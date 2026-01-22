@@ -90,25 +90,19 @@ object JavaInteropUtils {
         context: AIAgentFunctionalContext,
         input: String,
         includeHistory: Boolean = true
-    ): Message.Response = runBlocking {
-        context.requestLLM(input, includeHistory)
-    }
+    ): Message.Response = context.requestLLM(input, includeHistory, null)
 
     @JvmStatic
     fun sendToolResultBlocking(
         context: AIAgentFunctionalContext,
         toolResult: ReceivedToolResult
-    ): Message.Response = runBlocking {
-        context.sendToolResult(toolResult)
-    }
+    ): Message.Response = context.sendToolResult(toolResult, null)
 
     @JvmStatic
     fun executeToolBlocking(
         context: AIAgentFunctionalContext,
         toolCall: Message.Tool.Call
-    ): ReceivedToolResult = runBlocking {
-        context.executeTool(toolCall)
-    }
+    ): ReceivedToolResult = context.executeTool(toolCall, null)
 
     @JvmStatic
     fun createAgentBuilder(): AIAgentBuilder = AIAgent.builder()
@@ -117,21 +111,19 @@ object JavaInteropUtils {
     fun buildFunctionalAgent(builder: FunctionalAgentBuilder<String, String>): AIAgent<String, String> = builder.build()
 
     @JvmStatic
-    fun <I, O : Any> runSubtaskBlocking(
+    fun <I, O : Any> runSubtask(
         context: AIAgentFunctionalContext,
         description: String,
         input: I,
         outputType: Class<O>,
-        tools: List<Tool<*, *>>,
+        tools: List<Tool<*, *>>?,
         model: LLModel
-    ): O = runBlocking {
-        context.subtask(description)
-            .withInput(input)
-            .withOutput(outputType)
-            .withTools(tools)
-            .useLLM(model)
-            .run()
-    }
+    ): O = context.subtask(description)
+        .withInput(input)
+        .withOutput(outputType)
+        .apply { tools?.let { withTools(it) } }
+        .useLLM(model)
+        .run()
 
     @JvmStatic
     fun createToolRegistry(toolSet: ToolSet): ToolRegistry {
