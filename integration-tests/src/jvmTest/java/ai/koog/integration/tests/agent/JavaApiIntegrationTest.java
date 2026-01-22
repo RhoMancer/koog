@@ -196,7 +196,6 @@ public class JavaApiIntegrationTest extends KoogJavaTestBase {
 
     @ParameterizedTest
     @MethodSource("ai.koog.integration.tests.agent.AIAgentTestBase#getLatestModels")
-    @Disabled("BUG #3: Nested runBlocking in Java lambda causes InterruptedException")
     public void integration_testSimpleFunctionalStrategy(LLModel model) {
         Models.assumeAvailable(model.getProvider());
 
@@ -225,7 +224,6 @@ public class JavaApiIntegrationTest extends KoogJavaTestBase {
 
     @ParameterizedTest
     @MethodSource("ai.koog.integration.tests.agent.AIAgentTestBase#getLatestModels")
-    @Disabled("BUG #3: Nested runBlocking in Java lambda causes InterruptedException")
     public void integration_testMultiStepFunctionalStrategy(LLModel model) {
         Models.assumeAvailable(model.getProvider());
 
@@ -265,7 +263,6 @@ public class JavaApiIntegrationTest extends KoogJavaTestBase {
 
     @ParameterizedTest
     @MethodSource("ai.koog.integration.tests.agent.AIAgentTestBase#getLatestModels")
-    @Disabled("BUG #3: Nested runBlocking in Java lambda causes InterruptedException")
     public void integration_testFunctionalStrategyWithManualToolHandling(LLModel model) {
         Models.assumeAvailable(model.getProvider());
 
@@ -356,7 +353,6 @@ public class JavaApiIntegrationTest extends KoogJavaTestBase {
 
     @ParameterizedTest
     @MethodSource("ai.koog.integration.tests.agent.AIAgentTestBase#getLatestModels")
-    @Disabled("BUG #3: Nested runBlocking in Java lambda causes InterruptedException")
     public void integration_testCustomStrategyWithRetry(LLModel model) {
         Models.assumeAvailable(model.getProvider());
 
@@ -390,7 +386,6 @@ public class JavaApiIntegrationTest extends KoogJavaTestBase {
 
     @ParameterizedTest
     @MethodSource("ai.koog.integration.tests.agent.AIAgentTestBase#getLatestModels")
-    @Disabled("BUG #3: Nested runBlocking in Java lambda causes InterruptedException")
     public void integration_testCustomStrategyWithValidation(LLModel model) {
         Models.assumeAvailable(model.getProvider());
 
