@@ -35,16 +35,6 @@ import static org.junit.jupiter.api.Assertions.*;
 
 /**
  * Integration tests for Koog Java API.
- * <p>
- * Coverage:
- * - AIAgent.builder() API (enabled)
- * - EventHandler feature (enabled)
- * - LLM client tests (@Disabled - Continuation type issues)
- * - Prompt executor tests (@Disabled - Continuation type issues)
- * - Functional strategy tests (@Disabled - BUG #3: nested runBlocking causes InterruptedException)
- * <p>
- * Some tests are disabled due to Java/Kotlin interop issues but kept for documentation
- * and potential future fixes when the interop issues are resolved.
  */
 public class JavaApiIntegrationTest extends KoogJavaTestBase {
 
