@@ -46,7 +46,7 @@ import static org.junit.jupiter.api.Assertions.*;
  * Some tests are disabled due to Java/Kotlin interop issues but kept for documentation
  * and potential future fixes when the interop issues are resolved.
  */
-public class JavaAPIIntegrationTest extends KoogJavaTestBase {
+public class JavaApiIntegrationTest extends KoogJavaTestBase {
 
     private final List<AutoCloseable> resourcesToClose = new ArrayList<>();
 
@@ -56,6 +56,7 @@ public class JavaAPIIntegrationTest extends KoogJavaTestBase {
             try {
                 resource.close();
             } catch (Exception e) {
+                // Ignore cleanup errors
             }
         }
         resourcesToClose.clear();
@@ -63,7 +64,7 @@ public class JavaAPIIntegrationTest extends KoogJavaTestBase {
 
     @Test
     @Disabled("Java/Kotlin interop issue: Continuation type incompatibility with client.execute()")
-    public void testOpenAILLMClient() {
+    public void integration_testOpenAILLMClient() {
         String apiKey = TestCredentials.INSTANCE.readTestOpenAIKeyFromEnv();
         OpenAILLMClient client = JavaInteropUtils.createOpenAIClient(apiKey);
         resourcesToClose.add((AutoCloseable) client);
@@ -87,7 +88,7 @@ public class JavaAPIIntegrationTest extends KoogJavaTestBase {
 
     @Test
     @Disabled("Java/Kotlin interop issue: Continuation type incompatibility with client.execute()")
-    public void testAnthropicLLMClient() {
+    public void integration_testAnthropicLLMClient() {
         String apiKey = TestCredentials.INSTANCE.readTestAnthropicKeyFromEnv();
         AnthropicLLMClient client = JavaInteropUtils.createAnthropicClient(apiKey);
         resourcesToClose.add((AutoCloseable) client);
@@ -111,7 +112,7 @@ public class JavaAPIIntegrationTest extends KoogJavaTestBase {
 
     @Test
     @Disabled("Java/Kotlin interop issue: Continuation type incompatibility with executor.execute()")
-    public void testMultiLLMPromptExecutor() {
+    public void integration_testMultiLLMPromptExecutor() {
         String openAIKey = TestCredentials.INSTANCE.readTestOpenAIKeyFromEnv();
         String anthropicKey = TestCredentials.INSTANCE.readTestAnthropicKeyFromEnv();
 
@@ -149,7 +150,7 @@ public class JavaAPIIntegrationTest extends KoogJavaTestBase {
 
     @ParameterizedTest
     @MethodSource("ai.koog.integration.tests.agent.AIAgentTestBase#getLatestModels")
-    public void testBuilderBasicUsage(LLModel model) {
+    public void integration_testBuilderBasicUsage(LLModel model) {
         Models.assumeAvailable(model.getProvider());
 
         MultiLLMPromptExecutor executor = createExecutor(model);
@@ -171,7 +172,7 @@ public class JavaAPIIntegrationTest extends KoogJavaTestBase {
 
     @ParameterizedTest
     @MethodSource("ai.koog.integration.tests.agent.AIAgentTestBase#getLatestModels")
-    public void testBuilderWithToolRegistry(LLModel model) {
+    public void integration_testBuilderWithToolRegistry(LLModel model) {
         Models.assumeAvailable(model.getProvider());
 
         MultiLLMPromptExecutor executor = createExecutor(model);
@@ -198,7 +199,7 @@ public class JavaAPIIntegrationTest extends KoogJavaTestBase {
 
     @ParameterizedTest
     @MethodSource("ai.koog.integration.tests.agent.AIAgentTestBase#getLatestModels")
-    public void testEventHandler(LLModel model) {
+    public void integration_testEventHandler(LLModel model) {
         Models.assumeAvailable(model.getProvider());
 
         MultiLLMPromptExecutor executor = createExecutor(model);
@@ -237,7 +238,7 @@ public class JavaAPIIntegrationTest extends KoogJavaTestBase {
     @ParameterizedTest
     @MethodSource("ai.koog.integration.tests.agent.AIAgentTestBase#getLatestModels")
     @Disabled("BUG #3: Nested runBlocking in Java lambda causes InterruptedException")
-    public void testSimpleFunctionalStrategy(LLModel model) {
+    public void integration_testSimpleFunctionalStrategy(LLModel model) {
         Models.assumeAvailable(model.getProvider());
 
         MultiLLMPromptExecutor executor = createExecutor(model);
@@ -268,7 +269,7 @@ public class JavaAPIIntegrationTest extends KoogJavaTestBase {
     @ParameterizedTest
     @MethodSource("ai.koog.integration.tests.agent.AIAgentTestBase#getLatestModels")
     @Disabled("BUG #3: Nested runBlocking in Java lambda causes InterruptedException")
-    public void testMultiStepFunctionalStrategy(LLModel model) {
+    public void integration_testMultiStepFunctionalStrategy(LLModel model) {
         Models.assumeAvailable(model.getProvider());
 
         MultiLLMPromptExecutor executor = createExecutor(model);
@@ -311,7 +312,7 @@ public class JavaAPIIntegrationTest extends KoogJavaTestBase {
     @ParameterizedTest
     @MethodSource("ai.koog.integration.tests.agent.AIAgentTestBase#getLatestModels")
     @Disabled("BUG #3: Nested runBlocking in Java lambda causes InterruptedException")
-    public void testFunctionalStrategyWithManualToolHandling(LLModel model) {
+    public void integration_testFunctionalStrategyWithManualToolHandling(LLModel model) {
         Models.assumeAvailable(model.getProvider());
 
         MultiLLMPromptExecutor executor = createExecutor(model);
@@ -370,7 +371,7 @@ public class JavaAPIIntegrationTest extends KoogJavaTestBase {
     @ParameterizedTest
     @MethodSource("ai.koog.integration.tests.agent.AIAgentTestBase#getLatestModels")
     @Disabled("BUG #3: Nested runBlocking in Java lambda causes InterruptedException")
-    public void testSubtask(LLModel model) {
+    public void integration_testSubtask(LLModel model) {
         Models.assumeAvailable(model.getProvider());
 
         MultiLLMPromptExecutor executor = createExecutor(model);
@@ -412,7 +413,7 @@ public class JavaAPIIntegrationTest extends KoogJavaTestBase {
     @ParameterizedTest
     @MethodSource("ai.koog.integration.tests.agent.AIAgentTestBase#getLatestModels")
     @Disabled("BUG #3: Nested runBlocking in Java lambda causes InterruptedException")
-    public void testCustomStrategyWithRetry(LLModel model) {
+    public void integration_testCustomStrategyWithRetry(LLModel model) {
         Models.assumeAvailable(model.getProvider());
 
         MultiLLMPromptExecutor executor = createExecutor(model);
@@ -451,7 +452,7 @@ public class JavaAPIIntegrationTest extends KoogJavaTestBase {
     @ParameterizedTest
     @MethodSource("ai.koog.integration.tests.agent.AIAgentTestBase#getLatestModels")
     @Disabled("BUG #3: Nested runBlocking in Java lambda causes InterruptedException")
-    public void testCustomStrategyWithValidation(LLModel model) {
+    public void integration_testCustomStrategyWithValidation(LLModel model) {
         Models.assumeAvailable(model.getProvider());
 
         MultiLLMPromptExecutor executor = createExecutor(model);
