@@ -6,7 +6,7 @@ Agent features provide a way to extend and enhance the functionality of AI agent
 - Intercept and modify agent behavior
 - Log and monitor agent execution
 
-The Koog framework implements the following features:
+The Koog framework implements both features that are available out of the box and lets you implement your own custom features. Readily available features include:
 
 - [Event Handler](agent-event-handlers.md)
 - [Tracing](tracing.md)
@@ -16,3 +16,5 @@ The Koog framework implements the following features:
 - Debugger
 - Tokenizer
 - SQL Persistence Providers
+
+To learn how to implement your own features, see [Custom features](custom-features.md).
