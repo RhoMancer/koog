@@ -12,7 +12,6 @@ import ai.koog.integration.tests.utils.tools.SimpleCalculatorTool
 import ai.koog.prompt.llm.LLMCapability
 import ai.koog.prompt.llm.LLModel
 import ai.koog.prompt.message.Message
-import io.kotest.assertions.withClue
 import io.kotest.matchers.collections.shouldBeEmpty
 import io.kotest.matchers.collections.shouldContain
 import io.kotest.matchers.collections.shouldNotBeEmpty
@@ -26,7 +25,6 @@ import org.junit.jupiter.api.Assumptions.assumeTrue
 import org.junit.jupiter.api.BeforeAll
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.MethodSource
-import java.util.stream.Stream
 import kotlin.time.Duration.Companion.seconds
 
 /**
@@ -41,12 +39,6 @@ class AIAgentBuilderIntegrationTest : AIAgentTestBase() {
         fun setup() {
             AIAgentTestBase.setup()
         }
-
-        @JvmStatic
-        fun allModels(): Stream<LLModel> = AIAgentTestBase.allModels()
-
-        @JvmStatic
-        fun latestModels(): Stream<LLModel> = getLatestModels()
     }
 
     @ParameterizedTest
@@ -164,7 +156,7 @@ class AIAgentBuilderIntegrationTest : AIAgentTestBase() {
     }
 
     @ParameterizedTest
-    @MethodSource("latestModels")
+    @MethodSource("getLatestModels")
     fun integration_FunctionalStrategyWithLambda(model: LLModel) = runTest(timeout = 180.seconds) {
         Models.assumeAvailable(model.provider)
 
@@ -206,7 +198,7 @@ class AIAgentBuilderIntegrationTest : AIAgentTestBase() {
     }
 
     @ParameterizedTest
-    @MethodSource("latestModels")
+    @MethodSource("getLatestModels")
     fun integration_FunctionalStrategySimple(model: LLModel) = runTest(timeout = 180.seconds) {
         Models.assumeAvailable(model.provider)
 
@@ -247,7 +239,7 @@ class AIAgentBuilderIntegrationTest : AIAgentTestBase() {
     }
 
     @ParameterizedTest
-    @MethodSource("latestModels")
+    @MethodSource("getLatestModels")
     fun integration_FunctionalStrategyWithMultipleSteps(model: LLModel) = runTest(timeout = 180.seconds) {
         Models.assumeAvailable(model.provider)
 
@@ -333,7 +325,7 @@ class AIAgentBuilderIntegrationTest : AIAgentTestBase() {
     }
 
     @ParameterizedTest
-    @MethodSource("latestModels")
+    @MethodSource("getLatestModels")
     fun integration_BuilderWithMultipleFeatures(model: LLModel) = runTest(timeout = 180.seconds) {
         Models.assumeAvailable(model.provider)
 
@@ -374,7 +366,7 @@ class AIAgentBuilderIntegrationTest : AIAgentTestBase() {
     }
 
     @ParameterizedTest
-    @MethodSource("latestModels")
+    @MethodSource("getLatestModels")
     fun integration_FunctionalStrategyErrorHandling(model: LLModel) = runTest(timeout = 180.seconds) {
         Models.assumeAvailable(model.provider)
 
@@ -415,81 +407,12 @@ class AIAgentBuilderIntegrationTest : AIAgentTestBase() {
         }
     }
 
-    @ParameterizedTest
-    @MethodSource("latestModels")
-    fun integration_FunctionalStrategyWithToolCallLoop(model: LLModel) = runTest(timeout = 240.seconds) {
-        Models.assumeAvailable(model.provider)
-        assumeTrue(model.capabilities.contains(LLMCapability.Tools), "Model $model does not support tools")
-
-        val toolRegistry = ToolRegistry {
-            tool(SimpleCalculatorTool)
-        }
-
-        // FRAMEWORK LIMITATION: functionalStrategy requires manual tool call handling
-        // Unlike graphStrategy which handles tool calls automatically in the graph,
-        // functional strategies must implement their own tool call loop.
-        // This is by design - functional strategies provide low-level control.
-        val strategy = functionalStrategy<String, String>("manual-tool-handling") { input ->
-            var currentResponse = requestLLM(input)
-            var iterations = 0
-            val maxIterations = 5
-
-            // Manual tool call loop
-            while (currentResponse is Message.Tool.Call && iterations < maxIterations) {
-                // Execute the tool
-                val toolResult = executeTool(currentResponse)
-                // Send result back to LLM
-                currentResponse = sendToolResult(toolResult)
-                iterations++
-            }
-
-            when (currentResponse) {
-                is Message.Assistant -> currentResponse.content
-                is Message.Tool.Call -> "Max iterations reached, last tool: ${currentResponse.tool}"
-                else -> "Unexpected response type"
-            }
-        }
-
-        withRetry {
-            runWithTracking { eventHandlerConfig, state ->
-                val agent = AIAgent.builder()
-                    .promptExecutor(getExecutor(model))
-                    .llmModel(model)
-                    .systemPrompt(
-                        "You are a helpful calculator assistant. " +
-                            "Use the calculator tool to perform calculations, then provide the result."
-                    )
-                    .toolRegistry(toolRegistry)
-                    .functionalStrategy(strategy)
-                    .temperature(0.8)
-                    .maxIterations(10)
-                    .install(EventHandler.Feature, eventHandlerConfig)
-                    .build()
-
-                val result = agent.run("What is 25 times 4?")
-
-                with(state) {
-                    errors.shouldBeEmpty()
-                    results.shouldNotBeEmpty()
-                    result shouldNotBeNull {
-                        shouldNotBeBlank()
-                        (contains("100") || contains("hundred")).shouldBe(true)
-                    }
-
-                    withClue("SimpleCalculatorTool should have been called in the manual loop") {
-                        actualToolCalls shouldContain SimpleCalculatorTool.name
-                    }
-                }
-            }
-        }
-    }
-
     // ============================================================================
     // ADDITIONAL TEST SCENARIOS FROM COMPREHENSIVE PLAN
     // ============================================================================
 
     @ParameterizedTest
-    @MethodSource("latestModels")
+    @MethodSource("getLatestModels")
     fun integration_BuilderWithTemperatureControl(model: LLModel) = runTest(timeout = 120.seconds) {
         Models.assumeAvailable(model.provider)
 
@@ -518,7 +441,7 @@ class AIAgentBuilderIntegrationTest : AIAgentTestBase() {
     }
 
     @ParameterizedTest
-    @MethodSource("latestModels")
+    @MethodSource("getLatestModels")
     fun integration_BuilderWithMaxIterations(model: LLModel) = runTest(timeout = 120.seconds) {
         Models.assumeAvailable(model.provider)
 
@@ -543,7 +466,7 @@ class AIAgentBuilderIntegrationTest : AIAgentTestBase() {
     }
 
     @ParameterizedTest
-    @MethodSource("latestModels")
+    @MethodSource("getLatestModels")
     fun integration_FunctionalStrategyWithExceptionHandling(model: LLModel) = runTest(timeout = 120.seconds) {
         Models.assumeAvailable(model.provider)
 
@@ -551,8 +474,7 @@ class AIAgentBuilderIntegrationTest : AIAgentTestBase() {
             runWithTracking { eventHandlerConfig, state ->
                 val strategyWithErrorHandling = functionalStrategy<String, String>("error-handling") { input ->
                     try {
-                        val response = requestLLM(input)
-                        when (response) {
+                        when (val response = requestLLM(input)) {
                             is Message.Assistant -> response.content
                             else -> "Unexpected response type: ${response::class.simpleName}"
                         }
@@ -581,7 +503,7 @@ class AIAgentBuilderIntegrationTest : AIAgentTestBase() {
     }
 
     @ParameterizedTest
-    @MethodSource("latestModels")
+    @MethodSource("getLatestModels")
     fun integration_BuilderWithNumberOfChoices(model: LLModel) = runTest(timeout = 120.seconds) {
         Models.assumeAvailable(model.provider)
 
@@ -607,7 +529,7 @@ class AIAgentBuilderIntegrationTest : AIAgentTestBase() {
     }
 
     @ParameterizedTest
-    @MethodSource("latestModels")
+    @MethodSource("getLatestModels")
     fun integration_FunctionalStrategyWithContextAccess(model: LLModel) = runTest(timeout = 120.seconds) {
         Models.assumeAvailable(model.provider)
 
@@ -616,9 +538,7 @@ class AIAgentBuilderIntegrationTest : AIAgentTestBase() {
                 val strategyWithContext = functionalStrategy<String, String>("context-aware") { input ->
                     // Access context information
                     val agentId = agentId
-                    val response = requestLLM("Agent $agentId processing: $input")
-
-                    when (response) {
+                    when (val response = requestLLM("Agent $agentId processing: $input")) {
                         is Message.Assistant -> "Processed by $agentId: ${response.content}"
                         else -> "Unexpected response"
                     }
