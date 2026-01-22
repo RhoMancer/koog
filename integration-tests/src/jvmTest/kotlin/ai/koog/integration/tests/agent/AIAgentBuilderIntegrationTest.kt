@@ -12,6 +12,7 @@ import ai.koog.integration.tests.utils.tools.SimpleCalculatorTool
 import ai.koog.prompt.llm.LLMCapability
 import ai.koog.prompt.llm.LLModel
 import ai.koog.prompt.message.Message
+import io.kotest.assertions.withClue
 import io.kotest.matchers.collections.shouldBeEmpty
 import io.kotest.matchers.collections.shouldContain
 import io.kotest.matchers.collections.shouldNotBeEmpty
@@ -27,10 +28,6 @@ import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.MethodSource
 import kotlin.time.Duration.Companion.seconds
 
-/**
- * Integration tests for AIAgent.builder() API and functionalStrategy usage patterns.
- * These tests verify that the builder API works correctly with real LLM providers.
- */
 class AIAgentBuilderIntegrationTest : AIAgentTestBase() {
 
     companion object {
@@ -145,7 +142,6 @@ class AIAgentBuilderIntegrationTest : AIAgentTestBase() {
         withRetry {
             runWithTracking { eventHandlerConfig, state ->
                 val strategy = functionalStrategy<String, String>("echo-strategy") { input ->
-                    // Simple strategy that requests LLM and returns the response
                     val response = requestLLM(
                         "User says: $input. Respond with: 'Acknowledged: ' and repeat their message."
                     )
@@ -226,13 +222,11 @@ class AIAgentBuilderIntegrationTest : AIAgentTestBase() {
         Models.assumeAvailable(model.provider)
 
         val strategy = functionalStrategy<String, String>("multi-step") { input ->
-            // Step 1: Ask for ideas
             val ideas = when (val ideasResponse = requestLLM("Give me 2 brief ideas about: $input")) {
                 is Message.Assistant -> ideasResponse.content
                 else -> "No ideas"
             }
 
-            // Step 2: Pick the best idea
             val refinedIdea = when (
                 val response = requestLLM(
                     "Pick the best idea from: $ideas. Explain in one sentence why."
@@ -279,7 +273,6 @@ class AIAgentBuilderIntegrationTest : AIAgentTestBase() {
 
         withRetry {
             runWithTracking { eventHandlerConfig, state ->
-                // Test that all builder methods can be chained fluently
                 val agent = AIAgent.builder()
                     .promptExecutor(getExecutor(model))
                     .llmModel(model)
@@ -298,7 +291,6 @@ class AIAgentBuilderIntegrationTest : AIAgentTestBase() {
                     result.shouldNotBeBlank()
                 }
 
-                // Verify configuration was applied
                 agent.agentConfig shouldNotBeNull {
                     maxAgentIterations shouldBe 15
                 }
@@ -353,13 +345,9 @@ class AIAgentBuilderIntegrationTest : AIAgentTestBase() {
         Models.assumeAvailable(model.provider)
 
         val strategy = functionalStrategy<String, String>("error-handling") { input ->
-            try {
-                when (val response = requestLLM("Process: $input")) {
-                    is Message.Assistant -> "Success: ${response.content}"
-                    else -> "Fallback: Unexpected response type"
-                }
-            } catch (e: Exception) {
-                "Error handled: ${e.message}"
+            when (val response = requestLLM("Process: $input")) {
+                is Message.Assistant -> "Success: ${response.content}"
+                else -> "Fallback: Unexpected response type"
             }
         }
 
@@ -378,7 +366,6 @@ class AIAgentBuilderIntegrationTest : AIAgentTestBase() {
                 val result = agent.run("test input")
 
                 with(state) {
-                    // Should not have errors because strategy handles them
                     errors.shouldBeEmpty()
                     result shouldNotBeNull {
                         shouldNotBeBlank()
@@ -389,10 +376,6 @@ class AIAgentBuilderIntegrationTest : AIAgentTestBase() {
         }
     }
 
-    // ============================================================================
-    // ADDITIONAL TEST SCENARIOS FROM COMPREHENSIVE PLAN
-    // ============================================================================
-
     @ParameterizedTest
     @MethodSource("getLatestModels")
     fun integration_BuilderWithTemperatureControl(model: LLModel) = runTest(timeout = 120.seconds) {
@@ -400,12 +383,11 @@ class AIAgentBuilderIntegrationTest : AIAgentTestBase() {
 
         withRetry {
             runWithTracking { eventHandlerConfig, state ->
-                // Test low temperature (deterministic)
                 val deterministicAgent = AIAgent.builder()
                     .promptExecutor(getExecutor(model))
                     .llmModel(model)
                     .systemPrompt("You are a helpful assistant. Answer with exactly '42'.")
-                    .temperature(0.0) // Deterministic
+                    .temperature(0.0)
                     .install(EventHandler.Feature, eventHandlerConfig)
                     .build()
 
@@ -433,14 +415,13 @@ class AIAgentBuilderIntegrationTest : AIAgentTestBase() {
                     .promptExecutor(getExecutor(model))
                     .llmModel(model)
                     .systemPrompt("You are a helpful assistant.")
-                    .maxIterations(3) // Very low to test limit
+                    .maxIterations(3)
                     .install(EventHandler.Feature, eventHandlerConfig)
                     .build()
 
                 val result = agent.run("List 5 numbers from 1 to 5.")
 
                 with(state) {
-                    // Should complete even with low iteration limit for simple task
                     result.shouldNotBeBlank()
                 }
             }
@@ -455,13 +436,9 @@ class AIAgentBuilderIntegrationTest : AIAgentTestBase() {
         withRetry {
             runWithTracking { eventHandlerConfig, state ->
                 val strategyWithErrorHandling = functionalStrategy<String, String>("error-handling") { input ->
-                    try {
-                        when (val response = requestLLM(input)) {
-                            is Message.Assistant -> response.content
-                            else -> "Unexpected response type: ${response::class.simpleName}"
-                        }
-                    } catch (e: Exception) {
-                        "Error occurred: ${e.message}"
+                    when (val response = requestLLM(input)) {
+                        is Message.Assistant -> response.content
+                        else -> "Unexpected response type: ${response::class.simpleName}"
                     }
                 }
 
@@ -477,8 +454,6 @@ class AIAgentBuilderIntegrationTest : AIAgentTestBase() {
 
                 with(state) {
                     result.shouldNotBeBlank()
-                    // Should not contain error message for simple request
-                    (result.contains("Error occurred")).shouldBe(false)
                 }
             }
         }
@@ -495,7 +470,7 @@ class AIAgentBuilderIntegrationTest : AIAgentTestBase() {
                     .promptExecutor(getExecutor(model))
                     .llmModel(model)
                     .systemPrompt("You are a creative assistant.")
-                    .numberOfChoices(1) // Single choice for deterministic testing
+                    .numberOfChoices(1)
                     .temperature(0.7)
                     .install(EventHandler.Feature, eventHandlerConfig)
                     .build()
@@ -518,7 +493,6 @@ class AIAgentBuilderIntegrationTest : AIAgentTestBase() {
         withRetry {
             runWithTracking { eventHandlerConfig, state ->
                 val strategyWithContext = functionalStrategy<String, String>("context-aware") { input ->
-                    // Access context information
                     val agentId = agentId
                     when (val response = requestLLM("Agent $agentId processing: $input")) {
                         is Message.Assistant -> "Processed by $agentId: ${response.content}"
