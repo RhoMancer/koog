@@ -59,7 +59,6 @@ public class JavaApiIntegrationTest extends KoogJavaTestBase {
     }
 
     @Test
-    @Disabled("Java/Kotlin interop issue: Continuation type incompatibility with client.execute()")
     public void integration_testOpenAILLMClient() {
         String apiKey = TestCredentials.INSTANCE.readTestOpenAIKeyFromEnv();
         OpenAILLMClient client = JavaInteropUtils.createOpenAIClient(apiKey);
@@ -78,7 +77,6 @@ public class JavaApiIntegrationTest extends KoogJavaTestBase {
     }
 
     @Test
-    @Disabled("Java/Kotlin interop issue: Continuation type incompatibility with client.execute()")
     public void integration_testAnthropicLLMClient() {
         String apiKey = TestCredentials.INSTANCE.readTestAnthropicKeyFromEnv();
         AnthropicLLMClient client = JavaInteropUtils.createAnthropicClient(apiKey);
@@ -97,7 +95,6 @@ public class JavaApiIntegrationTest extends KoogJavaTestBase {
     }
 
     @Test
-    @Disabled("Java/Kotlin interop issue: Continuation type incompatibility with executor.execute()")
     public void integration_testMultiLLMPromptExecutor() {
         String openAIKey = TestCredentials.INSTANCE.readTestOpenAIKeyFromEnv();
         String anthropicKey = TestCredentials.INSTANCE.readTestAnthropicKeyFromEnv();
