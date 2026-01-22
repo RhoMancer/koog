@@ -51,13 +51,9 @@ public class JavaApiIntegrationTest extends KoogJavaTestBase {
     private final List<AutoCloseable> resourcesToClose = new ArrayList<>();
 
     @AfterEach
-    public void cleanup() {
+    public void cleanup() throws Exception {
         for (AutoCloseable resource : resourcesToClose) {
-            try {
-                resource.close();
-            } catch (Exception e) {
-                // Ignore cleanup errors
-            }
+            resource.close();
         }
         resourcesToClose.clear();
     }
@@ -71,12 +67,7 @@ public class JavaApiIntegrationTest extends KoogJavaTestBase {
 
         assertEquals(LLMProvider.OpenAI.INSTANCE, client.llmProvider());
 
-        Prompt prompt = JavaInteropUtils.buildSimplePrompt(
-            "test-openai",
-            "You are a helpful assistant.",
-            "Say 'Hello from OpenAI'"
-        );
-
+        Prompt prompt = JavaInteropUtils.buildSimplePrompt("test-openai", "You are a helpful assistant.", "Say 'Hello from OpenAI'");
         List<Message.Response> responses = JavaInteropUtils.executeClientBlocking(client, prompt, OpenAIModels.Chat.GPT4o, Collections.emptyList());
 
         assertNotNull(responses);
@@ -95,12 +86,7 @@ public class JavaApiIntegrationTest extends KoogJavaTestBase {
 
         assertEquals(LLMProvider.Anthropic.INSTANCE, client.llmProvider());
 
-        Prompt prompt = JavaInteropUtils.buildSimplePrompt(
-            "test-anthropic",
-            "You are a helpful assistant.",
-            "Say 'Hello from Anthropic'"
-        );
-
+        Prompt prompt = JavaInteropUtils.buildSimplePrompt("test-anthropic", "You are a helpful assistant.", "Say 'Hello from Anthropic'");
         List<Message.Response> responses = JavaInteropUtils.executeClientBlocking(client, prompt, AnthropicModels.Haiku_4_5, Collections.emptyList());
 
         assertNotNull(responses);
@@ -124,26 +110,13 @@ public class JavaApiIntegrationTest extends KoogJavaTestBase {
 
         MultiLLMPromptExecutor executor = JavaInteropUtils.createMultiLLMPromptExecutor(openAIClient, anthropicClient);
 
-        // Test with OpenAI model
-        Prompt openAIPrompt = JavaInteropUtils.buildSimplePrompt(
-            "test-multi-openai",
-            "You are a helpful assistant.",
-            "Say 'OpenAI response'"
-        );
-
+        Prompt openAIPrompt = JavaInteropUtils.buildSimplePrompt("test-multi-openai", "You are a helpful assistant.", "Say 'OpenAI response'");
         List<Message.Response> openAIResponses = JavaInteropUtils.executeExecutorBlocking(executor, openAIPrompt, OpenAIModels.Chat.GPT4o, Collections.emptyList());
-
         assertNotNull(openAIResponses);
         assertFalse(openAIResponses.isEmpty());
 
-        Prompt anthropicPrompt = JavaInteropUtils.buildSimplePrompt(
-            "test-multi-anthropic",
-            "You are a helpful assistant.",
-            "Say 'Anthropic response'"
-        );
-
+        Prompt anthropicPrompt = JavaInteropUtils.buildSimplePrompt("test-multi-anthropic", "You are a helpful assistant.", "Say 'Anthropic response'");
         List<Message.Response> anthropicResponses = JavaInteropUtils.executeExecutorBlocking(executor, anthropicPrompt, AnthropicModels.Haiku_4_5, Collections.emptyList());
-
         assertNotNull(anthropicResponses);
         assertFalse(anthropicResponses.isEmpty());
     }
@@ -212,16 +185,15 @@ public class JavaApiIntegrationTest extends KoogJavaTestBase {
 
         ToolRegistry toolRegistry = JavaInteropUtils.createToolRegistry(calculator);
 
-        // Note: install() must be chained in the builder pattern because it returns a new GraphAgentBuilder
         AIAgent<String, String> agent = AIAgent.builder()
             .promptExecutor(executor)
             .llmModel(model)
             .systemPrompt("You are a calculator. Use the add tool when needed.")
             .toolRegistry(toolRegistry)
             .install(EventHandler.Feature, config -> {
-                config.onAgentStarting(eventContext -> agentStarted.set(true));
-                config.onAgentCompleted(eventContext -> agentCompleted.set(true));
-                config.onLLMCallStarting(eventContext -> llmCallsCount.incrementAndGet());
+                config.onAgentStarting(ctx -> agentStarted.set(true));
+                config.onAgentCompleted(ctx -> agentCompleted.set(true));
+                config.onLLMCallStarting(ctx -> llmCallsCount.incrementAndGet());
             })
             .build();
 
@@ -249,9 +221,7 @@ public class JavaApiIntegrationTest extends KoogJavaTestBase {
                 .llmModel(model)
                 .systemPrompt("You are a helpful assistant.")
                 .functionalStrategy((context, input) -> {
-                    // Simple strategy: just request LLM once
                     Message.Response response = JavaInteropUtils.requestLLMBlocking(context, input, true);
-
                     if (response instanceof Message.Assistant) {
                         return JavaInteropUtils.getAssistantContent((Message.Assistant) response);
                     }
@@ -280,14 +250,11 @@ public class JavaApiIntegrationTest extends KoogJavaTestBase {
                 .llmModel(model)
                 .systemPrompt("You are a helpful assistant.")
                 .functionalStrategy((context, input) -> {
-                    // Multi-step strategy: request LLM multiple times
                     Message.Response response1 = JavaInteropUtils.requestLLMBlocking(context, "First step: " + input, true);
 
-                    final String step1Result;
+                    String step1Result = "";
                     if (response1 instanceof Message.Assistant) {
                         step1Result = JavaInteropUtils.getAssistantContent((Message.Assistant) response1);
-                    } else {
-                        step1Result = "";
                     }
 
                     Message.Response response2 = JavaInteropUtils.requestLLMBlocking(
@@ -321,8 +288,6 @@ public class JavaApiIntegrationTest extends KoogJavaTestBase {
 
         ToolRegistry toolRegistry = JavaInteropUtils.createToolRegistry(calculator);
 
-        // DESIGN LIMITATION: functionalStrategy requires manual tool call handling
-        // The strategy must implement the tool execution loop manually
         AIAgent<String, String> agent = JavaInteropUtils.buildFunctionalAgent(
             JavaInteropUtils.createAgentBuilder()
                 .promptExecutor(executor)
@@ -339,16 +304,10 @@ public class JavaApiIntegrationTest extends KoogJavaTestBase {
                     int iterations = 0;
                     int maxIterations = 5;
 
-                    // Manual tool call loop
                     while (currentResponse instanceof Message.Tool.Call && iterations < maxIterations) {
                         Message.Tool.Call toolCall = (Message.Tool.Call) currentResponse;
-
-                        // Execute the tool
                         ReceivedToolResult toolResult = JavaInteropUtils.executeToolBlocking(context, toolCall);
-
-                        // Send result back to LLM
                         currentResponse = JavaInteropUtils.sendToolResultBlocking(context, toolResult);
-
                         iterations++;
                     }
 
@@ -365,7 +324,6 @@ public class JavaApiIntegrationTest extends KoogJavaTestBase {
 
         assertNotNull(result);
         assertFalse(result.isBlank());
-        // Result should contain calculation or mention of tool usage
     }
 
     @ParameterizedTest
@@ -390,7 +348,6 @@ public class JavaApiIntegrationTest extends KoogJavaTestBase {
                 .systemPrompt("You are a helpful assistant that coordinates calculations.")
                 .toolRegistry(JavaInteropUtils.createToolRegistry(calculator))
                 .functionalStrategy((context, input) -> {
-                    // Use subtask to delegate calculation
                     String subtaskResult = JavaInteropUtils.runSubtaskBlocking(
                         context,
                         "Calculate: " + input,
@@ -424,22 +381,17 @@ public class JavaApiIntegrationTest extends KoogJavaTestBase {
                 .llmModel(model)
                 .systemPrompt("You are a helpful assistant.")
                 .functionalStrategy((context, input) -> {
-                    // Custom strategy with retry logic
                     int maxRetries = 3;
-                    String result = null;
-
                     for (int i = 0; i < maxRetries; i++) {
                         Message.Response response = JavaInteropUtils.requestLLMBlocking(context, input, true);
-
                         if (response instanceof Message.Assistant) {
-                            result = JavaInteropUtils.getAssistantContent((Message.Assistant) response);
+                            String result = JavaInteropUtils.getAssistantContent((Message.Assistant) response);
                             if (!result.isEmpty()) {
-                                break;
+                                return result;
                             }
                         }
                     }
-
-                    return result != null ? result : "Failed after retries";
+                    return "Failed after retries";
                 })
         );
 
@@ -463,7 +415,6 @@ public class JavaApiIntegrationTest extends KoogJavaTestBase {
                 .llmModel(model)
                 .systemPrompt("You are a helpful assistant that generates JSON.")
                 .functionalStrategy((context, input) -> {
-                    // Custom strategy with validation
                     Message.Response response = JavaInteropUtils.requestLLMBlocking(
                         context,
                         "Generate a JSON object with 'status' field set to 'success'",
@@ -472,13 +423,10 @@ public class JavaApiIntegrationTest extends KoogJavaTestBase {
 
                     if (response instanceof Message.Assistant) {
                         String content = JavaInteropUtils.getAssistantContent((Message.Assistant) response);
-
-                        // Validate response contains expected content
                         if (content.contains("status") && content.contains("success")) {
                             return content;
-                        } else {
-                            return "Validation failed: response doesn't contain expected fields";
                         }
+                        return "Validation failed: response doesn't contain expected fields";
                     }
                     return "Unexpected response type";
                 })
