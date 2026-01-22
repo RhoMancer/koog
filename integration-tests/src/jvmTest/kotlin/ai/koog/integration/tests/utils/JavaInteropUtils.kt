@@ -140,13 +140,6 @@ object JavaInteropUtils {
             @LLMDescription(description = "Second number") b: Int
         ): Int = a + b
 
-        @ai.koog.agents.core.tools.annotations.Tool
-        @LLMDescription(description = "Multiplies two numbers")
-        fun multiply(
-            @LLMDescription(description = "First number") a: Int,
-            @LLMDescription(description = "Second number") b: Int
-        ): Int = a * b
-
         fun getAddTool(): Tool<*, *> {
             return createToolRegistry(this).tools.first { it.name == "add" }
         }

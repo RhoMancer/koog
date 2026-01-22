@@ -48,10 +48,36 @@ public class JavaApiIntegrationTest extends KoogJavaTestBase {
         resourcesToClose.clear();
     }
 
+    private void assertValidResponse(List<Message.Response> responses) {
+        assertNotNull(responses);
+        assertFalse(responses.isEmpty());
+        assertInstanceOf(Message.Assistant.class, responses.get(0));
+        String content = JavaInteropUtils.getAssistantContent((Message.Assistant) responses.get(0));
+        assertFalse(content.isEmpty());
+    }
+
+    private String getAssistantContentOrDefault(Message.Response response, String defaultValue) {
+        if (response instanceof Message.Assistant) {
+            return JavaInteropUtils.getAssistantContent((Message.Assistant) response);
+        }
+        return defaultValue;
+    }
+
+    private AIAgent<String, String> buildAgentWithCalculator(MultiLLMPromptExecutor executor, LLModel model) {
+        JavaInteropUtils.CalculatorTools calculator = new JavaInteropUtils.CalculatorTools();
+        ToolRegistry toolRegistry = JavaInteropUtils.createToolRegistry(calculator);
+
+        return AIAgent.builder()
+            .promptExecutor(executor)
+            .llmModel(model)
+            .systemPrompt("You are a calculator assistant. You MUST use the add tool to perform additions. ALWAYS call the tool.")
+            .toolRegistry(toolRegistry)
+            .build();
+    }
+
     @Test
     public void integration_testOpenAILLMClient() {
-        String apiKey = TestCredentials.INSTANCE.readTestOpenAIKeyFromEnv();
-        OpenAILLMClient client = JavaInteropUtils.createOpenAIClient(apiKey);
+        OpenAILLMClient client = JavaInteropUtils.createOpenAIClient(TestCredentials.INSTANCE.readTestOpenAIKeyFromEnv());
         resourcesToClose.add((AutoCloseable) client);
 
         assertEquals(LLMProvider.OpenAI.INSTANCE, client.llmProvider());
@@ -59,17 +85,12 @@ public class JavaApiIntegrationTest extends KoogJavaTestBase {
         Prompt prompt = JavaInteropUtils.buildSimplePrompt("test-openai", "You are a helpful assistant.", "Say 'Hello from OpenAI'");
         List<Message.Response> responses = JavaInteropUtils.executeClientBlocking(client, prompt, OpenAIModels.Chat.GPT4o, Collections.emptyList());
 
-        assertNotNull(responses);
-        assertFalse(responses.isEmpty());
-        assertInstanceOf(Message.Assistant.class, responses.get(0));
-        String content = JavaInteropUtils.getAssistantContent((Message.Assistant) responses.get(0));
-        assertFalse(content.isEmpty());
+        assertValidResponse(responses);
     }
 
     @Test
     public void integration_testAnthropicLLMClient() {
-        String apiKey = TestCredentials.INSTANCE.readTestAnthropicKeyFromEnv();
-        AnthropicLLMClient client = JavaInteropUtils.createAnthropicClient(apiKey);
+        AnthropicLLMClient client = JavaInteropUtils.createAnthropicClient(TestCredentials.INSTANCE.readTestAnthropicKeyFromEnv());
         resourcesToClose.add((AutoCloseable) client);
 
         assertEquals(LLMProvider.Anthropic.INSTANCE, client.llmProvider());
@@ -77,20 +98,13 @@ public class JavaApiIntegrationTest extends KoogJavaTestBase {
         Prompt prompt = JavaInteropUtils.buildSimplePrompt("test-anthropic", "You are a helpful assistant.", "Say 'Hello from Anthropic'");
         List<Message.Response> responses = JavaInteropUtils.executeClientBlocking(client, prompt, AnthropicModels.Haiku_4_5, Collections.emptyList());
 
-        assertNotNull(responses);
-        assertFalse(responses.isEmpty());
-        assertInstanceOf(Message.Assistant.class, responses.get(0));
-        String content = JavaInteropUtils.getAssistantContent((Message.Assistant) responses.get(0));
-        assertFalse(content.isEmpty());
+        assertValidResponse(responses);
     }
 
     @Test
     public void integration_testMultiLLMPromptExecutor() {
-        String openAIKey = TestCredentials.INSTANCE.readTestOpenAIKeyFromEnv();
-        String anthropicKey = TestCredentials.INSTANCE.readTestAnthropicKeyFromEnv();
-
-        OpenAILLMClient openAIClient = JavaInteropUtils.createOpenAIClient(openAIKey);
-        AnthropicLLMClient anthropicClient = JavaInteropUtils.createAnthropicClient(anthropicKey);
+        OpenAILLMClient openAIClient = JavaInteropUtils.createOpenAIClient(TestCredentials.INSTANCE.readTestOpenAIKeyFromEnv());
+        AnthropicLLMClient anthropicClient = JavaInteropUtils.createAnthropicClient(TestCredentials.INSTANCE.readTestAnthropicKeyFromEnv());
 
         resourcesToClose.add((AutoCloseable) openAIClient);
         resourcesToClose.add((AutoCloseable) anthropicClient);
@@ -135,18 +149,10 @@ public class JavaApiIntegrationTest extends KoogJavaTestBase {
     public void integration_testBuilderWithToolRegistry(LLModel model) {
         Models.assumeAvailable(model.getProvider());
 
-        MultiLLMPromptExecutor executor = createExecutor(model);
-
-        JavaInteropUtils.CalculatorTools calculator = new JavaInteropUtils.CalculatorTools();
-
-        ToolRegistry toolRegistry = JavaInteropUtils.createToolRegistry(calculator);
-
-        AIAgent<String, String> agent = AIAgent.builder()
-            .promptExecutor(executor)
-            .llmModel(model)
-            .systemPrompt("You are a calculator assistant. You MUST use the add tool to perform additions. ALWAYS call the tool.")
-            .toolRegistry(toolRegistry)
-            .build();
+        AIAgent<String, String> agent = buildAgentWithCalculator(
+            createExecutor(model),
+            model
+        );
 
         String result = runBlocking(continuation ->
             agent.run("What is 15 + 27?", continuation)
@@ -162,18 +168,15 @@ public class JavaApiIntegrationTest extends KoogJavaTestBase {
     public void integration_testEventHandler(LLModel model) {
         Models.assumeAvailable(model.getProvider());
 
-        MultiLLMPromptExecutor executor = createExecutor(model);
-
         AtomicBoolean agentStarted = new AtomicBoolean(false);
         AtomicBoolean agentCompleted = new AtomicBoolean(false);
         AtomicInteger llmCallsCount = new AtomicInteger(0);
 
         JavaInteropUtils.CalculatorTools calculator = new JavaInteropUtils.CalculatorTools();
-
         ToolRegistry toolRegistry = JavaInteropUtils.createToolRegistry(calculator);
 
         AIAgent<String, String> agent = AIAgent.builder()
-            .promptExecutor(executor)
+            .promptExecutor(createExecutor(model))
             .llmModel(model)
             .systemPrompt("You are a calculator. Use the add tool when needed.")
             .toolRegistry(toolRegistry)
@@ -199,20 +202,17 @@ public class JavaApiIntegrationTest extends KoogJavaTestBase {
     public void integration_testSimpleFunctionalStrategy(LLModel model) {
         Models.assumeAvailable(model.getProvider());
 
-        MultiLLMPromptExecutor executor = createExecutor(model);
-
         AIAgent<String, String> agent = JavaInteropUtils.buildFunctionalAgent(
             JavaInteropUtils.createAgentBuilder()
-                .promptExecutor(executor)
+                .promptExecutor(createExecutor(model))
                 .llmModel(model)
                 .systemPrompt("You are a helpful assistant.")
-                .functionalStrategy((context, input) -> {
-                    Message.Response response = JavaInteropUtils.requestLLMBlocking(context, input, true);
-                    if (response instanceof Message.Assistant) {
-                        return JavaInteropUtils.getAssistantContent((Message.Assistant) response);
-                    }
-                    return "Unexpected response type";
-                })
+                .functionalStrategy((context, input) ->
+                    getAssistantContentOrDefault(
+                        JavaInteropUtils.requestLLMBlocking(context, input, true),
+                        "Unexpected response type"
+                    )
+                )
         );
 
         String result = JavaInteropUtils.runAgentBlocking(agent, "Say hello");
@@ -227,20 +227,14 @@ public class JavaApiIntegrationTest extends KoogJavaTestBase {
     public void integration_testMultiStepFunctionalStrategy(LLModel model) {
         Models.assumeAvailable(model.getProvider());
 
-        MultiLLMPromptExecutor executor = createExecutor(model);
-
         AIAgent<String, String> agent = JavaInteropUtils.buildFunctionalAgent(
             JavaInteropUtils.createAgentBuilder()
-                .promptExecutor(executor)
+                .promptExecutor(createExecutor(model))
                 .llmModel(model)
                 .systemPrompt("You are a helpful assistant.")
                 .functionalStrategy((context, input) -> {
                     Message.Response response1 = JavaInteropUtils.requestLLMBlocking(context, "First step: " + input, true);
-
-                    String step1Result = "";
-                    if (response1 instanceof Message.Assistant) {
-                        step1Result = JavaInteropUtils.getAssistantContent((Message.Assistant) response1);
-                    }
+                    String step1Result = getAssistantContentOrDefault(response1, "");
 
                     Message.Response response2 = JavaInteropUtils.requestLLMBlocking(
                         context,
@@ -248,10 +242,7 @@ public class JavaApiIntegrationTest extends KoogJavaTestBase {
                         true
                     );
 
-                    if (response2 instanceof Message.Assistant) {
-                        return JavaInteropUtils.getAssistantContent((Message.Assistant) response2);
-                    }
-                    return "Unexpected response type";
+                    return getAssistantContentOrDefault(response2, "Unexpected response type");
                 })
         );
 
@@ -266,15 +257,12 @@ public class JavaApiIntegrationTest extends KoogJavaTestBase {
     public void integration_testFunctionalStrategyWithManualToolHandling(LLModel model) {
         Models.assumeAvailable(model.getProvider());
 
-        MultiLLMPromptExecutor executor = createExecutor(model);
-
         JavaInteropUtils.CalculatorTools calculator = new JavaInteropUtils.CalculatorTools();
-
         ToolRegistry toolRegistry = JavaInteropUtils.createToolRegistry(calculator);
 
         AIAgent<String, String> agent = JavaInteropUtils.buildFunctionalAgent(
             JavaInteropUtils.createAgentBuilder()
-                .promptExecutor(executor)
+                .promptExecutor(createExecutor(model))
                 .llmModel(model)
                 .systemPrompt("You are a calculator. Use the add tool to perform calculations.")
                 .toolRegistry(toolRegistry)
@@ -285,14 +273,11 @@ public class JavaApiIntegrationTest extends KoogJavaTestBase {
                         true
                     );
 
-                    int iterations = 0;
                     int maxIterations = 5;
-
-                    while (currentResponse instanceof Message.Tool.Call && iterations < maxIterations) {
+                    for (int i = 0; i < maxIterations && currentResponse instanceof Message.Tool.Call; i++) {
                         Message.Tool.Call toolCall = (Message.Tool.Call) currentResponse;
                         ReceivedToolResult toolResult = JavaInteropUtils.executeToolBlocking(context, toolCall);
                         currentResponse = JavaInteropUtils.sendToolResultBlocking(context, toolResult);
-                        iterations++;
                     }
 
                     if (currentResponse instanceof Message.Assistant) {
@@ -373,22 +358,19 @@ public class JavaApiIntegrationTest extends KoogJavaTestBase {
     public void integration_testCustomStrategyWithRetry(LLModel model) {
         Models.assumeAvailable(model.getProvider());
 
-        MultiLLMPromptExecutor executor = createExecutor(model);
-
         AIAgent<String, String> agent = JavaInteropUtils.buildFunctionalAgent(
             JavaInteropUtils.createAgentBuilder()
-                .promptExecutor(executor)
+                .promptExecutor(createExecutor(model))
                 .llmModel(model)
                 .systemPrompt("You are a helpful assistant.")
                 .functionalStrategy((context, input) -> {
-                    int maxRetries = 3;
-                    for (int i = 0; i < maxRetries; i++) {
-                        Message.Response response = JavaInteropUtils.requestLLMBlocking(context, input, true);
-                        if (response instanceof Message.Assistant) {
-                            String result = JavaInteropUtils.getAssistantContent((Message.Assistant) response);
-                            if (!result.isEmpty()) {
-                                return result;
-                            }
+                    for (int i = 0; i < 3; i++) {
+                        String result = getAssistantContentOrDefault(
+                            JavaInteropUtils.requestLLMBlocking(context, input, true),
+                            ""
+                        );
+                        if (!result.isEmpty()) {
+                            return result;
                         }
                     }
                     return "Failed after retries";
@@ -406,11 +388,9 @@ public class JavaApiIntegrationTest extends KoogJavaTestBase {
     public void integration_testCustomStrategyWithValidation(LLModel model) {
         Models.assumeAvailable(model.getProvider());
 
-        MultiLLMPromptExecutor executor = createExecutor(model);
-
         AIAgent<String, String> agent = JavaInteropUtils.buildFunctionalAgent(
             JavaInteropUtils.createAgentBuilder()
-                .promptExecutor(executor)
+                .promptExecutor(createExecutor(model))
                 .llmModel(model)
                 .systemPrompt("You are a helpful assistant that generates JSON.")
                 .functionalStrategy((context, input) -> {
@@ -420,14 +400,11 @@ public class JavaApiIntegrationTest extends KoogJavaTestBase {
                         true
                     );
 
-                    if (response instanceof Message.Assistant) {
-                        String content = JavaInteropUtils.getAssistantContent((Message.Assistant) response);
-                        if (content.contains("status") && content.contains("success")) {
-                            return content;
-                        }
-                        return "Validation failed: response doesn't contain expected fields";
+                    String content = getAssistantContentOrDefault(response, "Unexpected response type");
+                    if (content.contains("status") && content.contains("success")) {
+                        return content;
                     }
-                    return "Unexpected response type";
+                    return "Validation failed: response doesn't contain expected fields";
                 })
         );
 
