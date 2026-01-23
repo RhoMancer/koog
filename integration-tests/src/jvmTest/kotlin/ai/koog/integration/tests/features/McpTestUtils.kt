@@ -14,8 +14,11 @@ import ai.koog.agents.testing.tools.getMockExecutor
 import ai.koog.integration.tests.utils.RetryUtils
 import ai.koog.prompt.executor.clients.openai.OpenAIModels
 import io.kotest.matchers.booleans.shouldBeTrue
+import io.ktor.client.HttpClient
+import io.ktor.client.plugins.sse.SSE
 import io.ktor.server.engine.embeddedServer
 import io.ktor.server.netty.Netty
+import io.modelcontextprotocol.kotlin.sdk.client.SseClientTransport
 import io.modelcontextprotocol.kotlin.sdk.server.Server
 import io.modelcontextprotocol.kotlin.sdk.server.ServerOptions
 import io.modelcontextprotocol.kotlin.sdk.server.mcp
@@ -57,6 +60,7 @@ suspend fun startMcpServer(
     server.onClose { embeddedServer.stop(1000, 1000) }
     embeddedServer.startSuspend(wait = false)
     delay(1.seconds)
+    embeddedServer
     return server
 }
 
@@ -104,6 +108,13 @@ fun createMcpAgent(
             mcpBuilder()
         }
     }
+}
+
+fun sseClientTransport(port: Int): SseClientTransport {
+    return SseClientTransport(
+        HttpClient { install(SSE) },
+        "http://localhost:$port"
+    )
 }
 
 fun runTestWithTimeout(body: suspend () -> Unit) = runTest {

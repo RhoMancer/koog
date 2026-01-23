@@ -17,10 +17,18 @@ public class RandomNumberTool : Tool<RandomNumberTool.Args, Int>(
     description = "Generates a random number"
 ) {
 
+    private val _results: MutableList<Int> = mutableListOf()
+
+    /**
+     * A read-only list of all generated random numbers.
+     */
+    public val results: List<Int> get() = _results.toList()
+
     /**
      * The last generated random number.
      */
-    public var last: Int? = null
+    public val last: Int?
+        get() = _results.lastOrNull()
 
     private val logger = KotlinLogging.logger {}
 
@@ -41,9 +49,16 @@ public class RandomNumberTool : Tool<RandomNumberTool.Args, Int>(
 
         val result = random.nextInt().also { number ->
             logger.info { "Generated random number: $number [seed=$seed]" }
-            last = number
+            _results.add(number)
         }
 
         return result
+    }
+
+    /**
+     * Clears the list of generated random numbers.
+     */
+    public fun clear() {
+        _results.clear()
     }
 }
