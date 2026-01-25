@@ -1,6 +1,3 @@
-@file:OptIn(InternalAgentsApi::class)
-@file:Suppress("MissingKDocForPublicAPI")
-
 package ai.koog.agents.core.feature.pipeline
 
 import ai.koog.agents.core.agent.AIAgent
@@ -18,22 +15,20 @@ import ai.koog.agents.core.feature.config.FeatureConfig
 import ai.koog.agents.core.feature.config.FeatureSystemVariables
 import ai.koog.agents.core.feature.debugger.Debugger
 import ai.koog.agents.core.feature.handler.AgentLifecycleEventContext
+import ai.koog.agents.core.feature.handler.AgentLifecycleEventType
+import ai.koog.agents.core.feature.handler.AgentLifecycleHandlersCollector
 import ai.koog.agents.core.feature.handler.agent.AgentClosingContext
 import ai.koog.agents.core.feature.handler.agent.AgentClosingHandler
 import ai.koog.agents.core.feature.handler.agent.AgentCompletedContext
-import ai.koog.agents.core.feature.handler.agent.AgentCompletedHandler
 import ai.koog.agents.core.feature.handler.agent.AgentEnvironmentTransformingContext
 import ai.koog.agents.core.feature.handler.agent.AgentEnvironmentTransformingHandler
 import ai.koog.agents.core.feature.handler.agent.AgentEventHandler
 import ai.koog.agents.core.feature.handler.agent.AgentExecutionFailedContext
-import ai.koog.agents.core.feature.handler.agent.AgentExecutionFailedHandler
 import ai.koog.agents.core.feature.handler.agent.AgentStartingContext
 import ai.koog.agents.core.feature.handler.agent.AgentStartingHandler
 import ai.koog.agents.core.feature.handler.llm.LLMCallCompletedContext
-import ai.koog.agents.core.feature.handler.llm.LLMCallCompletedHandler
 import ai.koog.agents.core.feature.handler.llm.LLMCallEventHandler
 import ai.koog.agents.core.feature.handler.llm.LLMCallStartingContext
-import ai.koog.agents.core.feature.handler.llm.LLMCallStartingHandler
 import ai.koog.agents.core.feature.handler.strategy.StrategyCompletedContext
 import ai.koog.agents.core.feature.handler.strategy.StrategyCompletedHandler
 import ai.koog.agents.core.feature.handler.strategy.StrategyEventHandler
@@ -79,10 +74,8 @@ import kotlin.reflect.safeCast
  */
 public class AIAgentPipelineImpl(
     override val config: AIAgentConfig,
-    clock: Clock
+    public override val clock: Clock
 ) : AIAgentPipelineAPI {
-
-    public override val clock: Clock = clock
 
     // Notes on suppressed warnings used in this class:
     // - Some members are annotated with @Suppress to satisfy explicit API requirements
@@ -93,6 +86,15 @@ public class AIAgentPipelineImpl(
         private val logger = KotlinLogging.logger { }
     }
 
+    /**
+     * Represents a registered feature in the system.
+     *
+     * This class encapsulates the implementation of a feature and its associated configuration.
+     * It is used to maintain feature details after registration.
+     *
+     * @property featureImpl The implementation instance of the feature.
+     * @property featureConfig The configuration settings associated with the feature.
+     */
     @Suppress("RedundantVisibilityModifier") // have to put public here, explicitApi requires it
     private class RegisteredFeature(
         public val featureImpl: Any,
@@ -105,6 +107,10 @@ public class AIAgentPipelineImpl(
     private val systemFeatures: Set<AIAgentStorageKey<*>> = setOf(
         Debugger.key
     )
+
+    // Map:
+    //   feature -> agent event type -> handler
+    private val agentLifecycleHandlersCollector = AgentLifecycleHandlersCollector()
 
     private val agentEventHandlers: MutableMap<AIAgentStorageKey<*>, AgentEventHandler> = mutableMapOf()
 
@@ -187,10 +193,11 @@ public class AIAgentPipelineImpl(
 
     //endregion Internal Handlers
 
-    //region Trigger Agent Handlers
+    //region Invoke Agent Handlers
 
+    // TODO: SD -- rename all to invokeOnAgentStarting
     @OptIn(InternalAgentsApi::class)
-    public override suspend fun <TInput, TOutput> onAgentStarting(
+    internal override suspend fun <TInput, TOutput> invokeOnAgentStarting(
         eventId: String,
         executionInfo: AgentExecutionInfo,
         runId: String,
@@ -198,8 +205,14 @@ public class AIAgentPipelineImpl(
         context: AIAgentContext
     ) {
         val eventContext = AgentStartingContext(eventId, executionInfo, agent, runId, context)
-        agentEventHandlers.values.forEach { handler ->
-            handler.handleAgentStarting(eventContext)
+
+        val registeredHandlers = agentLifecycleHandlersCollector.getHandlersForEvent<AgentStartingContext>(
+            eventType = AgentLifecycleEventType.AgentStarting,
+        )
+
+        registeredHandlers.forEach { (featureKey, handlers) ->
+            logger.trace { "Execute registered 'OnAgentStarting' handlers for feature: '${featureKey.name}'" }
+            handlers.forEach { handler -> handler.handle(eventContext) }
         }
     }
 
@@ -244,9 +257,9 @@ public class AIAgentPipelineImpl(
         }
     }
 
-    //endregion Trigger Agent Handlers
+    //endregion Invoke Agent Handlers
 
-    //region Trigger Strategy Handlers
+    //region Invoke Strategy Handlers
 
     @OptIn(InternalAgentsApi::class)
     public override suspend fun onStrategyStarting(
@@ -273,9 +286,9 @@ public class AIAgentPipelineImpl(
         strategyEventHandlers.values.forEach { handler -> handler.handleStrategyCompleted(eventContext) }
     }
 
-    //endregion Trigger Strategy Handlers
+    //endregion Invoke Strategy Handlers
 
-    //region Trigger LLM Call Handlers
+    //region Invoke LLM Call Handlers
 
     public override suspend fun onLLMCallStarting(
         eventId: String,
@@ -287,7 +300,7 @@ public class AIAgentPipelineImpl(
         context: AIAgentContext
     ) {
         val eventContext = LLMCallStartingContext(eventId, executionInfo, runId, prompt, model, tools, context)
-        llmCallEventHandlers.values.forEach { handler -> handler.llmCallStartingHandler.handle(eventContext) }
+        llmCallEventHandlers.values.forEach { handler -> handler.invokeOnLLMCallStartingHandlers(eventContext) }
     }
 
     public override suspend fun onLLMCallCompleted(
@@ -313,12 +326,12 @@ public class AIAgentPipelineImpl(
                 moderationResponse,
                 context
             )
-        llmCallEventHandlers.values.forEach { handler -> handler.llmCallCompletedHandler.handle(eventContext) }
+        llmCallEventHandlers.values.forEach { handler -> handler.invokeOnLLMCallCompletedHandlers(eventContext) }
     }
 
-    //endregion Trigger LLM Call Handlers
+    //endregion Invoke LLM Call Handlers
 
-    //region Trigger Tool Call Handlers
+    //region Invoke Tool Call Handlers
 
     public override suspend fun onToolCallStarting(
         eventId: String,
@@ -422,9 +435,9 @@ public class AIAgentPipelineImpl(
         toolCallEventHandlers.values.forEach { handler -> handler.toolCallResultHandler.handle(eventContext) }
     }
 
-    //endregion Trigger Tool Call Handlers
+    //endregion Invoke Tool Call Handlers
 
-    //region Trigger LLM Streaming
+    //region Invoke LLM Streaming
 
     public override suspend fun onLLMStreamingStarting(
         eventId: String,
@@ -486,13 +499,14 @@ public class AIAgentPipelineImpl(
         llmStreamingEventHandlers.values.forEach { handler -> handler.llmStreamingCompletedHandler.handle(eventContext) }
     }
 
-    //endregion Trigger LLM Streaming
+    //endregion Invoke LLM Streaming
 
     //region Interceptors
 
+    @OptIn(InternalAgentsApi::class)
     public override fun interceptEnvironmentCreated(
         feature: AIAgentFeature<*, *>,
-        transform: suspend AgentEnvironmentTransformingContext.(AIAgentEnvironment) -> AIAgentEnvironment
+        transform: suspend (AgentEnvironmentTransformingContext, AIAgentEnvironment) -> AIAgentEnvironment
     ) {
         val handler: AgentEventHandler = agentEventHandlers.getOrPut(feature.key) { AgentEventHandler() }
 
@@ -501,39 +515,45 @@ public class AIAgentPipelineImpl(
         )
     }
 
+    // TODO: SD -- rename all to
+    //  onAgentStarting(...)
+    @OptIn(InternalAgentsApi::class)
     public override fun interceptAgentStarting(
         feature: AIAgentFeature<*, *>,
         handle: suspend (AgentStartingContext) -> Unit
     ) {
-        val handler: AgentEventHandler = agentEventHandlers.getOrPut(feature.key) { AgentEventHandler() }
-
-        handler.agentStartingHandler = AgentStartingHandler(
-            function = createConditionalHandler(feature, handle)
+        agentLifecycleHandlersCollector.addHandlerForFeature(
+            featureKey = feature.key,
+            eventType = AgentLifecycleEventType.AgentStarting,
+            handler = createConditionalHandler(feature, handle)
         )
     }
 
+    @OptIn(InternalAgentsApi::class)
     public override fun interceptAgentCompleted(
         feature: AIAgentFeature<*, *>,
         handle: suspend (eventContext: AgentCompletedContext) -> Unit
     ) {
-        val handler = agentEventHandlers.getOrPut(feature.key) { AgentEventHandler() }
-
-        handler.agentCompletedHandler = AgentCompletedHandler(
-            function = createConditionalHandler(feature, handle)
+        agentLifecycleHandlersCollector.addHandlerForFeature(
+            featureKey = feature.key,
+            eventType = AgentLifecycleEventType.AgentCompleted,
+            handler = createConditionalHandler(feature, handle)
         )
     }
 
+    @OptIn(InternalAgentsApi::class)
     public override fun interceptAgentExecutionFailed(
         feature: AIAgentFeature<*, *>,
         handle: suspend (eventContext: AgentExecutionFailedContext) -> Unit
     ) {
-        val handler = agentEventHandlers.getOrPut(feature.key) { AgentEventHandler() }
-
-        handler.agentExecutionFailedHandler = AgentExecutionFailedHandler(
-            function = createConditionalHandler(feature, handle)
+        agentLifecycleHandlersCollector.addHandlerForFeature(
+            featureKey = feature.key,
+            eventType = AgentLifecycleEventType.AgentExecutionFailed,
+            handler = createConditionalHandler(feature, handle)
         )
     }
 
+    @OptIn(InternalAgentsApi::class)
     public override fun interceptAgentClosing(
         feature: AIAgentFeature<*, *>,
         handle: suspend (eventContext: AgentClosingContext) -> Unit
@@ -545,6 +565,7 @@ public class AIAgentPipelineImpl(
         )
     }
 
+    @OptIn(InternalAgentsApi::class)
     public override fun interceptStrategyStarting(
         feature: AIAgentFeature<*, *>,
         handle: suspend (StrategyStartingContext) -> Unit
@@ -556,6 +577,7 @@ public class AIAgentPipelineImpl(
         )
     }
 
+    @OptIn(InternalAgentsApi::class)
     public override fun interceptStrategyCompleted(
         feature: AIAgentFeature<*, *>,
         handle: suspend (StrategyCompletedContext) -> Unit
@@ -567,28 +589,25 @@ public class AIAgentPipelineImpl(
         )
     }
 
+    @OptIn(InternalAgentsApi::class)
     public override fun interceptLLMCallStarting(
         feature: AIAgentFeature<*, *>,
         handle: suspend (eventContext: LLMCallStartingContext) -> Unit
     ) {
         val handler = llmCallEventHandlers.getOrPut(feature.key) { LLMCallEventHandler() }
-
-        handler.llmCallStartingHandler = LLMCallStartingHandler(
-            function = createConditionalHandler(feature, handle)
-        )
+        handler.addLLMCallStartingHandler(handler = createConditionalHandler(feature, handle))
     }
 
+    @OptIn(InternalAgentsApi::class)
     public override fun interceptLLMCallCompleted(
         feature: AIAgentFeature<*, *>,
         handle: suspend (eventContext: LLMCallCompletedContext) -> Unit
     ) {
         val handler = llmCallEventHandlers.getOrPut(feature.key) { LLMCallEventHandler() }
-
-        handler.llmCallCompletedHandler = LLMCallCompletedHandler(
-            function = createConditionalHandler(feature, handle)
-        )
+        handler.addLLMCallCompletedHandler(handler = createConditionalHandler(feature, handle))
     }
 
+    @OptIn(InternalAgentsApi::class)
     public override fun interceptLLMStreamingStarting(
         feature: AIAgentFeature<*, *>,
         handle: suspend (eventContext: LLMStreamingStartingContext) -> Unit
@@ -600,6 +619,7 @@ public class AIAgentPipelineImpl(
         )
     }
 
+    @OptIn(InternalAgentsApi::class)
     public override fun interceptLLMStreamingFrameReceived(
         feature: AIAgentFeature<*, *>,
         handle: suspend (eventContext: LLMStreamingFrameReceivedContext) -> Unit
@@ -611,6 +631,7 @@ public class AIAgentPipelineImpl(
         )
     }
 
+    @OptIn(InternalAgentsApi::class)
     public override fun interceptLLMStreamingFailed(
         feature: AIAgentFeature<*, *>,
         handle: suspend (eventContext: LLMStreamingFailedContext) -> Unit
@@ -622,6 +643,7 @@ public class AIAgentPipelineImpl(
         )
     }
 
+    @OptIn(InternalAgentsApi::class)
     public override fun interceptLLMStreamingCompleted(
         feature: AIAgentFeature<*, *>,
         handle: suspend (eventContext: LLMStreamingCompletedContext) -> Unit
@@ -633,6 +655,7 @@ public class AIAgentPipelineImpl(
         )
     }
 
+    @OptIn(InternalAgentsApi::class)
     public override fun interceptToolCallStarting(
         feature: AIAgentFeature<*, *>,
         handle: suspend (eventContext: ToolCallStartingContext) -> Unit
@@ -644,6 +667,7 @@ public class AIAgentPipelineImpl(
         )
     }
 
+    @OptIn(InternalAgentsApi::class)
     public override fun interceptToolValidationFailed(
         feature: AIAgentFeature<*, *>,
         handle: suspend (eventContext: ToolValidationFailedContext) -> Unit
@@ -655,6 +679,7 @@ public class AIAgentPipelineImpl(
         )
     }
 
+    @OptIn(InternalAgentsApi::class)
     public override fun interceptToolCallFailed(
         feature: AIAgentFeature<*, *>,
         handle: suspend (eventContext: ToolCallFailedContext) -> Unit
@@ -666,6 +691,7 @@ public class AIAgentPipelineImpl(
         )
     }
 
+    @OptIn(InternalAgentsApi::class)
     public override fun interceptToolCallCompleted(
         feature: AIAgentFeature<*, *>,
         handle: suspend (eventContext: ToolCallCompletedContext) -> Unit
@@ -984,7 +1010,7 @@ public class AIAgentPipelineImpl(
     @InternalAgentsApi
     public override fun createConditionalHandler(
         feature: AIAgentFeature<*, *>,
-        handle: suspend AgentEnvironmentTransformingContext.(AIAgentEnvironment) -> AIAgentEnvironment
+        handle: suspend (AgentEnvironmentTransformingContext, AIAgentEnvironment) -> AIAgentEnvironment
     ): suspend (AgentEnvironmentTransformingContext, AIAgentEnvironment) -> AIAgentEnvironment =
         handler@{ eventContext, env ->
             val featureConfig = registeredFeatures[feature.key]?.featureConfig
@@ -993,7 +1019,7 @@ public class AIAgentPipelineImpl(
                 return@handler env
             }
 
-            eventContext.handle(env)
+            handle(eventContext, env)
         }
 
     public override fun FeatureConfig.isAccepted(eventContext: AgentLifecycleEventContext): Boolean {

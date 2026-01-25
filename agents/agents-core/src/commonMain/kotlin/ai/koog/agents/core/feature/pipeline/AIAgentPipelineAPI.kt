@@ -14,6 +14,7 @@ import ai.koog.agents.core.environment.AIAgentEnvironment
 import ai.koog.agents.core.feature.AIAgentFeature
 import ai.koog.agents.core.feature.config.FeatureConfig
 import ai.koog.agents.core.feature.handler.AgentLifecycleEventContext
+import ai.koog.agents.core.feature.handler.AgentLifecycleEventHandler
 import ai.koog.agents.core.feature.handler.agent.AgentClosingContext
 import ai.koog.agents.core.feature.handler.agent.AgentCompletedContext
 import ai.koog.agents.core.feature.handler.agent.AgentEnvironmentTransformingContext
@@ -67,7 +68,10 @@ public interface AIAgentPipelineAPI {
     public suspend fun uninstall(featureKey: AIAgentStorageKey<*>)
 
     //region Trigger Agent Handlers
-    public suspend fun <TInput, TOutput> onAgentStarting(
+
+    // TODO: SD -- delete from public API
+    //  this should be an internal methods
+    internal suspend fun <TInput, TOutput> invokeOnAgentStarting(
         eventId: String,
         executionInfo: AgentExecutionInfo,
         runId: String,
@@ -386,7 +390,7 @@ public interface AIAgentPipelineAPI {
     @InternalAgentsApi
     public fun createConditionalHandler(
         feature: AIAgentFeature<*, *>,
-        handle: suspend AgentEnvironmentTransformingContext.(AIAgentEnvironment) -> AIAgentEnvironment
+        handle: suspend (AgentEnvironmentTransformingContext, AIAgentEnvironment) -> AIAgentEnvironment
     ): suspend (AgentEnvironmentTransformingContext, AIAgentEnvironment) -> AIAgentEnvironment
 
     public fun FeatureConfig.isAccepted(eventContext: AgentLifecycleEventContext): Boolean

@@ -126,7 +126,7 @@ public expect abstract class AIAgentPipeline(agentConfig: AIAgentConfig, clock: 
      * @param context The context of the agent execution, providing access to the agent environment and context features
      */
     @OptIn(InternalAgentsApi::class)
-    public override suspend fun <TInput, TOutput> onAgentStarting(
+    internal override suspend fun <TInput, TOutput> invokeOnAgentStarting(
         eventId: String,
         executionInfo: AgentExecutionInfo,
         runId: String,
@@ -1013,6 +1013,8 @@ public expect abstract class AIAgentPipeline(agentConfig: AIAgentConfig, clock: 
 
     //endregion Deprecated Interceptors
 
+    //region public and Internal Methods
+
     /**
      * Creates a conditional handler for the given AI agent feature. The handler will process the
      * provided context based on specific conditions defined in the feature.
@@ -1021,8 +1023,6 @@ public expect abstract class AIAgentPipeline(agentConfig: AIAgentConfig, clock: 
      * @param handle A suspendable function that executes the handling logic for the provided context.
      * @return A suspendable function that takes a context of type TContext and applies the defined handling logic conditionally.
      */
-
-    //region public and Internal Methods
     @InternalAgentsApi
     public override fun <TContext : AgentLifecycleEventContext> createConditionalHandler(
         feature: AIAgentFeature<*, *>,

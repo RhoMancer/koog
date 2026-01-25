@@ -4,31 +4,49 @@ package ai.koog.agents.core.feature.handler.llm
  * A handler responsible for managing the execution flow of a Large Language Model (LLM) call.
  * It allows customization of logic to be executed before and after the LLM is called.
  */
-public class LLMCallEventHandler {
+public class LLMCallEventHandler { // : AgentLifecycleEventHandler {
+
+    private val llmCallStartingHandlers: MutableList<LLMCallStartingHandler> =
+        mutableListOf()
+
+    private val llmCallCompletedHandlers: MutableList<LLMCallCompletedHandler> =
+        mutableListOf()
 
     /**
-     * A handler that is invoked before making a call to the Language Learning Model (LLM).
+     * Registers a handler to be invoked before a call is made to the Large Language Model (LLM).
      *
-     * This handler enables customization or preprocessing steps to be applied before querying the model.
-     * It accepts the prompt, a list of tools, the model, and a session UUID as inputs, allowing
-     * users to define specific logic or modifications to these inputs before the call is made.
+     * @param handler The logic to be executed before the LLM call.
      */
-    public var llmCallStartingHandler: LLMCallStartingHandler =
-        LLMCallStartingHandler { _ -> }
+    public fun addLLMCallStartingHandler(handler: LLMCallStartingHandler) {
+        llmCallStartingHandlers.add(handler)
+    }
 
     /**
-     * A handler invoked after a call to a language model (LLM) is executed.
+     * Registers a handler to be invoked after a call to the Large Language Model (LLM) is completed.
      *
-     * This variable represents a custom implementation of the `AfterLLMCallHandler` functional interface,
-     * allowing post-processing or custom logic to be performed once the LLM has returned a response.
-     *
-     * The handler receives various pieces of information about the LLM call, including the original prompt,
-     * the tools used, the model invoked, the responses returned by the model, and a unique run identifier.
-     *
-     * Customize this handler to implement specific behavior required immediately after LLM processing.
+     * @param handler The logic to be executed after the LLM call is completed.
      */
-    public var llmCallCompletedHandler: LLMCallCompletedHandler =
-        LLMCallCompletedHandler { _ -> }
+    public fun addLLMCallCompletedHandler(handler: LLMCallCompletedHandler) {
+        llmCallCompletedHandlers.add(handler)
+    }
+
+    /**
+     * Invokes all registered handlers for the event triggered before making a call to the LLM.
+     *
+     * @param eventContext The context for the LLM call starting event.
+     */
+    public suspend fun invokeOnLLMCallStartingHandlers(eventContext: LLMCallStartingContext) {
+        llmCallStartingHandlers.forEach { handler -> handler.handle(eventContext) }
+    }
+
+    /**
+     * Invokes all registered handlers associated with the completion of a call to the LLM.
+     *
+     * @param eventContext The context for the LLM call completion event.
+     */
+    public suspend fun invokeOnLLMCallCompletedHandlers(eventContext: LLMCallCompletedContext) {
+        llmCallCompletedHandlers.forEach { handler -> handler.handle(eventContext) }
+    }
 }
 
 /**
