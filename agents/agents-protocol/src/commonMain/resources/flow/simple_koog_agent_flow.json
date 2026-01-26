@@ -3,7 +3,7 @@
     {
       "name": "generate",
       "type": "task",
-      "provider": "koog",
+      "runtime": "koog",
       "config": {
         "model": "openai/gpt-4o"
       },
@@ -17,7 +17,7 @@
     {
       "name": "fix",
       "type": "task",
-      "provider": "koog",
+      "runtime": "koog",
       "prompt": {
         "system": "You are an AI agent that fix problems with project compilation"
       },
@@ -28,7 +28,7 @@
     {
       "name": "verify",
       "type": "verify",
-      "provider": "koog",
+      "runtime": "koog",
       "prompt": {
         "system": "You are an AI agent that verify the project and make a decision if the project have no errors"
       },
