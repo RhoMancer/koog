@@ -6,7 +6,13 @@ import ai.koog.tools.FlowTool
 
 /**
  * Simple flow implementation that executes agents following transitions.
+ *
+ * @deprecated Use [ai.koog.flow.koog.KoogFlow] instead for proper strategy-based execution.
  */
+@Deprecated(
+    message = "Use KoogFlow for proper strategy-based execution",
+    replaceWith = ReplaceWith("KoogFlow", "ai.koog.flow.koog.KoogFlow")
+)
 public data class SimpleFlow(
     override val id: String,
     override val agents: List<FlowAgent>,
@@ -14,7 +20,7 @@ public data class SimpleFlow(
     override val transitions: List<Transition>
 ) : Flow {
 
-    override suspend fun run(): String {
+    override suspend fun run(input: String): String {
         if (agents.isEmpty()) return ""
 
         val agentsByName = agents.associateBy { "agent.${it.name}" }

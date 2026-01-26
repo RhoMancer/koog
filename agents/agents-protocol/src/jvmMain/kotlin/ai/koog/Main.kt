@@ -2,7 +2,7 @@ package ai.koog
 
 import ai.koog.config.parser.FlowJsonConfigParser
 import ai.koog.flow.FlowConfig
-import ai.koog.flow.SimpleFlow
+import ai.koog.flow.koog.KoogFlow
 import kotlinx.coroutines.runBlocking
 
 /**
@@ -26,13 +26,20 @@ public fun main(): Unit = runBlocking {
         println("    - ${transition.from} -> ${transition.to}")
     }
 
-    // Create a SimpleFlow from the config and run it
-    println("\nCreating SimpleFlow and running...")
-    val flow = SimpleFlow(
-        id = config.id ?: "simple-flow",
+    // Create a KoogFlow from the config and run it
+    println("\nCreating KoogFlow and running...")
+    val firstAgentModel = config.transitions.firstOrNull()?.let { firstTransition ->
+        config.agents.find { agent -> agent.name == firstTransition.from }?.model
+    }
+
+    val defaultModelString = "openai/gpt-4"
+
+    val flow = KoogFlow(
+        id = config.id ?: "koog-flow",
         agents = config.agents,
         tools = emptyList(),
-        transitions = config.transitions
+        transitions = config.transitions,
+        defaultModel = firstAgentModel ?: defaultModelString
     )
 
     val result = flow.run()

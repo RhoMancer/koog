@@ -31,8 +31,8 @@
   ],
   "transitions": [
     {
-      "from": "agent.get_numbers",
-      "to": "agent.calculator"
+      "from": "get_numbers",
+      "to": "calculator"
     }
   ]
 }
