@@ -1,13 +1,13 @@
 package ai.koog.runtime
 
-import ai.koog.model.FlowAgentConfigModel
+import ai.koog.agent.FlowAgent
 
 /**
  *
  */
 public class AgentFlowKoogRuntime : AgentFlowRuntime {
 
-    override fun executeAgent(config: FlowAgentConfigModel) {
-        // TODO: Create Koog Agent config
+    override fun executeAgent(agent: FlowAgent): String {
+        return agent.execute()
     }
 }

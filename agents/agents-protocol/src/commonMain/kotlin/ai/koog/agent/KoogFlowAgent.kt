@@ -1,11 +1,7 @@
 package ai.koog.agent
 
-import ai.koog.model.FlowAgentConfigModel
 import ai.koog.model.FlowAgentInput
 import ai.koog.model.FlowAgentPrompt
-import ai.koog.runtime.AgentFlowKoogRuntime
-import ai.koog.runtime.AgentFlowRuntime
-import kotlinx.serialization.Transient
 
 /**
  *
@@ -20,15 +16,9 @@ public data class KoogFlowAgent(
 ) : FlowAgent {
 
     /**
-     *
-     */
-    @Transient
-    override val runtime: AgentFlowRuntime = AgentFlowKoogRuntime()
-
-    /**
-     *
+     * TODO: SD -- fix this
      */
     override fun execute(): String {
-        return runtime.executeAgent(config ?: FlowAgentConfigModel())
+        return input.task.toString()
     }
 }

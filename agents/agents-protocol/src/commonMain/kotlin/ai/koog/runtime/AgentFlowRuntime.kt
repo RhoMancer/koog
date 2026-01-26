@@ -1,6 +1,6 @@
 package ai.koog.runtime
 
-import ai.koog.model.FlowAgentConfigModel
+import ai.koog.agent.FlowAgent
 
 /**
  *
@@ -10,5 +10,5 @@ public interface AgentFlowRuntime {
     /**
      *
      */
-    public fun executeAgent(config: FlowAgentConfigModel): String
+    public fun executeAgent(agent: FlowAgent): String
 }

@@ -16,11 +16,6 @@ public interface FlowAgent {
     public val name: String
 
     /**
-     *
-     */
-    public val runtime: AgentFlowRuntime
-
-    /**
      * Agent type (maps to "type" in JSON).
      */
     public val type: FlowAgentKind
