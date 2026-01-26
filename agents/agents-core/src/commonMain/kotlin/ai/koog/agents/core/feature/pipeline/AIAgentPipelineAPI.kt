@@ -21,6 +21,7 @@ import ai.koog.agents.core.feature.handler.agent.AgentExecutionFailedContext
 import ai.koog.agents.core.feature.handler.agent.AgentStartingContext
 import ai.koog.agents.core.feature.handler.llm.LLMCallCompletedContext
 import ai.koog.agents.core.feature.handler.llm.LLMCallStartingContext
+import ai.koog.agents.core.feature.handler.llm.LLMPromptTransformingContext
 import ai.koog.agents.core.feature.handler.strategy.StrategyCompletedContext
 import ai.koog.agents.core.feature.handler.strategy.StrategyStartingContext
 import ai.koog.agents.core.feature.handler.streaming.LLMStreamingCompletedContext
@@ -126,6 +127,16 @@ public interface AIAgentPipelineAPI {
     //endregion
 
     //region Trigger LLM Handlers
+    public suspend fun onLLMPromptTransforming(
+        eventId: String,
+        executionInfo: AgentExecutionInfo,
+        runId: String,
+        prompt: Prompt,
+        model: LLModel,
+        tools: List<ToolDescriptor>,
+        context: AIAgentContext
+    ): Prompt
+
     public suspend fun onLLMCallStarting(
         eventId: String,
         executionInfo: AgentExecutionInfo,
@@ -272,6 +283,11 @@ public interface AIAgentPipelineAPI {
     public fun interceptStrategyCompleted(
         feature: AIAgentFeature<*, *>,
         handle: suspend (StrategyCompletedContext) -> Unit
+    )
+
+    public fun interceptLLMPromptTransforming(
+        feature: AIAgentFeature<*, *>,
+        transform: suspend LLMPromptTransformingContext.(Prompt) -> Prompt
     )
 
     public fun interceptLLMCallStarting(

@@ -22,6 +22,7 @@ import ai.koog.agents.core.feature.handler.agent.AgentExecutionFailedContext
 import ai.koog.agents.core.feature.handler.agent.AgentStartingContext
 import ai.koog.agents.core.feature.handler.llm.LLMCallCompletedContext
 import ai.koog.agents.core.feature.handler.llm.LLMCallStartingContext
+import ai.koog.agents.core.feature.handler.llm.LLMPromptTransformingContext
 import ai.koog.agents.core.feature.handler.node.NodeExecutionCompletedContext
 import ai.koog.agents.core.feature.handler.node.NodeExecutionFailedContext
 import ai.koog.agents.core.feature.handler.node.NodeExecutionStartingContext
@@ -38,6 +39,7 @@ import ai.koog.agents.core.feature.handler.tool.ToolCallCompletedContext
 import ai.koog.agents.core.feature.handler.tool.ToolCallFailedContext
 import ai.koog.agents.core.feature.handler.tool.ToolCallStartingContext
 import ai.koog.agents.core.feature.handler.tool.ToolValidationFailedContext
+import ai.koog.prompt.dsl.Prompt
 
 internal class EventHandlerConfigImpl : EventHandlerConfigAPI {
 
@@ -84,6 +86,8 @@ internal class EventHandlerConfigImpl : EventHandlerConfigAPI {
     //endregion Private Subgraph Handlers
 
     //region Private LLM Call Handlers
+
+    private var _onLLMPromptTransforming: suspend LLMPromptTransformingContext.(Prompt) -> Prompt = { prompt -> prompt }
 
     private var _onLLMCallStarting: suspend (eventHandler: LLMCallStartingContext) -> Unit = { _ -> }
 
@@ -229,6 +233,14 @@ internal class EventHandlerConfigImpl : EventHandlerConfigAPI {
     //endregion Subgraph Handlers
 
     //region LLM Call Handlers
+
+    public override fun onLLMPromptTransforming(transformer: suspend LLMPromptTransformingContext.(Prompt) -> Prompt) {
+        val originalTransformer = this._onLLMPromptTransforming
+        this._onLLMPromptTransforming = { prompt ->
+            val intermediatePrompt = originalTransformer(prompt)
+            transformer(intermediatePrompt)
+        }
+    }
 
     public override fun onLLMCallStarting(handler: suspend (eventContext: LLMCallStartingContext) -> Unit) {
         val originalHandler = this._onLLMCallStarting
@@ -533,6 +545,14 @@ internal class EventHandlerConfigImpl : EventHandlerConfigAPI {
     //endregion Invoke Subgraph Handlers
 
     //region Invoke LLM Call Handlers
+
+    @InternalAgentsApi
+    public override suspend fun invokeOnLLMPromptTransforming(
+        eventContext: LLMPromptTransformingContext,
+        prompt: Prompt
+    ): Prompt {
+        return _onLLMPromptTransforming.invoke(eventContext, prompt)
+    }
 
     @InternalAgentsApi
     public override suspend fun invokeOnLLMCallStarting(eventContext: LLMCallStartingContext) {
