@@ -5,6 +5,7 @@ import ai.koog.agents.core.agent.GraphAIAgent
 import ai.koog.agents.core.agent.config.AIAgentConfig
 import ai.koog.agents.core.agent.context.AIAgentContext
 import ai.koog.agents.core.agent.execution.AgentExecutionInfo
+import ai.koog.agents.core.environment.AIAgentEnvironment
 import ai.koog.agents.core.feature.handler.AgentLifecycleEventContext
 import ai.koog.agents.core.feature.handler.AgentLifecycleEventType
 
@@ -93,14 +94,18 @@ public data class AgentClosingContext(
 /**
  * Provides a context for executing transformations and operations within an AI agent's environment.
  *
+ * @property eventId unique identifier for an event or a group of events
  * @property executionInfo The execution information containing parentId and current execution path;
  * @property agent The AI agent being managed or operated upon in the context.
+ * @property config The configuration settings for the AI agent.
+ * @property environment The environment within which the agent is operating.
  */
 public class AgentEnvironmentTransformingContext(
     override val eventId: String,
     override val executionInfo: AgentExecutionInfo,
     public val agent: GraphAIAgent<*, *>,
-    public val config: AIAgentConfig
+    public val config: AIAgentConfig,
+    public val environment: AIAgentEnvironment
 ) : AgentEventContext {
     override val eventType: AgentLifecycleEventType = AgentLifecycleEventType.AgentEnvironmentTransforming
 }

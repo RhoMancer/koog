@@ -14,7 +14,6 @@ import ai.koog.agents.core.environment.AIAgentEnvironment
 import ai.koog.agents.core.feature.AIAgentFeature
 import ai.koog.agents.core.feature.config.FeatureConfig
 import ai.koog.agents.core.feature.handler.AgentLifecycleEventContext
-import ai.koog.agents.core.feature.handler.AgentLifecycleEventHandler
 import ai.koog.agents.core.feature.handler.agent.AgentClosingContext
 import ai.koog.agents.core.feature.handler.agent.AgentCompletedContext
 import ai.koog.agents.core.feature.handler.agent.AgentEnvironmentTransformingContext
@@ -249,7 +248,7 @@ public interface AIAgentPipelineAPI {
     //region Interceptors
     public fun interceptEnvironmentCreated(
         feature: AIAgentFeature<*, *>,
-        transform: suspend AgentEnvironmentTransformingContext.(AIAgentEnvironment) -> AIAgentEnvironment
+        handle: suspend (eventContext: AgentEnvironmentTransformingContext) -> AIAgentEnvironment
     )
 
     public fun interceptAgentStarting(feature: AIAgentFeature<*, *>, handle: suspend (AgentStartingContext) -> Unit)
@@ -391,8 +390,8 @@ public interface AIAgentPipelineAPI {
     @InternalAgentsApi
     public fun createConditionalHandler(
         feature: AIAgentFeature<*, *>,
-        handle: suspend (AgentEnvironmentTransformingContext, AIAgentEnvironment) -> AIAgentEnvironment
-    ): suspend (AgentEnvironmentTransformingContext, AIAgentEnvironment) -> AIAgentEnvironment
+        handle: suspend (AgentEnvironmentTransformingContext) -> AIAgentEnvironment
+    ): suspend (AgentEnvironmentTransformingContext) -> AIAgentEnvironment
 
     public fun FeatureConfig.isAccepted(eventContext: AgentLifecycleEventContext): Boolean
 
