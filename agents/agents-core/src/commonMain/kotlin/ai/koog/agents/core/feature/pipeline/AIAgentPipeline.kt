@@ -21,6 +21,7 @@ import ai.koog.agents.core.feature.handler.agent.AgentExecutionFailedContext
 import ai.koog.agents.core.feature.handler.agent.AgentStartingContext
 import ai.koog.agents.core.feature.handler.llm.LLMCallCompletedContext
 import ai.koog.agents.core.feature.handler.llm.LLMCallStartingContext
+import ai.koog.agents.core.feature.handler.llm.LLMPromptTransformingContext
 import ai.koog.agents.core.feature.handler.strategy.StrategyCompletedContext
 import ai.koog.agents.core.feature.handler.strategy.StrategyStartingContext
 import ai.koog.agents.core.feature.handler.streaming.LLMStreamingCompletedContext
@@ -244,6 +245,32 @@ public expect abstract class AIAgentPipeline(agentConfig: AIAgentConfig, clock: 
     //endregion Trigger Strategy Handlers
 
     //region Trigger LLM Call Handlers
+
+    /**
+     * Transforms the prompt by applying all registered transformers.
+     *
+     * This method is called before [onLLMCallStarting] and allows features to modify
+     * the prompt before it is sent to the language model. Multiple transformers can be
+     * registered and will be applied in sequence (chain pattern).
+     *
+     * @param eventId Unique identifier for this event
+     * @param executionInfo The execution information containing parentId and current execution path
+     * @param runId The unique identifier for this LLM call session
+     * @param prompt The original prompt to be transformed
+     * @param model The language model that will be used
+     * @param tools The list of tool descriptors available for the LLM call
+     * @param context The AI agent context
+     * @return The transformed prompt that will be sent to the language model
+     */
+    public override suspend fun onLLMPromptTransforming(
+        eventId: String,
+        executionInfo: AgentExecutionInfo,
+        runId: String,
+        prompt: Prompt,
+        model: LLModel,
+        tools: List<ToolDescriptor>,
+        context: AIAgentContext
+    ): Prompt
 
     /**
      * Notifies all registered LLM handlers before a language model call is made.
@@ -620,6 +647,46 @@ public expect abstract class AIAgentPipeline(agentConfig: AIAgentConfig, clock: 
     public override fun interceptStrategyCompleted(
         feature: AIAgentFeature<*, *>,
         handle: suspend (StrategyCompletedContext) -> Unit
+    )
+
+    /**
+     * Registers a transformer that can modify the prompt before it is sent to the language model.
+     *
+     * This transformer is invoked before [interceptLLMCallStarting], allowing prompt modification
+     * prior to the LLM call event handlers being triggered.
+     *
+     * This interceptor enables features to implement patterns such as:
+     * - RAG (Retrieval-Augmented Generation): Query a vector database and add relevant context
+     * - Prompt augmentation: Add system instructions, user context, or conversation history
+     * - Content filtering: Sanitize or modify prompts before sending
+     * - Logging and auditing: Record prompts for compliance or debugging
+     *
+     * Multiple transformers can be registered and will be applied in sequence (chain pattern).
+     * Each transformer receives the prompt from the previous one and returns a modified version.
+     *
+     * @param feature The feature registering this transformer
+     * @param transform A function that takes the transforming context and current prompt,
+     *                  and returns the transformed prompt
+     *
+     * Example:
+     * ```
+     * pipeline.interceptLLMPromptTransforming(feature) { prompt ->
+     *     // Query database for relevant context
+     *     val relevantDocs = database.search(prompt.messages.last().content)
+     *
+     *     // Return augmented prompt
+     *     prompt.copy(
+     *         messages = listOf(
+     *             Message.System("Context: ${relevantDocs.joinToString()}"),
+     *             *prompt.messages.toTypedArray()
+     *         )
+     *     )
+     * }
+     * ```
+     */
+    public override fun interceptLLMPromptTransforming(
+        feature: AIAgentFeature<*, *>,
+        transform: suspend LLMPromptTransformingContext.(Prompt) -> Prompt
     )
 
     /**

@@ -144,6 +144,10 @@ public class EventHandler {
                 config.invokeOnStrategyCompleted(eventContext)
             }
 
+            pipeline.interceptLLMPromptTransforming(this) intercept@{ prompt ->
+                config.invokeOnLLMPromptTransforming(this, prompt)
+            }
+
             pipeline.interceptLLMCallStarting(this) intercept@{ eventContext: LLMCallStartingContext ->
                 config.invokeOnLLMCallStarting(eventContext)
             }

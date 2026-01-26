@@ -18,10 +18,13 @@ import ai.koog.agents.core.tools.ToolRegistry
 import ai.koog.agents.features.eventHandler.eventString
 import ai.koog.agents.testing.tools.DummyTool
 import ai.koog.agents.testing.tools.getMockExecutor
+import ai.koog.prompt.dsl.ModerationResult
 import ai.koog.prompt.dsl.Prompt
 import ai.koog.prompt.executor.clients.openai.OpenAIModels
 import ai.koog.prompt.executor.model.PromptExecutor
+import ai.koog.prompt.llm.LLModel
 import ai.koog.prompt.message.Message
+import ai.koog.prompt.message.RequestMetaInfo
 import ai.koog.prompt.streaming.StreamFrame
 import ai.koog.utils.io.use
 import kotlinx.coroutines.flow.Flow
@@ -33,6 +36,7 @@ import kotlin.test.Test
 import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
 import kotlin.test.assertFails
+import kotlin.test.assertTrue
 
 class EventHandlerTest {
 
@@ -595,13 +599,13 @@ class EventHandlerTest {
         val testStreamingExecutor = object : PromptExecutor {
             override suspend fun execute(
                 prompt: Prompt,
-                model: ai.koog.prompt.llm.LLModel,
+                model: LLModel,
                 tools: List<ToolDescriptor>
             ): List<Message.Response> = emptyList()
 
             override fun executeStreaming(
                 prompt: Prompt,
-                model: ai.koog.prompt.llm.LLModel,
+                model: LLModel,
                 tools: List<ToolDescriptor>
             ): Flow<StreamFrame> = flow {
                 throw IllegalStateException(testStreamingErrorMessage)
@@ -609,8 +613,8 @@ class EventHandlerTest {
 
             override suspend fun moderate(
                 prompt: Prompt,
-                model: ai.koog.prompt.llm.LLModel
-            ): ai.koog.prompt.dsl.ModerationResult {
+                model: LLModel
+            ): ModerationResult {
                 throw UnsupportedOperationException("Not used in test")
             }
 
@@ -742,6 +746,362 @@ class EventHandlerTest {
 
         assertEquals(expectedEvents.size, eventsCollector.collectedEvents.size)
         assertContentEquals(expectedEvents, eventsCollector.collectedEvents)
+    }
+
+    @Test
+    fun `test onLLMPromptTransforming modifies prompt`() = runTest {
+        val eventsCollector = TestEventsCollector()
+        val agentId = "test-agent-id"
+
+        val promptId = "Test prompt Id"
+        val systemPrompt = "Test system message"
+        val userPrompt = "Test user message"
+        val assistantPrompt = "Test assistant response"
+        val temperature = 1.0
+        val model = OpenAIModels.Chat.GPT4o
+
+        val agentResult = "Done"
+        val testLLMResponse = "Test LLM call prompt"
+        val additionalContext = "Additional context from database"
+
+        val strategyName = "tracing-test-strategy"
+        val strategy = strategy<String, String>(strategyName) {
+            val llmCallNode by nodeLLMRequest("test LLM call")
+
+            edge(nodeStart forwardTo llmCallNode transformed { testLLMResponse })
+            edge(llmCallNode forwardTo nodeFinish transformed { agentResult })
+        }
+
+        // Track the prompts seen by the transformer and the LLM call handler
+        var transformedPromptMessages: List<Message>? = null
+        var llmCallStartingPromptMessages: List<Message>? = null
+
+        val agent = createAgent(
+            agentId = agentId,
+            strategy = strategy,
+            promptId = promptId,
+            systemPrompt = systemPrompt,
+            userPrompt = userPrompt,
+            assistantPrompt = assistantPrompt,
+            temperature = temperature,
+            model = model,
+            toolRegistry = ToolRegistry { },
+            installFeatures = {
+                install(EventHandler) {
+                    // First transformer: add context from "database"
+                    onLLMPromptTransforming { prompt ->
+                        val augmentedMessages = listOf<Message>(
+                            Message.System("Context: $additionalContext", RequestMetaInfo.Empty)
+                        ) + prompt.messages
+                        transformedPromptMessages = augmentedMessages
+                        prompt.copy(messages = augmentedMessages)
+                    }
+
+                    // Track what prompt the LLM call handler sees
+                    onLLMCallStarting { eventContext ->
+                        llmCallStartingPromptMessages = eventContext.prompt.messages
+                    }
+
+                    eventsCollector.eventHandlerFeatureConfig.invoke(this)
+                }
+            }
+        )
+
+        agent.use { it.run("Hello") }
+
+        // Verify the transformer was called and modified the prompt
+        // The prompt has: 1 added context + system + user + assistant + user (from testLLMResponse) = 5 messages
+        assertEquals(5, transformedPromptMessages?.size)
+        assertEquals("Context: $additionalContext", (transformedPromptMessages?.first() as? Message.System)?.content)
+
+        // Verify the LLM call handler received the transformed prompt
+        assertEquals(5, llmCallStartingPromptMessages?.size)
+        assertEquals("Context: $additionalContext", (llmCallStartingPromptMessages?.first() as? Message.System)?.content)
+    }
+
+    @Test
+    fun `test onLLMPromptTransforming chains multiple transformers`() = runTest {
+        val agentId = "test-agent-id"
+
+        val promptId = "Test prompt Id"
+        val systemPrompt = "Test system message"
+        val userPrompt = "Test user message"
+        val assistantPrompt = "Test assistant response"
+        val temperature = 1.0
+        val model = OpenAIModels.Chat.GPT4o
+
+        val agentResult = "Done"
+        val testLLMResponse = "Test LLM call prompt"
+
+        val strategyName = "tracing-test-strategy"
+        val strategy = strategy<String, String>(strategyName) {
+            val llmCallNode by nodeLLMRequest("test LLM call")
+
+            edge(nodeStart forwardTo llmCallNode transformed { testLLMResponse })
+            edge(llmCallNode forwardTo nodeFinish transformed { agentResult })
+        }
+
+        // Track the order of transformations
+        val transformationOrder = mutableListOf<String>()
+        var finalPromptMessages: List<Message>? = null
+
+        val agent = createAgent(
+            agentId = agentId,
+            strategy = strategy,
+            promptId = promptId,
+            systemPrompt = systemPrompt,
+            userPrompt = userPrompt,
+            assistantPrompt = assistantPrompt,
+            temperature = temperature,
+            model = model,
+            toolRegistry = ToolRegistry { },
+            installFeatures = {
+                install(EventHandler) {
+                    // First transformer
+                    onLLMPromptTransforming { prompt ->
+                        transformationOrder.add("first")
+                        val augmentedMessages = listOf<Message>(
+                            Message.System("First transformer context", RequestMetaInfo.Empty)
+                        ) + prompt.messages
+                        prompt.copy(messages = augmentedMessages)
+                    }
+
+                    // Second transformer (should run after first)
+                    onLLMPromptTransforming { prompt ->
+                        transformationOrder.add("second")
+                        val augmentedMessages = listOf<Message>(
+                            Message.System("Second transformer context", RequestMetaInfo.Empty)
+                        ) + prompt.messages
+                        prompt.copy(messages = augmentedMessages)
+                    }
+
+                    // Track final prompt
+                    onLLMCallStarting { eventContext ->
+                        finalPromptMessages = eventContext.prompt.messages
+                    }
+                }
+            }
+        )
+
+        agent.use { it.run("Hello") }
+
+        // Verify transformers were called in order
+        assertEquals(listOf("first", "second"), transformationOrder)
+
+        // Verify the final prompt has both transformations applied
+        // Order should be: Second (added last, so first in list), First, then original messages
+        // The prompt has: 2 added context + system + user + assistant + user (from testLLMResponse) = 6 messages
+        assertEquals(6, finalPromptMessages?.size)
+        assertEquals("Second transformer context", (finalPromptMessages?.get(0) as? Message.System)?.content)
+        assertEquals("First transformer context", (finalPromptMessages?.get(1) as? Message.System)?.content)
+    }
+
+    @Test
+    fun `test onLLMCallCompleted receives transformed prompt`() = runTest {
+        val agentId = "test-agent-id"
+
+        val promptId = "Test prompt Id"
+        val systemPrompt = "Test system message"
+        val userPrompt = "Test user message"
+        val assistantPrompt = "Test assistant response"
+        val temperature = 1.0
+        val model = OpenAIModels.Chat.GPT4o
+
+        val agentResult = "Done"
+        val testLLMResponse = "Test LLM call prompt"
+        val additionalContext = "Additional context from database"
+
+        val strategyName = "tracing-test-strategy"
+        val strategy = strategy<String, String>(strategyName) {
+            val llmCallNode by nodeLLMRequest("test LLM call")
+
+            edge(nodeStart forwardTo llmCallNode transformed { testLLMResponse })
+            edge(llmCallNode forwardTo nodeFinish transformed { agentResult })
+        }
+
+        // Track the prompts seen by the transformer and the LLM call completed handler
+        var originalPromptMessageCount: Int? = null
+        var llmCallCompletedPromptMessages: List<Message>? = null
+
+        val agent = createAgent(
+            agentId = agentId,
+            strategy = strategy,
+            promptId = promptId,
+            systemPrompt = systemPrompt,
+            userPrompt = userPrompt,
+            assistantPrompt = assistantPrompt,
+            temperature = temperature,
+            model = model,
+            toolRegistry = ToolRegistry { },
+            installFeatures = {
+                install(EventHandler) {
+                    // Transformer: add context from "database" and track original prompt size
+                    onLLMPromptTransforming { prompt ->
+                        originalPromptMessageCount = prompt.messages.size
+                        val augmentedMessages = listOf<Message>(
+                            Message.System("Context: $additionalContext", RequestMetaInfo.Empty)
+                        ) + prompt.messages
+                        prompt.copy(messages = augmentedMessages)
+                    }
+
+                    // Track what prompt the LLM call completed handler sees
+                    onLLMCallCompleted { eventContext ->
+                        llmCallCompletedPromptMessages = eventContext.prompt.messages
+                    }
+                }
+            }
+        )
+
+        agent.use { it.run(userPrompt) }
+
+        // Verify the original prompt had 4 messages (system + user + assistant + user from testLLMResponse)
+        assertEquals(4, originalPromptMessageCount)
+
+        // Verify the LLM call completed handler received the TRANSFORMED prompt (not the original)
+        // The transformed prompt has: 1 added context + original 4 = 5 messages
+        assertEquals(5, llmCallCompletedPromptMessages?.size)
+        assertEquals("Context: $additionalContext", (llmCallCompletedPromptMessages?.first() as? Message.System)?.content)
+
+        // Verify the transformed prompt contains the additional context as the first message
+        // This proves that onLLMCallCompleted receives the transformed prompt, not the original
+        val firstMessage = llmCallCompletedPromptMessages?.first()
+        assertTrue(firstMessage is Message.System)
+        assertTrue(firstMessage.content.startsWith("Context:"))
+    }
+
+    @Test
+    fun `test handler chain - onLLMCallStarting saves user message, onLLMPromptTransforming augments prompt, onLLMCallCompleted saves assistant response`() = runTest {
+        val agentId = "test-agent-id"
+
+        val promptId = "Test prompt Id"
+        val systemPrompt = "Test system message"
+        val userPrompt = "Test user message"
+        val assistantPrompt = "Test assistant response"
+        val temperature = 1.0
+        val model = OpenAIModels.Chat.GPT4o
+
+        val agentResult = "Done"
+        val testLLMResponse = "What is the weather today?"
+
+        val strategyName = "database-handler-chain-test"
+        val strategy = strategy<String, String>(strategyName) {
+            val llmCallNode by nodeLLMRequest("test LLM call")
+
+            edge(nodeStart forwardTo llmCallNode transformed { testLLMResponse })
+            edge(llmCallNode forwardTo nodeFinish transformed { agentResult })
+        }
+
+        // Chat memory to store user messages and assistant responses
+        val chatMemory = mutableListOf<Message>()
+        // RAG/search database with pre-populated context
+        val db = mutableMapOf<String, String>()
+        
+        // Pre-populate database with search results for the expected user message
+        db[testLLMResponse] = "Weather forecast: Sunny, 25°C"
+
+        // Track execution order and data flow
+        val executionOrder = mutableListOf<String>()
+        var lastUserMessageAsSeenByTransformer: String? = null
+        var relevantContextAsSeenByTransformer: String? = null
+
+        val agent = createAgent(
+            agentId = agentId,
+            strategy = strategy,
+            promptId = promptId,
+            systemPrompt = systemPrompt,
+            userPrompt = userPrompt,
+            assistantPrompt = assistantPrompt,
+            temperature = temperature,
+            model = model,
+            toolRegistry = ToolRegistry { },
+            installFeatures = {
+                install(EventHandler) {
+                    // STEP 1: Transform runs FIRST - search DB and augment prompt
+                    onLLMPromptTransforming { prompt ->
+                        executionOrder.add("onLLMPromptTransforming")
+
+                        // Get the last user message from the CURRENT prompt
+                        val lastUserMessage: Message.User = prompt.messages
+                            .filterIsInstance<Message.User>()
+                            .last()
+
+                        lastUserMessageAsSeenByTransformer = lastUserMessage.content
+
+                        // Search database for relevant context
+                        val relevantContext = db[lastUserMessage.content]
+
+                        if (relevantContext.isNullOrEmpty()) {
+                            throw IllegalStateException("relevant context is required for tests")
+                        }
+
+                        relevantContextAsSeenByTransformer = relevantContext
+
+                        // Find the index of the last user message
+                        val lastUserIndex = prompt.messages.indexOfLast { it is Message.User }
+
+                        // Add context as a user message BEFORE the original last user message
+                        val augmentedMessages = prompt.messages.toMutableList()
+                        augmentedMessages.add(
+                            lastUserIndex,
+                            Message.User("Relevant context: $relevantContext", RequestMetaInfo.Empty)
+                        )
+                        prompt.copy(messages = augmentedMessages)
+                    }
+                    
+                    // STEP 2: Starting runs SECOND - save user message to chat memory
+                    onLLMCallStarting { ctx ->
+                        executionOrder.add("onLLMCallStarting")
+                        
+                        // Get the last user message (the original one, not the prepended context)
+                        val lastUserMessage = ctx.prompt.messages
+                            .filterIsInstance<Message.User>()
+                            .last()
+                        
+                        lastUserMessage.let { userMsg ->
+                            chatMemory.add(userMsg)
+                        }
+                    }
+                    
+                    // STEP 3: Completed runs THIRD - save assistant response to chat memory
+                    onLLMCallCompleted { ctx ->
+                        executionOrder.add("onLLMCallCompleted")
+                        
+                        // Get assistant response from RESPONSES, not from prompt
+                        val assistantResponse = ctx.responses
+                            .filterIsInstance<Message.Assistant>()
+                            .last()
+                        
+                        assistantResponse.let { response ->
+                            chatMemory.add(response)
+                        }
+                    }
+                }
+            }
+        )
+
+        agent.use { it.run(userPrompt) }
+
+        // Verify execution order: onLLMPromptTransforming runs FIRST, then onLLMCallStarting, then onLLMCallCompleted
+        assertEquals(listOf("onLLMPromptTransforming", "onLLMCallStarting", "onLLMCallCompleted"), executionOrder)
+
+        // Verify STEP 1: onLLMPromptTransforming found the user message and searched the database
+        assertEquals(testLLMResponse, lastUserMessageAsSeenByTransformer)
+        assertEquals("Weather forecast: Sunny, 25°C", relevantContextAsSeenByTransformer)
+
+        // Verify STEP 2: onLLMCallStarting saved the ORIGINAL last user message (not the prepended context)
+        val savedUserMessages = chatMemory.filterIsInstance<Message.User>()
+        assertEquals(1, savedUserMessages.size)
+        assertEquals(testLLMResponse, savedUserMessages.first().content)
+
+        // Verify STEP 3: onLLMCallCompleted saved the assistant response
+        val savedAssistantResponses = chatMemory.filterIsInstance<Message.Assistant>()
+        assertEquals(1, savedAssistantResponses.size)
+        assertEquals("Default test response", savedAssistantResponses.first().content)
+        
+        // Verify chat memory contains both user message and assistant response in order
+        assertEquals(2, chatMemory.size)
+        assertTrue(chatMemory[0] is Message.User)
+        assertTrue(chatMemory[1] is Message.Assistant)
     }
 
     //region Private Methods

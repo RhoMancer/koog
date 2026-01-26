@@ -34,6 +34,8 @@ import ai.koog.agents.core.feature.handler.llm.LLMCallCompletedHandler
 import ai.koog.agents.core.feature.handler.llm.LLMCallEventHandler
 import ai.koog.agents.core.feature.handler.llm.LLMCallStartingContext
 import ai.koog.agents.core.feature.handler.llm.LLMCallStartingHandler
+import ai.koog.agents.core.feature.handler.llm.LLMPromptTransformingContext
+import ai.koog.agents.core.feature.handler.llm.LLMPromptTransformingHandler
 import ai.koog.agents.core.feature.handler.strategy.StrategyCompletedContext
 import ai.koog.agents.core.feature.handler.strategy.StrategyCompletedHandler
 import ai.koog.agents.core.feature.handler.strategy.StrategyEventHandler
@@ -276,6 +278,21 @@ public class AIAgentPipelineImpl(
     //endregion Trigger Strategy Handlers
 
     //region Trigger LLM Call Handlers
+
+    public override suspend fun onLLMPromptTransforming(
+        eventId: String,
+        executionInfo: AgentExecutionInfo,
+        runId: String,
+        prompt: Prompt,
+        model: LLModel,
+        tools: List<ToolDescriptor>,
+        context: AIAgentContext
+    ): Prompt {
+        val eventContext = LLMPromptTransformingContext(eventId, executionInfo, runId, prompt, model, tools, context)
+        return llmCallEventHandlers.values.fold(prompt) { currentPrompt, handler ->
+            handler.transformRequest(eventContext.copy(prompt = currentPrompt), currentPrompt)
+        }
+    }
 
     public override suspend fun onLLMCallStarting(
         eventId: String,
@@ -564,6 +581,17 @@ public class AIAgentPipelineImpl(
 
         handler.strategyCompletedHandler = StrategyCompletedHandler(
             function = createConditionalHandler(feature, handle)
+        )
+    }
+
+    public override fun interceptLLMPromptTransforming(
+        feature: AIAgentFeature<*, *>,
+        transform: suspend LLMPromptTransformingContext.(Prompt) -> Prompt
+    ) {
+        val handler = llmCallEventHandlers.getOrPut(feature.key) { LLMCallEventHandler() }
+
+        handler.llmPromptTransformingHandler = LLMPromptTransformingHandler(
+            function = createConditionalTransformHandler(feature, transform)
         )
     }
 
@@ -994,6 +1022,21 @@ public class AIAgentPipelineImpl(
             }
 
             eventContext.handle(env)
+        }
+
+    @InternalAgentsApi
+    public fun createConditionalTransformHandler(
+        feature: AIAgentFeature<*, *>,
+        handle: suspend LLMPromptTransformingContext.(Prompt) -> Prompt
+    ): suspend (LLMPromptTransformingContext, Prompt) -> Prompt =
+        handler@{ eventContext, prompt ->
+            val featureConfig = registeredFeatures[feature.key]?.featureConfig
+
+            if (featureConfig != null && !featureConfig.isAccepted(eventContext)) {
+                return@handler prompt
+            }
+
+            eventContext.handle(prompt)
         }
 
     public override fun FeatureConfig.isAccepted(eventContext: AgentLifecycleEventContext): Boolean {

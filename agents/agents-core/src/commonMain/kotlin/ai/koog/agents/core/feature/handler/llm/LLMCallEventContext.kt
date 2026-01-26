@@ -16,6 +16,34 @@ import ai.koog.prompt.message.Message
 public interface LLMCallEventContext : AgentLifecycleEventContext
 
 /**
+ * Represents the context for transforming a prompt before it is sent to the language model.
+ * This context is used by features that need to modify the prompt, such as adding context from
+ * a database, implementing RAG (Retrieval-Augmented Generation), or applying prompt templates.
+ *
+ * Prompt transformation occurs before [LLMCallStartingContext] is triggered, allowing
+ * modifications to be applied prior to the LLM call event handlers.
+ *
+ * @property executionInfo The execution information containing parentId and current execution path.
+ * @property runId The unique identifier for this LLM call session.
+ * @property prompt The prompt that will be transformed. This is the current state of the prompt
+ *                  after any previous transformations.
+ * @property model The language model instance that will be used for the call.
+ * @property tools The list of tool descriptors available for the LLM call.
+ * @property context The AI agent context providing access to agent state and configuration.
+ */
+public data class LLMPromptTransformingContext(
+    override val eventId: String,
+    override val executionInfo: AgentExecutionInfo,
+    val runId: String,
+    val prompt: Prompt,
+    val model: LLModel,
+    val tools: List<ToolDescriptor>,
+    val context: AIAgentContext
+) : LLMCallEventContext {
+    override val eventType: AgentLifecycleEventType = AgentLifecycleEventType.LLMPromptTransforming
+}
+
+/**
  * Represents the context for handling a before LLM call event.
  *
  * @property executionInfo The execution information containing parentId and current execution path;

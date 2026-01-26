@@ -23,6 +23,8 @@ import ai.koog.agents.core.feature.handler.agent.AgentExecutionFailedContext
 import ai.koog.agents.core.feature.handler.agent.AgentStartingContext
 import ai.koog.agents.core.feature.handler.llm.LLMCallCompletedContext
 import ai.koog.agents.core.feature.handler.llm.LLMCallStartingContext
+import ai.koog.agents.core.feature.handler.llm.LLMPromptTransformingContext
+import ai.koog.prompt.dsl.Prompt
 import ai.koog.agents.core.feature.handler.node.NodeExecutionCompletedContext
 import ai.koog.agents.core.feature.handler.node.NodeExecutionFailedContext
 import ai.koog.agents.core.feature.handler.node.NodeExecutionStartingContext
@@ -115,6 +117,8 @@ public expect class EventHandlerConfig constructor() : FeatureConfig, EventHandl
     //endregion Subgraph Handlers
 
     //region LLM Call Handlers
+
+    public override fun onLLMPromptTransforming(transformer: suspend LLMPromptTransformingContext.(Prompt) -> Prompt)
 
     public override fun onLLMCallStarting(handler: suspend (eventContext: LLMCallStartingContext) -> Unit)
 
@@ -292,6 +296,9 @@ public expect class EventHandlerConfig constructor() : FeatureConfig, EventHandl
     //endregion Invoke Node Handlers
 
     //region Invoke LLM Call Handlers
+
+    @InternalAgentsApi
+    public override suspend fun invokeOnLLMPromptTransforming(eventContext: LLMPromptTransformingContext, prompt: Prompt): Prompt
 
     @InternalAgentsApi
     public override suspend fun invokeOnLLMCallStarting(eventContext: LLMCallStartingContext)

@@ -22,6 +22,8 @@ import ai.koog.agents.core.feature.handler.agent.AgentExecutionFailedContext
 import ai.koog.agents.core.feature.handler.agent.AgentStartingContext
 import ai.koog.agents.core.feature.handler.llm.LLMCallCompletedContext
 import ai.koog.agents.core.feature.handler.llm.LLMCallStartingContext
+import ai.koog.agents.core.feature.handler.llm.LLMPromptTransformingContext
+import ai.koog.prompt.dsl.Prompt
 import ai.koog.agents.core.feature.handler.node.NodeExecutionCompletedContext
 import ai.koog.agents.core.feature.handler.node.NodeExecutionFailedContext
 import ai.koog.agents.core.feature.handler.node.NodeExecutionStartingContext
@@ -147,6 +149,44 @@ public interface EventHandlerConfigAPI {
     //endregion Subgraph Handlers
 
     //region LLM Call Handlers
+
+    /**
+     * Registers a transformer that can modify the prompt before it is sent to the language model.
+     *
+     * This transformer is invoked before [onLLMCallStarting], allowing prompt modification
+     * prior to the LLM call event handlers being triggered.
+     *
+     * This method enables features to implement patterns such as:
+     * - RAG (Retrieval-Augmented Generation): Query a vector database and add relevant context
+     * - Prompt augmentation: Add system instructions, user context, or conversation history
+     * - Content filtering: Sanitize or modify prompts before sending
+     * - Logging and auditing: Record prompts for compliance or debugging
+     *
+     * Multiple transformers can be registered and will be applied in sequence (chain pattern).
+     * Each transformer receives the prompt from the previous one and returns a modified version.
+     *
+     * Example:
+     * ```kotlin
+     * install(EventHandler) {
+     *     onLLMPromptTransforming { prompt ->
+     *         // Query database for relevant context
+     *         val relevantDocs = database.search(prompt.messages.last().content)
+     *
+     *         // Return augmented prompt with additional context
+     *         prompt.copy(
+     *             messages = listOf(
+     *                 Message.System("Context: ${relevantDocs.joinToString()}"),
+     *                 *prompt.messages.toTypedArray()
+     *             )
+     *         )
+     *     }
+     * }
+     * ```
+     *
+     * @param transformer A function that takes the transforming context and current prompt,
+     *                    and returns the transformed prompt
+     */
+    public fun onLLMPromptTransforming(transformer: suspend LLMPromptTransformingContext.(Prompt) -> Prompt)
 
     /**
      * Append handler called before a call is made to the language model.
@@ -484,6 +524,16 @@ public interface EventHandlerConfigAPI {
     //endregion Invoke Node Handlers
 
     //region Invoke LLM Call Handlers
+
+    /**
+     * Invoke transformers to modify the prompt before it is sent to the language model.
+     *
+     * @param eventContext The context containing information about the LLM request
+     * @param prompt The prompt to be transformed
+     * @return The transformed prompt
+     */
+    @InternalAgentsApi
+    public suspend fun invokeOnLLMPromptTransforming(eventContext: LLMPromptTransformingContext, prompt: Prompt): Prompt
 
     /**
      * Invoke handlers for before a call is made to the language model event.

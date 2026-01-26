@@ -92,7 +92,14 @@ public sealed interface AgentLifecycleEventType {
     //region LLM
 
     /**
-     * Represents an event triggered when an error occurs during a language model call.
+     * Represents an event triggered when a prompt is being transformed.
+     * This allows features to modify the prompt before [LLMCallStarting] is triggered
+     * and before the prompt is sent to the language model.
+     */
+    public object LLMPromptTransforming : AgentLifecycleEventType
+
+    /**
+     * Represents an event triggered before a call is made to the language model.
      */
     public object LLMCallStarting : AgentLifecycleEventType
 
