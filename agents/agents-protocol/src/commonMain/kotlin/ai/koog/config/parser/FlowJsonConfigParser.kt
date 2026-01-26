@@ -1,7 +1,10 @@
 package ai.koog.config.parser
 
 import ai.koog.agent.FlowAgent
-import ai.koog.agent.KoogFlowAgent
+import ai.koog.agent.FlowAgentKind
+import ai.koog.agent.koog.KoogTaskAgent
+import ai.koog.agent.koog.KoogVerifyAgent
+import ai.koog.agent.koog.KoogTransformAgent
 import ai.koog.flow.FlowConfig
 import ai.koog.model.FlowAgentInput
 import ai.koog.model.FlowAgentModel
@@ -31,15 +34,34 @@ public class FlowJsonConfigParser : FlowConfigParser {
 
     private fun FlowAgentModel.toFlowAgent(): FlowAgent {
         return when (runtime) {
-            "koog", null -> KoogFlowAgent(
+            "koog", null -> createKoogAgent()
+            else -> error("Unknown runtime: $runtime")
+        }
+    }
+
+    private fun FlowAgentModel.createKoogAgent(): FlowAgent {
+        return when (type) {
+            FlowAgentKind.TASK -> KoogTaskAgent(
                 name = name,
-                type = type,
                 model = model,
                 prompt = prompt,
                 input = input ?: FlowAgentInput(),
                 config = config.toFlowAgentConfig()
             )
-            else -> error("Unknown runtime: $runtime")
+            FlowAgentKind.VERIFY -> KoogVerifyAgent(
+                name = name,
+                model = model,
+                prompt = prompt,
+                input = input ?: FlowAgentInput(),
+                config = config.toFlowAgentConfig()
+            )
+            FlowAgentKind.TRANSFORM -> KoogTransformAgent(
+                name = name,
+                prompt = prompt,
+                input = input ?: FlowAgentInput(),
+                config = config.toFlowAgentConfig()
+            )
+            FlowAgentKind.PARALLEL -> error("Parallel agent type is not yet supported")
         }
     }
 }

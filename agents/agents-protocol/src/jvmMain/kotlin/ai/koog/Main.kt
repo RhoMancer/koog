@@ -6,7 +6,7 @@ import ai.koog.flow.SimpleFlow
 import kotlinx.coroutines.runBlocking
 
 /**
- *
+ * Example main function to demonstrate flow parsing and execution.
  */
 public fun main(): Unit = runBlocking {
     val jsonContent = object {}.javaClass

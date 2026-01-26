@@ -7,7 +7,7 @@ import ai.koog.agent.FlowAgent
  */
 public class AgentFlowKoogRuntime : AgentFlowRuntime {
 
-    override fun executeAgent(agent: FlowAgent): String {
+    override suspend fun executeAgent(agent: FlowAgent): String {
         return agent.execute()
     }
 }

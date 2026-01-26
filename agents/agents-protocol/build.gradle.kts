@@ -13,6 +13,7 @@ kotlin {
         commonMain {
             dependencies {
                 api(project(":agents:agents-core"))
+                implementation(project(":prompt:prompt-executor:prompt-executor-llms-all"))
 
                 api(libs.kotlinx.serialization.json)
                 api(libs.ktor.client.content.negotiation)

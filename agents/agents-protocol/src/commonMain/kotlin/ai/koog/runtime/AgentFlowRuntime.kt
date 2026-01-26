@@ -10,5 +10,5 @@ public interface AgentFlowRuntime {
     /**
      *
      */
-    public fun executeAgent(agent: FlowAgent): String
+    public suspend fun executeAgent(agent: FlowAgent): String
 }
