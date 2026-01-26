@@ -4,6 +4,8 @@ import ai.koog.agents.core.agent.AIAgent
 import ai.koog.agents.core.agent.AIAgentBuilder
 import ai.koog.agents.core.agent.FunctionalAgentBuilder
 import ai.koog.agents.core.agent.context.AIAgentFunctionalContext
+import ai.koog.agents.core.agent.session.AIAgentLLMReadSession
+import ai.koog.agents.core.agent.session.AIAgentLLMWriteSession
 import ai.koog.agents.core.environment.ReceivedToolResult
 import ai.koog.agents.core.tools.Tool
 import ai.koog.agents.core.tools.ToolDescriptor
@@ -86,20 +88,20 @@ object JavaInteropUtils {
     }
 
     @JvmStatic
-    fun requestLLMBlocking(
+    fun requestLLM(
         context: AIAgentFunctionalContext,
         input: String,
         includeHistory: Boolean = true
     ): Message.Response = context.requestLLM(input, includeHistory, null)
 
     @JvmStatic
-    fun sendToolResultBlocking(
+    fun sendToolResult(
         context: AIAgentFunctionalContext,
         toolResult: ReceivedToolResult
     ): Message.Response = context.sendToolResult(toolResult, null)
 
     @JvmStatic
-    fun executeToolBlocking(
+    fun executeTool(
         context: AIAgentFunctionalContext,
         toolCall: Message.Tool.Call
     ): ReceivedToolResult = context.executeTool(toolCall, null)
@@ -124,6 +126,27 @@ object JavaInteropUtils {
         .apply { tools?.let { withTools(it) } }
         .useLLM(model)
         .run()
+
+    @JvmStatic
+    fun <T : Any> requestLLMStructuredBlocking(
+        context: AIAgentFunctionalContext,
+        message: String,
+        outputType: Class<T>
+    ): T = runBlocking {
+        context.requestLLMStructured(message, outputType.kotlin, emptyList(), null).getOrThrow().data
+    }
+
+    @JvmStatic
+    fun <T> llmWriteSession(
+        context: AIAgentFunctionalContext,
+        action: java.util.function.Function<AIAgentLLMWriteSession, T>
+    ): T = context.llm.writeSession(action)
+
+    @JvmStatic
+    fun <T> llmReadSession(
+        context: AIAgentFunctionalContext,
+        action: java.util.function.Function<AIAgentLLMReadSession, T>
+    ): T = context.llm.readSession(action)
 
     @JvmStatic
     fun createToolRegistry(toolSet: ToolSet): ToolRegistry {

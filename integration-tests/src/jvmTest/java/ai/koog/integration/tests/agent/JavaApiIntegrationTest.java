@@ -212,7 +212,7 @@ public class JavaApiIntegrationTest extends KoogJavaTestBase {
                 .systemPrompt("You are a helpful assistant.")
                 .functionalStrategy((context, input) ->
                     getAssistantContentOrDefault(
-                        JavaInteropUtils.requestLLMBlocking(context, input, true),
+                        JavaInteropUtils.requestLLM(context, input, true),
                         "Unexpected response type"
                     )
                 )
@@ -236,10 +236,10 @@ public class JavaApiIntegrationTest extends KoogJavaTestBase {
                 .llmModel(model)
                 .systemPrompt("You are a helpful assistant.")
                 .functionalStrategy((context, input) -> {
-                    Message.Response response1 = JavaInteropUtils.requestLLMBlocking(context, "First step: " + input, true);
+                    Message.Response response1 = JavaInteropUtils.requestLLM(context, "First step: " + input, true);
                     String step1Result = getAssistantContentOrDefault(response1, "");
 
-                    Message.Response response2 = JavaInteropUtils.requestLLMBlocking(
+                    Message.Response response2 = JavaInteropUtils.requestLLM(
                         context,
                         "Second step, previous result was: " + step1Result,
                         true
@@ -270,7 +270,7 @@ public class JavaApiIntegrationTest extends KoogJavaTestBase {
                 .systemPrompt("You are a calculator. Use the add tool to perform calculations.")
                 .toolRegistry(toolRegistry)
                 .functionalStrategy((context, input) -> {
-                    Message.Response currentResponse = JavaInteropUtils.requestLLMBlocking(
+                    Message.Response currentResponse = JavaInteropUtils.requestLLM(
                         context,
                         "Calculate: " + input + ". You MUST use the add tool.",
                         true
@@ -279,8 +279,8 @@ public class JavaApiIntegrationTest extends KoogJavaTestBase {
                     int maxIterations = 5;
                     for (int i = 0; i < maxIterations && currentResponse instanceof Message.Tool.Call; i++) {
                         Message.Tool.Call toolCall = (Message.Tool.Call) currentResponse;
-                        ReceivedToolResult toolResult = JavaInteropUtils.executeToolBlocking(context, toolCall);
-                        currentResponse = JavaInteropUtils.sendToolResultBlocking(context, toolResult);
+                        ReceivedToolResult toolResult = JavaInteropUtils.executeTool(context, toolCall);
+                        currentResponse = JavaInteropUtils.sendToolResult(context, toolResult);
                     }
 
                     if (currentResponse instanceof Message.Assistant) {
@@ -298,26 +298,9 @@ public class JavaApiIntegrationTest extends KoogJavaTestBase {
         assertFalse(result.isBlank());
     }
 
-    /**
-     * This test is currently disabled due to library-level issues.
-     * Bug 1: Deadlock in Nested runBlocking.
-     * SubtaskBuilder.run() in jvmMain uses runBlocking(Dispatchers.Default). Since agent strategies are executed
-     * on Dispatchers.Default (via NonSuspendAIAgentStrategy and submitToMainDispatcher), calling SubtaskBuilder.run()
-     * from a Java lambda strategy leads to nested runBlocking on the same dispatcher pool, causing deadlocks
-     * in resource-constrained environments.
-     * Potential fix: SubtaskBuilder.run() should check if it's already on the correct dispatcher or avoid runBlocking
-     * if possible. Using a custom strategyExecutorService (e.g., CachedThreadPool) in AIAgentConfig can mitigate this.
-     * <p>
-     * Bug 2: Tool Registry in Subtasks.
-     * AIAgentFunctionalContextImpl.subtask() allows passing a list of tools, but these tools are only used for
-     * LLM prompting and are not registered in the AIAgentEnvironment used for tool execution. This leads to
-     * 'Tool not found' errors when the subtask LLM tries to call them.
-     * Potential fix: AIAgentFunctionalContextImpl.subtask() should ensure that passed tools are available in the
-     * execution environment's tool registry.
-     */
     @ParameterizedTest
     @MethodSource("ai.koog.integration.tests.agent.AIAgentTestBase#getLatestModels")
-    @Disabled("See JavaDoc above")
+    @Disabled("KG-669")
     public void integration_testSubtask(LLModel model) {
         Models.assumeAvailable(model.getProvider());
 
@@ -369,7 +352,7 @@ public class JavaApiIntegrationTest extends KoogJavaTestBase {
                 .functionalStrategy((context, input) -> {
                     for (int i = 0; i < 3; i++) {
                         String result = getAssistantContentOrDefault(
-                            JavaInteropUtils.requestLLMBlocking(context, input, true),
+                            JavaInteropUtils.requestLLM(context, input, true),
                             ""
                         );
                         if (!result.isEmpty()) {
@@ -397,7 +380,7 @@ public class JavaApiIntegrationTest extends KoogJavaTestBase {
                 .llmModel(model)
                 .systemPrompt("You are a helpful assistant that generates JSON.")
                 .functionalStrategy((context, input) -> {
-                    Message.Response response = JavaInteropUtils.requestLLMBlocking(
+                    Message.Response response = JavaInteropUtils.requestLLM(
                         context,
                         "Generate a JSON object with 'status' field set to 'success'",
                         true
