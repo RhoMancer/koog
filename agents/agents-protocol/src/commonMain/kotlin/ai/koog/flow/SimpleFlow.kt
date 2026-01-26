@@ -14,7 +14,7 @@ public data class SimpleFlow(
     override val transitions: List<Transition>
 ) : Flow {
 
-    override fun run(): String {
+    override suspend fun run(): String {
         if (agents.isEmpty()) return ""
 
         val agentsByName = agents.associateBy { "agent.${it.name}" }

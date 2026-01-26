@@ -3,11 +3,12 @@ package ai.koog
 import ai.koog.config.parser.FlowJsonConfigParser
 import ai.koog.flow.FlowConfig
 import ai.koog.flow.SimpleFlow
+import kotlinx.coroutines.runBlocking
 
 /**
  *
  */
-public fun main() {
+public fun main(): Unit = runBlocking {
     val jsonContent = object {}.javaClass
         .getResourceAsStream("/flow/simple_koog_agent_flow.json")
         ?.bufferedReader()

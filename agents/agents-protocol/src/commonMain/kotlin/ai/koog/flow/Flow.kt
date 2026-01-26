@@ -30,7 +30,7 @@ public interface Flow {
     public val transitions: List<Transition>
 
     /**
-     *
+     * Runs the flow and returns the result.
      */
-    public fun run(): String
+    public suspend fun run(): String
 }

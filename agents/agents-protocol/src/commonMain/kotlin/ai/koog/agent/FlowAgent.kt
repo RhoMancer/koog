@@ -41,7 +41,7 @@ public interface FlowAgent {
     public val config: FlowAgentConfig
 
     /**
-     *
+     * Executes the flow agent and returns the result.
      */
-    public fun execute(): String
+    public suspend fun execute(): String
 }
