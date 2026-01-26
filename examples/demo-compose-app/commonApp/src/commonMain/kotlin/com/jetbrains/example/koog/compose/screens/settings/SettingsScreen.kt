@@ -53,6 +53,7 @@ private fun SettingsScreenContent(
         SelectedOption.OpenAI,
         SelectedOption.Anthropic,
         SelectedOption.Gemini,
+        SelectedOption.Local
     )
 
     Scaffold(
@@ -128,6 +129,7 @@ private fun SettingsScreenContent(
                 is SelectedOption.OpenAI -> uiState.openAiToken to "OpenAI Token"
                 is SelectedOption.Anthropic -> uiState.anthropicToken to "Anthropic Token"
                 is SelectedOption.Gemini -> uiState.geminiToken to "Gemini Token"
+                is SelectedOption.Local -> "" to "Local"
             }
 
             OutlinedTextField(

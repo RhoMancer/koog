@@ -73,6 +73,7 @@ class SettingsViewModel(
             is SelectedOption.OpenAI -> state.copy(openAiToken = credential.trim())
             is SelectedOption.Anthropic -> state.copy(anthropicToken = credential.trim())
             is SelectedOption.Gemini -> state.copy(geminiToken = credential.trim())
+            is SelectedOption.Local -> state
         }
     }
 

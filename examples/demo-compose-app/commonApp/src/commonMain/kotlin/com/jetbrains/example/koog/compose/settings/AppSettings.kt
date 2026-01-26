@@ -17,4 +17,5 @@ sealed class SelectedOption(val title: String) {
     data object OpenAI : SelectedOption("OpenAI")
     data object Anthropic : SelectedOption("Anthropic")
     data object Gemini : SelectedOption("Gemini")
+    data object Local : SelectedOption("Local")
 }
