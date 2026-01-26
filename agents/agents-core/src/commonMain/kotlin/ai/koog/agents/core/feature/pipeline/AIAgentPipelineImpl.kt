@@ -1011,6 +1011,32 @@ public class AIAgentPipelineImpl(
     }
 
     @InternalAgentsApi
+    internal suspend fun invokeRegisteredEnvironmentTransformations(
+        eventType: AgentLifecycleEventType.AgentEnvironmentTransforming,
+        context: AgentEnvironmentTransformingContext
+    ) {
+        val registeredHandlers =
+            agentLifecycleHandlersCollector.getHandlersForEvent<AgentEnvironmentTransformingContext, AIAgentEnvironment>(eventType)
+
+        registeredHandlers.forEach { (featureKey, handlers) ->
+            logger.trace { "Execute registered handlers (feature: ${featureKey.name}, event: ${context.eventType})" }
+            var currentContext = context
+            var environment = currentContext.environment
+            handlers.forEach { handler ->
+                val updatedEnvironment = handler.handle(currentContext)
+                currentContext = AgentEnvironmentTransformingContext(
+                    eventId = currentContext.eventId,
+                    executionInfo = currentContext.executionInfo,
+                    agent = currentContext.agent,
+                    config = currentContext.config,
+                    environment = updatedEnvironment
+                )
+            }
+
+        }
+    }
+
+    @InternalAgentsApi
     internal fun <TContext : AgentLifecycleEventContext, TReturn : Any> addHandlerForFeature(
         featureKey: AIAgentStorageKey<*>,
         eventType: AgentLifecycleEventType,
