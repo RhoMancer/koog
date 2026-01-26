@@ -8,5 +8,5 @@ import kotlinx.serialization.Serializable
 @Serializable
 public data class FlowAgentPrompt(
     val system: String,
-    val user: String
+    val user: String? = null
 )

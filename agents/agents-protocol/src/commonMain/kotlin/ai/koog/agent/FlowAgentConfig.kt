@@ -15,10 +15,10 @@ import kotlinx.serialization.Serializable
 @Serializable
 public data class FlowAgentConfig(
     val model: String? = null,
-    val temperature: Double = 0.7,
-    val maxIterations: Int = 10,
-    val maxTokens: Int = 4096,
-    val topP: Double = 1.0,
-    val toolChoice: ToolChoiceKind = ToolChoiceKind.Auto(),
-    val speculation: String = "",
+    val temperature: Double? = null,
+    val maxIterations: Int? = null,
+    val maxTokens: Int? = null,
+    val topP: Double? = null,
+    val toolChoice: ToolChoiceKind? = null,
+    val speculation: String? = null,
 )

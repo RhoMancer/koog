@@ -1,6 +1,6 @@
 package ai.koog.flow
 
-import ai.koog.agent.FlowAgent
+import ai.koog.agent.KoogFlowAgent
 import kotlinx.serialization.Serializable
 
 /**
@@ -10,7 +10,8 @@ import kotlinx.serialization.Serializable
  */
 @Serializable
 public data class FlowConfig(
-    val id: String,
+    val id: String? = null,
     val version: String? = null,
-    val steps: List<FlowAgent> = emptyList() // or strategy
+    val agents: List<KoogFlowAgent> = emptyList(),
+    val transitions: List<Transition> = emptyList()
 )

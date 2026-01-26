@@ -3,28 +3,31 @@ package ai.koog.agent
 import ai.koog.runtime.AgentFlowKoogRuntime
 import ai.koog.runtime.AgentFlowRuntime
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.Transient
 
 /**
  *
  */
 @Serializable
 public data class KoogFlowAgent(
-    override val id: String,
-    override val kind: FlowAgentKind,
-    override val model: String,
-    override val input: String,
-    override val config: FlowAgentConfig
+    override val name: String,
+    override val type: FlowAgentKind,
+    override val model: String? = null,
+    override val prompt: FlowAgentPrompt? = null,
+    override val input: FlowAgentInput? = null,
+    override val config: FlowAgentConfig? = null
 ) : FlowAgent {
 
     /**
      *
      */
+    @Transient
     override val runtime: AgentFlowRuntime = AgentFlowKoogRuntime()
 
     /**
      *
      */
     override fun execute(): String {
-        return runtime.executeAgent(config)
+        return runtime.executeAgent(config ?: FlowAgentConfig())
     }
 }

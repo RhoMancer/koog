@@ -16,9 +16,9 @@ import ai.koog.runtime.AgentFlowRuntime
 public interface FlowAgent {
 
     /**
-     *
+     * Agent identifier (maps to "name" in JSON).
      */
-    public val id: String
+    public val name: String
 
     /**
      *
@@ -26,24 +26,29 @@ public interface FlowAgent {
     public val runtime: AgentFlowRuntime
 
     /**
-     *
+     * Agent type (maps to "type" in JSON).
      */
-    public val kind: FlowAgentKind
+    public val type: FlowAgentKind
+
+    /**
+     * Model identifier (e.g., "openai/gpt-4o").
+     */
+    public val model: String?
+
+    /**
+     * Agent prompt configuration.
+     */
+    public val prompt: FlowAgentPrompt?
+
+    /**
+     * Agent input configuration.
+     */
+    public val input: FlowAgentInput?
 
     /**
      *
      */
-    public val model: String
-
-    /**
-     *
-     */
-    public val input: String
-
-    /**
-     *
-     */
-    public val config: FlowAgentConfig
+    public val config: FlowAgentConfig?
 
     /**
      *

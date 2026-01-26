@@ -1,13 +1,14 @@
 package ai.koog.flow
 
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.JsonPrimitive
 
 /**
  *
  */
 @Serializable
-public data class TransitionCondition<TVariable>(
-    val variable: TVariable,
+public data class TransitionCondition(
+    val variable: String,
     val operation: ConditionOperationKind,
-    val value: TVariable
-) where TVariable : String
+    val value: JsonPrimitive
+)
