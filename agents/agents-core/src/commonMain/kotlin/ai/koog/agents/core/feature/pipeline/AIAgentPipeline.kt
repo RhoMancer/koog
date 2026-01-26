@@ -125,8 +125,9 @@ public expect abstract class AIAgentPipeline(agentConfig: AIAgentConfig, clock: 
      * @param agent The agent instance for which the execution has started
      * @param context The context of the agent execution, providing access to the agent environment and context features
      */
+    // TODO: SD -- make this methods internal
     @OptIn(InternalAgentsApi::class)
-    internal override suspend fun <TInput, TOutput> invokeOnAgentStarting(
+    public override suspend fun <TInput, TOutput> invokeOnAgentStarting(
         eventId: String,
         executionInfo: AgentExecutionInfo,
         runId: String,

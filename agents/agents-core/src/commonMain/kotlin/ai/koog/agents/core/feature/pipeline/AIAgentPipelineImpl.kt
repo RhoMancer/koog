@@ -15,6 +15,7 @@ import ai.koog.agents.core.feature.config.FeatureConfig
 import ai.koog.agents.core.feature.config.FeatureSystemVariables
 import ai.koog.agents.core.feature.debugger.Debugger
 import ai.koog.agents.core.feature.handler.AgentLifecycleEventContext
+import ai.koog.agents.core.feature.handler.AgentLifecycleEventHandler
 import ai.koog.agents.core.feature.handler.AgentLifecycleEventType
 import ai.koog.agents.core.feature.handler.AgentLifecycleHandlersCollector
 import ai.koog.agents.core.feature.handler.agent.AgentClosingContext
@@ -174,7 +175,7 @@ public class AIAgentPipelineImpl(
 
     // TODO: SD -- rename all to invokeOnAgentStarting
     @OptIn(InternalAgentsApi::class)
-    internal override suspend fun <TInput, TOutput> invokeOnAgentStarting(
+    public override suspend fun <TInput, TOutput> invokeOnAgentStarting(
         eventId: String,
         executionInfo: AgentExecutionInfo,
         runId: String,
@@ -187,6 +188,7 @@ public class AIAgentPipelineImpl(
         )
     }
 
+    @OptIn(InternalAgentsApi::class)
     public override suspend fun onAgentCompleted(
         eventId: String,
         executionInfo: AgentExecutionInfo,
@@ -201,6 +203,7 @@ public class AIAgentPipelineImpl(
         )
     }
 
+    @OptIn(InternalAgentsApi::class)
     public override suspend fun onAgentExecutionFailed(
         eventId: String,
         executionInfo: AgentExecutionInfo,
@@ -215,6 +218,7 @@ public class AIAgentPipelineImpl(
         )
     }
 
+    @OptIn(InternalAgentsApi::class)
     public override suspend fun onAgentClosing(
         eventId: String,
         executionInfo: AgentExecutionInfo,
@@ -274,6 +278,7 @@ public class AIAgentPipelineImpl(
 
     //region Invoke LLM Call Handlers
 
+    @OptIn(InternalAgentsApi::class)
     public override suspend fun onLLMCallStarting(
         eventId: String,
         executionInfo: AgentExecutionInfo,
@@ -289,6 +294,7 @@ public class AIAgentPipelineImpl(
         )
     }
 
+    @OptIn(InternalAgentsApi::class)
     public override suspend fun onLLMCallCompleted(
         eventId: String,
         executionInfo: AgentExecutionInfo,
@@ -310,6 +316,7 @@ public class AIAgentPipelineImpl(
 
     //region Invoke Tool Call Handlers
 
+    @OptIn(InternalAgentsApi::class)
     public override suspend fun onToolCallStarting(
         eventId: String,
         executionInfo: AgentExecutionInfo,
@@ -335,6 +342,7 @@ public class AIAgentPipelineImpl(
         )
     }
 
+    @OptIn(InternalAgentsApi::class)
     public override suspend fun onToolValidationFailed(
         eventId: String,
         executionInfo: AgentExecutionInfo,
@@ -364,6 +372,7 @@ public class AIAgentPipelineImpl(
         )
     }
 
+    @OptIn(InternalAgentsApi::class)
     public override suspend fun onToolCallFailed(
         eventId: String,
         executionInfo: AgentExecutionInfo,
@@ -393,6 +402,7 @@ public class AIAgentPipelineImpl(
         )
     }
 
+    @OptIn(InternalAgentsApi::class)
     public override suspend fun onToolCallCompleted(
         eventId: String,
         executionInfo: AgentExecutionInfo,
@@ -424,6 +434,7 @@ public class AIAgentPipelineImpl(
 
     //region Invoke LLM Streaming
 
+    @OptIn(InternalAgentsApi::class)
     public override suspend fun onLLMStreamingStarting(
         eventId: String,
         executionInfo: AgentExecutionInfo,
@@ -439,6 +450,7 @@ public class AIAgentPipelineImpl(
         )
     }
 
+    @OptIn(InternalAgentsApi::class)
     public override suspend fun onLLMStreamingFrameReceived(
         eventId: String,
         executionInfo: AgentExecutionInfo,
@@ -454,6 +466,7 @@ public class AIAgentPipelineImpl(
         )
     }
 
+    @OptIn(InternalAgentsApi::class)
     public override suspend fun onLLMStreamingFailed(
         eventId: String,
         executionInfo: AgentExecutionInfo,
@@ -469,6 +482,7 @@ public class AIAgentPipelineImpl(
         )
     }
 
+    @OptIn(InternalAgentsApi::class)
     public override suspend fun onLLMStreamingCompleted(
         eventId: String,
         executionInfo: AgentExecutionInfo,
@@ -507,7 +521,7 @@ public class AIAgentPipelineImpl(
         feature: AIAgentFeature<*, *>,
         handle: suspend (AgentStartingContext) -> Unit
     ) {
-        agentLifecycleHandlersCollector.addHandlerForFeature(
+        addHandlerForFeature(
             featureKey = feature.key,
             eventType = AgentLifecycleEventType.AgentStarting,
             handler = createConditionalHandler(feature, handle)
@@ -519,7 +533,7 @@ public class AIAgentPipelineImpl(
         feature: AIAgentFeature<*, *>,
         handle: suspend (eventContext: AgentCompletedContext) -> Unit
     ) {
-        agentLifecycleHandlersCollector.addHandlerForFeature(
+        addHandlerForFeature(
             featureKey = feature.key,
             eventType = AgentLifecycleEventType.AgentCompleted,
             handler = createConditionalHandler(feature, handle)
@@ -531,7 +545,7 @@ public class AIAgentPipelineImpl(
         feature: AIAgentFeature<*, *>,
         handle: suspend (eventContext: AgentExecutionFailedContext) -> Unit
     ) {
-        agentLifecycleHandlersCollector.addHandlerForFeature(
+        addHandlerForFeature(
             featureKey = feature.key,
             eventType = AgentLifecycleEventType.AgentExecutionFailed,
             handler = createConditionalHandler(feature, handle)
@@ -543,7 +557,7 @@ public class AIAgentPipelineImpl(
         feature: AIAgentFeature<*, *>,
         handle: suspend (eventContext: AgentClosingContext) -> Unit
     ) {
-        agentLifecycleHandlersCollector.addHandlerForFeature(
+        addHandlerForFeature(
             featureKey = feature.key,
             eventType = AgentLifecycleEventType.AgentClosing,
             handler = createConditionalHandler(feature, handle)
@@ -555,7 +569,7 @@ public class AIAgentPipelineImpl(
         feature: AIAgentFeature<*, *>,
         handle: suspend (StrategyStartingContext) -> Unit
     ) {
-        agentLifecycleHandlersCollector.addHandlerForFeature(
+        addHandlerForFeature(
             featureKey = feature.key,
             eventType = AgentLifecycleEventType.StrategyStarting,
             handler = createConditionalHandler(feature, handle)
@@ -567,7 +581,7 @@ public class AIAgentPipelineImpl(
         feature: AIAgentFeature<*, *>,
         handle: suspend (StrategyCompletedContext) -> Unit
     ) {
-        agentLifecycleHandlersCollector.addHandlerForFeature(
+        addHandlerForFeature(
             featureKey = feature.key,
             eventType = AgentLifecycleEventType.StrategyCompleted,
             handler = createConditionalHandler(feature, handle)
@@ -579,7 +593,7 @@ public class AIAgentPipelineImpl(
         feature: AIAgentFeature<*, *>,
         handle: suspend (eventContext: LLMCallStartingContext) -> Unit
     ) {
-        agentLifecycleHandlersCollector.addHandlerForFeature(
+        addHandlerForFeature(
             featureKey = feature.key,
             eventType = AgentLifecycleEventType.LLMCallStarting,
             handler = createConditionalHandler(feature, handle)
@@ -591,7 +605,7 @@ public class AIAgentPipelineImpl(
         feature: AIAgentFeature<*, *>,
         handle: suspend (eventContext: LLMCallCompletedContext) -> Unit
     ) {
-        agentLifecycleHandlersCollector.addHandlerForFeature(
+        addHandlerForFeature(
             featureKey = feature.key,
             eventType = AgentLifecycleEventType.LLMCallCompleted,
             handler = createConditionalHandler(feature, handle)
@@ -603,7 +617,7 @@ public class AIAgentPipelineImpl(
         feature: AIAgentFeature<*, *>,
         handle: suspend (eventContext: LLMStreamingStartingContext) -> Unit
     ) {
-        agentLifecycleHandlersCollector.addHandlerForFeature(
+        addHandlerForFeature(
             featureKey = feature.key,
             eventType = AgentLifecycleEventType.LLMStreamingStarting,
             handler = createConditionalHandler(feature, handle)
@@ -615,7 +629,7 @@ public class AIAgentPipelineImpl(
         feature: AIAgentFeature<*, *>,
         handle: suspend (eventContext: LLMStreamingFrameReceivedContext) -> Unit
     ) {
-        agentLifecycleHandlersCollector.addHandlerForFeature(
+        addHandlerForFeature(
             featureKey = feature.key,
             eventType = AgentLifecycleEventType.LLMStreamingFrameReceived,
             handler = createConditionalHandler(feature, handle)
@@ -627,7 +641,7 @@ public class AIAgentPipelineImpl(
         feature: AIAgentFeature<*, *>,
         handle: suspend (eventContext: LLMStreamingFailedContext) -> Unit
     ) {
-        agentLifecycleHandlersCollector.addHandlerForFeature(
+        addHandlerForFeature(
             featureKey = feature.key,
             eventType = AgentLifecycleEventType.LLMStreamingFailed,
             handler = createConditionalHandler(feature, handle)
@@ -639,7 +653,7 @@ public class AIAgentPipelineImpl(
         feature: AIAgentFeature<*, *>,
         handle: suspend (eventContext: LLMStreamingCompletedContext) -> Unit
     ) {
-        agentLifecycleHandlersCollector.addHandlerForFeature(
+        addHandlerForFeature(
             featureKey = feature.key,
             eventType = AgentLifecycleEventType.LLMStreamingCompleted,
             handler = createConditionalHandler(feature, handle)
@@ -651,7 +665,7 @@ public class AIAgentPipelineImpl(
         feature: AIAgentFeature<*, *>,
         handle: suspend (eventContext: ToolCallStartingContext) -> Unit
     ) {
-        agentLifecycleHandlersCollector.addHandlerForFeature(
+        addHandlerForFeature(
             featureKey = feature.key,
             eventType = AgentLifecycleEventType.ToolCallStarting,
             handler = createConditionalHandler(feature, handle)
@@ -663,7 +677,7 @@ public class AIAgentPipelineImpl(
         feature: AIAgentFeature<*, *>,
         handle: suspend (eventContext: ToolValidationFailedContext) -> Unit
     ) {
-        agentLifecycleHandlersCollector.addHandlerForFeature(
+        addHandlerForFeature(
             featureKey = feature.key,
             eventType = AgentLifecycleEventType.ToolValidationFailed,
             handler = createConditionalHandler(feature, handle)
@@ -675,7 +689,7 @@ public class AIAgentPipelineImpl(
         feature: AIAgentFeature<*, *>,
         handle: suspend (eventContext: ToolCallFailedContext) -> Unit
     ) {
-        agentLifecycleHandlersCollector.addHandlerForFeature(
+        addHandlerForFeature(
             featureKey = feature.key,
             eventType = AgentLifecycleEventType.ToolCallFailed,
             handler = createConditionalHandler(feature, handle)
@@ -687,7 +701,7 @@ public class AIAgentPipelineImpl(
         feature: AIAgentFeature<*, *>,
         handle: suspend (eventContext: ToolCallCompletedContext) -> Unit
     ) {
-        agentLifecycleHandlersCollector.addHandlerForFeature(
+        addHandlerForFeature(
             featureKey = feature.key,
             eventType = AgentLifecycleEventType.ToolCallCompleted,
             handler = createConditionalHandler(feature, handle)
@@ -984,7 +998,8 @@ public class AIAgentPipelineImpl(
         }
     }
 
-    private suspend fun <TContext: AgentLifecycleEventContext> invokeRegisteredHandlersForEvent(
+    @InternalAgentsApi
+    internal suspend fun <TContext: AgentLifecycleEventContext> invokeRegisteredHandlersForEvent(
         eventType: AgentLifecycleEventType,
         context: TContext
     ) {
@@ -994,6 +1009,19 @@ public class AIAgentPipelineImpl(
             logger.trace { "Execute registered handlers (feature: ${featureKey.name}, event: ${context.eventType})" }
             handlers.forEach { handler -> handler.handle(context) }
         }
+    }
+
+    @InternalAgentsApi
+    internal fun <TContext : AgentLifecycleEventContext> addHandlerForFeature(
+        featureKey: AIAgentStorageKey<*>,
+        eventType: AgentLifecycleEventType,
+        handler: AgentLifecycleEventHandler<TContext>
+    ) {
+        agentLifecycleHandlersCollector.addHandlerForFeature(
+            featureKey = featureKey,
+            eventType = eventType,
+            handler = handler
+        )
     }
 
     @InternalAgentsApi

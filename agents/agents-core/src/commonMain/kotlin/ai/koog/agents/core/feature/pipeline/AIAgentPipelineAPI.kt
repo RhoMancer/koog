@@ -71,7 +71,7 @@ public interface AIAgentPipelineAPI {
 
     // TODO: SD -- delete from public API
     //  this should be an internal methods
-    internal suspend fun <TInput, TOutput> invokeOnAgentStarting(
+    public suspend fun <TInput, TOutput> invokeOnAgentStarting(
         eventId: String,
         executionInfo: AgentExecutionInfo,
         runId: String,
@@ -329,6 +329,7 @@ public interface AIAgentPipelineAPI {
     )
 
     // Short aliases
+
     public fun interceptBeforeAgentStarted(
         feature: AIAgentFeature<*, *>,
         handle: suspend (AgentStartingContext) -> Unit
@@ -394,6 +395,7 @@ public interface AIAgentPipelineAPI {
     ): suspend (AgentEnvironmentTransformingContext, AIAgentEnvironment) -> AIAgentEnvironment
 
     public fun FeatureConfig.isAccepted(eventContext: AgentLifecycleEventContext): Boolean
+
     //endregion
 
     @InternalAgentsApi

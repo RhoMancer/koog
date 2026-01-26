@@ -5,39 +5,25 @@ package ai.koog.agents.core.feature.pipeline
 import ai.koog.agents.core.agent.config.AIAgentConfig
 import ai.koog.agents.core.agent.context.AIAgentGraphContextBase
 import ai.koog.agents.core.agent.entity.AIAgentNodeBase
-import ai.koog.agents.core.agent.entity.AIAgentStorageKey
 import ai.koog.agents.core.agent.entity.AIAgentSubgraph
 import ai.koog.agents.core.agent.execution.AgentExecutionInfo
 import ai.koog.agents.core.annotation.InternalAgentsApi
 import ai.koog.agents.core.feature.AIAgentGraphFeature
+import ai.koog.agents.core.feature.handler.AgentLifecycleEventType
 import ai.koog.agents.core.feature.handler.node.NodeExecutionCompletedContext
 import ai.koog.agents.core.feature.handler.node.NodeExecutionFailedContext
 import ai.koog.agents.core.feature.handler.node.NodeExecutionStartingContext
 import ai.koog.agents.core.feature.handler.subgraph.SubgraphExecutionCompletedContext
 import ai.koog.agents.core.feature.handler.subgraph.SubgraphExecutionFailedContext
 import ai.koog.agents.core.feature.handler.subgraph.SubgraphExecutionStartingContext
-import kotlinx.coroutines.Dispatchers
 import kotlinx.datetime.Clock
 import kotlin.reflect.KType
 
 internal class AIAgentGraphPipelineImpl(
     agentConfig: AIAgentConfig,
     clock: Clock = Clock.System,
-    basePipelineDelegate: AIAgentPipelineImpl
+    private val basePipelineDelegate: AIAgentPipelineImpl
 ) : AIAgentGraphPipelineAPI, AIAgentPipelineAPI by basePipelineDelegate {
-    /**
-     * Map of node execution handlers registered for features.
-     */
-    private val executeNodeHandlers: MutableMap<AIAgentStorageKey<*>, NodeExecutionEventHandler> = mutableMapOf()
-
-    /**
-     * Map of subgraph execution handlers registered for features.
-     */
-    private val executeSubgraphHandlers: MutableMap<AIAgentStorageKey<*>, SubgraphExecutionEventHandler> =
-        mutableMapOf()
-
-    private val registeredFeatures: MutableMap<AIAgentStorageKey<*>, RegisteredFeature> = mutableMapOf()
-    private val featurePrepareDispatcher = Dispatchers.Default.limitedParallelism(5)
 
     //region Trigger Node Handlers
 
@@ -49,8 +35,10 @@ internal class AIAgentGraphPipelineImpl(
         input: Any?,
         inputType: KType
     ) {
-        val eventContext = NodeExecutionStartingContext(eventId, executionInfo, node, context, input, inputType)
-        executeNodeHandlers.values.forEach { handler -> handler.nodeExecutionStartingHandler.handle(eventContext) }
+        basePipelineDelegate.invokeRegisteredHandlersForEvent(
+            eventType = AgentLifecycleEventType.NodeExecutionStarting,
+            context = NodeExecutionStartingContext(eventId, executionInfo, node, context, input, inputType)
+        )
     }
 
     public override suspend fun onNodeExecutionCompleted(
@@ -63,9 +51,10 @@ internal class AIAgentGraphPipelineImpl(
         output: Any?,
         outputType: KType
     ) {
-        val eventContext =
-            NodeExecutionCompletedContext(eventId, executionInfo, node, context, input, inputType, output, outputType)
-        executeNodeHandlers.values.forEach { handler -> handler.nodeExecutionCompletedHandler.handle(eventContext) }
+        basePipelineDelegate.invokeRegisteredHandlersForEvent(
+            eventType = AgentLifecycleEventType.NodeExecutionCompleted,
+            context = NodeExecutionCompletedContext(eventId, executionInfo, node, context, input, inputType, output, outputType)
+        )
     }
 
     public override suspend fun onNodeExecutionFailed(
@@ -77,9 +66,10 @@ internal class AIAgentGraphPipelineImpl(
         inputType: KType,
         throwable: Throwable
     ) {
-        val eventContext =
-            NodeExecutionFailedContext(eventId, executionInfo, node, context, input, inputType, throwable)
-        executeNodeHandlers.values.forEach { handler -> handler.nodeExecutionFailedHandler.handle(eventContext) }
+        basePipelineDelegate.invokeRegisteredHandlersForEvent(
+            eventType = AgentLifecycleEventType.NodeExecutionFailed,
+            context = NodeExecutionFailedContext(eventId, executionInfo, node, context, input, inputType, throwable)
+        )
     }
 
     //endregion Trigger Node Handlers
@@ -94,8 +84,10 @@ internal class AIAgentGraphPipelineImpl(
         input: Any?,
         inputType: KType
     ) {
-        val eventContext = SubgraphExecutionStartingContext(eventId, executionInfo, subgraph, context, input, inputType)
-        executeSubgraphHandlers.values.forEach { handler -> handler.subgraphExecutionStartingHandler.handle(eventContext) }
+        basePipelineDelegate.invokeRegisteredHandlersForEvent(
+            eventType = AgentLifecycleEventType.SubgraphExecutionStarting,
+            context = SubgraphExecutionStartingContext(eventId, executionInfo, subgraph, context, input, inputType)
+        )
     }
 
     public override suspend fun onSubgraphExecutionCompleted(
@@ -108,8 +100,9 @@ internal class AIAgentGraphPipelineImpl(
         output: Any?,
         outputType: KType
     ) {
-        val eventContext =
-            SubgraphExecutionCompletedContext(
+        basePipelineDelegate.invokeRegisteredHandlersForEvent(
+            eventType = AgentLifecycleEventType.SubgraphExecutionCompleted,
+            context = SubgraphExecutionCompletedContext(
                 eventId,
                 executionInfo,
                 subgraph,
@@ -119,11 +112,7 @@ internal class AIAgentGraphPipelineImpl(
                 inputType,
                 outputType
             )
-        executeSubgraphHandlers.values.forEach { handler ->
-            handler.subgraphExecutionCompletedHandler.handle(
-                eventContext
-            )
-        }
+        )
     }
 
     public override suspend fun onSubgraphExecutionFailed(
@@ -135,19 +124,20 @@ internal class AIAgentGraphPipelineImpl(
         inputType: KType,
         throwable: Throwable
     ) {
-        val eventContext =
-            SubgraphExecutionFailedContext(eventId, executionInfo, subgraph, context, input, inputType, throwable)
-        executeSubgraphHandlers.values.forEach { handler -> handler.subgraphExecutionFailedHandler.handle(eventContext) }
+        basePipelineDelegate.invokeRegisteredHandlersForEvent(
+            eventType = AgentLifecycleEventType.SubgraphExecutionFailed,
+            context = SubgraphExecutionFailedContext(eventId, executionInfo, subgraph, context, input, inputType, throwable)
+        )
     }
 
     public override fun interceptNodeExecutionStarting(
         feature: AIAgentGraphFeature<*, *>,
         handle: suspend (eventContext: NodeExecutionStartingContext) -> Unit
     ) {
-        val handler = executeNodeHandlers.getOrPut(feature.key) { NodeExecutionEventHandler() }
-
-        handler.nodeExecutionStartingHandler = NodeExecutionStartingHandler(
-            function = createConditionalHandler(feature, handle)
+        basePipelineDelegate.addHandlerForFeature(
+            featureKey = feature.key,
+            eventType = AgentLifecycleEventType.NodeExecutionStarting,
+            handler = basePipelineDelegate.createConditionalHandler(feature, handle)
         )
     }
 
@@ -155,10 +145,10 @@ internal class AIAgentGraphPipelineImpl(
         feature: AIAgentGraphFeature<*, *>,
         handle: suspend (eventContext: NodeExecutionCompletedContext) -> Unit
     ) {
-        val handler = executeNodeHandlers.getOrPut(feature.key) { NodeExecutionEventHandler() }
-
-        handler.nodeExecutionCompletedHandler = NodeExecutionCompletedHandler(
-            function = createConditionalHandler(feature, handle)
+        basePipelineDelegate.addHandlerForFeature(
+            featureKey = feature.key,
+            eventType = AgentLifecycleEventType.NodeExecutionCompleted,
+            handler = basePipelineDelegate.createConditionalHandler(feature, handle)
         )
     }
 
@@ -166,10 +156,10 @@ internal class AIAgentGraphPipelineImpl(
         feature: AIAgentGraphFeature<*, *>,
         handle: suspend (eventContext: NodeExecutionFailedContext) -> Unit
     ) {
-        val handler = executeNodeHandlers.getOrPut(feature.key) { NodeExecutionEventHandler() }
-
-        handler.nodeExecutionFailedHandler = NodeExecutionFailedHandler(
-            function = createConditionalHandler(feature, handle)
+        basePipelineDelegate.addHandlerForFeature(
+            featureKey = feature.key,
+            eventType = AgentLifecycleEventType.NodeExecutionFailed,
+            handler = basePipelineDelegate.createConditionalHandler(feature, handle)
         )
     }
 
@@ -177,10 +167,10 @@ internal class AIAgentGraphPipelineImpl(
         feature: AIAgentGraphFeature<*, *>,
         handle: suspend (eventContext: SubgraphExecutionStartingContext) -> Unit
     ) {
-        val handler = executeSubgraphHandlers.getOrPut(feature.key) { SubgraphExecutionEventHandler() }
-
-        handler.subgraphExecutionStartingHandler = SubgraphExecutionStartingHandler(
-            function = createConditionalHandler(feature, handle)
+        basePipelineDelegate.addHandlerForFeature(
+            featureKey = feature.key,
+            eventType = AgentLifecycleEventType.SubgraphExecutionStarting,
+            handler = basePipelineDelegate.createConditionalHandler(feature, handle)
         )
     }
 
@@ -188,10 +178,10 @@ internal class AIAgentGraphPipelineImpl(
         feature: AIAgentGraphFeature<*, *>,
         handle: suspend (eventContext: SubgraphExecutionCompletedContext) -> Unit
     ) {
-        val handler = executeSubgraphHandlers.getOrPut(feature.key) { SubgraphExecutionEventHandler() }
-
-        handler.subgraphExecutionCompletedHandler = SubgraphExecutionCompletedHandler(
-            function = createConditionalHandler(feature, handle)
+        basePipelineDelegate.addHandlerForFeature(
+            featureKey = feature.key,
+            eventType = AgentLifecycleEventType.SubgraphExecutionCompleted,
+            handler = basePipelineDelegate.createConditionalHandler(feature, handle)
         )
     }
 
@@ -199,10 +189,10 @@ internal class AIAgentGraphPipelineImpl(
         feature: AIAgentGraphFeature<*, *>,
         handle: suspend (eventContext: SubgraphExecutionFailedContext) -> Unit
     ) {
-        val handler = executeSubgraphHandlers.getOrPut(feature.key) { SubgraphExecutionEventHandler() }
-
-        handler.subgraphExecutionFailedHandler = SubgraphExecutionFailedHandler(
-            function = createConditionalHandler(feature, handle)
+        basePipelineDelegate.addHandlerForFeature(
+            featureKey = feature.key,
+            eventType = AgentLifecycleEventType.SubgraphExecutionFailed,
+            handler = basePipelineDelegate.createConditionalHandler(feature, handle)
         )
     }
 
