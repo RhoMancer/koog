@@ -12,5 +12,9 @@ public data class SimpleFlow(
     override val agents: List<FlowAgent>,
     override val tools: List<FlowTool>,
     override val transitions: List<Transition>
-) : Flow
+) : Flow {
 
+    override fun run(): String {
+        
+    }
+}

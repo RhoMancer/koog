@@ -28,7 +28,7 @@ public interface FlowAgent {
     /**
      * Agent prompt configuration.
      */
-    public val prompt: FlowAgentPrompt
+    public val prompt: FlowAgentPrompt?
 
     /**
      * Agent input configuration.

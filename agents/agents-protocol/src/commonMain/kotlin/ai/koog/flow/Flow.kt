@@ -28,4 +28,9 @@ public interface Flow {
      *
      */
     public val transitions: List<Transition>
+
+    /**
+     *
+     */
+    public fun run(): String
 }

@@ -12,7 +12,7 @@ public data class FlowConfigModel(
     val id: String? = null,
     val version: String? = null,
     val agents: List<FlowAgentModel> = emptyList(),
-    val tools: List<FlowTool>,
+    val tools: List<FlowTool> = emptyList(),
     val transitions: List<Transition> = emptyList()
 )
 

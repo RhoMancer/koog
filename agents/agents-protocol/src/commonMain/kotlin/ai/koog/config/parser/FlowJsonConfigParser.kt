@@ -3,6 +3,7 @@ package ai.koog.config.parser
 import ai.koog.agent.FlowAgent
 import ai.koog.agent.KoogFlowAgent
 import ai.koog.flow.FlowConfig
+import ai.koog.model.FlowAgentInput
 import ai.koog.model.FlowAgentModel
 import ai.koog.model.FlowConfigModel
 import ai.koog.model.toFlowAgentConfig
@@ -30,23 +31,14 @@ public class FlowJsonConfigParser : FlowConfigParser {
 
     private fun FlowAgentModel.toFlowAgent(): FlowAgent {
         return when (runtime) {
-            "koog", null -> {
-                val name = this.name
-                val type = this.type
-                val model = this.model
-                val prompt = this.prompt ?: error("Prompt is required for $name")
-                val input = this.input ?: error("Input is required for $name")
-                val config = this.config.toFlowAgentConfig()
-
-                KoogFlowAgent(
-                    name = name,
-                    type = type,
-                    model = model,
-                    prompt = prompt,
-                    input = input,
-                    config = config
-                )
-            }
+            "koog", null -> KoogFlowAgent(
+                name = name,
+                type = type,
+                model = model,
+                prompt = prompt,
+                input = input ?: FlowAgentInput(),
+                config = config.toFlowAgentConfig()
+            )
             else -> error("Unknown runtime: $runtime")
         }
     }
