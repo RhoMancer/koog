@@ -18,39 +18,23 @@ import ai.koog.agents.core.feature.handler.AgentLifecycleEventContext
 import ai.koog.agents.core.feature.handler.AgentLifecycleEventType
 import ai.koog.agents.core.feature.handler.AgentLifecycleHandlersCollector
 import ai.koog.agents.core.feature.handler.agent.AgentClosingContext
-import ai.koog.agents.core.feature.handler.agent.AgentClosingHandler
 import ai.koog.agents.core.feature.handler.agent.AgentCompletedContext
 import ai.koog.agents.core.feature.handler.agent.AgentEnvironmentTransformingContext
 import ai.koog.agents.core.feature.handler.agent.AgentEnvironmentTransformingHandler
 import ai.koog.agents.core.feature.handler.agent.AgentEventHandler
 import ai.koog.agents.core.feature.handler.agent.AgentExecutionFailedContext
 import ai.koog.agents.core.feature.handler.agent.AgentStartingContext
-import ai.koog.agents.core.feature.handler.agent.AgentStartingHandler
 import ai.koog.agents.core.feature.handler.llm.LLMCallCompletedContext
-import ai.koog.agents.core.feature.handler.llm.LLMCallEventHandler
 import ai.koog.agents.core.feature.handler.llm.LLMCallStartingContext
 import ai.koog.agents.core.feature.handler.strategy.StrategyCompletedContext
-import ai.koog.agents.core.feature.handler.strategy.StrategyCompletedHandler
-import ai.koog.agents.core.feature.handler.strategy.StrategyEventHandler
 import ai.koog.agents.core.feature.handler.strategy.StrategyStartingContext
-import ai.koog.agents.core.feature.handler.strategy.StrategyStartingHandler
 import ai.koog.agents.core.feature.handler.streaming.LLMStreamingCompletedContext
-import ai.koog.agents.core.feature.handler.streaming.LLMStreamingCompletedHandler
-import ai.koog.agents.core.feature.handler.streaming.LLMStreamingEventHandler
 import ai.koog.agents.core.feature.handler.streaming.LLMStreamingFailedContext
-import ai.koog.agents.core.feature.handler.streaming.LLMStreamingFailedHandler
 import ai.koog.agents.core.feature.handler.streaming.LLMStreamingFrameReceivedContext
-import ai.koog.agents.core.feature.handler.streaming.LLMStreamingFrameReceivedHandler
 import ai.koog.agents.core.feature.handler.streaming.LLMStreamingStartingContext
-import ai.koog.agents.core.feature.handler.streaming.LLMStreamingStartingHandler
 import ai.koog.agents.core.feature.handler.tool.ToolCallCompletedContext
-import ai.koog.agents.core.feature.handler.tool.ToolCallEventHandler
 import ai.koog.agents.core.feature.handler.tool.ToolCallFailedContext
-import ai.koog.agents.core.feature.handler.tool.ToolCallFailureHandler
-import ai.koog.agents.core.feature.handler.tool.ToolCallHandler
-import ai.koog.agents.core.feature.handler.tool.ToolCallResultHandler
 import ai.koog.agents.core.feature.handler.tool.ToolCallStartingContext
-import ai.koog.agents.core.feature.handler.tool.ToolValidationErrorHandler
 import ai.koog.agents.core.feature.handler.tool.ToolValidationFailedContext
 import ai.koog.agents.core.feature.model.AIAgentError
 import ai.koog.agents.core.system.getEnvironmentVariableOrNull
@@ -113,14 +97,6 @@ public class AIAgentPipelineImpl(
     private val agentLifecycleHandlersCollector = AgentLifecycleHandlersCollector()
 
     private val agentEventHandlers: MutableMap<AIAgentStorageKey<*>, AgentEventHandler> = mutableMapOf()
-
-    private val strategyEventHandlers: MutableMap<AIAgentStorageKey<*>, StrategyEventHandler> = mutableMapOf()
-
-    private val toolCallEventHandlers: MutableMap<AIAgentStorageKey<*>, ToolCallEventHandler> = mutableMapOf()
-
-    private val llmCallEventHandlers: MutableMap<AIAgentStorageKey<*>, LLMCallEventHandler> = mutableMapOf()
-
-    private val llmStreamingEventHandlers: MutableMap<AIAgentStorageKey<*>, LLMStreamingEventHandler> = mutableMapOf()
 
     public override fun <TFeature : Any> feature(
         featureClass: KClass<TFeature>,
@@ -204,16 +180,10 @@ public class AIAgentPipelineImpl(
         agent: AIAgent<*, *>,
         context: AIAgentContext
     ) {
-        val eventContext = AgentStartingContext(eventId, executionInfo, agent, runId, context)
-
-        val registeredHandlers = agentLifecycleHandlersCollector.getHandlersForEvent<AgentStartingContext>(
+        invokeRegisteredHandlersForEvent(
             eventType = AgentLifecycleEventType.AgentStarting,
+            context = AgentStartingContext(eventId, executionInfo, agent, runId, context)
         )
-
-        registeredHandlers.forEach { (featureKey, handlers) ->
-            logger.trace { "Execute registered 'OnAgentStarting' handlers for feature: '${featureKey.name}'" }
-            handlers.forEach { handler -> handler.handle(eventContext) }
-        }
     }
 
     public override suspend fun onAgentCompleted(
@@ -224,8 +194,10 @@ public class AIAgentPipelineImpl(
         result: Any?,
         context: AIAgentContext
     ) {
-        val eventContext = AgentCompletedContext(eventId, executionInfo, agentId, runId, result, context)
-        agentEventHandlers.values.forEach { handler -> handler.agentCompletedHandler.handle(eventContext) }
+        invokeRegisteredHandlersForEvent(
+            eventType = AgentLifecycleEventType.AgentCompleted,
+            context = AgentCompletedContext(eventId, executionInfo, agentId, runId, result, context)
+        )
     }
 
     public override suspend fun onAgentExecutionFailed(
@@ -236,13 +208,21 @@ public class AIAgentPipelineImpl(
         throwable: Throwable,
         context: AIAgentContext
     ) {
-        val eventContext = AgentExecutionFailedContext(eventId, executionInfo, agentId, runId, throwable, context)
-        agentEventHandlers.values.forEach { handler -> handler.agentExecutionFailedHandler.handle(eventContext) }
+        invokeRegisteredHandlersForEvent(
+            eventType = AgentLifecycleEventType.AgentExecutionFailed,
+            context = AgentExecutionFailedContext(eventId, executionInfo, agentId, runId, throwable, context)
+        )
     }
 
-    public override suspend fun onAgentClosing(eventId: String, executionInfo: AgentExecutionInfo, agentId: String) {
-        val eventContext = AgentClosingContext(eventId, executionInfo, agentId, config)
-        agentEventHandlers.values.forEach { handler -> handler.agentClosingHandler.handle(eventContext) }
+    public override suspend fun onAgentClosing(
+        eventId: String,
+        executionInfo: AgentExecutionInfo,
+        agentId: String
+    ) {
+        invokeRegisteredHandlersForEvent(
+            eventType = AgentLifecycleEventType.AgentClosing,
+            context = AgentClosingContext(eventId, executionInfo, agentId, config)
+        )
     }
 
     public override suspend fun onAgentEnvironmentTransforming(
@@ -268,8 +248,10 @@ public class AIAgentPipelineImpl(
         strategy: AIAgentStrategy<*, *, *>,
         context: AIAgentContext
     ) {
-        val eventContext = StrategyStartingContext(eventId, executionInfo, strategy, context)
-        strategyEventHandlers.values.forEach { handler -> handler.handleStrategyStarting(eventContext) }
+        invokeRegisteredHandlersForEvent(
+            eventType = AgentLifecycleEventType.StrategyStarting,
+            context = StrategyStartingContext(eventId, executionInfo, strategy, context)
+        )
     }
 
     @OptIn(InternalAgentsApi::class)
@@ -281,9 +263,10 @@ public class AIAgentPipelineImpl(
         result: Any?,
         resultType: KType
     ) {
-        val eventContext =
-            StrategyCompletedContext(eventId, executionInfo, strategy, context, result, resultType)
-        strategyEventHandlers.values.forEach { handler -> handler.handleStrategyCompleted(eventContext) }
+        invokeRegisteredHandlersForEvent(
+            eventType = AgentLifecycleEventType.StrategyCompleted,
+            context = StrategyCompletedContext(eventId, executionInfo, strategy, context, result, resultType)
+        )
     }
 
     //endregion Invoke Strategy Handlers
@@ -299,8 +282,10 @@ public class AIAgentPipelineImpl(
         tools: List<ToolDescriptor>,
         context: AIAgentContext
     ) {
-        val eventContext = LLMCallStartingContext(eventId, executionInfo, runId, prompt, model, tools, context)
-        llmCallEventHandlers.values.forEach { handler -> handler.invokeOnLLMCallStartingHandlers(eventContext) }
+        invokeRegisteredHandlersForEvent(
+            eventType = AgentLifecycleEventType.LLMCallStarting,
+            context = LLMCallStartingContext(eventId, executionInfo, runId, prompt, model, tools, context)
+        )
     }
 
     public override suspend fun onLLMCallCompleted(
@@ -314,19 +299,10 @@ public class AIAgentPipelineImpl(
         moderationResponse: ModerationResult?,
         context: AIAgentContext
     ) {
-        val eventContext =
-            LLMCallCompletedContext(
-                eventId,
-                executionInfo,
-                runId,
-                prompt,
-                model,
-                tools,
-                responses,
-                moderationResponse,
-                context
-            )
-        llmCallEventHandlers.values.forEach { handler -> handler.invokeOnLLMCallCompletedHandlers(eventContext) }
+        invokeRegisteredHandlersForEvent(
+            eventType = AgentLifecycleEventType.LLMCallCompleted,
+            context = LLMCallCompletedContext(eventId, executionInfo, runId, prompt, model, tools, responses, moderationResponse, context)
+        )
     }
 
     //endregion Invoke LLM Call Handlers
@@ -343,17 +319,19 @@ public class AIAgentPipelineImpl(
         toolArgs: JsonObject,
         context: AIAgentContext
     ) {
-        val eventContext = ToolCallStartingContext(
-            eventId,
-            executionInfo,
-            runId,
-            toolCallId,
-            toolName,
-            toolDescription,
-            toolArgs,
-            context
+        invokeRegisteredHandlersForEvent(
+            eventType = AgentLifecycleEventType.ToolCallStarting,
+            context = ToolCallStartingContext(
+                eventId,
+                executionInfo,
+                runId,
+                toolCallId,
+                toolName,
+                toolDescription,
+                toolArgs,
+                context
+            )
         )
-        toolCallEventHandlers.values.forEach { handler -> handler.toolCallHandler.handle(eventContext) }
     }
 
     public override suspend fun onToolValidationFailed(
@@ -368,19 +346,21 @@ public class AIAgentPipelineImpl(
         error: AIAgentError,
         context: AIAgentContext
     ) {
-        val eventContext = ToolValidationFailedContext(
-            eventId,
-            executionInfo,
-            runId,
-            toolCallId,
-            toolName,
-            toolDescription,
-            toolArgs,
-            message,
-            error,
-            context
+        invokeRegisteredHandlersForEvent(
+            eventType = AgentLifecycleEventType.ToolValidationFailed,
+            context = ToolValidationFailedContext(
+                eventId,
+                executionInfo,
+                runId,
+                toolCallId,
+                toolName,
+                toolDescription,
+                toolArgs,
+                message,
+                error,
+                context
+            )
         )
-        toolCallEventHandlers.values.forEach { handler -> handler.toolValidationErrorHandler.handle(eventContext) }
     }
 
     public override suspend fun onToolCallFailed(
@@ -395,19 +375,21 @@ public class AIAgentPipelineImpl(
         error: AIAgentError?,
         context: AIAgentContext
     ) {
-        val eventContext = ToolCallFailedContext(
-            eventId,
-            executionInfo,
-            runId,
-            toolCallId,
-            toolName,
-            toolDescription,
-            toolArgs,
-            message,
-            error,
-            context
+        invokeRegisteredHandlersForEvent(
+            eventType = AgentLifecycleEventType.ToolCallFailed,
+            context = ToolCallFailedContext(
+                eventId,
+                executionInfo,
+                runId,
+                toolCallId,
+                toolName,
+                toolDescription,
+                toolArgs,
+                message,
+                error,
+                context
+            )
         )
-        toolCallEventHandlers.values.forEach { handler -> handler.toolCallFailureHandler.handle(eventContext) }
     }
 
     public override suspend fun onToolCallCompleted(
@@ -421,18 +403,20 @@ public class AIAgentPipelineImpl(
         toolResult: JsonElement?,
         context: AIAgentContext
     ) {
-        val eventContext = ToolCallCompletedContext(
-            eventId,
-            executionInfo,
-            runId,
-            toolCallId,
-            toolName,
-            toolDescription,
-            toolArgs,
-            toolResult,
-            context
+        invokeRegisteredHandlersForEvent(
+            eventType = AgentLifecycleEventType.ToolCallCompleted,
+            context = ToolCallCompletedContext(
+                eventId,
+                executionInfo,
+                runId,
+                toolCallId,
+                toolName,
+                toolDescription,
+                toolArgs,
+                toolResult,
+                context
+            )
         )
-        toolCallEventHandlers.values.forEach { handler -> handler.toolCallResultHandler.handle(eventContext) }
     }
 
     //endregion Invoke Tool Call Handlers
@@ -448,9 +432,10 @@ public class AIAgentPipelineImpl(
         tools: List<ToolDescriptor>,
         context: AIAgentContext
     ) {
-        val eventContext =
-            LLMStreamingStartingContext(eventId, executionInfo, runId, prompt, model, tools, context)
-        llmStreamingEventHandlers.values.forEach { handler -> handler.llmStreamingStartingHandler.handle(eventContext) }
+        invokeRegisteredHandlersForEvent(
+            eventType = AgentLifecycleEventType.LLMStreamingStarting,
+            context = LLMStreamingStartingContext(eventId, executionInfo, runId, prompt, model, tools, context)
+        )
     }
 
     public override suspend fun onLLMStreamingFrameReceived(
@@ -462,13 +447,10 @@ public class AIAgentPipelineImpl(
         streamFrame: StreamFrame,
         context: AIAgentContext
     ) {
-        val eventContext =
-            LLMStreamingFrameReceivedContext(eventId, executionInfo, runId, prompt, model, streamFrame, context)
-        llmStreamingEventHandlers.values.forEach { handler ->
-            handler.llmStreamingFrameReceivedHandler.handle(
-                eventContext
-            )
-        }
+        invokeRegisteredHandlersForEvent(
+            eventType = AgentLifecycleEventType.LLMStreamingFrameReceived,
+            context = LLMStreamingFrameReceivedContext(eventId, executionInfo, runId, prompt, model, streamFrame, context)
+        )
     }
 
     public override suspend fun onLLMStreamingFailed(
@@ -480,9 +462,10 @@ public class AIAgentPipelineImpl(
         throwable: Throwable,
         context: AIAgentContext
     ) {
-        val eventContext =
-            LLMStreamingFailedContext(eventId, executionInfo, runId, prompt, model, throwable, context)
-        llmStreamingEventHandlers.values.forEach { handler -> handler.llmStreamingFailedHandler.handle(eventContext) }
+        invokeRegisteredHandlersForEvent(
+            eventType = AgentLifecycleEventType.LLMStreamingFailed,
+            context = LLMStreamingFailedContext(eventId, executionInfo, runId, prompt, model, throwable, context)
+        )
     }
 
     public override suspend fun onLLMStreamingCompleted(
@@ -494,9 +477,10 @@ public class AIAgentPipelineImpl(
         tools: List<ToolDescriptor>,
         context: AIAgentContext
     ) {
-        val eventContext =
-            LLMStreamingCompletedContext(eventId, executionInfo, runId, prompt, model, tools, context)
-        llmStreamingEventHandlers.values.forEach { handler -> handler.llmStreamingCompletedHandler.handle(eventContext) }
+        invokeRegisteredHandlersForEvent(
+            eventType = AgentLifecycleEventType.LLMStreamingCompleted,
+            context = LLMStreamingCompletedContext(eventId, executionInfo, runId, prompt, model, tools, context)
+        )
     }
 
     //endregion Invoke LLM Streaming
@@ -558,10 +542,10 @@ public class AIAgentPipelineImpl(
         feature: AIAgentFeature<*, *>,
         handle: suspend (eventContext: AgentClosingContext) -> Unit
     ) {
-        val handler = agentEventHandlers.getOrPut(feature.key) { AgentEventHandler() }
-
-        handler.agentClosingHandler = AgentClosingHandler(
-            function = createConditionalHandler(feature, handle)
+        agentLifecycleHandlersCollector.addHandlerForFeature(
+            featureKey = feature.key,
+            eventType = AgentLifecycleEventType.AgentClosing,
+            handler = createConditionalHandler(feature, handle)
         )
     }
 
@@ -570,10 +554,10 @@ public class AIAgentPipelineImpl(
         feature: AIAgentFeature<*, *>,
         handle: suspend (StrategyStartingContext) -> Unit
     ) {
-        val handler = strategyEventHandlers.getOrPut(feature.key) { StrategyEventHandler() }
-
-        handler.strategyStartingHandler = StrategyStartingHandler(
-            function = createConditionalHandler(feature, handle)
+        agentLifecycleHandlersCollector.addHandlerForFeature(
+            featureKey = feature.key,
+            eventType = AgentLifecycleEventType.StrategyStarting,
+            handler = createConditionalHandler(feature, handle)
         )
     }
 
@@ -582,10 +566,10 @@ public class AIAgentPipelineImpl(
         feature: AIAgentFeature<*, *>,
         handle: suspend (StrategyCompletedContext) -> Unit
     ) {
-        val handler = strategyEventHandlers.getOrPut(feature.key) { StrategyEventHandler() }
-
-        handler.strategyCompletedHandler = StrategyCompletedHandler(
-            function = createConditionalHandler(feature, handle)
+        agentLifecycleHandlersCollector.addHandlerForFeature(
+            featureKey = feature.key,
+            eventType = AgentLifecycleEventType.StrategyCompleted,
+            handler = createConditionalHandler(feature, handle)
         )
     }
 
@@ -594,8 +578,11 @@ public class AIAgentPipelineImpl(
         feature: AIAgentFeature<*, *>,
         handle: suspend (eventContext: LLMCallStartingContext) -> Unit
     ) {
-        val handler = llmCallEventHandlers.getOrPut(feature.key) { LLMCallEventHandler() }
-        handler.addLLMCallStartingHandler(handler = createConditionalHandler(feature, handle))
+        agentLifecycleHandlersCollector.addHandlerForFeature(
+            featureKey = feature.key,
+            eventType = AgentLifecycleEventType.LLMCallStarting,
+            handler = createConditionalHandler(feature, handle)
+        )
     }
 
     @OptIn(InternalAgentsApi::class)
@@ -603,8 +590,11 @@ public class AIAgentPipelineImpl(
         feature: AIAgentFeature<*, *>,
         handle: suspend (eventContext: LLMCallCompletedContext) -> Unit
     ) {
-        val handler = llmCallEventHandlers.getOrPut(feature.key) { LLMCallEventHandler() }
-        handler.addLLMCallCompletedHandler(handler = createConditionalHandler(feature, handle))
+        agentLifecycleHandlersCollector.addHandlerForFeature(
+            featureKey = feature.key,
+            eventType = AgentLifecycleEventType.LLMCallCompleted,
+            handler = createConditionalHandler(feature, handle)
+        )
     }
 
     @OptIn(InternalAgentsApi::class)
@@ -612,10 +602,10 @@ public class AIAgentPipelineImpl(
         feature: AIAgentFeature<*, *>,
         handle: suspend (eventContext: LLMStreamingStartingContext) -> Unit
     ) {
-        val handler = llmStreamingEventHandlers.getOrPut(feature.key) { LLMStreamingEventHandler() }
-
-        handler.llmStreamingStartingHandler = LLMStreamingStartingHandler(
-            function = createConditionalHandler(feature, handle)
+        agentLifecycleHandlersCollector.addHandlerForFeature(
+            featureKey = feature.key,
+            eventType = AgentLifecycleEventType.LLMStreamingStarting,
+            handler = createConditionalHandler(feature, handle)
         )
     }
 
@@ -624,10 +614,10 @@ public class AIAgentPipelineImpl(
         feature: AIAgentFeature<*, *>,
         handle: suspend (eventContext: LLMStreamingFrameReceivedContext) -> Unit
     ) {
-        val handler = llmStreamingEventHandlers.getOrPut(feature.key) { LLMStreamingEventHandler() }
-
-        handler.llmStreamingFrameReceivedHandler = LLMStreamingFrameReceivedHandler(
-            function = createConditionalHandler(feature, handle)
+        agentLifecycleHandlersCollector.addHandlerForFeature(
+            featureKey = feature.key,
+            eventType = AgentLifecycleEventType.LLMStreamingFrameReceived,
+            handler = createConditionalHandler(feature, handle)
         )
     }
 
@@ -636,10 +626,10 @@ public class AIAgentPipelineImpl(
         feature: AIAgentFeature<*, *>,
         handle: suspend (eventContext: LLMStreamingFailedContext) -> Unit
     ) {
-        val handler = llmStreamingEventHandlers.getOrPut(feature.key) { LLMStreamingEventHandler() }
-
-        handler.llmStreamingFailedHandler = LLMStreamingFailedHandler(
-            function = createConditionalHandler(feature, handle)
+        agentLifecycleHandlersCollector.addHandlerForFeature(
+            featureKey = feature.key,
+            eventType = AgentLifecycleEventType.LLMStreamingFailed,
+            handler = createConditionalHandler(feature, handle)
         )
     }
 
@@ -648,10 +638,10 @@ public class AIAgentPipelineImpl(
         feature: AIAgentFeature<*, *>,
         handle: suspend (eventContext: LLMStreamingCompletedContext) -> Unit
     ) {
-        val handler = llmStreamingEventHandlers.getOrPut(feature.key) { LLMStreamingEventHandler() }
-
-        handler.llmStreamingCompletedHandler = LLMStreamingCompletedHandler(
-            function = createConditionalHandler(feature, handle)
+        agentLifecycleHandlersCollector.addHandlerForFeature(
+            featureKey = feature.key,
+            eventType = AgentLifecycleEventType.LLMStreamingCompleted,
+            handler = createConditionalHandler(feature, handle)
         )
     }
 
@@ -660,10 +650,10 @@ public class AIAgentPipelineImpl(
         feature: AIAgentFeature<*, *>,
         handle: suspend (eventContext: ToolCallStartingContext) -> Unit
     ) {
-        val handler = toolCallEventHandlers.getOrPut(feature.key) { ToolCallEventHandler() }
-
-        handler.toolCallHandler = ToolCallHandler(
-            function = createConditionalHandler(feature, handle)
+        agentLifecycleHandlersCollector.addHandlerForFeature(
+            featureKey = feature.key,
+            eventType = AgentLifecycleEventType.ToolCallStarting,
+            handler = createConditionalHandler(feature, handle)
         )
     }
 
@@ -672,10 +662,10 @@ public class AIAgentPipelineImpl(
         feature: AIAgentFeature<*, *>,
         handle: suspend (eventContext: ToolValidationFailedContext) -> Unit
     ) {
-        val handler = toolCallEventHandlers.getOrPut(feature.key) { ToolCallEventHandler() }
-
-        handler.toolValidationErrorHandler = ToolValidationErrorHandler(
-            function = createConditionalHandler(feature, handle)
+        agentLifecycleHandlersCollector.addHandlerForFeature(
+            featureKey = feature.key,
+            eventType = AgentLifecycleEventType.ToolValidationFailed,
+            handler = createConditionalHandler(feature, handle)
         )
     }
 
@@ -684,10 +674,10 @@ public class AIAgentPipelineImpl(
         feature: AIAgentFeature<*, *>,
         handle: suspend (eventContext: ToolCallFailedContext) -> Unit
     ) {
-        val handler = toolCallEventHandlers.getOrPut(feature.key) { ToolCallEventHandler() }
-
-        handler.toolCallFailureHandler = ToolCallFailureHandler(
-            function = createConditionalHandler(feature, handle)
+        agentLifecycleHandlersCollector.addHandlerForFeature(
+            featureKey = feature.key,
+            eventType = AgentLifecycleEventType.ToolCallFailed,
+            handler = createConditionalHandler(feature, handle)
         )
     }
 
@@ -696,10 +686,10 @@ public class AIAgentPipelineImpl(
         feature: AIAgentFeature<*, *>,
         handle: suspend (eventContext: ToolCallCompletedContext) -> Unit
     ) {
-        val handler = toolCallEventHandlers.getOrPut(feature.key) { ToolCallEventHandler() }
-
-        handler.toolCallResultHandler = ToolCallResultHandler(
-            function = createConditionalHandler(feature, handle)
+        agentLifecycleHandlersCollector.addHandlerForFeature(
+            featureKey = feature.key,
+            eventType = AgentLifecycleEventType.ToolCallCompleted,
+            handler = createConditionalHandler(feature, handle)
         )
     }
 
@@ -990,6 +980,18 @@ public class AIAgentPipelineImpl(
                         "Current system features list:\n${systemFeatures.joinToString("\n") { " - ${it.name}" }}"
                 )
             }
+        }
+    }
+
+    private suspend fun <TContext: AgentLifecycleEventContext> invokeRegisteredHandlersForEvent(
+        eventType: AgentLifecycleEventType,
+        context: TContext
+    ) {
+        val registeredHandlers = agentLifecycleHandlersCollector.getHandlersForEvent<TContext>(eventType)
+
+        registeredHandlers.forEach { (featureKey, handlers) ->
+            logger.trace { "Execute registered handlers (feature: ${featureKey.name}, event: ${context.eventType})" }
+            handlers.forEach { handler -> handler.handle(context) }
         }
     }
 
