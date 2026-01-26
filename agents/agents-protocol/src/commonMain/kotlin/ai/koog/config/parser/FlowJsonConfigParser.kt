@@ -11,6 +11,7 @@ public class FlowJsonConfigParser : FlowConfigParser {
     private val json = Json {
         ignoreUnknownKeys = true
         isLenient = true
+        classDiscriminator = "runtime"
     }
 
     override fun parse(input: String): FlowConfig {

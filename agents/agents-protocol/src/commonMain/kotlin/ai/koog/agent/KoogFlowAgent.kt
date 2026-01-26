@@ -1,14 +1,15 @@
 package ai.koog.agent
 
+import ai.koog.model.FlowAgentConfig
+import ai.koog.model.FlowAgentInput
+import ai.koog.model.FlowAgentPrompt
 import ai.koog.runtime.AgentFlowKoogRuntime
 import ai.koog.runtime.AgentFlowRuntime
-import kotlinx.serialization.Serializable
 import kotlinx.serialization.Transient
 
 /**
  *
  */
-@Serializable
 public data class KoogFlowAgent(
     override val name: String,
     override val type: FlowAgentKind,

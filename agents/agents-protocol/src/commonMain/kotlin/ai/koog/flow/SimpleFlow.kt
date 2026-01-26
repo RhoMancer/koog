@@ -2,12 +2,10 @@ package ai.koog.flow
 
 import ai.koog.agent.FlowAgent
 import ai.koog.tools.FlowTool
-import kotlinx.serialization.Serializable
 
 /**
  *
  */
-@Serializable
 public data class SimpleFlow(
     override val id: String,
     override val agents: List<FlowAgent>,
