@@ -25,6 +25,8 @@ kotlin {
         jvmMain {
             dependencies {
                 api(libs.acp)
+                implementation(libs.ktor.client.cio)
+
             }
         }
     }

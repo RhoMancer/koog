@@ -17,7 +17,7 @@ public object PromptExecutorFactory {
 
     /**
      * Creates a PromptExecutor based on the model string (e.g., "openai/gpt-4o").
-     * Currently supports OpenAI models via environment variable.
+     * Currently, supports OpenAI models via environment variable.
      *
      * @param modelString Model string in format "provider/model-id" (e.g., "openai/gpt-4o")
      * @return PromptExecutor instance for the specified provider
@@ -29,6 +29,7 @@ public object PromptExecutorFactory {
             "openai" -> {
                 val apiKey = systemSecretsReader().getSecret(OPENAI_API_KEY_ENV)
                     ?: error("$OPENAI_API_KEY_ENV environment variable is not set")
+
                 simpleOpenAIExecutor(apiKey)
             }
             else -> error("Unsupported provider: $provider. Currently only 'openai' is supported.")
