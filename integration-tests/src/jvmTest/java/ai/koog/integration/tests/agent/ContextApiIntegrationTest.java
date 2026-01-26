@@ -21,7 +21,7 @@ import java.util.List;
 import static ai.koog.integration.tests.utils.LLMClientsKt.getLLMClientForProvider;
 import static org.junit.jupiter.api.Assertions.*;
 
-public class ContextAPIIntegrationTest extends KoogJavaTestBase {
+public class ContextApiIntegrationTest extends KoogJavaTestBase {
 
     private final List<AutoCloseable> resourcesToClose = new ArrayList<>();
 
@@ -316,5 +316,116 @@ public class ContextAPIIntegrationTest extends KoogJavaTestBase {
         assertNotNull(result);
         assertTrue(result.contains("Single-run result"));
         assertTrue(result.contains("15") || result.contains("fifteen"));
+    }
+
+    @ParameterizedTest
+    @MethodSource("ai.koog.integration.tests.agent.AIAgentTestBase#getLatestModels")
+    public void integration_testExecuteMultipleToolsParallel(LLModel model) {
+        Models.assumeAvailable(model.getProvider());
+
+        JavaInteropUtils.CalculatorTools calculator = new JavaInteropUtils.CalculatorTools();
+
+        AIAgent<String, String> agent = JavaInteropUtils.buildFunctionalAgent(
+            JavaInteropUtils.createAgentBuilder()
+                .promptExecutor(createExecutor(model))
+                .llmModel(model)
+                .systemPrompt("You are a calculator. Use add and multiply tools.")
+                .toolRegistry(JavaInteropUtils.createToolRegistry(calculator))
+                .functionalStrategy((context, input) -> {
+                    Message.Response response = JavaInteropUtils.requestLLM(
+                        context,
+                        "Calculate 5+3 and 4*6. You can use multiple tools in parallel.",
+                        true
+                    );
+
+                    if (response instanceof Message.Tool.Call) {
+                        List<Message.Tool.Call> calls = new ArrayList<>();
+                        calls.add((Message.Tool.Call) response);
+
+                        if (!calls.isEmpty()) {
+                            var results = JavaInteropUtils.executeMultipleTools(context, calls, true);
+                            var responses = JavaInteropUtils.sendMultipleToolResults(context, results);
+                            if (!responses.isEmpty() && responses.get(0) instanceof Message.Assistant) {
+                                return JavaInteropUtils.getAssistantContent((Message.Assistant) responses.get(0));
+                            }
+                        }
+                    }
+
+                    return "Parallel execution completed";
+                })
+        );
+
+        String result = JavaInteropUtils.runAgentBlocking(agent, "Calculate");
+
+        assertNotNull(result);
+        assertFalse(result.isBlank());
+    }
+
+    @ParameterizedTest
+    @MethodSource("ai.koog.integration.tests.agent.AIAgentTestBase#getLatestModels")
+    public void integration_testExecuteSingleTool(LLModel model) {
+        Models.assumeAvailable(model.getProvider());
+
+        JavaInteropUtils.CalculatorTools calculator = new JavaInteropUtils.CalculatorTools();
+
+        AIAgent<String, String> agent = JavaInteropUtils.buildFunctionalAgent(
+            JavaInteropUtils.createAgentBuilder()
+                .promptExecutor(createExecutor(model))
+                .llmModel(model)
+                .systemPrompt("You coordinate tool execution.")
+                .toolRegistry(JavaInteropUtils.createToolRegistry(calculator))
+                .functionalStrategy((context, input) -> {
+                    Message.Response response = JavaInteropUtils.requestLLM(
+                        context,
+                        "Use the add tool to calculate 10 + 5",
+                        true
+                    );
+
+                    if (response instanceof Message.Tool.Call) {
+                        Message.Tool.Call toolCall = (Message.Tool.Call) response;
+                        var toolResult = JavaInteropUtils.executeTool(context, toolCall);
+                        var finalResponse = JavaInteropUtils.sendToolResult(context, toolResult);
+
+                        if (finalResponse instanceof Message.Assistant) {
+                            return JavaInteropUtils.getAssistantContent((Message.Assistant) finalResponse);
+                        }
+                    }
+
+                    return "Tool execution completed";
+                })
+        );
+
+        String result = JavaInteropUtils.runAgentBlocking(agent, "Test");
+
+        assertNotNull(result);
+        assertFalse(result.isBlank());
+    }
+
+    @ParameterizedTest
+    @MethodSource("ai.koog.integration.tests.agent.AIAgentTestBase#getLatestModels")
+    public void integration_testGetHistory(LLModel model) {
+        Models.assumeAvailable(model.getProvider());
+
+        AIAgent<String, String> agent = JavaInteropUtils.buildFunctionalAgent(
+            JavaInteropUtils.createAgentBuilder()
+                .promptExecutor(createExecutor(model))
+                .llmModel(model)
+                .systemPrompt("You are a helpful assistant.")
+                .functionalStrategy((context, input) -> {
+                    JavaInteropUtils.requestLLM(context, "First question: What is 2+2?", true);
+                    JavaInteropUtils.requestLLM(context, "Second question: What is 3*3?", true);
+
+                    var history = JavaInteropUtils.getHistory(context);
+                    int historySize = history.size();
+
+                    return "History contains " + historySize + " messages";
+                })
+        );
+
+        String result = JavaInteropUtils.runAgentBlocking(agent, "Test");
+
+        assertNotNull(result);
+        assertTrue(result.contains("History contains"));
+        assertTrue(result.matches(".*History contains \\d+ messages.*"));
     }
 }

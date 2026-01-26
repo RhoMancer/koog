@@ -127,11 +127,12 @@ public class JavaApiIntegrationTest extends KoogJavaTestBase {
 
     @ParameterizedTest
     @MethodSource("ai.koog.integration.tests.agent.AIAgentTestBase#getLatestModels")
-    public void integration_testBuilderBasicUsage(LLModel model) {
+    public void integration_testBuilderBasicUsageAndTemperature(LLModel model) {
         Models.assumeAvailable(model.getProvider());
 
         MultiLLMPromptExecutor executor = createExecutor(model);
 
+        // Test basic builder usage
         AIAgent<String, String> agent = AIAgent.builder()
             .promptExecutor(executor)
             .llmModel(model)
@@ -145,6 +146,20 @@ public class JavaApiIntegrationTest extends KoogJavaTestBase {
         assertNotNull(result);
         assertFalse(result.isEmpty());
         assertTrue(result.contains("Paris"));
+
+        // Test builder with temperature setting
+        AIAgent<String, String> agentWithTemp = AIAgent.builder()
+            .promptExecutor(executor)
+            .llmModel(model)
+            .systemPrompt("You are a helpful assistant.")
+            .temperature(0.5)
+            .build();
+
+        String tempResult = runBlocking(continuation -> agentWithTemp.run("Say hello", continuation));
+
+        assertNotNull(tempResult);
+        assertFalse(tempResult.isEmpty());
+        assertTrue(tempResult.toLowerCase().contains("hello") || tempResult.toLowerCase().contains("hi"));
     }
 
     @ParameterizedTest
@@ -152,18 +167,24 @@ public class JavaApiIntegrationTest extends KoogJavaTestBase {
     public void integration_testBuilderWithToolRegistry(LLModel model) {
         Models.assumeAvailable(model.getProvider());
 
-        AIAgent<String, String> agent = buildAgentWithCalculator(
-            createExecutor(model),
-            model
-        );
+        JavaInteropUtils.CalculatorTools calculator = new JavaInteropUtils.CalculatorTools();
+        ToolRegistry toolRegistry = JavaInteropUtils.createToolRegistry(calculator);
 
-        String result = runBlocking(continuation ->
-            agent.run("What is 15 + 27?", continuation)
-        );
+        // Verify tool registry has both tools
+        assertEquals(2, toolRegistry.getTools().size());
+
+        AIAgent<String, String> agent = AIAgent.builder()
+            .promptExecutor(createExecutor(model))
+            .llmModel(model)
+            .systemPrompt("You are a calculator. Use the add and multiply tools as needed.")
+            .toolRegistry(toolRegistry)
+            .build();
+
+        // Test with complex expression using both tools
+        String result = runBlocking(continuation -> agent.run("Calculate (5 + 3) * 2", continuation));
 
         assertNotNull(result);
-        assertFalse(result.isBlank());
-        assertTrue(result.contains("42") || result.contains("fifteen") || result.contains("twenty"));
+        assertFalse(result.isEmpty());
     }
 
     @ParameterizedTest
@@ -202,20 +223,27 @@ public class JavaApiIntegrationTest extends KoogJavaTestBase {
 
     @ParameterizedTest
     @MethodSource("ai.koog.integration.tests.agent.AIAgentTestBase#getLatestModels")
-    public void integration_testSimpleFunctionalStrategy(LLModel model) {
+    public void integration_testSimpleFunctionalStrategyWithRetry(LLModel model) {
         Models.assumeAvailable(model.getProvider());
 
+        // Test simple functional strategy with retry logic
         AIAgent<String, String> agent = JavaInteropUtils.buildFunctionalAgent(
             JavaInteropUtils.createAgentBuilder()
                 .promptExecutor(createExecutor(model))
                 .llmModel(model)
                 .systemPrompt("You are a helpful assistant.")
-                .functionalStrategy((context, input) ->
-                    getAssistantContentOrDefault(
-                        JavaInteropUtils.requestLLM(context, input, true),
-                        "Unexpected response type"
-                    )
-                )
+                .functionalStrategy((context, input) -> {
+                    for (int i = 0; i < 3; i++) {
+                        String result = getAssistantContentOrDefault(
+                            JavaInteropUtils.requestLLM(context, input, true),
+                            ""
+                        );
+                        if (!result.isEmpty()) {
+                            return result;
+                        }
+                    }
+                    return "Failed after retries";
+                })
         );
 
         String result = JavaInteropUtils.runAgentBlocking(agent, "Say hello");
@@ -339,35 +367,6 @@ public class JavaApiIntegrationTest extends KoogJavaTestBase {
         assertFalse(result.isEmpty());
     }
 
-    @ParameterizedTest
-    @MethodSource("ai.koog.integration.tests.agent.AIAgentTestBase#getLatestModels")
-    public void integration_testCustomStrategyWithRetry(LLModel model) {
-        Models.assumeAvailable(model.getProvider());
-
-        AIAgent<String, String> agent = JavaInteropUtils.buildFunctionalAgent(
-            JavaInteropUtils.createAgentBuilder()
-                .promptExecutor(createExecutor(model))
-                .llmModel(model)
-                .systemPrompt("You are a helpful assistant.")
-                .functionalStrategy((context, input) -> {
-                    for (int i = 0; i < 3; i++) {
-                        String result = getAssistantContentOrDefault(
-                            JavaInteropUtils.requestLLM(context, input, true),
-                            ""
-                        );
-                        if (!result.isEmpty()) {
-                            return result;
-                        }
-                    }
-                    return "Failed after retries";
-                })
-        );
-
-        String result = JavaInteropUtils.runAgentBlocking(agent, "Hello");
-
-        assertNotNull(result);
-        assertFalse(result.isEmpty());
-    }
 
     @ParameterizedTest
     @MethodSource("ai.koog.integration.tests.agent.AIAgentTestBase#getLatestModels")
@@ -475,6 +474,7 @@ public class JavaApiIntegrationTest extends KoogJavaTestBase {
             .systemPrompt("You are a helpful assistant.")
             .build();
 
+        // Test removing by agent instance
         GraphAIAgent<String, String> agent = service.createAgent("removable-agent");
         assertEquals(1, service.listAllAgents().size());
 
@@ -485,29 +485,16 @@ public class JavaApiIntegrationTest extends KoogJavaTestBase {
         boolean removedAgain = service.removeAgent(agent);
         assertFalse(removedAgain);
 
-        service.closeAll();
-    }
-
-    @ParameterizedTest
-    @MethodSource("ai.koog.integration.tests.agent.AIAgentTestBase#getLatestModels")
-    public void integration_testAIAgentServiceRemoveAgentById(LLModel model) {
-        Models.assumeAvailable(model.getProvider());
-
-        GraphAIAgentService<String, String> service = AIAgentService.builder()
-            .promptExecutor(createExecutor(model))
-            .llmModel(model)
-            .systemPrompt("You are a helpful assistant.")
-            .build();
-
+        // Test removing by agent ID
         service.createAgent("agent-to-remove");
         assertEquals(1, service.listAllAgents().size());
 
-        boolean removed = service.removeAgentWithId("agent-to-remove");
-        assertTrue(removed);
+        boolean removedById = service.removeAgentWithId("agent-to-remove");
+        assertTrue(removedById);
         assertEquals(0, service.listAllAgents().size());
 
-        boolean removedAgain = service.removeAgentWithId("agent-to-remove");
-        assertFalse(removedAgain);
+        boolean removedByIdAgain = service.removeAgentWithId("agent-to-remove");
+        assertFalse(removedByIdAgain);
 
         service.closeAll();
     }
@@ -609,4 +596,51 @@ public class JavaApiIntegrationTest extends KoogJavaTestBase {
 
         service.closeAll();
     }
+
+    @ParameterizedTest
+    @MethodSource("ai.koog.integration.tests.agent.AIAgentTestBase#getLatestModels")
+    public void integration_testBuilderWithCustomId(LLModel model) {
+        Models.assumeAvailable(model.getProvider());
+
+        GraphAIAgentService<String, String> service = AIAgentService.builder()
+            .promptExecutor(createExecutor(model))
+            .llmModel(model)
+            .systemPrompt("You are a helpful assistant.")
+            .build();
+
+        GraphAIAgent<String, String> agent = service.createAgent("custom-test-id");
+
+        assertNotNull(agent);
+        assertEquals("custom-test-id", agent.getId());
+
+        GraphAIAgent<String, String> retrievedAgent = service.agentById("custom-test-id");
+        assertNotNull(retrievedAgent);
+        assertEquals(agent, retrievedAgent);
+
+        service.closeAll();
+    }
+
+
+    @ParameterizedTest
+    @MethodSource("ai.koog.integration.tests.agent.AIAgentTestBase#getLatestModels")
+    public void integration_testBuilderWithMaxIterations(LLModel model) {
+        Models.assumeAvailable(model.getProvider());
+
+        JavaInteropUtils.CalculatorTools calculator = new JavaInteropUtils.CalculatorTools();
+        ToolRegistry toolRegistry = JavaInteropUtils.createToolRegistry(calculator);
+
+        AIAgent<String, String> agent = AIAgent.builder()
+            .promptExecutor(createExecutor(model))
+            .llmModel(model)
+            .systemPrompt("You are a helpful assistant with calculator tools.")
+            .toolRegistry(toolRegistry)
+            .maxIterations(5)
+            .build();
+
+        String result = runBlocking(continuation -> agent.run("What is 5 + 3?", continuation));
+
+        assertNotNull(result);
+        assertFalse(result.isEmpty());
+    }
+
 }

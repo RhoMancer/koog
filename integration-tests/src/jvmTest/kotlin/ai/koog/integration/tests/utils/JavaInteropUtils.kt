@@ -149,6 +149,28 @@ object JavaInteropUtils {
     ): T = context.llm.readSession(action)
 
     @JvmStatic
+    fun executeMultipleTools(
+        context: AIAgentFunctionalContext,
+        toolCalls: List<Message.Tool.Call>,
+        parallel: Boolean
+    ): List<ReceivedToolResult> = runBlocking {
+        context.executeMultipleTools(toolCalls, parallel)
+    }
+
+    @JvmStatic
+    fun sendMultipleToolResults(
+        context: AIAgentFunctionalContext,
+        results: List<ReceivedToolResult>
+    ): List<Message.Response> = runBlocking {
+        context.sendMultipleToolResults(results)
+    }
+
+    @JvmStatic
+    fun getHistory(context: AIAgentFunctionalContext): List<Message> = runBlocking {
+        context.getHistory()
+    }
+
+    @JvmStatic
     fun createToolRegistry(toolSet: ToolSet): ToolRegistry {
         return ToolRegistry.builder()
             .tools(toolSet, Json.Default)
@@ -162,6 +184,13 @@ object JavaInteropUtils {
             @LLMDescription(description = "First number") a: Int,
             @LLMDescription(description = "Second number") b: Int
         ): Int = a + b
+
+        @ai.koog.agents.core.tools.annotations.Tool
+        @LLMDescription(description = "Multiplies two numbers")
+        fun multiply(
+            @LLMDescription(description = "First number") a: Int,
+            @LLMDescription(description = "Second number") b: Int
+        ): Int = a * b
 
         fun getAddTool(): Tool<*, *> {
             return createToolRegistry(this).tools.first { it.name == "add" }
