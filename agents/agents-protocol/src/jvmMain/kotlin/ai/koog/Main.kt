@@ -9,11 +9,7 @@ import kotlinx.coroutines.runBlocking
  * Example main function to demonstrate flow parsing and execution.
  */
 public fun main(): Unit = runBlocking {
-    val jsonContent = object {}.javaClass
-        .getResourceAsStream("/flow/simple_koog_agent_flow.json")
-        ?.bufferedReader()
-        ?.readText()
-        ?: error("Could not read JSON file")
+    val jsonContent = readFlow()
 
     val parser = FlowJsonConfigParser()
     val config: FlowConfig = parser.parse(jsonContent)
@@ -41,4 +37,15 @@ public fun main(): Unit = runBlocking {
 
     val result = flow.run()
     println("Flow execution result: $result")
+}
+
+private fun readFlow(): String {
+    val jsonContent = object {}.javaClass
+//        .getResourceAsStream("/flow/simple_koog_agent_flow.json")
+        .getResourceAsStream("/flow/weather_koog_agent_flow.json")
+        ?.bufferedReader()
+        ?.readText()
+        ?: error("Could not read JSON file")
+
+    return jsonContent
 }

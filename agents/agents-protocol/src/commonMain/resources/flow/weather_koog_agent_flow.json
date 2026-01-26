@@ -1,0 +1,35 @@
+{
+  "agents": [
+    {
+      "name": "get_time",
+      "type": "task",
+      "runtime": "koog",
+      "prompt": {
+        "system": "You are an agent that can get system information."
+      },
+      "input": {
+        "task": "You task is to get current epoch time. Output current epoch time as an output."
+      }
+    },
+    {
+      "name": "calculator",
+      "type": "task",
+      "runtime": "koog",
+      "config": {
+        "model": "openai/gpt-4o"
+      },
+      "prompt": {
+        "system": "You are an calculator agent that can perform math operations"
+      },
+      "input": {
+        "task": "Your task is to sum all individual numbers in the input string."
+      }
+    }
+  ],
+  "transitions": [
+    {
+      "from": "agent.get_time",
+      "to": "agent.calculator"
+    }
+  ]
+}
