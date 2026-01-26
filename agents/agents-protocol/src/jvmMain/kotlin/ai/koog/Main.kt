@@ -2,6 +2,7 @@ package ai.koog
 
 import ai.koog.config.parser.FlowJsonConfigParser
 import ai.koog.flow.FlowConfig
+import ai.koog.flow.SimpleFlow
 
 /**
  *
@@ -21,10 +22,22 @@ public fun main() {
     println("  Version: ${config.version}")
     println("  Agents: ${config.agents.size}")
     config.agents.forEach { agent ->
-        println("    - ${agent.name} (${agent.type}")
+        println("    - ${agent.name} (${agent.type})")
     }
     println("  Transitions: ${config.transitions.size}")
     config.transitions.forEach { transition ->
         println("    - ${transition.from} -> ${transition.to}")
     }
+
+    // Create a SimpleFlow from the config and run it
+    println("\nCreating SimpleFlow and running...")
+    val flow = SimpleFlow(
+        id = config.id ?: "simple-flow",
+        agents = config.agents,
+        tools = emptyList(),
+        transitions = config.transitions
+    )
+
+    val result = flow.run()
+    println("Flow execution result: $result")
 }
