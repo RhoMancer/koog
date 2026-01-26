@@ -10,5 +10,5 @@ public interface AgentFlowRuntime {
     /**
      *
      */
-    public fun executeAgent(config: FlowAgentConfig)
+    public fun executeAgent(config: FlowAgentConfig): String
 }

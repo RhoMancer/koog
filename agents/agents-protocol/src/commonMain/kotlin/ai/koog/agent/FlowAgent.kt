@@ -1,6 +1,6 @@
 package ai.koog.agent
 
-import ai.koog.runtime.AgentFlowRuntimeProvider
+import ai.koog.runtime.AgentFlowRuntime
 
 /**
  * agent:
@@ -23,12 +23,12 @@ public interface FlowAgent {
     /**
      *
      */
-    public val provider: AgentFlowRuntimeProvider
+    public val runtime: AgentFlowRuntime
 
     /**
      *
      */
-    public val type: FlowAgentKind
+    public val kind: FlowAgentKind
 
     /**
      *
@@ -39,6 +39,11 @@ public interface FlowAgent {
      *
      */
     public val input: String
+
+    /**
+     *
+     */
+    public val config: FlowAgentConfig
 
     /**
      *

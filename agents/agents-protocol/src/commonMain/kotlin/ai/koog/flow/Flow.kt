@@ -1,6 +1,7 @@
 package ai.koog.flow
 
 import ai.koog.agent.FlowAgent
+import ai.koog.tools.FlowTool
 
 /**
  *
@@ -20,7 +21,7 @@ public interface Flow {
     /**
      *
      */
-    public val tools: List<FlowTools>
+    public val tools: List<FlowTool>
 
     /**
      *

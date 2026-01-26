@@ -1,8 +1,11 @@
 package ai.koog.flow
 
+import kotlinx.serialization.Serializable
+
 /**
  *
  */
+@Serializable
 public enum class ConditionOperationKind(public val text: String) {
     EQUALS("equals"),
     NOT_EQUALS("not equals"),
