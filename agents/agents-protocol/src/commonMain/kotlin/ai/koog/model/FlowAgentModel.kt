@@ -1,5 +1,6 @@
 package ai.koog.model
 
+import ai.koog.agent.FlowAgentConfig
 import ai.koog.agent.FlowAgentKind
 import ai.koog.agent.ToolChoiceKind
 import kotlinx.serialization.Serializable
@@ -19,11 +20,11 @@ import kotlinx.serialization.Serializable
 public data class FlowAgentModel(
     val name: String,
     val type: FlowAgentKind,
-    val model: String,
-    val runtime: String,
-    val prompt: FlowAgentPrompt,
-    val input: FlowAgentInput,
-    val config: FlowAgentConfig
+    val model: String? = null,
+    val runtime: String? = null,
+    val prompt: FlowAgentPrompt? = null,
+    val input: FlowAgentInput? = null,
+    val config: FlowAgentConfigModel? = null
 )
 
 /**
@@ -37,7 +38,7 @@ public data class FlowAgentModel(
  * 	    speculation: string
  */
 @Serializable
-public data class FlowAgentConfig(
+public data class FlowAgentConfigModel(
     val model: String? = null,
     val temperature: Double? = null,
     val maxIterations: Int? = null,
@@ -46,6 +47,19 @@ public data class FlowAgentConfig(
     val toolChoice: ToolChoiceKind? = null,
     val speculation: String? = null,
 )
+
+public fun FlowAgentConfigModel?.toFlowAgentConfig(): FlowAgentConfig =
+    this?.let {
+        FlowAgentConfig(
+            model = model,
+            temperature = temperature,
+            maxIterations = maxIterations,
+            maxTokens = maxTokens,
+            topP = topP,
+            toolChoice = toolChoice,
+            speculation = speculation
+        )
+    } ?: FlowAgentConfig()
 
 /**
  *

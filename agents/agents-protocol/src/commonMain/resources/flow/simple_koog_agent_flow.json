@@ -49,25 +49,23 @@
       }
     }
   ],
-  "flow": {
-    "transitions": [
-      {
-        "from": "agent.generate",
-        "to": "agent.fix"
-      },
-      {
-        "from": "agent.fix",
-        "to": "agent.verify"
-      },
-      {
-        "from": "agent.verify",
-        "to": "__end__",
-        "condition": {
-          "variable": "agent.verify.output.success",
-          "operation": "equals",
-          "value": true
-        }
+  "transitions": [
+    {
+      "from": "agent.generate",
+      "to": "agent.fix"
+    },
+    {
+      "from": "agent.fix",
+      "to": "agent.verify"
+    },
+    {
+      "from": "agent.verify",
+      "to": "__end__",
+      "condition": {
+        "variable": "agent.verify.output.success",
+        "operation": "equals",
+        "value": true
       }
-    ]
-  }
+    }
+  ]
 }

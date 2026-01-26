@@ -1,6 +1,6 @@
 package ai.koog.agent
 
-import ai.koog.model.FlowAgentConfig
+import ai.koog.model.FlowAgentConfigModel
 import ai.koog.model.FlowAgentInput
 import ai.koog.model.FlowAgentPrompt
 import ai.koog.runtime.AgentFlowRuntime

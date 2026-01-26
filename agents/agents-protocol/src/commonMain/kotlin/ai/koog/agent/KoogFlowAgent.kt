@@ -1,6 +1,6 @@
 package ai.koog.agent
 
-import ai.koog.model.FlowAgentConfig
+import ai.koog.model.FlowAgentConfigModel
 import ai.koog.model.FlowAgentInput
 import ai.koog.model.FlowAgentPrompt
 import ai.koog.runtime.AgentFlowKoogRuntime
@@ -14,9 +14,9 @@ public data class KoogFlowAgent(
     override val name: String,
     override val type: FlowAgentKind,
     override val model: String? = null,
-    override val prompt: FlowAgentPrompt? = null,
-    override val input: FlowAgentInput? = null,
-    override val config: FlowAgentConfig? = null
+    override val prompt: FlowAgentPrompt,
+    override val input: FlowAgentInput,
+    override val config: FlowAgentConfig
 ) : FlowAgent {
 
     /**
@@ -29,6 +29,6 @@ public data class KoogFlowAgent(
      *
      */
     override fun execute(): String {
-        return runtime.executeAgent(config ?: FlowAgentConfig())
+        return runtime.executeAgent(config ?: FlowAgentConfigModel())
     }
 }

@@ -1,6 +1,7 @@
 package ai.koog.flow
 
 import ai.koog.agent.FlowAgent
+import ai.koog.model.Transition
 import kotlinx.serialization.Serializable
 
 /**
