@@ -79,7 +79,7 @@ public class JavaApiIntegrationTest extends KoogJavaTestBase {
     }
 
     @Test
-    public void integration_testOpenAILLMClient() {
+    public void integration_OpenAILLMClient() {
         OpenAILLMClient client = JavaInteropUtils.createOpenAIClient(TestCredentials.INSTANCE.readTestOpenAIKeyFromEnv());
         resourcesToClose.add((AutoCloseable) client);
 
@@ -92,7 +92,7 @@ public class JavaApiIntegrationTest extends KoogJavaTestBase {
     }
 
     @Test
-    public void integration_testAnthropicLLMClient() {
+    public void integration_AnthropicLLMClient() {
         AnthropicLLMClient client = JavaInteropUtils.createAnthropicClient(TestCredentials.INSTANCE.readTestAnthropicKeyFromEnv());
         resourcesToClose.add((AutoCloseable) client);
 
@@ -105,7 +105,7 @@ public class JavaApiIntegrationTest extends KoogJavaTestBase {
     }
 
     @Test
-    public void integration_testMultiLLMPromptExecutor() {
+    public void integration_MultiLLMPromptExecutor() {
         OpenAILLMClient openAIClient = JavaInteropUtils.createOpenAIClient(TestCredentials.INSTANCE.readTestOpenAIKeyFromEnv());
         AnthropicLLMClient anthropicClient = JavaInteropUtils.createAnthropicClient(TestCredentials.INSTANCE.readTestAnthropicKeyFromEnv());
 
@@ -127,7 +127,7 @@ public class JavaApiIntegrationTest extends KoogJavaTestBase {
 
     @ParameterizedTest
     @MethodSource("ai.koog.integration.tests.agent.AIAgentTestBase#getLatestModels")
-    public void integration_testBuilderBasicUsageAndTemperature(LLModel model) {
+    public void integration_BuilderBasicUsageAndTemperature(LLModel model) {
         Models.assumeAvailable(model.getProvider());
 
         MultiLLMPromptExecutor executor = createExecutor(model);
@@ -164,7 +164,7 @@ public class JavaApiIntegrationTest extends KoogJavaTestBase {
 
     @ParameterizedTest
     @MethodSource("ai.koog.integration.tests.agent.AIAgentTestBase#getLatestModels")
-    public void integration_testBuilderWithToolRegistry(LLModel model) {
+    public void integration_BuilderWithToolRegistry(LLModel model) {
         Models.assumeAvailable(model.getProvider());
 
         JavaInteropUtils.CalculatorTools calculator = new JavaInteropUtils.CalculatorTools();
@@ -189,7 +189,7 @@ public class JavaApiIntegrationTest extends KoogJavaTestBase {
 
     @ParameterizedTest
     @MethodSource("ai.koog.integration.tests.agent.AIAgentTestBase#getLatestModels")
-    public void integration_testEventHandler(LLModel model) {
+    public void integration_EventHandler(LLModel model) {
         Models.assumeAvailable(model.getProvider());
 
         AtomicBoolean agentStarted = new AtomicBoolean(false);
@@ -223,7 +223,7 @@ public class JavaApiIntegrationTest extends KoogJavaTestBase {
 
     @ParameterizedTest
     @MethodSource("ai.koog.integration.tests.agent.AIAgentTestBase#getLatestModels")
-    public void integration_testSimpleFunctionalStrategyWithRetry(LLModel model) {
+    public void integration_SimpleFunctionalStrategyWithRetry(LLModel model) {
         Models.assumeAvailable(model.getProvider());
 
         // Test simple functional strategy with retry logic
@@ -255,7 +255,7 @@ public class JavaApiIntegrationTest extends KoogJavaTestBase {
 
     @ParameterizedTest
     @MethodSource("ai.koog.integration.tests.agent.AIAgentTestBase#getLatestModels")
-    public void integration_testMultiStepFunctionalStrategy(LLModel model) {
+    public void integration_MultiStepFunctionalStrategy(LLModel model) {
         Models.assumeAvailable(model.getProvider());
 
         AIAgent<String, String> agent = JavaInteropUtils.buildFunctionalAgent(
@@ -285,7 +285,7 @@ public class JavaApiIntegrationTest extends KoogJavaTestBase {
 
     @ParameterizedTest
     @MethodSource("ai.koog.integration.tests.agent.AIAgentTestBase#getLatestModels")
-    public void integration_testFunctionalStrategyWithManualToolHandling(LLModel model) {
+    public void integration_FunctionalStrategyWithManualToolHandling(LLModel model) {
         Models.assumeAvailable(model.getProvider());
 
         JavaInteropUtils.CalculatorTools calculator = new JavaInteropUtils.CalculatorTools();
@@ -329,7 +329,7 @@ public class JavaApiIntegrationTest extends KoogJavaTestBase {
     @ParameterizedTest
     @MethodSource("ai.koog.integration.tests.agent.AIAgentTestBase#getLatestModels")
     @Disabled("KG-669")
-    public void integration_testSubtask(LLModel model) {
+    public void integration_Subtask(LLModel model) {
         Models.assumeAvailable(model.getProvider());
 
         MultiLLMPromptExecutor executor = createExecutor(model);
@@ -370,7 +370,7 @@ public class JavaApiIntegrationTest extends KoogJavaTestBase {
 
     @ParameterizedTest
     @MethodSource("ai.koog.integration.tests.agent.AIAgentTestBase#getLatestModels")
-    public void integration_testCustomStrategyWithValidation(LLModel model) {
+    public void integration_CustomStrategyWithValidation(LLModel model) {
         Models.assumeAvailable(model.getProvider());
 
         AIAgent<String, String> agent = JavaInteropUtils.buildFunctionalAgent(
@@ -414,7 +414,7 @@ public class JavaApiIntegrationTest extends KoogJavaTestBase {
 
     @ParameterizedTest
     @MethodSource("ai.koog.integration.tests.agent.AIAgentTestBase#getLatestModels")
-    public void integration_testAIAgentServiceCreateAndListAgents(LLModel model) {
+    public void integration_AIAgentServiceCreateAndListAgents(LLModel model) {
         Models.assumeAvailable(model.getProvider());
 
         GraphAIAgentService<String, String> service = AIAgentService.builder()
@@ -441,7 +441,7 @@ public class JavaApiIntegrationTest extends KoogJavaTestBase {
 
     @ParameterizedTest
     @MethodSource("ai.koog.integration.tests.agent.AIAgentTestBase#getLatestModels")
-    public void integration_testAIAgentServiceAgentById(LLModel model) {
+    public void integration_AIAgentServiceAgentById(LLModel model) {
         Models.assumeAvailable(model.getProvider());
 
         GraphAIAgentService<String, String> service = AIAgentService.builder()
@@ -465,7 +465,7 @@ public class JavaApiIntegrationTest extends KoogJavaTestBase {
 
     @ParameterizedTest
     @MethodSource("ai.koog.integration.tests.agent.AIAgentTestBase#getLatestModels")
-    public void integration_testAIAgentServiceRemoveAgent(LLModel model) {
+    public void integration_AIAgentServiceRemoveAgent(LLModel model) {
         Models.assumeAvailable(model.getProvider());
 
         GraphAIAgentService<String, String> service = AIAgentService.builder()
@@ -501,7 +501,7 @@ public class JavaApiIntegrationTest extends KoogJavaTestBase {
 
     @ParameterizedTest
     @MethodSource("ai.koog.integration.tests.agent.AIAgentTestBase#getLatestModels")
-    public void integration_testAIAgentServiceStateTracking(LLModel model) {
+    public void integration_AIAgentServiceStateTracking(LLModel model) {
         Models.assumeAvailable(model.getProvider());
 
         GraphAIAgentService<String, String> service = AIAgentService.builder()
@@ -529,7 +529,7 @@ public class JavaApiIntegrationTest extends KoogJavaTestBase {
 
     @ParameterizedTest
     @MethodSource("ai.koog.integration.tests.agent.AIAgentTestBase#getLatestModels")
-    public void integration_testAIAgentServiceCreateAgentAndRun(LLModel model) {
+    public void integration_AIAgentServiceCreateAgentAndRun(LLModel model) {
         Models.assumeAvailable(model.getProvider());
 
         GraphAIAgentService<String, String> service = AIAgentService.builder()
@@ -554,7 +554,7 @@ public class JavaApiIntegrationTest extends KoogJavaTestBase {
 
     @ParameterizedTest
     @MethodSource("ai.koog.integration.tests.agent.AIAgentTestBase#getLatestModels")
-    public void integration_testAIAgentServiceWithCustomToolRegistry(LLModel model) {
+    public void integration_AIAgentServiceWithCustomToolRegistry(LLModel model) {
         Models.assumeAvailable(model.getProvider());
 
         JavaInteropUtils.CalculatorTools calculator = new JavaInteropUtils.CalculatorTools();
@@ -578,7 +578,7 @@ public class JavaApiIntegrationTest extends KoogJavaTestBase {
 
     @ParameterizedTest
     @MethodSource("ai.koog.integration.tests.agent.AIAgentTestBase#getLatestModels")
-    public void integration_testAIAgentServiceBuilderConfiguration(LLModel model) {
+    public void integration_AIAgentServiceBuilderConfiguration(LLModel model) {
         Models.assumeAvailable(model.getProvider());
 
         GraphAIAgentService<String, String> service = AIAgentService.builder()
@@ -599,7 +599,7 @@ public class JavaApiIntegrationTest extends KoogJavaTestBase {
 
     @ParameterizedTest
     @MethodSource("ai.koog.integration.tests.agent.AIAgentTestBase#getLatestModels")
-    public void integration_testBuilderWithCustomId(LLModel model) {
+    public void integration_BuilderWithCustomId(LLModel model) {
         Models.assumeAvailable(model.getProvider());
 
         GraphAIAgentService<String, String> service = AIAgentService.builder()
@@ -623,7 +623,7 @@ public class JavaApiIntegrationTest extends KoogJavaTestBase {
 
     @ParameterizedTest
     @MethodSource("ai.koog.integration.tests.agent.AIAgentTestBase#getLatestModels")
-    public void integration_testBuilderWithMaxIterations(LLModel model) {
+    public void integration_BuilderWithMaxIterations(LLModel model) {
         Models.assumeAvailable(model.getProvider());
 
         JavaInteropUtils.CalculatorTools calculator = new JavaInteropUtils.CalculatorTools();
