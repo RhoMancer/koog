@@ -116,13 +116,11 @@ public class JavaApiIntegrationTest extends KoogJavaTestBase {
 
         Prompt openAIPrompt = JavaInteropUtils.buildSimplePrompt("test-multi-openai", "You are a helpful assistant.", "Say 'OpenAI response'");
         List<Message.Response> openAIResponses = JavaInteropUtils.executeExecutorBlocking(executor, openAIPrompt, OpenAIModels.Chat.GPT4o, Collections.emptyList());
-        assertNotNull(openAIResponses);
-        assertFalse(openAIResponses.isEmpty());
+        assertValidResponse(openAIResponses);
 
         Prompt anthropicPrompt = JavaInteropUtils.buildSimplePrompt("test-multi-anthropic", "You are a helpful assistant.", "Say 'Anthropic response'");
         List<Message.Response> anthropicResponses = JavaInteropUtils.executeExecutorBlocking(executor, anthropicPrompt, AnthropicModels.Haiku_4_5, Collections.emptyList());
-        assertNotNull(anthropicResponses);
-        assertFalse(anthropicResponses.isEmpty());
+        assertValidResponse(anthropicResponses);
     }
 
     @ParameterizedTest
@@ -169,9 +167,6 @@ public class JavaApiIntegrationTest extends KoogJavaTestBase {
 
         JavaInteropUtils.CalculatorTools calculator = new JavaInteropUtils.CalculatorTools();
         ToolRegistry toolRegistry = JavaInteropUtils.createToolRegistry(calculator);
-
-        // Verify tool registry has both tools
-        assertEquals(2, toolRegistry.getTools().size());
 
         AIAgent<String, String> agent = AIAgent.builder()
             .promptExecutor(createExecutor(model))

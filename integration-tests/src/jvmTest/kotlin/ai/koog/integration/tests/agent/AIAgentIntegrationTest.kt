@@ -849,7 +849,7 @@ class AIAgentIntegrationTest : AIAgentTestBase() {
         val systemMessage = "You are a helpful assistant."
         val testInput = "Start the test"
 
-        val noCheckpointsError = "No checkpoints were created"
+        "No checkpoints were created"
         val incorrectNodeIdError = "Checkpoint has incorrect node ID"
 
         val fileStorageProvider = JVMFilePersistenceStorageProvider(tempDir)
@@ -901,9 +901,6 @@ class AIAgentIntegrationTest : AIAgentTestBase() {
 
         val expectedNodePath = path(agentId, strategyName, bye)
         with(fileStorageProvider.getCheckpoints(agent.id).filter { it.nodePath != "tombstone" }) {
-            withClue(noCheckpointsError) {
-                isNotEmpty() shouldBe true
-            }
             withClue(incorrectNodeIdError) {
                 first().nodePath shouldBe expectedNodePath
             }
@@ -1080,7 +1077,7 @@ class AIAgentIntegrationTest : AIAgentTestBase() {
                 agent.run("Hi")
 
                 with(state) {
-                    errors.shouldBeEmpty() // There should be no errors during parallel execution}
+                    errors.shouldBeEmpty()
                     results.shouldNotBeEmpty().first() as String should {
                         contain("Math result: 56")
                         contain("Text result: Hello World")

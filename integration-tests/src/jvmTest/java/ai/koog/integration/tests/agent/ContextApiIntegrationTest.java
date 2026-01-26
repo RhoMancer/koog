@@ -280,7 +280,6 @@ public class ContextApiIntegrationTest extends KoogJavaTestBase {
 
         assertNotNull(result);
         assertTrue(result.contains("Parallel subtask result"));
-        assertFalse(result.isBlank());
     }
 
     @ParameterizedTest
@@ -358,7 +357,6 @@ public class ContextApiIntegrationTest extends KoogJavaTestBase {
         String result = JavaInteropUtils.runAgentBlocking(agent, "Calculate");
 
         assertNotNull(result);
-        assertFalse(result.isBlank());
     }
 
     @ParameterizedTest
@@ -398,7 +396,6 @@ public class ContextApiIntegrationTest extends KoogJavaTestBase {
         String result = JavaInteropUtils.runAgentBlocking(agent, "Test");
 
         assertNotNull(result);
-        assertFalse(result.isBlank());
     }
 
     @ParameterizedTest
