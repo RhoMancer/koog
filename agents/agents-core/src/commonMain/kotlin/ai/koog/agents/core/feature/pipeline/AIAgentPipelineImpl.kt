@@ -92,7 +92,8 @@ public class AIAgentPipelineImpl(
         Debugger.key
     )
 
-    // Map:
+    // TODO: SD --
+    //  Map:
     //   feature -> agent event type -> handler
     private val agentLifecycleHandlersCollector = AgentLifecycleHandlersCollector()
 
