@@ -1,5 +1,6 @@
 package ai.koog.agents.mcp
 
+import ai.koog.agents.core.annotation.InternalAgentsApi
 import ai.koog.agents.core.tools.ToolDescriptor
 import ai.koog.agents.core.tools.ToolParameterDescriptor
 import ai.koog.agents.core.tools.ToolParameterType
@@ -27,6 +28,7 @@ import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
 
 @Execution(ExecutionMode.SAME_THREAD)
+@OptIn(InternalAgentsApi::class)
 class McpToolTest {
     companion object {
         private const val TEST_PORT = 3001
@@ -48,11 +50,7 @@ class McpToolTest {
     private suspend fun testMcpTools(action: suspend (toolRegistry: ToolRegistry) -> Unit) {
         val toolRegistry = withContext(Dispatchers.Default.limitedParallelism(1)) {
             withTimeout(1.minutes) {
-                McpToolRegistryProvider.fromTransport(
-                    transport = McpToolRegistryProvider.defaultSseTransport("http://localhost:$TEST_PORT"),
-                    name = "test-client",
-                    version = "0.1.0"
-                )
+                McpToolRegistryProvider.fromSseUrl("http://localhost:$TEST_PORT")
             }
         }
 
@@ -138,7 +136,7 @@ class McpToolTest {
                     emptyTool.execute(args)
                 }
             }
-            assertEquals(emptyList(), result.content.orEmpty())
+            assertEquals(emptyList(), result.content)
 
             val encodedResult = emptyTool.encodeResultToString(result)
             encodedResult shouldEqualJson """{"content":[]}"""
@@ -156,6 +154,7 @@ class McpToolTest {
         )
         val mcpTool = McpTool(
             mcpClient = Client(clientInfo = Implementation(name = "Test", version = "1.0")),
+            metaData = emptyMap(),
             descriptor = toolDescriptor,
         )
         val encodedResult = mcpTool.encodeResultToString(result)
@@ -174,6 +173,7 @@ class McpToolTest {
         )
         val mcpTool = McpTool(
             mcpClient = Client(clientInfo = Implementation(name = "Test", version = "1.0")),
+            metaData = emptyMap(),
             descriptor = toolDescriptor,
         )
         val encodedResult = mcpTool.encodeResultToString(result)
