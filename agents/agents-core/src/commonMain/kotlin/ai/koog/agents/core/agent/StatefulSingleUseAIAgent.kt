@@ -109,7 +109,7 @@ public abstract class StatefulSingleUseAIAgent<Input, Output, TContext : AIAgent
             }
 
             logger.debug { formatLog(id, runId, "Starting agent execution") }
-            pipeline.invokeOnAgentStarting<Input, Output>(
+            pipeline.onAgentStarting<Input, Output>(
                 agentRunEventId,
                 context.executionInfo,
                 runId,

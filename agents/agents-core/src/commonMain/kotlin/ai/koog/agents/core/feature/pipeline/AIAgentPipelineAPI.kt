@@ -71,7 +71,7 @@ public interface AIAgentPipelineAPI {
 
     // TODO: SD -- delete from public API
     //  this should be an internal methods
-    public suspend fun <TInput, TOutput> invokeOnAgentStarting(
+    public suspend fun <TInput, TOutput> onAgentStarting(
         eventId: String,
         executionInfo: AgentExecutionInfo,
         runId: String,

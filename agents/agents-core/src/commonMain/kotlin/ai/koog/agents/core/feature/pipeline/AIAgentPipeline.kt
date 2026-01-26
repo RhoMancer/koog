@@ -127,7 +127,7 @@ public expect abstract class AIAgentPipeline(agentConfig: AIAgentConfig, clock: 
      */
     // TODO: SD -- make this methods internal
     @OptIn(InternalAgentsApi::class)
-    public override suspend fun <TInput, TOutput> invokeOnAgentStarting(
+    public override suspend fun <TInput, TOutput> onAgentStarting(
         eventId: String,
         executionInfo: AgentExecutionInfo,
         runId: String,

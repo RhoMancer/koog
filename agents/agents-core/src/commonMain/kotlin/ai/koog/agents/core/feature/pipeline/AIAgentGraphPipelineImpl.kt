@@ -2,7 +2,6 @@
 
 package ai.koog.agents.core.feature.pipeline
 
-import ai.koog.agents.core.agent.config.AIAgentConfig
 import ai.koog.agents.core.agent.context.AIAgentGraphContextBase
 import ai.koog.agents.core.agent.entity.AIAgentNodeBase
 import ai.koog.agents.core.agent.entity.AIAgentSubgraph
@@ -16,12 +15,9 @@ import ai.koog.agents.core.feature.handler.node.NodeExecutionStartingContext
 import ai.koog.agents.core.feature.handler.subgraph.SubgraphExecutionCompletedContext
 import ai.koog.agents.core.feature.handler.subgraph.SubgraphExecutionFailedContext
 import ai.koog.agents.core.feature.handler.subgraph.SubgraphExecutionStartingContext
-import kotlinx.datetime.Clock
 import kotlin.reflect.KType
 
 internal class AIAgentGraphPipelineImpl(
-    agentConfig: AIAgentConfig,
-    clock: Clock = Clock.System,
     private val basePipelineDelegate: AIAgentPipelineImpl
 ) : AIAgentGraphPipelineAPI, AIAgentPipelineAPI by basePipelineDelegate {
 

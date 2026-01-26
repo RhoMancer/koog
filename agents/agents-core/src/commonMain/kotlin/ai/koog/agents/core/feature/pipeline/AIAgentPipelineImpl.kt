@@ -175,7 +175,7 @@ public class AIAgentPipelineImpl(
 
     // TODO: SD -- rename all to invokeOnAgentStarting
     @OptIn(InternalAgentsApi::class)
-    public override suspend fun <TInput, TOutput> invokeOnAgentStarting(
+    public override suspend fun <TInput, TOutput> onAgentStarting(
         eventId: String,
         executionInfo: AgentExecutionInfo,
         runId: String,
