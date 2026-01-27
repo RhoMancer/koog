@@ -1,6 +1,6 @@
-package ai.koog.runtime
+package ai.koog._initial.runtime
 
-import ai.koog.agent.FlowAgent
+import ai.koog._initial.agent.FlowAgent
 
 /**
  *

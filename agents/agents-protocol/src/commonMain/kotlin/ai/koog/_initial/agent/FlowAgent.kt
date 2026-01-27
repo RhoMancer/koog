@@ -1,9 +1,7 @@
-package ai.koog.agent
+package ai.koog._initial.agent
 
-import ai.koog.model.FlowAgentConfigModel
-import ai.koog.model.FlowAgentInput
-import ai.koog.model.FlowAgentPrompt
-import ai.koog.runtime.AgentFlowRuntime
+import ai.koog._initial.model.FlowAgentInput
+import ai.koog._initial.model.FlowAgentPrompt
 
 /**
  *

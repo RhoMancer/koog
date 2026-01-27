@@ -1,4 +1,4 @@
-package ai.koog.agent.koog
+package ai.koog._initial.agent.koog
 
 import ai.koog.prompt.executor.clients.openai.OpenAIModels
 import ai.koog.prompt.executor.llms.all.simpleOpenAIExecutor

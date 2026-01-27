@@ -1,6 +1,6 @@
-package ai.koog.config.parser
+package ai.koog._initial.parser
 
-import ai.koog.flow.FlowConfig
+import ai.koog._initial.flow.FlowConfig
 
 /**
  *

@@ -1,4 +1,4 @@
-package ai.koog.agent
+package ai.koog._initial.agent
 
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable

@@ -1,21 +1,21 @@
-package ai.koog.agent.koog
+package ai.koog._initial.agent.koog
 
-import ai.koog.agent.FlowAgentConfig
-import ai.koog.agent.FlowAgentKind
+import ai.koog._initial.agent.FlowAgentConfig
+import ai.koog._initial.agent.FlowAgentKind
 import ai.koog.agents.core.agent.AIAgent
+import ai.koog.agents.core.agent.context.AIAgentContext
 import ai.koog.agents.core.agent.singleRunStrategy
 import ai.koog.agents.core.tools.ToolRegistry
-import ai.koog.model.FlowAgentInput
-import ai.koog.model.FlowAgentPrompt
+import ai.koog._initial.model.FlowAgentInput
+import ai.koog._initial.model.FlowAgentPrompt
 
 private const val DEFAULT_MAX_ITERATIONS = 10
-private const val DEFAULT_VERIFY_PROMPT = "You are a verification agent. Verify the task was completed correctly. Return 'PASS' if correct, or describe the issues if not."
 
 /**
- * Koog verification agent that verifies task completion.
- * This agent is created when type is "verify" in the flow configuration.
+ * Koog task agent that executes tasks using AIAgent with singleRunStrategy.
+ * This agent is created when type is "task" in the flow configuration.
  */
-public class KoogVerifyAgent(
+public class KoogTaskAgent(
     name: String,
     model: String? = null,
     prompt: FlowAgentPrompt? = null,
@@ -23,7 +23,7 @@ public class KoogVerifyAgent(
     config: FlowAgentConfig
 ) : KoogFlowAgent(
     name = name,
-    type = FlowAgentKind.VERIFY,
+    type = FlowAgentKind.TASK,
     model = model,
     prompt = prompt,
     input = input,
@@ -36,11 +36,13 @@ public class KoogVerifyAgent(
             val agent = AIAgent(
                 promptExecutor = executor,
                 llmModel = llmModel,
-                systemPrompt = prompt?.system ?: DEFAULT_VERIFY_PROMPT,
+                systemPrompt = prompt?.system ?: "",
                 maxIterations = config.maxIterations ?: DEFAULT_MAX_ITERATIONS,
                 strategy = singleRunStrategy(),
                 toolRegistry = ToolRegistry.EMPTY
             )
+
+            println("Running Koog 'task' agent with input: $input")
 
             agent.run(input.task ?: "")
         }

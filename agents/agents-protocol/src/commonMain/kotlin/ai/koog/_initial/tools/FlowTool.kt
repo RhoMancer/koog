@@ -1,4 +1,4 @@
-package ai.koog.tools
+package ai.koog._initial.tools
 
 import kotlinx.serialization.Serializable
 
