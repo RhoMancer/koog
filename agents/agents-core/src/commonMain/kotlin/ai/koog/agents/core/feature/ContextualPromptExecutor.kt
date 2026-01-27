@@ -38,17 +38,26 @@ public class ContextualPromptExecutor(
         @OptIn(ExperimentalUuidApi::class)
         val eventId = Uuid.random().toString()
 
-        logger.debug { "Executing LLM call (event id: $eventId, prompt: $prompt, tools: [${tools.joinToString { it.name }}])" }
+        val promptBeforeInterceptors = context.llm.prompt // because onLLMCallStarting might change context.llm.prompt
+
+        logger.debug { "Starting LLM call (event id: $eventId, prompt: $prompt, tools: [${tools.joinToString { it.name }}])" }
         context.pipeline.onLLMCallStarting(eventId, context.executionInfo, context.runId, prompt, model, tools, context)
 
-        val responses = executor.execute(prompt, model, tools)
+        val modifiedPrompt = if (context.llm.prompt !== promptBeforeInterceptors) {
+            logger.debug { "Executing LLM call with modified prompt (event id: $eventId, prompt: $prompt, tools: [${tools.joinToString { it.name }}])" }
+            context.llm.prompt
+        } else {
+            prompt
+        }
+
+        val responses = executor.execute(modifiedPrompt, model, tools)
 
         logger.trace { "Finished LLM call (event id: $eventId) with responses: [${responses.joinToString { "${it.role}: ${it.content}" }}]" }
         context.pipeline.onLLMCallCompleted(
             eventId,
             context.executionInfo,
             context.runId,
-            prompt,
+            modifiedPrompt,
             model,
             tools,
             responses,

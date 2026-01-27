@@ -17,7 +17,7 @@ import kotlinx.serialization.json.JsonPrimitive
  */
 public class ScopedMemoryRecordRepository(
     private val delegate: MemoryRecordRepository,
-    private val scopeKey: String = DEFAULT_MEMORY_SCOPE_FIELD_NAME,
+    private val scopeKey: String = DEFAULT_MEMORY_SCOPE_FIELD_NAME, // TODO: it should accept a FilterExpression
     private val scopeValue: String
 ) : MemoryRecordRepository by delegate {
 

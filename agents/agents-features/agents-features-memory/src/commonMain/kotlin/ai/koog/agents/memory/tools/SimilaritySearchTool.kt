@@ -37,7 +37,7 @@ public data class SimilaritySearchArgs(
  * @property repository The memory record repository to search in
  */
 public class SimilaritySearchTool(
-    private val repository: MemoryRecordRepository //TODO: ScopedMemoryRecordRepository?
+    private val repository: MemoryRecordRepository
 ) : SimpleTool<SimilaritySearchArgs>(
     argsSerializer = SimilaritySearchArgs.serializer(),
     name = "similarity_search",
@@ -50,13 +50,13 @@ public class SimilaritySearchTool(
             similarityThreshold = args.similarityThreshold,
             filterExpression = args.filterExpression
         )
-        
+
         val results = repository.search(request)
-        
+
         if (results.isEmpty()) {
             return "No similar memory records found for query: ${args.query}"
         }
-        
+
         return results.formatResults()
     }
 }

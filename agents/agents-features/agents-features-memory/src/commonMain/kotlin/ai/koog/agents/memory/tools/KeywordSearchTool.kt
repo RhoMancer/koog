@@ -36,7 +36,7 @@ public data class KeywordSearchArgs(
  * @property repository The memory record repository to search in
  */
 public class KeywordSearchTool(
-    private val repository: MemoryRecordRepository //TODO: ScopedMemoryRecordRepository?
+    private val repository: MemoryRecordRepository
 ) : SimpleTool<KeywordSearchArgs>(
     argsSerializer = KeywordSearchArgs.serializer(),
     name = "keyword_search",
@@ -49,13 +49,13 @@ public class KeywordSearchTool(
             similarityThreshold = args.similarityThreshold,
             filterExpression = args.filterExpression
         )
-        
+
         val results = repository.search(request)
-        
+
         if (results.isEmpty()) {
             return "No memory records found matching keywords: ${args.query}"
         }
-        
+
         return results.formatResults()
     }
 }

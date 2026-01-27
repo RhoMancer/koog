@@ -1,23 +1,29 @@
 package ai.koog.agents.memory.feature
 
-import ai.koog.agents.core.annotation.InternalAgentsApi
-import ai.koog.agents.memory.repositories.ChatMessageRepository
-import ai.koog.agents.memory.repositories.NoChatMessageRepository
-import ai.koog.agents.memory.repositories.NoMemoryRecordRepository
+import ai.koog.agents.core.agent.AIAgent
+import ai.koog.agents.core.agent.config.AIAgentConfig
+import ai.koog.agents.core.agent.entity.ToolSelectionStrategy
+import ai.koog.agents.core.annotation.ExperimentalAgentsApi
+import ai.koog.agents.core.dsl.builder.forwardTo
+import ai.koog.agents.core.dsl.builder.strategy
+import ai.koog.agents.core.dsl.extension.nodeLLMRequest
+import ai.koog.agents.core.tools.ToolDescriptor
+import ai.koog.agents.core.tools.ToolRegistry
+import ai.koog.agents.testing.tools.getMockExecutor
+import ai.koog.prompt.dsl.Prompt
+import ai.koog.prompt.dsl.prompt
+import ai.koog.prompt.executor.model.PromptExecutor
+import ai.koog.prompt.llm.LLModel
+import ai.koog.prompt.llm.OllamaModels
 import ai.koog.prompt.message.Message
-import ai.koog.prompt.message.RequestMetaInfo
 import ai.koog.prompt.message.ResponseMetaInfo
-import ai.koog.rag.vector.database.BatchOperationResult
+import ai.koog.prompt.streaming.StreamFrame
+import ai.koog.rag.vector.database.EphemeralMemoryRecordRepository
+import ai.koog.rag.vector.database.KeywordSearchRequest
 import ai.koog.rag.vector.database.MemoryRecord
-import ai.koog.rag.vector.database.MemoryRecordRepository
 import ai.koog.rag.vector.database.ScoredMemoryRecord
-import ai.koog.rag.vector.database.SearchRequest
-import ai.koog.rag.vector.database.SimilaritySearchRequest
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.test.runTest
-import kotlinx.datetime.Clock
-import kotlinx.datetime.Instant
-import kotlinx.serialization.Serializable
-import kotlinx.serialization.json.JsonPrimitive
 import org.junit.jupiter.api.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
@@ -25,266 +31,398 @@ import kotlin.test.assertTrue
 /**
  * Test class for Memory2 feature
  */
-@OptIn(InternalAgentsApi::class)
+@OptIn(ExperimentalAgentsApi::class)
 class Memory2Test {
 
-    private val testClock: Clock = object : Clock {
-        override fun now(): Instant = Instant.Companion.parse("2023-01-01T00:00:00Z")
-    }
+    // ==========================================
+    // Tests for createFeature prompt augmentation
+    // ==========================================
 
-    private class InMemoryRepository : MemoryRecordRepository {
-        val records = mutableListOf<MemoryRecord>()
+    /**
+     * Test that verifies the createFeature method properly augments the prompt with vector store context.
+     * 
+     * This test:
+     * 1. Configures Memory2 with a searchFunction that returns relevant documents
+     * 2. Runs the agent and verifies the LLM receives the augmented prompt containing vector store context
+     */
+    @Test
+    fun testCreateFeatureAugmentsPromptWithVectorStoreContext() = runTest {
+        // Track whether the prompt was augmented by checking all messages
+        var promptWasAugmented = false
+        var searchFunctionCalled = false
 
-        override suspend fun add(records: List<MemoryRecord>): BatchOperationResult {
-            this.records.addAll(records)
-            return BatchOperationResult(records.mapIndexed { index, _ -> "id-$index" })
-        }
+        // Create a custom executor that checks the FULL prompt content (not just the last message)
+        val mockExecutor = object : PromptExecutor {
+            override suspend fun execute(
+                prompt: Prompt,
+                model: LLModel,
+                tools: List<ToolDescriptor>
+            ): List<Message.Response> {
+                // Check all messages in the prompt for augmentation
+                val allContent = prompt.messages.joinToString("\n") { it.content }
+                println("[DEBUG_LOG] Full prompt content: $allContent")
 
-        override suspend fun update(records: List<MemoryRecord>): BatchOperationResult =
-            BatchOperationResult(emptyList())
+                val containsKotlinInfo = allContent.contains("Kotlin was developed by JetBrains")
+                val containsRelevantInfo = allContent.contains("Relevant information")
+                promptWasAugmented = containsKotlinInfo && containsRelevantInfo
+                println("[DEBUG_LOG] Contains Kotlin info: $containsKotlinInfo, Contains relevant info: $containsRelevantInfo")
 
-        override suspend fun getAll(ids: List<String>): List<MemoryRecord> =
-            records.filter { it.id in ids }
-
-        override suspend fun search(request: SearchRequest): List<ScoredMemoryRecord<MemoryRecord>> {
-            val query = when (request) {
-                is SimilaritySearchRequest -> request.query
-                else -> ""
+                val response = if (promptWasAugmented) "AUGMENTED_WITH_VECTOR_STORE" else "NOT_AUGMENTED"
+                return listOf(Message.Assistant(response, ResponseMetaInfo.Empty))
             }
-            // Simple contains-based search for testing
-            return records
-                .filter { it.content.contains(query, ignoreCase = true) }
-                .map { ScoredMemoryRecord(it, 1.0) }
+
+            override fun executeStreaming(
+                prompt: Prompt,
+                model: LLModel,
+                tools: List<ToolDescriptor>
+            ): Flow<StreamFrame> = throw UnsupportedOperationException("Not needed for this test")
+
+            override suspend fun moderate(prompt: Prompt, model: LLModel) =
+                throw UnsupportedOperationException("Not needed for this test")
+
+            override fun close() {}
         }
 
-        override suspend fun deleteAll(ids: List<String>): BatchOperationResult =
-            BatchOperationResult(emptyList())
+        // Create a simple strategy that calls the LLM
+        val strategy =
+            strategy<String, String>("test-augment-vector", toolSelectionStrategy = ToolSelectionStrategy.NONE) {
+                val llmNode by nodeLLMRequest(name = "llm-node", allowToolCalls = false)
+                edge(nodeStart forwardTo llmNode)
+                edge(llmNode forwardTo nodeFinish transformed { it.content })
+            }
 
-        override suspend fun deleteByFilter(filterExpression: String): Int = 0
+        val agentConfig = AIAgentConfig(
+            prompt = prompt("test") {
+                system("You are a helpful assistant")
+            },
+            model = OllamaModels.Meta.LLAMA_3_2,
+            maxAgentIterations = 10
+        )
+
+        // Create agent with Memory2 configured to augment from vector store using retriever
+        // The retriever directly returns the relevant documents (simulating a vector store search)
+        val agent = AIAgent(
+            promptExecutor = mockExecutor,
+            strategy = strategy,
+            agentConfig = agentConfig,
+            toolRegistry = ToolRegistry.EMPTY
+        ) {
+            install(Memory2.Feature) {
+                retriever = MemoryRecordRetriever { _, query ->
+                    searchFunctionCalled = true
+                    println("[DEBUG_LOG] Search function called with query: $query")
+                    // Return relevant documents directly (simulating vector store search results)
+                    listOf(
+                        ScoredMemoryRecord(MemoryRecord(content = "Kotlin was developed by JetBrains"), 1.0),
+                        ScoredMemoryRecord(MemoryRecord(content = "Kotlin is 100% interoperable with Java"), 0.9)
+                    )
+                }
+            }
+        }
+
+        val result = agent.run("Tell me about Kotlin")
+
+        println("[DEBUG_LOG] Result: $result")
+        println("[DEBUG_LOG] Search function called: $searchFunctionCalled")
+        println("[DEBUG_LOG] Prompt was augmented: $promptWasAugmented")
+
+        // Verify the search function was called
+        assertTrue(searchFunctionCalled, "The search function should have been called")
+        // Verify the prompt was augmented with vector store context
+        assertTrue(promptWasAugmented, "The prompt should have been augmented with vector store context")
+        assertEquals("AUGMENTED_WITH_VECTOR_STORE", result)
     }
 
     /**
-     * Test implementation of ChatMessageRepository for testing purposes
+     * Test that verifies the createFeature method does NOT augment the prompt when
+     * searchFunction is null.
      */
-    internal class TestChatMessageRepository : ChatMessageRepository {
-        val messages = mutableMapOf<String, MutableList<Message>>()
+    @Test
+    fun testCreateFeatureDoesNotAugmentWhenSearchFunctionIsNull() = runTest {
+        // Track whether the prompt was incorrectly augmented
+        var wasAugmented = false
 
-        override suspend fun add(id: String, messages: List<Message>) {
-            this.messages.getOrPut(id) { mutableListOf() }.addAll(messages)
+        // Create a mock executor that checks if the prompt contains augmented context
+        val mockExecutor = getMockExecutor {
+            mockLLMAnswer("INCORRECTLY_AUGMENTED") onCondition { request ->
+                wasAugmented = request.contains("Relevant information")
+                println("[DEBUG_LOG] Request content: $request")
+                println("[DEBUG_LOG] Was augmented: $wasAugmented")
+                wasAugmented
+            }
+            mockLLMAnswer("NOT_AUGMENTED").asDefaultResponse
         }
 
-        override suspend fun get(id: String): List<Message> {
-            return messages[id] ?: emptyList()
+        // Create a vector store with data (but searchFunction will be null)
+        val vectorStore = EphemeralMemoryRecordRepository()
+        vectorStore.add(
+            listOf(
+                MemoryRecord(content = "Some context that should not appear")
+            )
+        )
+
+        // Create a simple strategy that calls the LLM
+        val strategy = strategy<String, String>("test-no-augment", toolSelectionStrategy = ToolSelectionStrategy.NONE) {
+            val llmNode by nodeLLMRequest(name = "llm-node", allowToolCalls = false)
+            edge(nodeStart forwardTo llmNode)
+            edge(llmNode forwardTo nodeFinish transformed { it.content })
         }
+
+        val agentConfig = AIAgentConfig(
+            prompt = prompt("test") {
+                system("You are a helpful assistant")
+            },
+            model = OllamaModels.Meta.LLAMA_3_2,
+            maxAgentIterations = 10
+        )
+
+        // Create agent with Memory2 configured with searchFunction = null (default)
+        val agent = AIAgent(
+            promptExecutor = mockExecutor,
+            strategy = strategy,
+            agentConfig = agentConfig,
+            toolRegistry = ToolRegistry.EMPTY
+        ) {
+            install(Memory2.Feature) {
+                memoryRecordRepository = vectorStore
+                // searchFunction is null by default - no augmentation should happen
+            }
+        }
+
+        val result = agent.run("Hello")
+
+        println("[DEBUG_LOG] Result: $result")
+        println("[DEBUG_LOG] Was augmented: $wasAugmented")
+
+        // Verify the prompt was NOT augmented
+        assertTrue(!wasAugmented, "The prompt should NOT have been augmented when searchFunction is null")
+        assertEquals("NOT_AUGMENTED", result)
     }
 
+    /**
+     * Test that verifies Memory2 Config defaults.
+     */
     @Test
     fun testMemory2ConfigDefaults() {
         val config = Memory2.Config()
-
-        assertEquals(NoChatMessageRepository, config.chatMessageRepository)
-        assertEquals(NoMemoryRecordRepository, config.memoryRecordRepository)
+        assertTrue(config.memoryRecordRepository is EphemeralMemoryRecordRepository)
+        assertEquals(false, config.persistAssistantResponses)
+        assertEquals(null, config.retriever)
+        assertEquals(ContextInsertionMode.SYSTEM_MESSAGE, config.contextInsertionMode)
     }
 
+    /**
+     * Test that verifies Memory2 Config custom values.
+     */
     @Test
     fun testMemory2ConfigCustomValues() {
-        val testChatRepo = TestChatMessageRepository()
-        val testRecordRepo = InMemoryRepository()
+        val testRecordRepo = EphemeralMemoryRecordRepository()
+        val testRetriever = SimilarityRecordRetriever(topK = 5, similarityThreshold = 0.7)
 
         val config = Memory2.Config().apply {
-            chatMessageRepository = testChatRepo
             memoryRecordRepository = testRecordRepo
+            persistAssistantResponses = true
+            retriever = testRetriever
+            contextInsertionMode = ContextInsertionMode.AUGMENT_LAST_USER_MESSAGE
         }
 
-        assertEquals(testChatRepo, config.chatMessageRepository)
         assertEquals(testRecordRepo, config.memoryRecordRepository)
+        assertEquals(true, config.persistAssistantResponses)
+        assertEquals(testRetriever, config.retriever)
+        assertEquals(ContextInsertionMode.AUGMENT_LAST_USER_MESSAGE, config.contextInsertionMode)
     }
 
+    /**
+     * Test that verifies persistAssistantMessagesAsMemoryRecords stores assistant messages.
+     */
     @Test
-    fun testNoMemoryRecordRepositorySearch() = runTest {
-        val result = NoMemoryRecordRepository.search(SimilaritySearchRequest("test query"))
-        assertEquals(emptyList(), result, "NoMemoryRecordRepository should always return empty list")
-    }
+    fun testPersistAssistantMessagesAsMemoryRecords() = runTest {
+        val memoryRepository = EphemeralMemoryRecordRepository()
 
-    @Test
-    fun testNoMemoryRecordRepositoryAdd() = runTest {
-        // Should not throw any exception
-        NoMemoryRecordRepository.add(listOf(MemoryRecord(content = "test content")))
-    }
-
-    @Test
-    fun testNoChatMessageRepositoryGet() = runTest {
-        val result = NoChatMessageRepository.get("test-id")
-        assertEquals(emptyList(), result, "NoChatMessageRepository should always return empty list")
-    }
-
-    @Test
-    fun testNoChatMessageRepositoryAdd() = runTest {
-        // Should not throw any exception
-        NoChatMessageRepository.add(
-            "test-id",
-            listOf(Message.User("test message", metaInfo = RequestMetaInfo.Companion.create(testClock)))
-        )
-    }
-
-    @Test
-    fun testInMemoryRepository() = runTest {
-        val repository = InMemoryRepository()
-
-        // Test add
-        repository.add(
-            listOf(
-                MemoryRecord(content = "User likes Kotlin", metadata = mapOf("type" to JsonPrimitive("preference"))),
-                MemoryRecord(content = "User works on AI", metadata = mapOf("type" to JsonPrimitive("context")))
-            )
-        )
-
-        assertEquals(2, repository.records.size)
-
-        // Test search
-        val kotlinResults = repository.search(SimilaritySearchRequest("Kotlin"))
-        assertEquals(1, kotlinResults.size)
-        assertTrue(kotlinResults[0].record.content.contains("Kotlin"))
-
-        val aiResults = repository.search(SimilaritySearchRequest("AI"))
-        assertEquals(1, aiResults.size)
-        assertTrue(aiResults[0].record.content.contains("AI"))
-
-        val allResults = repository.search(SimilaritySearchRequest("User"))
-        assertEquals(2, allResults.size)
-    }
-
-    @Test
-    fun testTestChatMessageRepository() = runTest {
-        val repository = TestChatMessageRepository()
-
-        // Test add
-        repository.add(
-            "session1", listOf(
-                Message.User("Hello", metaInfo = RequestMetaInfo.Companion.create(testClock)),
-                Message.Assistant("Hi there!", metaInfo = ResponseMetaInfo.Companion.create(testClock))
-            )
-        )
-
-        repository.add(
-            "session2", listOf(
-                Message.User("Different session", metaInfo = RequestMetaInfo.Companion.create(testClock))
-            )
-        )
-
-        // Test get
-        val session1Messages = repository.get("session1")
-        assertEquals(2, session1Messages.size)
-
-        val session2Messages = repository.get("session2")
-        assertEquals(1, session2Messages.size)
-
-        val nonexistentMessages = repository.get("nonexistent")
-        assertEquals(0, nonexistentMessages.size)
-    }
-
-
-
-    @Serializable
-    data class UserPreference(
-        val topic: String,
-        val preference: String
-    )
-
-    @Test
-    fun `test store and retrieve String type`() = runTest {
-        val repository = InMemoryRepository()
-        val memory2 = Memory2(NoChatMessageRepository, repository)
-
-        // Store strings using typed method
-        val strings = listOf("Hello World", "Kotlin is great", "Memory test")
-        memory2.store(strings)
-
-        // Verify records were stored
-        assertEquals(3, repository.records.size)
-
-        // Check that strings are stored as JSON strings (with quotes)
-        println("[DEBUG_LOG] Stored records:")
-        repository.records.forEach { println("[DEBUG_LOG] Content: '${it.content}'") }
-
-        // Search and retrieve as String type
-        val results = memory2.search<String>("Hello", topK = 10)
-
-        println("[DEBUG_LOG] Search results: $results")
-        assertEquals(1, results.size)
-        assertEquals("Hello World", results[0])
-    }
-
-    @Test
-    fun `test store and retrieve custom type`() = runTest {
-        val repository = InMemoryRepository()
-        val memory2 = Memory2(NoChatMessageRepository, repository)
-
-        // Store custom objects
-        val preferences = listOf(
-            UserPreference("language", "Kotlin"),
-            UserPreference("framework", "Ktor")
-        )
-        memory2.store(preferences)
-
-        // Verify records were stored
-        assertEquals(2, repository.records.size)
-
-        println("[DEBUG_LOG] Stored records:")
-        repository.records.forEach { println("[DEBUG_LOG] Content: '${it.content}'") }
-
-        // Search and retrieve as UserPreference type
-        val results = memory2.search<UserPreference>("Kotlin", topK = 10)
-
-        println("[DEBUG_LOG] Search results: $results")
-        assertEquals(1, results.size)
-        assertEquals(UserPreference("language", "Kotlin"), results[0])
-    }
-
-    @Test
-    fun `test mixed storage - strings stored via storeMemoryRecords can be retrieved as String`() = runTest {
-        val repository = InMemoryRepository()
-        val memory2 = Memory2(NoChatMessageRepository, repository)
-
-        // Store plain strings using the non-typed method
-        memory2.storeRawMemoryContent(listOf("Plain string content"))
-
-        println("[DEBUG_LOG] Stored via storeMemoryRecords: '${repository.records[0].content}'")
-
-        // Try to retrieve as String - this should fail because plain strings are not JSON-encoded
-        val results = memory2.search<String>("Plain", topK = 10)
-
-        println("[DEBUG_LOG] Search results for plain string: $results")
-        // Plain strings stored via storeMemoryRecords are NOT JSON-encoded,
-        // so they won't deserialize as String type (which expects JSON string with quotes)
-        // This is expected behavior - use storeTypedMemoryRecords for type-safe storage
-    }
-
-    @Test
-    fun `test String type round-trip preserves content`() = runTest {
-        val repository = InMemoryRepository()
-        val memory2 = Memory2(NoChatMessageRepository, repository)
-
-        val testStrings = listOf(
-            "Simple string",
-            "String with special chars: @#$%^&*()",
-            "String with unicode: 你好世界",
-            "String with newlines:\nline1\nline2",
-            "String with quotes: \"quoted\""
-        )
-
-        memory2.store(testStrings)
-
-        // Search for each and verify round-trip
-        for (original in testStrings) {
-            // Use a unique part of each string for search
-            val searchTerm = original.take(10)
-            val results = memory2.search<String>(searchTerm, topK = 10)
-
-            println("[DEBUG_LOG] Original: '$original'")
-            println("[DEBUG_LOG] Results: $results")
-
-            assertTrue(results.contains(original), "Should find original string: $original")
+        // Create a mock executor that returns a specific response
+        val mockExecutor = getMockExecutor {
+            mockLLMAnswer("This is the assistant response to store").asDefaultResponse
         }
+
+        // Create a simple strategy that calls the LLM
+        val strategy = strategy<String, String>("test-persist", toolSelectionStrategy = ToolSelectionStrategy.NONE) {
+            val llmNode by nodeLLMRequest(name = "llm-node", allowToolCalls = false)
+            edge(nodeStart forwardTo llmNode)
+            edge(llmNode forwardTo nodeFinish transformed { it.content })
+        }
+
+        val agentConfig = AIAgentConfig(
+            prompt = prompt("test") {
+                system("You are a helpful assistant")
+            },
+            model = OllamaModels.Meta.LLAMA_3_2,
+            maxAgentIterations = 10
+        )
+
+        val agent = AIAgent(
+            promptExecutor = mockExecutor,
+            strategy = strategy,
+            agentConfig = agentConfig,
+            toolRegistry = ToolRegistry.EMPTY
+        ) {
+            install(Memory2.Feature) {
+                memoryRecordRepository = memoryRepository
+                persistAssistantResponses = true
+            }
+        }
+
+        agent.run("Hello")
+
+        // Verify that the assistant message was stored in the repository
+        println("[DEBUG_LOG] Records in repository: ${memoryRepository.size()}")
+        val searchResults = memoryRepository.search(KeywordSearchRequest(query = "assistant response"))
+        searchResults.forEach { result ->
+            println("[DEBUG_LOG] Record content: ${result.record.content}")
+        }
+
+        assertTrue(memoryRepository.size() > 0, "At least one record should be stored")
+        assertTrue(
+            searchResults.any { it.record.content.contains("assistant response to store") },
+            "The assistant response should be stored in the repository"
+        )
+    }
+
+    /**
+     * Test that verifies searchFunction is correctly used to retrieve context.
+     * This test uses a realistic search function that calls vectorStore.search(KeywordSearchRequest(query))
+     * similar to how users would configure it in production.
+     */
+    @Test
+    fun testSearchFunctionIsCorrectlyUsed() = runTest {
+        var searchFunctionCalled = false
+        var searchQuery: String? = null
+
+        // Create a vector store with pre-populated data
+        val vectorStore = EphemeralMemoryRecordRepository()
+        vectorStore.add(
+            listOf(
+                MemoryRecord(content = "The weather in Paris is sunny today"),
+                MemoryRecord(content = "Tokyo weather forecast shows rain"),
+                MemoryRecord(content = "Kotlin is a programming language")
+            )
+        )
+
+        // Create a mock executor that checks if the prompt was augmented
+        var promptWasAugmented = false
+        val mockExecutor = object : PromptExecutor {
+            override suspend fun execute(
+                prompt: Prompt,
+                model: LLModel,
+                tools: List<ToolDescriptor>
+            ): List<Message.Response> {
+                val allContent = prompt.messages.joinToString("\n") { it.content }
+                println("[DEBUG_LOG] Full prompt content: $allContent")
+                promptWasAugmented = allContent.contains("weather") && allContent.contains("Relevant information")
+                return listOf(Message.Assistant("Response with context", ResponseMetaInfo.Empty))
+            }
+
+            override fun executeStreaming(
+                prompt: Prompt,
+                model: LLModel,
+                tools: List<ToolDescriptor>
+            ): Flow<StreamFrame> = throw UnsupportedOperationException("Not needed for this test")
+
+            override suspend fun moderate(prompt: Prompt, model: LLModel) =
+                throw UnsupportedOperationException("Not needed for this test")
+
+            override fun close() {}
+        }
+
+        // Create a simple strategy that calls the LLM
+        val strategy =
+            strategy<String, String>("test-search-function", toolSelectionStrategy = ToolSelectionStrategy.NONE) {
+                val llmNode by nodeLLMRequest(name = "llm-node", allowToolCalls = false)
+                edge(nodeStart forwardTo llmNode)
+                edge(llmNode forwardTo nodeFinish transformed { it.content })
+            }
+
+        val agentConfig = AIAgentConfig(
+            prompt = prompt("test") {
+                system("You are a helpful assistant")
+            },
+            model = OllamaModels.Meta.LLAMA_3_2,
+            maxAgentIterations = 10
+        )
+
+        val agent = AIAgent(
+            promptExecutor = mockExecutor,
+            strategy = strategy,
+            agentConfig = agentConfig,
+            toolRegistry = ToolRegistry.EMPTY
+        ) {
+            install(Memory2.Feature) {
+                memoryRecordRepository = vectorStore
+                retriever = MemoryRecordRetriever { repo, query ->
+                    searchFunctionCalled = true
+                    searchQuery = query
+                    println("[DEBUG_LOG] Realistic search mode called with query: $query")
+                    // This is the realistic pattern users would use:
+                    repo.search(KeywordSearchRequest(query))
+                }
+            }
+        }
+
+        agent.run("weather")
+
+        // Verify the search function was called with the user's query
+        assertTrue(searchFunctionCalled, "The search function should have been called")
+        assertEquals("weather", searchQuery, "The search function should receive the user's query")
+        // Verify the prompt was augmented with the search results
+        assertTrue(promptWasAugmented, "The prompt should have been augmented with vector store search results")
+    }
+
+    /**
+     * Test that verifies persistAssistantMessagesAsMemoryRecords=false does not store messages.
+     */
+    @Test
+    fun testPersistAssistantMessagesDisabledDoesNotStore() = runTest {
+        val memoryRepository = EphemeralMemoryRecordRepository()
+
+        // Create a mock executor that returns a specific response
+        val mockExecutor = getMockExecutor {
+            mockLLMAnswer("This response should NOT be stored").asDefaultResponse
+        }
+
+        // Create a simple strategy that calls the LLM
+        val strategy = strategy<String, String>("test-no-persist", toolSelectionStrategy = ToolSelectionStrategy.NONE) {
+            val llmNode by nodeLLMRequest(name = "llm-node", allowToolCalls = false)
+            edge(nodeStart forwardTo llmNode)
+            edge(llmNode forwardTo nodeFinish transformed { it.content })
+        }
+
+        val agentConfig = AIAgentConfig(
+            prompt = prompt("test") {
+                system("You are a helpful assistant")
+            },
+            model = OllamaModels.Meta.LLAMA_3_2,
+            maxAgentIterations = 10
+        )
+
+        val agent = AIAgent(
+            promptExecutor = mockExecutor,
+            strategy = strategy,
+            agentConfig = agentConfig,
+            toolRegistry = ToolRegistry.EMPTY
+        ) {
+            install(Memory2.Feature) {
+                memoryRecordRepository = memoryRepository
+                persistAssistantResponses = false // Explicitly disabled
+            }
+        }
+
+        agent.run("Hello")
+
+        // Verify that no records were stored
+        println("[DEBUG_LOG] Records in repository: ${memoryRepository.size()}")
+        assertEquals(
+            0,
+            memoryRepository.size(),
+            "No records should be stored when persistAssistantMessagesAsMemoryRecords is false"
+        )
     }
 }

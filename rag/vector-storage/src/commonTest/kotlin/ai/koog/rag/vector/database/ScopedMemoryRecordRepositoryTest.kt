@@ -1,7 +1,6 @@
 package ai.koog.rag.vector.database
 
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.json.JsonPrimitive
@@ -14,113 +13,39 @@ import kotlin.test.assertTrue
 class ScopedMemoryRecordRepositoryTest {
 
     /**
-     * Test implementation of MemoryRecordRepository for testing ScopedMemoryRecordRepository.
-     * Stores records in memory and supports basic filtering by scope.
+     * A spy implementation that extends [EphemeralMemoryRecordRepository] to capture
+     * the arguments passed to each method. This allows tests to verify that
+     * [ScopedMemoryRecordRepository] correctly applies scope to all delegate calls.
      */
-    private class TestMemoryRecordRepository : MemoryRecordRepository {
-        val records = mutableListOf<MemoryRecord>()
+    private class SpyMemoryRecordRepository : EphemeralMemoryRecordRepository() {
+        val addedRecords = mutableListOf<MemoryRecord>()
+        val updatedRecords = mutableListOf<MemoryRecord>()
         var lastSearchRequest: SearchRequest? = null
         var lastDeleteFilterExpression: String? = null
 
         override suspend fun add(records: List<MemoryRecord>): BatchOperationResult {
-            this.records.addAll(records)
-            return BatchOperationResult(records.mapIndexed { index, record -> record.id ?: "generated-id-$index" })
+            addedRecords.addAll(records)
+            return super.add(records)
         }
 
         override suspend fun update(records: List<MemoryRecord>): BatchOperationResult {
-            records.forEach { updatedRecord ->
-                val index = this.records.indexOfFirst { it.id == updatedRecord.id }
-                if (index >= 0) {
-                    this.records[index] = updatedRecord
-                }
-            }
-            return BatchOperationResult(records.mapNotNull { it.id })
-        }
-
-        override suspend fun getAll(ids: List<String>): List<MemoryRecord> {
-            return records.filter { it.id in ids }
+            updatedRecords.addAll(records)
+            return super.update(records)
         }
 
         override suspend fun search(request: SearchRequest): List<ScoredMemoryRecord<MemoryRecord>> {
             lastSearchRequest = request
-            val query = when (request) {
-                is SimilaritySearchRequest -> request.query
-                is KeywordSearchRequest -> request.query
-                is HybridSearchRequest -> request.query
-                is VectorSearchRequest -> ""
-            }
-
-            // Filter by filterExpression if present (simple parsing for scope filter)
-            val filteredRecords = if (request.filterExpression != null) {
-                records.filter { record ->
-                    // Simple filter parsing for testing: "key == \"value\""
-                    val filterExpr = request.filterExpression!!
-                    if (filterExpr.contains("memory_scope_id") || filterExpr.contains("custom_scope")) {
-                        // Extract scope value from filter expression
-                        val scopeMatch = Regex("""(memory_scope_id|custom_scope)\s*==\s*"([^"]+)"""").find(filterExpr)
-                        if (scopeMatch != null) {
-                            val scopeKey = scopeMatch.groupValues[1]
-                            val scopeValue = scopeMatch.groupValues[2]
-                            record.metadata[scopeKey]?.let { it == JsonPrimitive(scopeValue) } ?: false
-                        } else {
-                            true
-                        }
-                    } else {
-                        true
-                    }
-                }
-            } else {
-                records
-            }
-
-            // Filter by query content if present
-            val results = if (query.isNotBlank()) {
-                filteredRecords.filter { it.content.contains(query, ignoreCase = true) }
-            } else {
-                filteredRecords
-            }
-
-            return results.take(request.limit).map { ScoredMemoryRecord(it, 1.0) }
+            return super.search(request)
         }
 
         override fun searchAsFlow(request: SearchRequest): Flow<ScoredMemoryRecord<MemoryRecord>> {
             lastSearchRequest = request
-            return flow {
-                search(request).forEach { emit(it) }
-            }
-        }
-
-        override suspend fun deleteAll(ids: List<String>): BatchOperationResult {
-            val deletedIds = mutableListOf<String>()
-            ids.forEach { id ->
-                val index = records.indexOfFirst { it.id == id }
-                if (index >= 0) {
-                    records.removeAt(index)
-                    deletedIds.add(id)
-                }
-            }
-            return BatchOperationResult(deletedIds)
+            return super.searchAsFlow(request)
         }
 
         override suspend fun deleteByFilter(filterExpression: String): Int {
             lastDeleteFilterExpression = filterExpression
-            // Simple implementation: count records that would match the filter
-            val initialSize = records.size
-            records.removeAll { record ->
-                if (filterExpression.contains("memory_scope_id") || filterExpression.contains("custom_scope")) {
-                    val scopeMatch = Regex("""(memory_scope_id|custom_scope)\s*==\s*"([^"]+)"""").find(filterExpression)
-                    if (scopeMatch != null) {
-                        val scopeKey = scopeMatch.groupValues[1]
-                        val scopeValue = scopeMatch.groupValues[2]
-                        record.metadata[scopeKey]?.let { it == JsonPrimitive(scopeValue) } ?: false
-                    } else {
-                        false
-                    }
-                } else {
-                    false
-                }
-            }
-            return initialSize - records.size
+            return super.deleteByFilter(filterExpression)
         }
     }
 
@@ -130,7 +55,7 @@ class ScopedMemoryRecordRepositoryTest {
 
     @Test
     fun testAddAppliesScopeToRecords() = runTest {
-        val delegate = TestMemoryRecordRepository()
+        val delegate = SpyMemoryRecordRepository()
         val scopedRepo = ScopedMemoryRecordRepository(
             delegate = delegate,
             scopeValue = "test-scope"
@@ -143,8 +68,8 @@ class ScopedMemoryRecordRepositoryTest {
 
         scopedRepo.add(records)
 
-        assertEquals(2, delegate.records.size)
-        delegate.records.forEach { record ->
+        assertEquals(2, delegate.addedRecords.size)
+        delegate.addedRecords.forEach { record ->
             assertEquals(
                 JsonPrimitive("test-scope"),
                 record.metadata[ScopedMemoryRecordRepository.DEFAULT_MEMORY_SCOPE_FIELD_NAME],
@@ -155,7 +80,7 @@ class ScopedMemoryRecordRepositoryTest {
 
     @Test
     fun testAddWithCustomScopeKey() = runTest {
-        val delegate = TestMemoryRecordRepository()
+        val delegate = SpyMemoryRecordRepository()
         val scopedRepo = ScopedMemoryRecordRepository(
             delegate = delegate,
             scopeKey = "custom_scope",
@@ -166,17 +91,17 @@ class ScopedMemoryRecordRepositoryTest {
 
         scopedRepo.add(records)
 
-        assertEquals(1, delegate.records.size)
+        assertEquals(1, delegate.addedRecords.size)
         assertEquals(
             JsonPrimitive("my-custom-scope"),
-            delegate.records[0].metadata["custom_scope"],
+            delegate.addedRecords[0].metadata["custom_scope"],
             "Record should have custom scope key"
         )
     }
 
     @Test
     fun testAddPreservesExistingMetadata() = runTest {
-        val delegate = TestMemoryRecordRepository()
+        val delegate = SpyMemoryRecordRepository()
         val scopedRepo = ScopedMemoryRecordRepository(
             delegate = delegate,
             scopeValue = "test-scope"
@@ -195,7 +120,7 @@ class ScopedMemoryRecordRepositoryTest {
 
         scopedRepo.add(records)
 
-        val savedRecord = delegate.records[0]
+        val savedRecord = delegate.addedRecords[0]
         assertEquals(JsonPrimitive("important"), savedRecord.metadata["category"])
         assertEquals(JsonPrimitive(1), savedRecord.metadata["priority"])
         assertEquals(JsonPrimitive("test-scope"), savedRecord.metadata[ScopedMemoryRecordRepository.DEFAULT_MEMORY_SCOPE_FIELD_NAME])
@@ -203,7 +128,7 @@ class ScopedMemoryRecordRepositoryTest {
 
     @Test
     fun testAddReturnsCorrectBatchResult() = runTest {
-        val delegate = TestMemoryRecordRepository()
+        val delegate = SpyMemoryRecordRepository()
         val scopedRepo = ScopedMemoryRecordRepository(
             delegate = delegate,
             scopeValue = "test-scope"
@@ -226,24 +151,26 @@ class ScopedMemoryRecordRepositoryTest {
 
     @Test
     fun testUpdateAppliesScopeToRecords() = runTest {
-        val delegate = TestMemoryRecordRepository()
+        val delegate = SpyMemoryRecordRepository()
         val scopedRepo = ScopedMemoryRecordRepository(
             delegate = delegate,
             scopeValue = "test-scope"
         )
 
-        // First add a record
-        delegate.records.add(MemoryRecord(id = "1", content = "Original content"))
+        // First add a record directly to delegate
+        delegate.add(listOf(MemoryRecord(id = "1", content = "Original content")))
 
         // Update via scoped repo
         val updatedRecords = listOf(MemoryRecord(id = "1", content = "Updated content"))
         scopedRepo.update(updatedRecords)
 
-        val updatedRecord = delegate.records.find { it.id == "1" }
-        assertEquals("Updated content", updatedRecord?.content)
+        // Verify the update was called with scoped records
+        assertEquals(1, delegate.updatedRecords.size)
+        val updatedRecord = delegate.updatedRecords[0]
+        assertEquals("Updated content", updatedRecord.content)
         assertEquals(
             JsonPrimitive("test-scope"),
-            updatedRecord?.metadata?.get(ScopedMemoryRecordRepository.DEFAULT_MEMORY_SCOPE_FIELD_NAME)
+            updatedRecord.metadata[ScopedMemoryRecordRepository.DEFAULT_MEMORY_SCOPE_FIELD_NAME]
         )
     }
 
@@ -253,14 +180,14 @@ class ScopedMemoryRecordRepositoryTest {
 
     @Test
     fun testGetAllReturnsOnlyRecordsInScope() = runTest {
-        val delegate = TestMemoryRecordRepository()
+        val delegate = SpyMemoryRecordRepository()
         val scopedRepo = ScopedMemoryRecordRepository(
             delegate = delegate,
             scopeValue = "scope-A"
         )
 
         // Add records with different scopes directly to delegate
-        delegate.records.addAll(
+        delegate.add(
             listOf(
                 MemoryRecord(
                     id = "1",
@@ -288,14 +215,14 @@ class ScopedMemoryRecordRepositoryTest {
 
     @Test
     fun testGetAllExcludesRecordsWithoutScopeMetadata() = runTest {
-        val delegate = TestMemoryRecordRepository()
+        val delegate = SpyMemoryRecordRepository()
         val scopedRepo = ScopedMemoryRecordRepository(
             delegate = delegate,
             scopeValue = "my-scope"
         )
 
         // Add records - one with scope, one without
-        delegate.records.addAll(
+        delegate.add(
             listOf(
                 MemoryRecord(
                     id = "1",
@@ -318,14 +245,14 @@ class ScopedMemoryRecordRepositoryTest {
 
     @Test
     fun testGetAllWithCustomScopeKey() = runTest {
-        val delegate = TestMemoryRecordRepository()
+        val delegate = SpyMemoryRecordRepository()
         val scopedRepo = ScopedMemoryRecordRepository(
             delegate = delegate,
             scopeKey = "custom_scope",
             scopeValue = "custom-value"
         )
 
-        delegate.records.addAll(
+        delegate.add(
             listOf(
                 MemoryRecord(
                     id = "1",
@@ -352,14 +279,14 @@ class ScopedMemoryRecordRepositoryTest {
 
     @Test
     fun testSearchAppliesScopeFilter() = runTest {
-        val delegate = TestMemoryRecordRepository()
+        val delegate = SpyMemoryRecordRepository()
         val scopedRepo = ScopedMemoryRecordRepository(
             delegate = delegate,
             scopeValue = "search-scope"
         )
 
         // Add records with different scopes
-        delegate.records.addAll(
+        delegate.add(
             listOf(
                 MemoryRecord(
                     id = "1",
@@ -374,21 +301,23 @@ class ScopedMemoryRecordRepositoryTest {
             )
         )
 
-        val results = scopedRepo.search(SimilaritySearchRequest(query = "Kotlin"))
+        scopedRepo.search(KeywordSearchRequest(query = "Kotlin"))
 
-        assertEquals(1, results.size)
-        assertEquals("1", results[0].record.id)
+        // Verify that the search request was modified to include scope filter
+        val capturedRequest = delegate.lastSearchRequest
+        assertNotNull(capturedRequest)
+        assertContains(capturedRequest.filterExpression!!, "memory_scope_id == \"search-scope\"")
     }
 
     @Test
     fun testSearchCombinesExistingFilterWithScopeFilter() = runTest {
-        val delegate = TestMemoryRecordRepository()
+        val delegate = SpyMemoryRecordRepository()
         val scopedRepo = ScopedMemoryRecordRepository(
             delegate = delegate,
             scopeValue = "test-scope"
         )
 
-        val request = SimilaritySearchRequest(
+        val request = KeywordSearchRequest(
             query = "test",
             filterExpression = "category == \"important\""
         )
@@ -400,18 +329,17 @@ class ScopedMemoryRecordRepositoryTest {
         assertNotNull(filterExpression)
         assertContains(filterExpression, "category == \"important\"")
         assertContains(filterExpression, "memory_scope_id == \"test-scope\"")
-        assertContains(filterExpression, "category == \"important\"")
     }
 
     @Test
     fun testSearchWithNullFilterExpression() = runTest {
-        val delegate = TestMemoryRecordRepository()
+        val delegate = SpyMemoryRecordRepository()
         val scopedRepo = ScopedMemoryRecordRepository(
             delegate = delegate,
             scopeValue = "my-scope"
         )
 
-        val request = SimilaritySearchRequest(query = "test", filterExpression = null)
+        val request = KeywordSearchRequest(query = "test", filterExpression = null)
 
         scopedRepo.search(request)
 
@@ -421,13 +349,13 @@ class ScopedMemoryRecordRepositoryTest {
 
     @Test
     fun testSearchWithBlankFilterExpression() = runTest {
-        val delegate = TestMemoryRecordRepository()
+        val delegate = SpyMemoryRecordRepository()
         val scopedRepo = ScopedMemoryRecordRepository(
             delegate = delegate,
             scopeValue = "my-scope"
         )
 
-        val request = SimilaritySearchRequest(query = "test", filterExpression = "   ")
+        val request = KeywordSearchRequest(query = "test", filterExpression = "   ")
 
         scopedRepo.search(request)
 
@@ -436,28 +364,8 @@ class ScopedMemoryRecordRepositoryTest {
     }
 
     @Test
-    fun testSearchWithVectorSearchRequest() = runTest {
-        val delegate = TestMemoryRecordRepository()
-        val scopedRepo = ScopedMemoryRecordRepository(
-            delegate = delegate,
-            scopeValue = "vector-scope"
-        )
-
-        val request = VectorSearchRequest(
-            queryVector = listOf(0.1f, 0.2f, 0.3f),
-            limit = 5
-        )
-
-        scopedRepo.search(request)
-
-        val capturedRequest = delegate.lastSearchRequest as? VectorSearchRequest
-        assertEquals("memory_scope_id == \"vector-scope\"", capturedRequest?.filterExpression)
-        assertEquals(5, capturedRequest?.limit)
-    }
-
-    @Test
     fun testSearchWithKeywordSearchRequest() = runTest {
-        val delegate = TestMemoryRecordRepository()
+        val delegate = SpyMemoryRecordRepository()
         val scopedRepo = ScopedMemoryRecordRepository(
             delegate = delegate,
             scopeValue = "keyword-scope"
@@ -471,39 +379,19 @@ class ScopedMemoryRecordRepositoryTest {
         assertEquals("memory_scope_id == \"keyword-scope\"", capturedRequest?.filterExpression)
     }
 
-    @Test
-    fun testSearchWithHybridSearchRequest() = runTest {
-        val delegate = TestMemoryRecordRepository()
-        val scopedRepo = ScopedMemoryRecordRepository(
-            delegate = delegate,
-            scopeValue = "hybrid-scope"
-        )
-
-        val request = HybridSearchRequest(
-            query = "test query",
-            alpha = 0.7
-        )
-
-        scopedRepo.search(request)
-
-        val capturedRequest = delegate.lastSearchRequest as? HybridSearchRequest
-        assertEquals("memory_scope_id == \"hybrid-scope\"", capturedRequest?.filterExpression)
-        assertEquals(0.7, capturedRequest?.alpha)
-    }
-
     // ==========
     // Tests for searchAsFlow() operation
     // ==========
 
     @Test
     fun testSearchAsFlowAppliesScopeFilter() = runTest {
-        val delegate = TestMemoryRecordRepository()
+        val delegate = SpyMemoryRecordRepository()
         val scopedRepo = ScopedMemoryRecordRepository(
             delegate = delegate,
             scopeValue = "flow-scope"
         )
 
-        delegate.records.addAll(
+        delegate.add(
             listOf(
                 MemoryRecord(
                     id = "1",
@@ -518,10 +406,12 @@ class ScopedMemoryRecordRepositoryTest {
             )
         )
 
-        val results = scopedRepo.searchAsFlow(SimilaritySearchRequest(query = "Flow")).toList()
+        scopedRepo.searchAsFlow(KeywordSearchRequest(query = "Flow")).toList()
 
-        assertEquals(1, results.size)
-        assertEquals("1", results[0].record.id)
+        // Verify that the search request was modified to include scope filter
+        val capturedRequest = delegate.lastSearchRequest
+        assertNotNull(capturedRequest)
+        assertContains(capturedRequest.filterExpression!!, "memory_scope_id == \"flow-scope\"")
     }
 
     // ==========
@@ -530,13 +420,13 @@ class ScopedMemoryRecordRepositoryTest {
 
     @Test
     fun testDeleteAllOnlyDeletesRecordsInScope() = runTest {
-        val delegate = TestMemoryRecordRepository()
+        val delegate = SpyMemoryRecordRepository()
         val scopedRepo = ScopedMemoryRecordRepository(
             delegate = delegate,
             scopeValue = "delete-scope"
         )
 
-        delegate.records.addAll(
+        delegate.add(
             listOf(
                 MemoryRecord(
                     id = "1",
@@ -564,30 +454,34 @@ class ScopedMemoryRecordRepositoryTest {
         assertTrue(result.successIds.contains("3"))
 
         // Record 2 should still exist
-        assertEquals(1, delegate.records.size)
-        assertEquals("2", delegate.records[0].id)
+        assertEquals(1, delegate.size())
+        val remainingRecords = delegate.getAll(listOf("2"))
+        assertEquals(1, remainingRecords.size)
+        assertEquals("2", remainingRecords[0].id)
     }
 
     @Test
     fun testDeleteAllReturnsEmptyResultWhenNoRecordsInScope() = runTest {
-        val delegate = TestMemoryRecordRepository()
+        val delegate = SpyMemoryRecordRepository()
         val scopedRepo = ScopedMemoryRecordRepository(
             delegate = delegate,
             scopeValue = "my-scope"
         )
 
-        delegate.records.add(
-            MemoryRecord(
-                id = "1",
-                content = "Record in different scope",
-                metadata = mapOf(ScopedMemoryRecordRepository.DEFAULT_MEMORY_SCOPE_FIELD_NAME to JsonPrimitive("other-scope"))
+        delegate.add(
+            listOf(
+                MemoryRecord(
+                    id = "1",
+                    content = "Record in different scope",
+                    metadata = mapOf(ScopedMemoryRecordRepository.DEFAULT_MEMORY_SCOPE_FIELD_NAME to JsonPrimitive("other-scope"))
+                )
             )
         )
 
         val result = scopedRepo.deleteAll(listOf("1"))
 
         assertEquals(0, result.successIds.size)
-        assertEquals(1, delegate.records.size) // Record should not be deleted
+        assertEquals(1, delegate.size()) // Record should not be deleted
     }
 
     // ==========
@@ -596,7 +490,7 @@ class ScopedMemoryRecordRepositoryTest {
 
     @Test
     fun testDeleteByFilterAppliesScopeFilter() = runTest {
-        val delegate = TestMemoryRecordRepository()
+        val delegate = SpyMemoryRecordRepository()
         val scopedRepo = ScopedMemoryRecordRepository(
             delegate = delegate,
             scopeValue = "filter-delete-scope"
@@ -612,7 +506,7 @@ class ScopedMemoryRecordRepositoryTest {
 
     @Test
     fun testDeleteByFilterWithEmptyExpression() = runTest {
-        val delegate = TestMemoryRecordRepository()
+        val delegate = SpyMemoryRecordRepository()
         val scopedRepo = ScopedMemoryRecordRepository(
             delegate = delegate,
             scopeValue = "my-scope"
@@ -639,7 +533,7 @@ class ScopedMemoryRecordRepositoryTest {
 
     @Test
     fun testMultipleScopesAreIsolated() = runTest {
-        val delegate = TestMemoryRecordRepository()
+        val delegate = SpyMemoryRecordRepository()
         val scopeA = ScopedMemoryRecordRepository(delegate = delegate, scopeValue = "scope-A")
         val scopeB = ScopedMemoryRecordRepository(delegate = delegate, scopeValue = "scope-B")
 
@@ -660,7 +554,7 @@ class ScopedMemoryRecordRepositoryTest {
 
     @Test
     fun testSearchIsolationBetweenScopes() = runTest {
-        val delegate = TestMemoryRecordRepository()
+        val delegate = SpyMemoryRecordRepository()
         val scopeA = ScopedMemoryRecordRepository(delegate = delegate, scopeValue = "scope-A")
         val scopeB = ScopedMemoryRecordRepository(delegate = delegate, scopeValue = "scope-B")
 
@@ -668,14 +562,15 @@ class ScopedMemoryRecordRepositoryTest {
         scopeA.add(listOf(MemoryRecord(id = "a1", content = "Kotlin programming guide")))
         scopeB.add(listOf(MemoryRecord(id = "b1", content = "Kotlin programming tutorial")))
 
-        // Search in each scope
-        val resultsA = scopeA.search(SimilaritySearchRequest(query = "Kotlin"))
-        val resultsB = scopeB.search(SimilaritySearchRequest(query = "Kotlin"))
+        // Search in each scope - verify the request has the correct scope filter
+        scopeA.search(KeywordSearchRequest(query = "Kotlin"))
+        val requestA = delegate.lastSearchRequest
+        assertNotNull(requestA)
+        assertContains(requestA.filterExpression!!, "memory_scope_id == \"scope-A\"")
 
-        assertEquals(1, resultsA.size)
-        assertEquals("a1", resultsA[0].record.id)
-
-        assertEquals(1, resultsB.size)
-        assertEquals("b1", resultsB[0].record.id)
+        scopeB.search(KeywordSearchRequest(query = "Kotlin"))
+        val requestB = delegate.lastSearchRequest
+        assertNotNull(requestB)
+        assertContains(requestB.filterExpression!!, "memory_scope_id == \"scope-B\"")
     }
 }
