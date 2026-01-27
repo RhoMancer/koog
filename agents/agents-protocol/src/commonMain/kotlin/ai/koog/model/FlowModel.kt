@@ -14,18 +14,6 @@ public data class FlowConfigModel(
     val id: String,
     val version: String,
     val agents: List<FlowAgentModel> = emptyList(),
-    val tools: List<FlowTool> = emptyList(),
-    val transitions: List<Transition> = emptyList()
-)
-
-/**
- * Flow transitions section.
- */
-@Serializable
-public data class Transition(
-    public val from: String,
-
-    public val to: String,
-
-    public val condition: TransitionCondition? = null
+    val tools: List<FlowToolModel> = emptyList(),
+    val transitions: List<FlowTransitionModel> = emptyList()
 )
