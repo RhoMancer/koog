@@ -497,8 +497,7 @@ public class OpenTelemetry {
                         timestamp = System.currentTimeMillis(),
                         model = eventContext.model,
                         modelProvider = eventContext.model.provider
-                    ),
-                    config.isVerbose
+                    )
                 )
             }
 
@@ -575,8 +574,7 @@ public class OpenTelemetry {
                         modelProvider = eventContext.model.provider,
                         inputTokenSpend = eventContext.responses.lastOrNull()?.metaInfo?.inputTokensCount?.toLong(),
                         outputTokenSpend = eventContext.responses.lastOrNull()?.metaInfo?.outputTokensCount?.toLong()
-                    ),
-                    config.isVerbose
+                    )
                 )
             }
 
@@ -613,8 +611,7 @@ public class OpenTelemetry {
                         id = eventContext.eventId,
                         timestamp = System.currentTimeMillis(),
                         toolName = eventContext.toolName
-                    ),
-                    config.isVerbose
+                    )
                 )
             }
 
@@ -658,8 +655,7 @@ public class OpenTelemetry {
                         timestamp = System.currentTimeMillis(),
                         toolName = eventContext.toolName,
                         status = ToolCallStatus.SUCCESS
-                    ),
-                    config.isVerbose
+                    )
                 )
             }
 
@@ -708,8 +704,7 @@ public class OpenTelemetry {
                         timestamp = System.currentTimeMillis(),
                         toolName = eventContext.toolName,
                         status = ToolCallStatus.FAILED
-                    ),
-                    config.isVerbose
+                    )
                 )
             }
 
@@ -757,8 +752,7 @@ public class OpenTelemetry {
                         timestamp = System.currentTimeMillis(),
                         toolName = eventContext.toolName,
                         status = ToolCallStatus.VALIDATION_FAILED
-                    ),
-                    config.isVerbose
+                    )
                 )
             }
 
