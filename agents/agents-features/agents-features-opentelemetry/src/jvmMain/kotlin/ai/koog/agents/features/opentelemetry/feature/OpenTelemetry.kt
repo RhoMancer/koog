@@ -40,7 +40,6 @@ import ai.koog.agents.features.opentelemetry.span.startStrategySpan
 import ai.koog.agents.features.opentelemetry.span.startSubgraphExecuteSpan
 import ai.koog.prompt.message.Message
 import io.github.oshai.kotlinlogging.KotlinLogging
-import io.opentelemetry.api.common.Attributes
 import kotlin.reflect.KType
 
 /**
@@ -498,7 +497,8 @@ public class OpenTelemetry {
                         timestamp = System.currentTimeMillis(),
                         model = eventContext.model,
                         modelProvider = eventContext.model.provider
-                    )
+                    ),
+                    config.isVerbose
                 )
             }
 
@@ -575,7 +575,8 @@ public class OpenTelemetry {
                         modelProvider = eventContext.model.provider,
                         inputTokenSpend = eventContext.responses.lastOrNull()?.metaInfo?.inputTokensCount?.toLong(),
                         outputTokenSpend = eventContext.responses.lastOrNull()?.metaInfo?.outputTokensCount?.toLong()
-                    )
+                    ),
+                    config.isVerbose
                 )
             }
 
@@ -612,7 +613,8 @@ public class OpenTelemetry {
                         id = eventContext.eventId,
                         timestamp = System.currentTimeMillis(),
                         toolName = eventContext.toolName
-                    )
+                    ),
+                    config.isVerbose
                 )
             }
 
@@ -656,7 +658,8 @@ public class OpenTelemetry {
                         timestamp = System.currentTimeMillis(),
                         toolName = eventContext.toolName,
                         status = ToolCallStatus.SUCCESS
-                    )
+                    ),
+                    config.isVerbose
                 )
             }
 
@@ -705,7 +708,8 @@ public class OpenTelemetry {
                         timestamp = System.currentTimeMillis(),
                         toolName = eventContext.toolName,
                         status = ToolCallStatus.FAILED
-                    )
+                    ),
+                    config.isVerbose
                 )
             }
 
@@ -753,7 +757,8 @@ public class OpenTelemetry {
                         timestamp = System.currentTimeMillis(),
                         toolName = eventContext.toolName,
                         status = ToolCallStatus.VALIDATION_FAILED
-                    )
+                    ),
+                    config.isVerbose
                 )
             }
 
