@@ -1,4 +1,4 @@
-package ai.koog.model
+package ai.koog._initial.model
 
 import kotlinx.serialization.Serializable
 

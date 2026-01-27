@@ -1,12 +1,12 @@
-package ai.koog.agent.koog
+package ai.koog._initial.agent.koog
 
-import ai.koog.agent.FlowAgentConfig
-import ai.koog.agent.FlowAgentKind
+import ai.koog._initial.agent.FlowAgentConfig
+import ai.koog._initial.agent.FlowAgentKind
 import ai.koog.agents.core.agent.AIAgent
 import ai.koog.agents.core.agent.singleRunStrategy
 import ai.koog.agents.core.tools.ToolRegistry
-import ai.koog.model.FlowAgentInput
-import ai.koog.model.FlowAgentPrompt
+import ai.koog._initial.model.FlowAgentInput
+import ai.koog._initial.model.FlowAgentPrompt
 
 private const val DEFAULT_MAX_ITERATIONS = 10
 

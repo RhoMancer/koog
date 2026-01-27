@@ -1,8 +1,8 @@
 package ai.koog
 
-import ai.koog.config.parser.FlowJsonConfigParser
-import ai.koog.flow.FlowConfig
-import ai.koog.flow.SimpleFlow
+import ai.koog._initial.parser.FlowJsonConfigParser
+import ai.koog._initial.flow.FlowConfig
+import ai.koog._initial.flow.SimpleFlow
 import kotlinx.coroutines.runBlocking
 
 /**

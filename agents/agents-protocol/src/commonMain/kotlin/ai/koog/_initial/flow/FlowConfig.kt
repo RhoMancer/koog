@@ -1,7 +1,7 @@
-package ai.koog.flow
+package ai.koog._initial.flow
 
-import ai.koog.agent.FlowAgent
-import ai.koog.model.Transition
+import ai.koog._initial.agent.FlowAgent
+import ai.koog._initial.model.Transition
 import kotlinx.serialization.Serializable
 
 /**

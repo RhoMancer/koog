@@ -1,15 +1,15 @@
-package ai.koog.config.parser
+package ai.koog._initial.parser
 
-import ai.koog.agent.FlowAgent
-import ai.koog.agent.FlowAgentKind
-import ai.koog.agent.koog.KoogTaskAgent
-import ai.koog.agent.koog.KoogVerifyAgent
-import ai.koog.agent.koog.KoogTransformAgent
-import ai.koog.flow.FlowConfig
-import ai.koog.model.FlowAgentInput
-import ai.koog.model.FlowAgentModel
-import ai.koog.model.FlowConfigModel
-import ai.koog.model.toFlowAgentConfig
+import ai.koog._initial.agent.FlowAgent
+import ai.koog._initial.agent.FlowAgentKind
+import ai.koog._initial.agent.koog.KoogTaskAgent
+import ai.koog._initial.agent.koog.KoogVerifyAgent
+import ai.koog._initial.agent.koog.KoogTransformAgent
+import ai.koog._initial.flow.FlowConfig
+import ai.koog._initial.model.FlowAgentInput
+import ai.koog._initial.model.FlowAgentModel
+import ai.koog._initial.model.FlowConfigModel
+import ai.koog._initial.model.toFlowAgentConfig
 import kotlinx.serialization.json.Json
 
 /**

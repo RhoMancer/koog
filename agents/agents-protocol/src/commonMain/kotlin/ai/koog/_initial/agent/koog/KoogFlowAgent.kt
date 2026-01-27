@@ -1,10 +1,10 @@
-package ai.koog.agent.koog
+package ai.koog._initial.agent.koog
 
-import ai.koog.agent.FlowAgent
-import ai.koog.agent.FlowAgentConfig
-import ai.koog.agent.FlowAgentKind
-import ai.koog.model.FlowAgentInput
-import ai.koog.model.FlowAgentPrompt
+import ai.koog._initial.agent.FlowAgent
+import ai.koog._initial.agent.FlowAgentConfig
+import ai.koog._initial.agent.FlowAgentKind
+import ai.koog._initial.model.FlowAgentInput
+import ai.koog._initial.model.FlowAgentPrompt
 
 /**
  * Base class for Koog flow agents that provides common functionality.

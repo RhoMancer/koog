@@ -1,7 +1,7 @@
-package ai.koog.model
+package ai.koog._initial.model
 
-import ai.koog.flow.TransitionCondition
-import ai.koog.tools.FlowTool
+import ai.koog._initial.flow.TransitionCondition
+import ai.koog._initial.tools.FlowTool
 import kotlinx.serialization.Serializable
 
 /**

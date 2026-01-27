@@ -1,9 +1,9 @@
-package ai.koog.agent.koog
+package ai.koog._initial.agent.koog
 
-import ai.koog.agent.FlowAgentConfig
-import ai.koog.agent.FlowAgentKind
-import ai.koog.model.FlowAgentInput
-import ai.koog.model.FlowAgentPrompt
+import ai.koog._initial.agent.FlowAgentConfig
+import ai.koog._initial.agent.FlowAgentKind
+import ai.koog._initial.model.FlowAgentInput
+import ai.koog._initial.model.FlowAgentPrompt
 
 /**
  * Transform agent that transforms data without using an LLM.

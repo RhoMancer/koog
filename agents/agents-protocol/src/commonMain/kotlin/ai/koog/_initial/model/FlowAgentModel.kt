@@ -1,10 +1,8 @@
-package ai.koog.model
+package ai.koog._initial.model
 
 import ai.koog._initial.agent.FlowAgentConfig
 import ai.koog._initial.agent.FlowAgentKind
 import ai.koog._initial.agent.ToolChoiceKind
-import ai.koog._initial.model.Transformation
-import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
 /**
@@ -14,7 +12,6 @@ import kotlinx.serialization.Serializable
  * 	    provider: agent.provider
  * 	    config: agent.config
  * 	    runtime: agent.runtime
- * 	    prompt: agent.prompt
  * 	    input: agent.input
  * 	    output: agent.output
  * 	    features: [agent.feature]
@@ -24,41 +21,11 @@ public data class FlowAgentModel(
     val name: String,
     val type: FlowAgentKind,
     val model: String? = null,
-    val runtime: FlowAgentRuntimeModel? = null,
-    val config: FlowAgentConfigModel? = null,
-    val prompt: FlowAgentPromptModel? = null,
+    val runtime: String? = null,
+    val prompt: FlowAgentPrompt? = null,
     val input: FlowAgentInput? = null,
-    val output: FlowAgentOutputModel? = null,
+    val config: FlowAgentConfigModel? = null
 )
-
-/**
- *
- */
-@Serializable
-public enum class FlowAgentTypeModel {
-    @SerialName("task")
-    TASK,
-
-    @SerialName("verify")
-    VERIFY,
-
-    @SerialName("transform")
-    TRANSFORM,
-
-    @SerialName("parallel")
-    PARALLEL,
-}
-
-/**
- *
- */
-@Serializable
-public enum class FlowAgentRuntimeModel(public val id: String) {
-    KOOG("koog"),
-    LANG_CHAIN("lang_chain"),
-    CLAUDE_CODE("claude-code"),
-    CODEX("codex")
-}
 
 /**
  * config:
@@ -81,11 +48,24 @@ public data class FlowAgentConfigModel(
     val speculation: String? = null,
 )
 
+public fun FlowAgentConfigModel?.toFlowAgentConfig(): FlowAgentConfig =
+    this?.let {
+        FlowAgentConfig(
+            model = model,
+            temperature = temperature,
+            maxIterations = maxIterations,
+            maxTokens = maxTokens,
+            topP = topP,
+            toolChoice = toolChoice,
+            speculation = speculation
+        )
+    } ?: FlowAgentConfig()
+
 /**
  *
  */
 @Serializable
-public data class FlowAgentPromptModel(
+public data class FlowAgentPrompt(
     val system: String,
     val user: String? = null
 )
@@ -99,24 +79,4 @@ public data class FlowAgentInput(
     val transformations: List<Transformation>? = null
 )
 
-/**
- *
- */
-@Serializable
-public data class FlowAgentOutputModel(
-    val system: String,
-    val user: String? = null
-)
 
-public fun FlowAgentConfigModel?.toFlowAgentConfig(): FlowAgentConfig =
-    this?.let {
-        FlowAgentConfig(
-            model = model,
-            temperature = temperature,
-            maxIterations = maxIterations,
-            maxTokens = maxTokens,
-            topP = topP,
-            toolChoice = toolChoice,
-            speculation = speculation
-        )
-    } ?: FlowAgentConfig()
