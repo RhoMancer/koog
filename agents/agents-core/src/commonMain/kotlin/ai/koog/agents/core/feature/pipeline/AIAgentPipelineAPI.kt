@@ -248,7 +248,7 @@ public interface AIAgentPipelineAPI {
     //region Interceptors
     public fun interceptEnvironmentCreated(
         feature: AIAgentFeature<*, *>,
-        handle: suspend (eventContext: AgentEnvironmentTransformingContext) -> AIAgentEnvironment
+        handle: suspend (eventContext: AgentEnvironmentTransformingContext, environment: AIAgentEnvironment) -> AIAgentEnvironment
     )
 
     public fun interceptAgentStarting(feature: AIAgentFeature<*, *>, handle: suspend (AgentStartingContext) -> Unit)
@@ -388,10 +388,10 @@ public interface AIAgentPipelineAPI {
     ): suspend (TContext) -> Unit
 
     @InternalAgentsApi
-    public fun createConditionalHandler(
+    public fun <TContext : AgentLifecycleEventContext, TResult : Any> createConditionalHandler(
         feature: AIAgentFeature<*, *>,
-        handle: suspend (AgentEnvironmentTransformingContext) -> AIAgentEnvironment
-    ): suspend (AgentEnvironmentTransformingContext) -> AIAgentEnvironment
+        handle: suspend (TContext, TResult) -> TResult
+    ): suspend (TContext, TResult) -> TResult
 
     public fun FeatureConfig.isAccepted(eventContext: AgentLifecycleEventContext): Boolean
 

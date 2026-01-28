@@ -1,6 +1,13 @@
 package ai.koog.agents.core.feature.handler
 
-public fun interface AgentLifecycleEventHandler<TContext : AgentLifecycleEventContext, TReturn : Any> {
+public interface AgentLifecycleEventHandler<TContext : AgentLifecycleEventContext, TResult : Any>
 
-    public suspend fun handle(eventContext: TContext): TReturn
+public fun interface AgentLifecycleContextEventHandler<TContext : AgentLifecycleEventContext> : AgentLifecycleEventHandler<TContext, Unit> {
+
+    public suspend fun handle(eventContext: TContext)
+}
+
+public fun interface AgentLifecycleTransformEventHandler<TContext : AgentLifecycleEventContext, TResult : Any> : AgentLifecycleEventHandler<TContext, TResult> {
+
+    public suspend fun handle(eventContext: TContext, entity: TResult): TResult
 }

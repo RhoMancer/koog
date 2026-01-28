@@ -98,14 +98,12 @@ public data class AgentClosingContext(
  * @property executionInfo The execution information containing parentId and current execution path;
  * @property agent The AI agent being managed or operated upon in the context.
  * @property config The configuration settings for the AI agent.
- * @property environment The environment within which the agent is operating.
  */
 public class AgentEnvironmentTransformingContext(
     override val eventId: String,
     override val executionInfo: AgentExecutionInfo,
     public val agent: GraphAIAgent<*, *>,
     public val config: AIAgentConfig,
-    public val environment: AIAgentEnvironment
 ) : AgentEventContext {
     override val eventType: AgentLifecycleEventType = AgentLifecycleEventType.AgentEnvironmentTransforming
 }

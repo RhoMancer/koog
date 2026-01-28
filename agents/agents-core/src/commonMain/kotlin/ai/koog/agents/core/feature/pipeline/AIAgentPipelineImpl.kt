@@ -14,10 +14,11 @@ import ai.koog.agents.core.feature.AIAgentFeature
 import ai.koog.agents.core.feature.config.FeatureConfig
 import ai.koog.agents.core.feature.config.FeatureSystemVariables
 import ai.koog.agents.core.feature.debugger.Debugger
+import ai.koog.agents.core.feature.handler.AgentLifecycleContextEventHandler
 import ai.koog.agents.core.feature.handler.AgentLifecycleEventContext
-import ai.koog.agents.core.feature.handler.AgentLifecycleEventHandler
 import ai.koog.agents.core.feature.handler.AgentLifecycleEventType
 import ai.koog.agents.core.feature.handler.AgentLifecycleHandlersCollector
+import ai.koog.agents.core.feature.handler.AgentLifecycleTransformEventHandler
 import ai.koog.agents.core.feature.handler.agent.AgentClosingContext
 import ai.koog.agents.core.feature.handler.agent.AgentCompletedContext
 import ai.koog.agents.core.feature.handler.agent.AgentEnvironmentTransformingContext
@@ -92,12 +93,8 @@ public class AIAgentPipelineImpl(
         Debugger.key
     )
 
-    // TODO: SD --
-    //  Map:
-    //   feature -> agent event type -> handler
+    // TODO: SD -- add comment
     private val agentLifecycleHandlersCollector = AgentLifecycleHandlersCollector()
-
-    private val agentEventHandlers: MutableMap<AIAgentStorageKey<*>, AgentEventHandler> = mutableMapOf()
 
     public override fun <TFeature : Any> feature(
         featureClass: KClass<TFeature>,
@@ -181,7 +178,7 @@ public class AIAgentPipelineImpl(
         agent: AIAgent<*, *>,
         context: AIAgentContext
     ) {
-        invokeRegisteredHandlersForEvent<AgentStartingContext, Unit>(
+        invokeRegisteredHandlersForEvent(
             eventType = AgentLifecycleEventType.AgentStarting,
             context = AgentStartingContext(eventId, executionInfo, agent, runId, context)
         )
@@ -196,7 +193,7 @@ public class AIAgentPipelineImpl(
         result: Any?,
         context: AIAgentContext
     ) {
-        invokeRegisteredHandlersForEvent<AgentCompletedContext, Unit>(
+        invokeRegisteredHandlersForEvent(
             eventType = AgentLifecycleEventType.AgentCompleted,
             context = AgentCompletedContext(eventId, executionInfo, agentId, runId, result, context)
         )
@@ -211,7 +208,7 @@ public class AIAgentPipelineImpl(
         throwable: Throwable,
         context: AIAgentContext
     ) {
-        invokeRegisteredHandlersForEvent<AgentExecutionFailedContext, Unit>(
+        invokeRegisteredHandlersForEvent(
             eventType = AgentLifecycleEventType.AgentExecutionFailed,
             context = AgentExecutionFailedContext(eventId, executionInfo, agentId, runId, throwable, context)
         )
@@ -223,7 +220,7 @@ public class AIAgentPipelineImpl(
         executionInfo: AgentExecutionInfo,
         agentId: String
     ) {
-        invokeRegisteredHandlersForEvent<AgentClosingContext, Unit>(
+        invokeRegisteredHandlersForEvent(
             eventType = AgentLifecycleEventType.AgentClosing,
             context = AgentClosingContext(eventId, executionInfo, agentId, config)
         )
@@ -235,10 +232,12 @@ public class AIAgentPipelineImpl(
         agent: GraphAIAgent<*, *>,
         baseEnvironment: AIAgentEnvironment
     ): AIAgentEnvironment {
-        val eventContext = AgentEnvironmentTransformingContext(eventId, executionInfo, agent, config)
-        return agentEventHandlers.values.fold(baseEnvironment) { environment, handler ->
-            handler.transformEnvironment(eventContext, environment)
-        }
+        @OptIn(InternalAgentsApi::class)
+        return invokeRegisteredHandlersForEvent(
+            eventType = AgentLifecycleEventType.AgentEnvironmentTransforming,
+            context = AgentEnvironmentTransformingContext(eventId, executionInfo, agent, config),
+            entity = baseEnvironment
+        )
     }
 
     //endregion Invoke Agent Handlers
@@ -504,7 +503,7 @@ public class AIAgentPipelineImpl(
     @OptIn(InternalAgentsApi::class)
     public override fun interceptEnvironmentCreated(
         feature: AIAgentFeature<*, *>,
-        handle: suspend (AgentEnvironmentTransformingContext) -> AIAgentEnvironment
+        handle: suspend (AgentEnvironmentTransformingContext, AIAgentEnvironment) -> AIAgentEnvironment
     ) {
         addHandlerForFeature(
             featureKey = feature.key,
@@ -998,49 +997,74 @@ public class AIAgentPipelineImpl(
     }
 
     @InternalAgentsApi
-    internal suspend fun <TContext: AgentLifecycleEventContext, TReturn : Any> invokeRegisteredHandlersForEvent(
+    internal suspend fun <TContext: AgentLifecycleEventContext> invokeRegisteredHandlersForEvent(
         eventType: AgentLifecycleEventType,
         context: TContext
     ) {
-        val registeredHandlers = agentLifecycleHandlersCollector.getHandlersForEvent<TContext, TReturn>(eventType)
+        val registeredHandlers = agentLifecycleHandlersCollector.getHandlersForEvent<TContext, Unit>(eventType)
 
         registeredHandlers.forEach { (featureKey, handlers) ->
             logger.trace { "Execute registered handlers (feature: ${featureKey.name}, event: ${context.eventType})" }
-            handlers.forEach { handler -> handler.handle(context) }
+            handlers.forEach { handler ->
+                if (handler !is AgentLifecycleContextEventHandler) {
+                    logger.warn {
+                        "Expected to process instance of <${AgentLifecycleContextEventHandler::class.simpleName}>, " +
+                            "but got <${handler::class.simpleName}>. Skip it."
+                    }
+                    return@forEach
+                }
+
+                handler.handle(context)
+            }
         }
     }
 
     @InternalAgentsApi
-    internal suspend fun invokeRegisteredEnvironmentTransformations(
-        eventType: AgentLifecycleEventType.AgentEnvironmentTransforming,
-        context: AgentEnvironmentTransformingContext
-    ) {
-        val registeredHandlers =
-            agentLifecycleHandlersCollector.getHandlersForEvent<AgentEnvironmentTransformingContext, AIAgentEnvironment>(eventType)
+    internal suspend fun <TContext: AgentLifecycleEventContext, TResult : Any> invokeRegisteredHandlersForEvent(
+        eventType: AgentLifecycleEventType,
+        context: TContext,
+        entity: TResult
+    ): TResult {
+        val registeredHandlers = agentLifecycleHandlersCollector.getHandlersForEvent<TContext, TResult>(eventType)
+
+        var currentEntity = entity
 
         registeredHandlers.forEach { (featureKey, handlers) ->
             logger.trace { "Execute registered handlers (feature: ${featureKey.name}, event: ${context.eventType})" }
-            var currentContext = context
-            var environment = currentContext.environment
             handlers.forEach { handler ->
-                val updatedEnvironment = handler.handle(currentContext)
-                currentContext = AgentEnvironmentTransformingContext(
-                    eventId = currentContext.eventId,
-                    executionInfo = currentContext.executionInfo,
-                    agent = currentContext.agent,
-                    config = currentContext.config,
-                    environment = updatedEnvironment
-                )
+                if (handler !is AgentLifecycleTransformEventHandler) {
+                    logger.warn {
+                        "Expected to process instance of <${AgentLifecycleTransformEventHandler::class.simpleName}>, " +
+                            "but got <${handler::class.simpleName}>. Skip it."
+                    }
+                    return@forEach
+                }
+                val updatedEntity = handler.handle(context, currentEntity)
+                currentEntity = updatedEntity
             }
-
         }
+
+        return currentEntity
+    }
+
+    @InternalAgentsApi
+    internal fun <TContext : AgentLifecycleEventContext> addHandlerForFeature(
+        featureKey: AIAgentStorageKey<*>,
+        eventType: AgentLifecycleEventType,
+        handler: AgentLifecycleContextEventHandler<TContext>
+    ) {
+        agentLifecycleHandlersCollector.addHandlerForFeature(
+            featureKey = featureKey,
+            eventType = eventType,
+            handler = handler
+        )
     }
 
     @InternalAgentsApi
     internal fun <TContext : AgentLifecycleEventContext, TReturn : Any> addHandlerForFeature(
         featureKey: AIAgentStorageKey<*>,
         eventType: AgentLifecycleEventType,
-        handler: AgentLifecycleEventHandler<TContext, TReturn>
+        handler: AgentLifecycleTransformEventHandler<TContext, TReturn>
     ) {
         agentLifecycleHandlersCollector.addHandlerForFeature(
             featureKey = featureKey,
@@ -1064,18 +1088,18 @@ public class AIAgentPipelineImpl(
     }
 
     @InternalAgentsApi
-    public override fun createConditionalHandler(
+    public override fun <TContext : AgentLifecycleEventContext, TResult : Any> createConditionalHandler(
         feature: AIAgentFeature<*, *>,
-        handle: suspend (AgentEnvironmentTransformingContext) -> AIAgentEnvironment
-    ): suspend (AgentEnvironmentTransformingContext) -> AIAgentEnvironment =
-        handler@{ eventContext ->
+        handle: suspend (TContext, TResult) -> TResult
+    ): suspend (TContext, TResult) -> TResult =
+        handler@{ eventContext, entity ->
             val featureConfig = registeredFeatures[feature.key]?.featureConfig
 
             if (featureConfig != null && !featureConfig.isAccepted(eventContext)) {
-                return@handler eventContext.environment
+                return@handler entity
             }
 
-            handle(eventContext)
+            handle(eventContext, entity)
         }
 
     public override fun FeatureConfig.isAccepted(eventContext: AgentLifecycleEventContext): Boolean {
