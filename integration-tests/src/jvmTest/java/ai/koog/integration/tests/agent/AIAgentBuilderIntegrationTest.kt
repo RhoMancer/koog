@@ -7,7 +7,7 @@ import ai.koog.agents.core.agent.singleRunStrategy
 import ai.koog.agents.core.tools.ToolRegistry
 import ai.koog.agents.features.eventHandler.feature.EventHandler
 import ai.koog.integration.tests.utils.Models
-import ai.koog.integration.tests.utils.RetryUtils.withRetry
+import ai.koog.integration.tests.utils.RetryUtils
 import ai.koog.integration.tests.utils.tools.SimpleCalculatorTool
 import ai.koog.prompt.llm.LLMCapability
 import ai.koog.prompt.llm.LLModel
@@ -21,7 +21,7 @@ import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldContain
 import io.kotest.matchers.string.shouldNotBeBlank
 import kotlinx.coroutines.test.runTest
-import org.junit.jupiter.api.Assumptions.assumeTrue
+import org.junit.jupiter.api.Assumptions
 import org.junit.jupiter.api.BeforeAll
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.MethodSource
@@ -42,7 +42,7 @@ class AIAgentBuilderIntegrationTest : AIAgentTestBase() {
     fun integration_BuilderBasicUsage(model: LLModel) = runTest(timeout = 180.seconds) {
         Models.assumeAvailable(model.provider)
 
-        withRetry {
+        RetryUtils.withRetry {
             runWithTracking { eventHandlerConfig, state ->
                 val agent = AIAgent.builder()
                     .promptExecutor(getExecutor(model))
@@ -68,13 +68,13 @@ class AIAgentBuilderIntegrationTest : AIAgentTestBase() {
     @MethodSource("allModels")
     fun integration_BuilderWithToolRegistry(model: LLModel) = runTest(timeout = 180.seconds) {
         Models.assumeAvailable(model.provider)
-        assumeTrue(model.capabilities.contains(LLMCapability.Tools), "Model $model does not support tools")
+        Assumptions.assumeTrue(model.capabilities.contains(LLMCapability.Tools), "Model $model does not support tools")
 
-        val toolRegistry = ToolRegistry {
+        val toolRegistry = ToolRegistry.Companion {
             tool(SimpleCalculatorTool)
         }
 
-        withRetry {
+        RetryUtils.withRetry {
             runWithTracking { eventHandlerConfig, state ->
                 val agent = AIAgent.builder()
                     .promptExecutor(getExecutor(model))
@@ -102,13 +102,13 @@ class AIAgentBuilderIntegrationTest : AIAgentTestBase() {
     @MethodSource("allModels")
     fun integration_BuilderWithGraphStrategy(model: LLModel) = runTest(timeout = 180.seconds) {
         Models.assumeAvailable(model.provider)
-        assumeTrue(model.capabilities.contains(LLMCapability.Tools), "Model $model does not support tools")
+        Assumptions.assumeTrue(model.capabilities.contains(LLMCapability.Tools), "Model $model does not support tools")
 
-        val toolRegistry = ToolRegistry {
+        val toolRegistry = ToolRegistry.Companion {
             tool(SimpleCalculatorTool)
         }
 
-        withRetry {
+        RetryUtils.withRetry {
             runWithTracking { eventHandlerConfig, state ->
                 val agent = AIAgent.builder()
                     .promptExecutor(getExecutor(model))
@@ -138,7 +138,7 @@ class AIAgentBuilderIntegrationTest : AIAgentTestBase() {
     fun integration_FunctionalStrategyWithLambda(model: LLModel) = runTest(timeout = 180.seconds) {
         Models.assumeAvailable(model.provider)
 
-        withRetry {
+        RetryUtils.withRetry {
             runWithTracking { eventHandlerConfig, state ->
                 val strategy = functionalStrategy<String, String>("echo-strategy") { input ->
                     val response = requestLLM(
@@ -186,7 +186,7 @@ class AIAgentBuilderIntegrationTest : AIAgentTestBase() {
             }
         }
 
-        withRetry {
+        RetryUtils.withRetry {
             runWithTracking { eventHandlerConfig, state ->
                 val agent = AIAgent.builder()
                     .promptExecutor(getExecutor(model))
@@ -238,7 +238,7 @@ class AIAgentBuilderIntegrationTest : AIAgentTestBase() {
             "Ideas: $ideas\n\nBest choice: $refinedIdea"
         }
 
-        withRetry {
+        RetryUtils.withRetry {
             runWithTracking { eventHandlerConfig, state ->
                 val agent = AIAgent.builder()
                     .promptExecutor(getExecutor(model))
@@ -270,7 +270,7 @@ class AIAgentBuilderIntegrationTest : AIAgentTestBase() {
     fun integration_BuilderMethodChaining(model: LLModel) = runTest(timeout = 180.seconds) {
         Models.assumeAvailable(model.provider)
 
-        withRetry {
+        RetryUtils.withRetry {
             runWithTracking { eventHandlerConfig, state ->
                 val agent = AIAgent.builder()
                     .promptExecutor(getExecutor(model))
@@ -302,7 +302,7 @@ class AIAgentBuilderIntegrationTest : AIAgentTestBase() {
     fun integration_BuilderWithMultipleFeatures(model: LLModel) = runTest(timeout = 180.seconds) {
         Models.assumeAvailable(model.provider)
 
-        withRetry {
+        RetryUtils.withRetry {
             val eventCallbacks = mutableListOf<String>()
 
             val agent = AIAgent.builder()
@@ -350,7 +350,7 @@ class AIAgentBuilderIntegrationTest : AIAgentTestBase() {
             }
         }
 
-        withRetry {
+        RetryUtils.withRetry {
             runWithTracking { eventHandlerConfig, state ->
                 val agent = AIAgent.builder()
                     .promptExecutor(getExecutor(model))
@@ -380,7 +380,7 @@ class AIAgentBuilderIntegrationTest : AIAgentTestBase() {
     fun integration_BuilderWithTemperatureControl(model: LLModel) = runTest(timeout = 120.seconds) {
         Models.assumeAvailable(model.provider)
 
-        withRetry {
+        RetryUtils.withRetry {
             runWithTracking { eventHandlerConfig, state ->
                 val deterministicAgent = AIAgent.builder()
                     .promptExecutor(getExecutor(model))
@@ -408,7 +408,7 @@ class AIAgentBuilderIntegrationTest : AIAgentTestBase() {
     fun integration_BuilderWithMaxIterations(model: LLModel) = runTest(timeout = 120.seconds) {
         Models.assumeAvailable(model.provider)
 
-        withRetry {
+        RetryUtils.withRetry {
             runWithTracking { eventHandlerConfig, state ->
                 val agent = AIAgent.builder()
                     .promptExecutor(getExecutor(model))
@@ -432,7 +432,7 @@ class AIAgentBuilderIntegrationTest : AIAgentTestBase() {
     fun integration_FunctionalStrategyWithExceptionHandling(model: LLModel) = runTest(timeout = 120.seconds) {
         Models.assumeAvailable(model.provider)
 
-        withRetry {
+        RetryUtils.withRetry {
             runWithTracking { eventHandlerConfig, state ->
                 val strategyWithErrorHandling = functionalStrategy<String, String>("error-handling") { input ->
                     when (val response = requestLLM(input)) {
@@ -463,7 +463,7 @@ class AIAgentBuilderIntegrationTest : AIAgentTestBase() {
     fun integration_BuilderWithNumberOfChoices(model: LLModel) = runTest(timeout = 120.seconds) {
         Models.assumeAvailable(model.provider)
 
-        withRetry {
+        RetryUtils.withRetry {
             runWithTracking { eventHandlerConfig, state ->
                 val agent = AIAgent.builder()
                     .promptExecutor(getExecutor(model))
@@ -489,7 +489,7 @@ class AIAgentBuilderIntegrationTest : AIAgentTestBase() {
     fun integration_FunctionalStrategyWithContextAccess(model: LLModel) = runTest(timeout = 120.seconds) {
         Models.assumeAvailable(model.provider)
 
-        withRetry {
+        RetryUtils.withRetry {
             runWithTracking { eventHandlerConfig, state ->
                 val strategyWithContext = functionalStrategy<String, String>("context-aware") { input ->
                     val agentId = agentId

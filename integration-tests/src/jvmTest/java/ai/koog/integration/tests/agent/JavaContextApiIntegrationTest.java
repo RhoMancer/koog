@@ -21,7 +21,7 @@ import java.util.List;
 import static ai.koog.integration.tests.utils.LLMClientsKt.getLLMClientForProvider;
 import static org.junit.jupiter.api.Assertions.*;
 
-public class ContextApiIntegrationTest extends KoogJavaTestBase {
+public class JavaContextApiIntegrationTest extends KoogJavaTestBase {
 
     private final List<AutoCloseable> resourcesToClose = new ArrayList<>();
 
