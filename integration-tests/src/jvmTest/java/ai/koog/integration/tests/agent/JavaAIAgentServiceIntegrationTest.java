@@ -1,0 +1,290 @@
+package ai.koog.integration.tests.agent;
+
+import ai.koog.agents.core.agent.AIAgentService;
+import ai.koog.agents.core.agent.GraphAIAgent;
+import ai.koog.agents.core.agent.GraphAIAgentService;
+import ai.koog.agents.core.tools.ToolRegistry;
+import ai.koog.integration.tests.base.KoogJavaTestBase;
+import ai.koog.integration.tests.utils.JavaInteropUtils;
+import ai.koog.integration.tests.utils.Models;
+import ai.koog.integration.tests.utils.TestCredentials;
+import ai.koog.prompt.executor.clients.LLMClient;
+import ai.koog.prompt.executor.llms.MultiLLMPromptExecutor;
+import ai.koog.prompt.llm.LLMProvider;
+import ai.koog.prompt.llm.LLModel;
+import ai.koog.prompt.message.Message;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.MethodSource;
+
+import java.util.ArrayList;
+import java.util.List;
+
+import static org.junit.jupiter.api.Assertions.*;
+
+/**
+ * Integration tests for AIAgentService (multi-agent management).
+ */
+public class JavaAIAgentServiceIntegrationTest extends KoogJavaTestBase {
+
+    private final List<AutoCloseable> resourcesToClose = new ArrayList<>();
+
+    @AfterEach
+    public void cleanup() throws Exception {
+        for (AutoCloseable resource : resourcesToClose) {
+            resource.close();
+        }
+        resourcesToClose.clear();
+    }
+
+    private MultiLLMPromptExecutor createExecutor(LLModel model) {
+        LLMClient client;
+        if (model.getProvider() == LLMProvider.OpenAI.INSTANCE) {
+            client = JavaInteropUtils.createOpenAIClient(TestCredentials.INSTANCE.readTestOpenAIKeyFromEnv());
+        } else if (model.getProvider() == LLMProvider.Anthropic.INSTANCE) {
+            client = JavaInteropUtils.createAnthropicClient(TestCredentials.INSTANCE.readTestAnthropicKeyFromEnv());
+        } else {
+            throw new IllegalArgumentException("Unsupported provider: " + model.getProvider());
+        }
+        resourcesToClose.add((AutoCloseable) client);
+        return new MultiLLMPromptExecutor(client);
+    }
+
+    @ParameterizedTest
+    @MethodSource("ai.koog.integration.tests.agent.AIAgentTestBase#getLatestModels")
+    public void integration_AIAgentServiceCreateAndListAgents(LLModel model) {
+        Models.assumeAvailable(model.getProvider());
+
+        GraphAIAgentService<String, String> service = AIAgentService.builder()
+            .promptExecutor(createExecutor(model))
+            .llmModel(model)
+            .systemPrompt("You are a helpful assistant.")
+            .build();
+
+        GraphAIAgent<String, String> agent1 = service.createAgent("agent-1");
+        GraphAIAgent<String, String> agent2 = service.createAgent("agent-2");
+
+        assertNotNull(agent1);
+        assertNotNull(agent2);
+        assertEquals("agent-1", agent1.getId());
+        assertEquals("agent-2", agent2.getId());
+
+        List<GraphAIAgent<String, String>> allAgents = service.listAllAgents();
+        assertEquals(2, allAgents.size());
+        assertTrue(allAgents.contains(agent1));
+        assertTrue(allAgents.contains(agent2));
+
+        service.closeAll();
+    }
+
+    @ParameterizedTest
+    @MethodSource("ai.koog.integration.tests.agent.AIAgentTestBase#getLatestModels")
+    public void integration_AIAgentServiceAgentById(LLModel model) {
+        Models.assumeAvailable(model.getProvider());
+
+        GraphAIAgentService<String, String> service = AIAgentService.builder()
+            .promptExecutor(createExecutor(model))
+            .llmModel(model)
+            .systemPrompt("You are a helpful assistant.")
+            .build();
+
+        GraphAIAgent<String, String> createdAgent = service.createAgent("test-agent");
+
+        GraphAIAgent<String, String> retrievedAgent = service.agentById("test-agent");
+        assertNotNull(retrievedAgent);
+        assertEquals("test-agent", retrievedAgent.getId());
+        assertEquals(createdAgent, retrievedAgent);
+
+        GraphAIAgent<String, String> nonExistent = service.agentById("non-existent");
+        assertNull(nonExistent);
+
+        service.closeAll();
+    }
+
+    @ParameterizedTest
+    @MethodSource("ai.koog.integration.tests.agent.AIAgentTestBase#getLatestModels")
+    public void integration_AIAgentServiceRemoveAgent(LLModel model) {
+        Models.assumeAvailable(model.getProvider());
+
+        GraphAIAgentService<String, String> service = AIAgentService.builder()
+            .promptExecutor(createExecutor(model))
+            .llmModel(model)
+            .systemPrompt("You are a helpful assistant.")
+            .build();
+
+        // Test removing by agent instance
+        GraphAIAgent<String, String> agent = service.createAgent("removable-agent");
+        assertEquals(1, service.listAllAgents().size());
+
+        boolean removed = service.removeAgent(agent);
+        assertTrue(removed);
+        assertEquals(0, service.listAllAgents().size());
+
+        boolean removedAgain = service.removeAgent(agent);
+        assertFalse(removedAgain);
+
+        // Test removing by agent ID
+        service.createAgent("agent-to-remove");
+        assertEquals(1, service.listAllAgents().size());
+
+        boolean removedById = service.removeAgentWithId("agent-to-remove");
+        assertTrue(removedById);
+        assertEquals(0, service.listAllAgents().size());
+
+        boolean removedByIdAgain = service.removeAgentWithId("agent-to-remove");
+        assertFalse(removedByIdAgain);
+
+        service.closeAll();
+    }
+
+    @ParameterizedTest
+    @MethodSource("ai.koog.integration.tests.agent.AIAgentTestBase#getLatestModels")
+    public void integration_AIAgentServiceStateTracking(LLModel model) {
+        Models.assumeAvailable(model.getProvider());
+
+        GraphAIAgentService<String, String> service = AIAgentService.builder()
+            .promptExecutor(createExecutor(model))
+            .llmModel(model)
+            .systemPrompt("You are a helpful assistant.")
+            .build();
+
+        GraphAIAgent<String, String> agent = service.createAgent("state-test-agent");
+
+        List<GraphAIAgent<String, String>> inactiveAgents = service.listInactiveAgents();
+        assertTrue(inactiveAgents.contains(agent));
+
+        List<GraphAIAgent<String, String>> activeAgents = service.listActiveAgents();
+        assertFalse(activeAgents.contains(agent));
+
+        String result = runBlocking(continuation -> agent.run("Say hello", continuation));
+        assertNotNull(result);
+
+        List<GraphAIAgent<String, String>> finishedAgents = service.listFinishedAgents();
+        assertTrue(finishedAgents.contains(agent));
+
+        service.closeAll();
+    }
+
+    @ParameterizedTest
+    @MethodSource("ai.koog.integration.tests.agent.AIAgentTestBase#getLatestModels")
+    public void integration_AIAgentServiceCreateAgentAndRun(LLModel model) {
+        Models.assumeAvailable(model.getProvider());
+
+        GraphAIAgentService<String, String> service = AIAgentService.builder()
+            .promptExecutor(createExecutor(model))
+            .llmModel(model)
+            .systemPrompt("You are a helpful assistant.")
+            .build();
+
+        ToolRegistry emptyRegistry = ToolRegistry.builder().build();
+        String result = service.createAgentAndRun("What is 2+2?", "one-shot-agent",
+            emptyRegistry, service.getAgentConfig(), null, kotlinx.datetime.Clock.System.INSTANCE);
+
+        assertNotNull(result);
+        assertFalse(result.isEmpty());
+
+        List<GraphAIAgent<String, String>> allAgents = service.listAllAgents();
+        assertEquals(1, allAgents.size());
+        assertEquals("one-shot-agent", allAgents.get(0).getId());
+
+        service.closeAll();
+    }
+
+    @ParameterizedTest
+    @MethodSource("ai.koog.integration.tests.agent.AIAgentTestBase#getLatestModels")
+    public void integration_AIAgentServiceWithCustomToolRegistry(LLModel model) {
+        Models.assumeAvailable(model.getProvider());
+
+        JavaInteropUtils.CalculatorTools calculator = new JavaInteropUtils.CalculatorTools();
+        ToolRegistry serviceToolRegistry = JavaInteropUtils.createToolRegistry(calculator);
+
+        GraphAIAgentService<String, String> service = AIAgentService.builder()
+            .promptExecutor(createExecutor(model))
+            .llmModel(model)
+            .systemPrompt("You are a calculator assistant. Use tools when needed.")
+            .toolRegistry(serviceToolRegistry)
+            .build();
+
+        GraphAIAgent<String, String> agent = service.createAgent("calculator-agent");
+
+        String result = runBlocking(continuation -> agent.run("Calculate 10 + 15", continuation));
+        assertNotNull(result);
+        assertFalse(result.isBlank());
+
+        service.closeAll();
+    }
+
+    @ParameterizedTest
+    @MethodSource("ai.koog.integration.tests.agent.AIAgentTestBase#getLatestModels")
+    public void integration_AIAgentServiceBuilderConfiguration(LLModel model) {
+        Models.assumeAvailable(model.getProvider());
+
+        GraphAIAgentService<String, String> service = AIAgentService.builder()
+            .promptExecutor(createExecutor(model))
+            .llmModel(model)
+            .temperature(0.7)
+            .maxIterations(5)
+            .build();
+
+        GraphAIAgent<String, String> agent = service.createAgent();
+
+        assertNotNull(agent);
+        assertEquals(0.7, service.getAgentConfig().getPrompt().getParams().getTemperature());
+        assertEquals(5, service.getAgentConfig().getMaxAgentIterations());
+
+        service.closeAll();
+    }
+
+    @ParameterizedTest
+    @MethodSource("ai.koog.integration.tests.agent.AIAgentTestBase#getLatestModels")
+    public void integration_BuilderWithCustomId(LLModel model) {
+        Models.assumeAvailable(model.getProvider());
+
+        GraphAIAgentService<String, String> service = AIAgentService.builder()
+            .promptExecutor(createExecutor(model))
+            .llmModel(model)
+            .systemPrompt("You are a helpful assistant.")
+            .build();
+
+        GraphAIAgent<String, String> agent = service.createAgent("custom-test-id");
+
+        assertNotNull(agent);
+        assertEquals("custom-test-id", agent.getId());
+
+        GraphAIAgent<String, String> retrievedAgent = service.agentById("custom-test-id");
+        assertNotNull(retrievedAgent);
+        assertEquals(agent, retrievedAgent);
+
+        service.closeAll();
+    }
+
+    @ParameterizedTest
+    @MethodSource("ai.koog.integration.tests.agent.AIAgentTestBase#getLatestModels")
+    public void integration_AIAgentServiceBuilderFunctionalStrategy(LLModel model) {
+        Models.assumeAvailable(model.getProvider());
+
+        var service = AIAgentService.builder()
+            .promptExecutor(createExecutor(model))
+            .llmModel(model)
+            .systemPrompt("You are a helpful assistant.")
+            .functionalStrategy((context, input) -> {
+                String inputStr = (input instanceof String) ? (String) input : String.valueOf(input);
+                Message.Response response = JavaInteropUtils.requestLLM(context, inputStr, true);
+                if (response instanceof Message.Assistant) {
+                    return JavaInteropUtils.getAssistantContent((Message.Assistant) response);
+                }
+                return "Unexpected response type";
+            })
+            .build();
+
+        var agent = service.createAgent("functional-agent");
+
+        String result = runBlocking(continuation -> agent.run("Say hello", continuation));
+
+        assertNotNull(result);
+        assertFalse(result.isEmpty());
+        assertTrue(result.toLowerCase().contains("hello"));
+
+        service.closeAll();
+    }
+}
