@@ -5,7 +5,7 @@ import ai.koog.protocol.agent.FlowAgentConfig
 import ai.koog.protocol.agent.FlowAgentInput
 import ai.koog.protocol.agent.FlowAgentPrompt
 import ai.koog.protocol.agent.FlowAgentRuntimeKind
-import ai.koog.protocol.agent.koog.KoogFlowAgent
+import ai.koog.protocol.agent.KoogFlowAgent
 import ai.koog.protocol.flow.FlowConfig
 import ai.koog.protocol.model.FlowAgentModel
 import ai.koog.protocol.model.FlowModel
