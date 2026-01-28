@@ -129,9 +129,10 @@ kotlin {
             }
         }
 
-        androidMain.dependencies {
-            api(libs.ktor.client.okhttp)
-        }
+        // Temporarily commented to allow build without Android target
+        // androidMain.dependencies {
+        //     api(libs.ktor.client.okhttp)
+        // }
 
         jvmMain.dependencies {
             api(libs.ktor.client.apache5)

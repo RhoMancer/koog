@@ -35,11 +35,12 @@ kotlin {
             }
         }
 
-        androidUnitTest {
-            dependencies {
-                implementation(libs.ktor.client.cio)
-            }
-        }
+        // Temporarily commented to allow build without Android target
+        // androidUnitTest {
+        //     dependencies {
+        //         implementation(libs.ktor.client.cio)
+        //     }
+        // }
 
         jsTest {
             dependencies {

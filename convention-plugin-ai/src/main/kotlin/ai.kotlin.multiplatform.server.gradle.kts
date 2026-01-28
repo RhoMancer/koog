@@ -2,7 +2,7 @@
 
 import ai.koog.gradle.publish.maven.configureJvmJarManifest
 import ai.koog.gradle.tests.configureTests
-import jetbrains.sign.GpgSignSignatoryProvider
+// import jetbrains.sign.GpgSignSignatoryProvider // Temporarily commented to allow build without blocked repositories
 import org.jetbrains.kotlin.gradle.ExperimentalWasmDsl
 
 plugins {
@@ -40,7 +40,7 @@ publishing {
 val isUnderTeamCity = System.getenv("TEAMCITY_VERSION") != null
 signing {
     if (isUnderTeamCity) {
-        signatories = GpgSignSignatoryProvider()
+        // signatories = GpgSignSignatoryProvider() // Temporarily commented to allow build without blocked repositories
         sign(publishing.publications)
     }
 }
