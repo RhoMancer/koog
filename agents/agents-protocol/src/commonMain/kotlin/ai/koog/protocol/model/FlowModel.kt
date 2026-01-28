@@ -1,16 +1,12 @@
-package ai.koog.model
+package ai.koog.protocol.model
 
-import ai.koog._initial.flow.TransitionCondition
-import ai.koog._initial.model.FlowAgentModel
-import ai.koog._initial.tools.FlowTool
 import kotlinx.serialization.Serializable
-
 
 /**
  * Top level model for flow configuration deserialization.
  */
 @Serializable
-public data class FlowConfigModel(
+public data class FlowModel(
     val id: String,
     val version: String,
     val agents: List<FlowAgentModel> = emptyList(),

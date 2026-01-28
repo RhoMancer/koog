@@ -1,8 +1,12 @@
-package ai.koog.flow.koog
+package ai.koog._initial.flow.koog
 
-import ai.koog.agent.FlowAgent
-import ai.koog.agent.FlowAgentKind
-import ai.koog.agent.koog.PromptExecutorFactory
+import ai.koog._initial.agent.FlowAgent
+import ai.koog._initial.agent.FlowAgentKind
+import ai.koog._initial.agent.koog.PromptExecutorFactory
+import ai.koog._initial.flow.ConditionOperationKind
+import ai.koog._initial.flow.TransitionCondition
+import ai.koog._initial.model.Transition
+import ai.koog._initial.tools.FlowTool
 import ai.koog.agents.core.agent.context.DetachedPromptExecutorAPI
 import ai.koog.agents.core.agent.entity.AIAgentGraphStrategy
 import ai.koog.agents.core.agent.entity.AIAgentSubgraph.Companion.FINISH_NODE_PREFIX
@@ -11,10 +15,6 @@ import ai.koog.agents.core.dsl.builder.AIAgentNodeDelegate
 import ai.koog.agents.core.dsl.builder.AIAgentSubgraphBuilderBase
 import ai.koog.agents.core.dsl.builder.forwardTo
 import ai.koog.agents.core.dsl.builder.strategy
-import ai.koog.flow.ConditionOperationKind
-import ai.koog.flow.TransitionCondition
-import ai.koog.model.Transition
-import ai.koog.tools.FlowTool
 import io.github.oshai.kotlinlogging.KotlinLogging
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.booleanOrNull

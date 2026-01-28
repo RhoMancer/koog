@@ -7,11 +7,11 @@ import ai.koog._initial.tools.FlowTool
 /**
  * Simple flow implementation that executes agents following transitions.
  *
- * @deprecated Use [ai.koog.flow.koog.KoogFlow] instead for proper strategy-based execution.
+ * @deprecated Use [ai.koog._initial.flow.koog.KoogFlow] instead for proper strategy-based execution.
  */
 @Deprecated(
     message = "Use KoogFlow for proper strategy-based execution",
-    replaceWith = ReplaceWith("KoogFlow", "ai.koog.flow.koog.KoogFlow")
+    replaceWith = ReplaceWith("KoogFlow", "ai.koog._initial.flow.koog.KoogFlow")
 )
 public data class SimpleFlow(
     override val id: String,

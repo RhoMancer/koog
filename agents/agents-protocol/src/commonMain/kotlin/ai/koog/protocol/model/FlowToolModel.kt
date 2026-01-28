@@ -1,5 +1,6 @@
-package ai.koog.model
+package ai.koog.protocol.model
 
+import ai.koog.protocol.tool.FlowTool
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -18,7 +19,34 @@ public data class FlowToolModel(
     public val name: String,
     public val type: FlowToolKind,
     public val parameters: FlowToolParameters
-)
+) {
+    /**
+     *
+     */
+    public fun toFlowTool(): FlowTool {
+        return when (type) {
+            FlowToolKind.MCP -> {
+                val transport = (parameters as FlowToolParameters.FlowMcpToolParameters).transport
+
+                when (transport) {
+                    FlowMcpToolTransportKind.STDIO -> {
+                        val parameters = parameters as FlowToolParameters.FlowToolStdioParameters
+                        FlowTool.Mcp.Stdio(parameters.command, parameters.args)
+                    }
+
+                    FlowMcpToolTransportKind.SSE -> {
+                        val parameters = parameters as FlowToolParameters.FlowToolSSEParameters
+                        FlowTool.Mcp.SSE(parameters.url, parameters.headers)
+                    }
+                }
+            }
+            FlowToolKind.LOCAL -> {
+                val parameters = parameters as FlowToolParameters.FlowLocalToolParameters
+                FlowTool.Local(parameters.path)
+            }
+        }
+    }
+}
 
 /**
  *
@@ -65,7 +93,7 @@ public sealed interface FlowToolParameters {
      *
      */
     @Serializable
-    public data class FlowToolStdioParametersModel(
+    public data class FlowToolStdioParameters(
         val command: String,
         val args: List<String> = emptyList()
     ) : FlowMcpToolParameters {
@@ -108,8 +136,8 @@ internal object FlowToolModelSerializer : KSerializer<FlowToolModel> {
         val json = encoder.json
 
         val parametersJson = when (val params = value.parameters) {
-            is FlowToolParameters.FlowToolStdioParametersModel ->
-                json.encodeToJsonElement(FlowToolParameters.FlowToolStdioParametersModel.serializer(), params)
+            is FlowToolParameters.FlowToolStdioParameters ->
+                json.encodeToJsonElement(FlowToolParameters.FlowToolStdioParameters.serializer(), params)
             is FlowToolParameters.FlowToolSSEParameters ->
                 json.encodeToJsonElement(FlowToolParameters.FlowToolSSEParameters.serializer(), params)
             is FlowToolParameters.FlowLocalToolParameters ->
@@ -144,7 +172,7 @@ internal object FlowToolModelSerializer : KSerializer<FlowToolModel> {
                 )
                 when (transport) {
                     FlowMcpToolTransportKind.STDIO -> json.decodeFromJsonElement(
-                        FlowToolParameters.FlowToolStdioParametersModel.serializer(), parametersJson
+                        FlowToolParameters.FlowToolStdioParameters.serializer(), parametersJson
                     )
                     FlowMcpToolTransportKind.SSE -> json.decodeFromJsonElement(
                         FlowToolParameters.FlowToolSSEParameters.serializer(), parametersJson

@@ -1,16 +1,16 @@
-package ai.koog.flow.koog
+package ai.koog._initial.flow.koog
 
-import ai.koog.agent.FlowAgent
-import ai.koog.agent.koog.PromptExecutorFactory
+import ai.koog._initial.agent.FlowAgent
+import ai.koog._initial.agent.koog.PromptExecutorFactory
+import ai.koog._initial.flow.Flow
+import ai.koog._initial.model.Transition
+import ai.koog._initial.tools.FlowTool
 import ai.koog.agents.core.agent.AIAgent
 import ai.koog.agents.core.agent.entity.AIAgentGraphStrategy
 import ai.koog.agents.core.agent.entity.AIAgentSubgraph.Companion.FINISH_NODE_PREFIX
 import ai.koog.agents.core.agent.entity.AIAgentSubgraph.Companion.START_NODE_PREFIX
 import ai.koog.agents.core.tools.ToolRegistry
 import ai.koog.agents.features.eventHandler.feature.handleEvents
-import ai.koog.flow.Flow
-import ai.koog.model.Transition
-import ai.koog.tools.FlowTool
 
 /**
  *

@@ -21,12 +21,11 @@ kotlin {
             }
         }
 
-        // TODO wait until ACP SDK supports KMP
-        jvmMain {
+        jvmTest {
             dependencies {
-                api(libs.acp)
-                implementation(libs.ktor.client.cio)
-
+                implementation(libs.kotlinx.coroutines.test)
+                implementation(kotlin("test-junit5"))
+                implementation(project(":agents:agents-test"))
             }
         }
     }

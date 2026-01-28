@@ -1,0 +1,37 @@
+package ai.koog.protocol.agent
+
+/**
+ *
+ */
+public interface FlowAgent {
+
+    /**
+     * Agent identifier (maps to "name" in JSON).
+     */
+    public val name: String
+
+    /**
+     * Agent type (maps to "type" in JSON).
+     */
+    public val type: FlowAgentKind
+
+    /**
+     * Model identifier (e.g., "openai/gpt-4o").
+     */
+    public val model: String?
+
+    /**
+     * Agent prompt configuration.
+     */
+    public val prompt: FlowAgentPrompt?
+
+    /**
+     * Agent input configuration.
+     */
+    public val input: FlowAgentInput
+
+    /**
+     * Agent configuration.
+     */
+    public val config: FlowAgentConfig
+}

@@ -3,8 +3,8 @@ package ai.koog._initial.parser
 import ai.koog._initial.agent.FlowAgent
 import ai.koog._initial.agent.FlowAgentKind
 import ai.koog._initial.agent.koog.KoogTaskAgent
-import ai.koog._initial.agent.koog.KoogVerifyAgent
 import ai.koog._initial.agent.koog.KoogTransformAgent
+import ai.koog._initial.agent.koog.KoogVerifyAgent
 import ai.koog._initial.flow.FlowConfig
 import ai.koog._initial.model.FlowAgentInput
 import ai.koog._initial.model.FlowAgentModel
