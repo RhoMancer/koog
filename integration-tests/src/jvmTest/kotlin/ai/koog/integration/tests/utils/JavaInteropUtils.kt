@@ -200,4 +200,12 @@ object JavaInteropUtils {
             return createToolRegistry(this).tools.first { it.name == "multiply" }
         }
     }
+
+    class TransactionTools : ToolSet {
+        @ai.koog.agents.core.tools.annotations.Tool
+        @LLMDescription(description = "Gets the transaction ID for a given order number. You must call this tool to retrieve transaction IDs.")
+        fun getTransactionId(
+            @LLMDescription(description = "The order number") orderNumber: String
+        ): String = "TXN-$orderNumber-${System.currentTimeMillis()}"
+    }
 }

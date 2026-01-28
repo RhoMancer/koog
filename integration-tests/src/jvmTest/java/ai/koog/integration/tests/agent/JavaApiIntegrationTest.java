@@ -1,9 +1,6 @@
 package ai.koog.integration.tests.agent;
 
-import ai.koog.agents.core.agent.AIAgent;
-import ai.koog.agents.core.agent.AIAgentService;
-import ai.koog.agents.core.agent.GraphAIAgent;
-import ai.koog.agents.core.agent.GraphAIAgentService;
+import ai.koog.agents.core.agent.*;
 import ai.koog.agents.core.environment.ReceivedToolResult;
 import ai.koog.agents.core.tools.Tool;
 import ai.koog.agents.core.tools.ToolRegistry;
@@ -636,6 +633,114 @@ public class JavaApiIntegrationTest extends KoogJavaTestBase {
 
         assertNotNull(result);
         assertFalse(result.isEmpty());
+    }
+
+    @ParameterizedTest
+    @MethodSource("ai.koog.integration.tests.agent.AIAgentTestBase#getLatestModels")
+    public void integration_CustomPipelineFeature(LLModel model) {
+        Models.assumeAvailable(model.getProvider());
+
+        AtomicInteger llmInterceptCount = new AtomicInteger(0);
+        AtomicInteger toolInterceptCount = new AtomicInteger(0);
+        AtomicBoolean agentStarted = new AtomicBoolean(false);
+        AtomicBoolean agentCompleted = new AtomicBoolean(false);
+
+        JavaInteropUtils.TransactionTools transactionTools = new JavaInteropUtils.TransactionTools();
+        ToolRegistry toolRegistry = JavaInteropUtils.createToolRegistry(transactionTools);
+
+        AIAgent<String, String> agent = AIAgent.builder()
+            .promptExecutor(createExecutor(model))
+            .llmModel(model)
+            .systemPrompt("You are a helpful assistant. When asked for transaction IDs, you MUST ALWAYS call the getTransactionId tool. " +
+                "You do NOT know transaction IDs - you MUST call the tool to get them. NEVER make up transaction IDs. " +
+                "ALWAYS use the tool. NO EXCEPTIONS.")
+            .toolRegistry(toolRegistry)
+            .install(EventHandler.Feature, config -> {
+                config.onAgentStarting(context -> agentStarted.set(true));
+                config.onAgentCompleted(context -> agentCompleted.set(true));
+                config.onLLMCallStarting(context -> llmInterceptCount.incrementAndGet());
+                config.onToolCallStarting(context -> toolInterceptCount.incrementAndGet());
+            })
+            .build();
+
+        String result = runBlocking(continuation -> agent.run("What is the transaction ID for order number 12345? You must use the getTransactionId tool.", continuation));
+
+        assertNotNull(result);
+        assertTrue(agentStarted.get(), "Agent should have started");
+        assertTrue(agentCompleted.get(), "Agent should have completed");
+        assertTrue(llmInterceptCount.get() > 0, "LLM interceptor should have been called");
+    }
+
+    @ParameterizedTest
+    @MethodSource("ai.koog.integration.tests.agent.AIAgentTestBase#getLatestModels")
+    public void integration_GetAgentState(LLModel model) {
+        Models.assumeAvailable(model.getProvider());
+
+        AIAgent<String, String> agent = AIAgent.builder()
+            .promptExecutor(createExecutor(model))
+            .llmModel(model)
+            .systemPrompt("You are a helpful assistant.")
+            .build();
+
+        String result = runBlocking(continuation -> agent.run("Say hello", continuation));
+
+        assertNotNull(result);
+
+        var state = agent.getState();
+        assertNotNull(state);
+        assertInstanceOf(AIAgentState.Finished.class, state);
+        AIAgentState.Finished<String> finishedState = (AIAgentState.Finished<String>) state;
+        assertEquals(result, finishedState.getResult());
+    }
+
+    @ParameterizedTest
+    @MethodSource("ai.koog.integration.tests.agent.AIAgentTestBase#getLatestModels")
+    public void integration_GetAgentResult(LLModel model) {
+        Models.assumeAvailable(model.getProvider());
+
+        AIAgent<String, String> agent = AIAgent.builder()
+            .promptExecutor(createExecutor(model))
+            .llmModel(model)
+            .systemPrompt("You are a helpful assistant.")
+            .build();
+
+        String result = runBlocking(continuation -> agent.run("Say hello", continuation));
+
+        assertNotNull(result);
+
+        String agentResult = runBlocking(continuation -> agent.result(continuation));
+        assertNotNull(agentResult);
+        assertEquals(result, agentResult);
+    }
+
+    @ParameterizedTest
+    @MethodSource("ai.koog.integration.tests.agent.AIAgentTestBase#getLatestModels")
+    public void integration_AIAgentServiceBuilderFunctionalStrategy(LLModel model) {
+        Models.assumeAvailable(model.getProvider());
+
+        var service = AIAgentService.builder()
+            .promptExecutor(createExecutor(model))
+            .llmModel(model)
+            .systemPrompt("You are a helpful assistant.")
+            .functionalStrategy((context, input) -> {
+                String inputStr = (input instanceof String) ? (String) input : String.valueOf(input);
+                Message.Response response = JavaInteropUtils.requestLLM(context, inputStr, true);
+                if (response instanceof Message.Assistant) {
+                    return JavaInteropUtils.getAssistantContent((Message.Assistant) response);
+                }
+                return "Unexpected response type";
+            })
+            .build();
+
+        var agent = service.createAgent("functional-agent");
+
+        String result = runBlocking(continuation -> agent.run("Say hello", continuation));
+
+        assertNotNull(result);
+        assertFalse(result.isEmpty());
+        assertTrue(result.toLowerCase().contains("hello"));
+
+        service.closeAll();
     }
 
 }
