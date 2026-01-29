@@ -32,6 +32,8 @@ import ai.koog.agents.core.feature.handler.agent.AgentStartingHandler
 import ai.koog.agents.core.feature.handler.llm.LLMCallCompletedContext
 import ai.koog.agents.core.feature.handler.llm.LLMCallCompletedHandler
 import ai.koog.agents.core.feature.handler.llm.LLMCallEventHandler
+import ai.koog.agents.core.feature.handler.llm.LLMCallFailedContext
+import ai.koog.agents.core.feature.handler.llm.LLMCallFailedHandler
 import ai.koog.agents.core.feature.handler.llm.LLMCallStartingContext
 import ai.koog.agents.core.feature.handler.llm.LLMCallStartingHandler
 import ai.koog.agents.core.feature.handler.strategy.StrategyCompletedContext
@@ -288,6 +290,30 @@ public class AIAgentPipelineImpl(
     ) {
         val eventContext = LLMCallStartingContext(eventId, executionInfo, runId, prompt, model, tools, context)
         llmCallEventHandlers.values.forEach { handler -> handler.llmCallStartingHandler.handle(eventContext) }
+    }
+
+    public override suspend fun onLLMCallFailed(
+        eventId: String,
+        executionInfo: AgentExecutionInfo,
+        runId: String,
+        prompt: Prompt,
+        model: LLModel,
+        tools: List<ToolDescriptor>,
+        context: AIAgentContext,
+        error: Throwable
+    ) {
+        val eventContext =
+            LLMCallFailedContext(
+                eventId,
+                executionInfo,
+                runId,
+                prompt,
+                model,
+                tools,
+                context,
+                error
+            )
+        llmCallEventHandlers.values.forEach { handler -> handler.llmCallFailedHandler.handle(eventContext) }
     }
 
     public override suspend fun onLLMCallCompleted(
@@ -585,6 +611,17 @@ public class AIAgentPipelineImpl(
         val handler = llmCallEventHandlers.getOrPut(feature.key) { LLMCallEventHandler() }
 
         handler.llmCallCompletedHandler = LLMCallCompletedHandler(
+            function = createConditionalHandler(feature, handle)
+        )
+    }
+
+    public override fun interceptLLMCallFailed(
+        feature: AIAgentFeature<*, *>,
+        handle: suspend (eventContext: LLMCallFailedContext) -> Unit
+    ) {
+        val handler = llmCallEventHandlers.getOrPut(feature.key) { LLMCallEventHandler() }
+
+        handler.llmCallFailedHandler = LLMCallFailedHandler(
             function = createConditionalHandler(feature, handle)
         )
     }

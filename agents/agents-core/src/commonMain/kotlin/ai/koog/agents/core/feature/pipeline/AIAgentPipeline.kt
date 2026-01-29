@@ -20,6 +20,7 @@ import ai.koog.agents.core.feature.handler.agent.AgentEnvironmentTransformingCon
 import ai.koog.agents.core.feature.handler.agent.AgentExecutionFailedContext
 import ai.koog.agents.core.feature.handler.agent.AgentStartingContext
 import ai.koog.agents.core.feature.handler.llm.LLMCallCompletedContext
+import ai.koog.agents.core.feature.handler.llm.LLMCallFailedContext
 import ai.koog.agents.core.feature.handler.llm.LLMCallStartingContext
 import ai.koog.agents.core.feature.handler.strategy.StrategyCompletedContext
 import ai.koog.agents.core.feature.handler.strategy.StrategyStartingContext
@@ -287,6 +288,28 @@ public expect abstract class AIAgentPipeline(agentConfig: AIAgentConfig, clock: 
         responses: List<Message.Response>,
         moderationResponse: ModerationResult?,
         context: AIAgentContext
+    )
+
+    /**
+     * Notifies all registered LLM handlers after a language model call fails with an exception.
+     *
+     * @param eventId The unique identifier for the event group.
+     * @param executionInfo The execution information for the LLM call event
+     * @param runId Identifier for the current run.
+     * @param prompt The prompt that was sent to the language model
+     * @param model The language model instance that processed the request
+     * @param tools The list of tool descriptors that were available for the LLM call
+     * @param error The [Throwable] exception instance that was thrown during the call
+     */
+    public override suspend fun onLLMCallFailed(
+        eventId: String,
+        executionInfo: AgentExecutionInfo,
+        runId: String,
+        prompt: Prompt,
+        model: LLModel,
+        tools: List<ToolDescriptor>,
+        context: AIAgentContext,
+        error: Throwable
     )
 
     //endregion Trigger LLM Call Handlers
@@ -656,6 +679,18 @@ public expect abstract class AIAgentPipeline(agentConfig: AIAgentConfig, clock: 
     public override fun interceptLLMCallCompleted(
         feature: AIAgentFeature<*, *>,
         handle: suspend (eventContext: LLMCallCompletedContext) -> Unit
+    )
+
+    /**
+     * Intercepts failed calls to a Large Language Model (LLM) and provides a mechanism to handle such cases.
+     *
+     * @param feature The AI agent feature associated with the LLM call.
+     * @param handle A suspendable function to handle the event when an LLM call fails. The function receives an
+     *               instance of [LLMCallFailedContext] that contains contextual information about the failure.
+     */
+    public override fun interceptLLMCallFailed(
+        feature: AIAgentFeature<*, *>,
+        handle: suspend (eventContext: LLMCallFailedContext) -> Unit
     )
 
     /**

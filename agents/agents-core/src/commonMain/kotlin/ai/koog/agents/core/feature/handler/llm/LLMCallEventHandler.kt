@@ -29,6 +29,21 @@ public class LLMCallEventHandler {
      */
     public var llmCallCompletedHandler: LLMCallCompletedHandler =
         LLMCallCompletedHandler { _ -> }
+
+    /**
+     * A handler invoked when an error occurs during a call to a language model (LLM).
+     *
+     * This variable represents a custom implementation of the `LLMCallFailedHandler` functional interface,
+     * allowing post-processing or custom logic to be performed when an error occurs during LLM processing.
+     *
+     * The handler receives various pieces of information about the LLM call, including the original prompt,
+     * the tools used, the model invoked, the responses returned by the model, a unique run identifier, and
+     * the error that occurred.
+     *
+     * Customize this handler to implement specific behavior required when LLM processing fails.
+     */
+    public var llmCallFailedHandler: LLMCallFailedHandler =
+        LLMCallFailedHandler { _ -> }
 }
 
 /**
@@ -61,4 +76,19 @@ public fun interface LLMCallCompletedHandler {
      * @param eventContext The context for the event
      */
     public suspend fun handle(eventContext: LLMCallCompletedContext)
+}
+
+/**
+ * Represents a functional interface for handling operations or logic that should occur after a call
+ * to a large language model (LLM) was made and failed. The implementation of this interface provides a mechanism
+ * to perform custom logic or processing based on the provided inputs, such as the prompt, tools,
+ * model, and generated responses.
+ */
+public fun interface LLMCallFailedHandler {
+    /**
+     * Handles the post-processing of a prompt and its associated data after a language model call.
+     *
+     * @param eventContext The context for the event
+     */
+    public suspend fun handle(eventContext: LLMCallFailedContext)
 }

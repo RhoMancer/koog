@@ -10,6 +10,7 @@ import ai.koog.prompt.message.LLMChoice
 import ai.koog.prompt.message.Message
 import ai.koog.prompt.streaming.StreamFrame
 import io.github.oshai.kotlinlogging.KotlinLogging
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.onCompletion
@@ -41,22 +42,37 @@ public class ContextualPromptExecutor(
         logger.debug { "Executing LLM call (event id: $eventId, prompt: $prompt, tools: [${tools.joinToString { it.name }}])" }
         context.pipeline.onLLMCallStarting(eventId, context.executionInfo, context.runId, prompt, model, tools, context)
 
-        val responses = executor.execute(prompt, model, tools)
-
-        logger.trace { "Finished LLM call (event id: $eventId) with responses: [${responses.joinToString { "${it.role}: ${it.content}" }}]" }
-        context.pipeline.onLLMCallCompleted(
-            eventId,
-            context.executionInfo,
-            context.runId,
-            prompt,
-            model,
-            tools,
-            responses,
-            null,
-            context
-        )
-
-        return responses
+        return try {
+            val responses = executor.execute(prompt, model, tools)
+            logger.trace { "Finished LLM call (event id: $eventId) with responses: [${responses.joinToString { "${it.role}: ${it.content}" }}]" }
+            context.pipeline.onLLMCallCompleted(
+                eventId,
+                context.executionInfo,
+                context.runId,
+                prompt,
+                model,
+                tools,
+                responses,
+                null,
+                context
+            )
+            responses
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            logger.trace(e) { "Failed LLM call (event id: $eventId) with responses" }
+            context.pipeline.onLLMCallFailed(
+                eventId,
+                context.executionInfo,
+                context.runId,
+                prompt,
+                model,
+                tools,
+                context,
+                e
+            )
+            throw e
+        }
     }
 
     /**
