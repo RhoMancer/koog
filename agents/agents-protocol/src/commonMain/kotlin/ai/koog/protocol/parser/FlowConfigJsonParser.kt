@@ -9,8 +9,8 @@ import ai.koog.protocol.agent.KoogFlowAgent
 import ai.koog.protocol.flow.FlowConfig
 import ai.koog.protocol.model.FlowAgentModel
 import ai.koog.protocol.model.FlowModel
+import ai.koog.protocol.model.toFlowAgentInput
 import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.jsonPrimitive
 
 /**
  * Parser for JSON flow configuration files.
@@ -52,9 +52,8 @@ public class FlowJsonConfigParser : FlowConfigParser {
             type = type,
             model = model,
             prompt = prompt ?: FlowAgentPrompt(""),
-            input = FlowAgentInput(
-                task = input.jsonPrimitive.toString()
-            ),
+            input = input.toFlowAgentInput()
+                ?: error("Unable to parse input for agent '$name': $input"),
             config = config ?: FlowAgentConfig()
         )
     }
