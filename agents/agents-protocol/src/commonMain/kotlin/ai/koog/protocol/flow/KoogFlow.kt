@@ -3,7 +3,6 @@ package ai.koog.protocol.flow
 import ai.koog.agents.core.agent.GraphAIAgent
 import ai.koog.agents.core.agent.config.AIAgentConfig
 import ai.koog.agents.core.agent.entity.AIAgentGraphStrategy
-import ai.koog.agents.core.agent.singleRunStrategy
 import ai.koog.agents.core.tools.ToolRegistry
 import ai.koog.prompt.dsl.prompt
 import ai.koog.prompt.executor.llms.MultiLLMPromptExecutor
@@ -12,6 +11,7 @@ import ai.koog.prompt.llm.LLMCapability
 import ai.koog.prompt.llm.LLModel
 import ai.koog.prompt.llm.LLMProvider
 import ai.koog.protocol.agent.FlowAgent
+import ai.koog.protocol.agent.FlowAgentInput
 import ai.koog.protocol.tool.FlowTool
 import ai.koog.protocol.transition.FlowTransition
 import kotlin.reflect.typeOf
@@ -31,21 +31,15 @@ public class KoogFlow(
     /**
      *
      */
-    override suspend fun run(): String {
+    override suspend fun run(): FlowAgentInput {
         val agent = buildAgent()
-        val firstFlowAgent = getFirstAgent()
-        val input = firstFlowAgent?.input?.task
+        val firstFlowAgent = FlowUtil.getFirstAgent(agents, transitions)
+        val input = firstFlowAgent?.input ?: FlowAgentInput.String("")
 
-        return agent.run(input ?: "")
+        return agent.run(input)
     }
 
     //region Private Methods
-
-    private fun getFirstAgent(): FlowAgent? {
-        return transitions.firstOrNull()?.let { firstTransaction ->
-            agents.find { it.name == firstTransaction.from } ?: agents.firstOrNull()
-        } ?: agents.firstOrNull()
-    }
 
     private fun buildPromptExecutor(agents: List<FlowAgent>): PromptExecutor {
         // TODO: Read from all agents and collect a list of prompt executor clients
@@ -61,13 +55,17 @@ public class KoogFlow(
         return ToolRegistry.EMPTY
     }
 
-    private fun buildStrategy(agents: List<FlowAgent>, transitions: List<FlowTransition>): AIAgentGraphStrategy<String, String> {
-        // TODO: Return a strategy based on the agent type and a list of transitions.
-        //  We need to read prompt parameter and config from an FlowAgent and build nodes based on FlowAgent type,
-        //  for example, if FlowAgent agent has "task" type, it should be composed into a subgraphWithTask node.
-        //  System and User prompts should be read from the agent parameters.
-        return singleRunStrategy()
-    }
+    private fun buildStrategy(
+        agents: List<FlowAgent>,
+        transitions: List<FlowTransition>
+    ): AIAgentGraphStrategy<FlowAgentInput, FlowAgentInput> =
+        KoogStrategyFactory.buildStrategy(
+            id = "koog-flow-strategy-$id",
+            agents = agents,
+            transitions = transitions,
+            tools = tools,
+            defaultModel = defaultModel
+        )
 
     private fun buildModel(): LLModel {
         val modelString = defaultModel ?: "openai/gpt-4o"
@@ -99,13 +97,13 @@ public class KoogFlow(
         )
     }
 
-    private fun buildAgent(): GraphAIAgent<String, String> {
+    private fun buildAgent(): GraphAIAgent<FlowAgentInput, FlowAgentInput> {
         val promptExecutor = promptExecutor ?: buildPromptExecutor(agents)
         val toolRegistry = buildToolRegistry()
         val strategy = buildStrategy(agents, transitions)
         val model = buildModel()
 
-        val firstAgent = getFirstAgent()
+        val firstAgent = FlowUtil.getFirstAgent(agents, transitions)
         val agentPrompt = prompt(id = "koog-flow-${id}") {
             firstAgent?.prompt?.system?.let { systemPrompt ->
                 system(systemPrompt)
@@ -120,8 +118,8 @@ public class KoogFlow(
 
         return GraphAIAgent(
             id = "koog-flow-agent-${id}",
-            inputType = typeOf<String>(),
-            outputType = typeOf<String>(),
+            inputType = typeOf<FlowAgentInput>(),
+            outputType = typeOf<FlowAgentInput>(),
             promptExecutor = promptExecutor,
             agentConfig = agentConfig,
             strategy = strategy,

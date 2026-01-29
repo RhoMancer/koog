@@ -1,6 +1,7 @@
 package ai.koog.protocol.flow
 
 import ai.koog.protocol.agent.FlowAgent
+import ai.koog.protocol.agent.FlowAgentInput
 import ai.koog.protocol.tool.FlowTool
 import ai.koog.protocol.transition.FlowTransition
 
@@ -38,5 +39,5 @@ public interface Flow {
      *
      * @return The output from the final agent in the flow
      */
-    public suspend fun run(): String
+    public suspend fun run(): FlowAgentInput
 }
