@@ -258,7 +258,6 @@ public expect abstract class AIAgentPipeline(agentConfig: AIAgentConfig, clock: 
      * @param runId The unique identifier for this LLM call session
      * @param prompt The original prompt to be transformed
      * @param model The language model that will be used
-     * @param tools The list of tool descriptors available for the LLM call
      * @param context The AI agent context
      * @return The transformed prompt that will be sent to the language model
      */
@@ -268,7 +267,6 @@ public expect abstract class AIAgentPipeline(agentConfig: AIAgentConfig, clock: 
         runId: String,
         prompt: Prompt,
         model: LLModel,
-        tools: List<ToolDescriptor>,
         context: AIAgentContext
     ): Prompt
 

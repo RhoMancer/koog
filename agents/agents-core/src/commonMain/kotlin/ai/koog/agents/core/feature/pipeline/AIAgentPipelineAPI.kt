@@ -133,7 +133,6 @@ public interface AIAgentPipelineAPI {
         runId: String,
         prompt: Prompt,
         model: LLModel,
-        tools: List<ToolDescriptor>,
         context: AIAgentContext
     ): Prompt
 

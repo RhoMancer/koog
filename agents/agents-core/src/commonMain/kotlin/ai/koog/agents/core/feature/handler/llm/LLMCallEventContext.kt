@@ -28,7 +28,6 @@ public interface LLMCallEventContext : AgentLifecycleEventContext
  * @property prompt The prompt that will be transformed. This is the current state of the prompt
  *                  after any previous transformations.
  * @property model The language model instance that will be used for the call.
- * @property tools The list of tool descriptors available for the LLM call.
  * @property context The AI agent context providing access to agent state and configuration.
  */
 public data class LLMPromptTransformingContext(
@@ -37,7 +36,6 @@ public data class LLMPromptTransformingContext(
     val runId: String,
     val prompt: Prompt,
     val model: LLModel,
-    val tools: List<ToolDescriptor>,
     val context: AIAgentContext
 ) : LLMCallEventContext {
     override val eventType: AgentLifecycleEventType = AgentLifecycleEventType.LLMPromptTransforming

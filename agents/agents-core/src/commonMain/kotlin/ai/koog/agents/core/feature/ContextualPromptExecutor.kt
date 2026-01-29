@@ -45,7 +45,6 @@ public class ContextualPromptExecutor(
             context.runId,
             prompt,
             model,
-            tools,
             context
         )
 

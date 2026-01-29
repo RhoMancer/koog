@@ -285,10 +285,9 @@ public class AIAgentPipelineImpl(
         runId: String,
         prompt: Prompt,
         model: LLModel,
-        tools: List<ToolDescriptor>,
         context: AIAgentContext
     ): Prompt {
-        val eventContext = LLMPromptTransformingContext(eventId, executionInfo, runId, prompt, model, tools, context)
+        val eventContext = LLMPromptTransformingContext(eventId, executionInfo, runId, prompt, model, context)
         return llmCallEventHandlers.values.fold(prompt) { currentPrompt, handler ->
             handler.transformRequest(eventContext.copy(prompt = currentPrompt), currentPrompt)
         }
