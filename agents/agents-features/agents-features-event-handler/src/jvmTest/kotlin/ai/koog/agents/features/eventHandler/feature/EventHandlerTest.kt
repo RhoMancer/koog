@@ -1104,6 +1104,115 @@ class EventHandlerTest {
         assertTrue(chatMemory[1] is Message.Assistant)
     }
 
+
+    @Test
+    fun `test onLLMCallCompleted persists prompt transformed by onLLMPromptTransforming`() = runTest {
+        val agentId = "test-agent-id"
+
+        val promptId = "Test prompt Id"
+        val systemPrompt = "Test system message"
+        val userPrompt = "Test user message"
+        val assistantPrompt = "Test assistant response"
+        val temperature = 1.0
+        val model = OpenAIModels.Chat.GPT4o
+
+        val agentResult = "Done"
+        val testLLMResponse = "What is the weather today?"
+        val additionalContext = "RAG context: Weather forecast is sunny"
+
+        val strategyName = "persist-transformed-prompt-test"
+
+        // Use a custom node that doesn't use writeSession internally
+        val strategy = strategy<String, String>(strategyName) {
+            val llmCallNode by nodeLLMRequest("test LLM call")
+
+            edge(nodeStart forwardTo llmCallNode transformed { testLLMResponse })
+            edge(llmCallNode forwardTo nodeFinish transformed { agentResult })
+        }
+
+        // Track the prompts at different stages
+        var originalPromptMessageCount: Int? = null
+        var transformedPromptMessageCount: Int? = null
+        var llmCallStartingPromptMessageCount: Int? = null
+        var llmCallStartingPromptFirstMessage: Message? = null
+        var llmCallCompletedPromptMessageCount: Int? = null
+        var llmCallCompletedPromptFirstMessage: Message? = null
+        var persistedPromptMessageCount: Int? = null
+        var persistedPromptFirstMessage: Message? = null
+
+        val agent = createAgent(
+            agentId = agentId,
+            strategy = strategy,
+            promptId = promptId,
+            systemPrompt = systemPrompt,
+            userPrompt = userPrompt,
+            assistantPrompt = assistantPrompt,
+            temperature = temperature,
+            model = model,
+            toolRegistry = ToolRegistry { },
+            installFeatures = {
+                install(EventHandler) {
+                    // STEP 1: Transform the prompt (add RAG context)
+                    onLLMPromptTransforming { prompt ->
+                        originalPromptMessageCount = prompt.messages.size
+
+                        // Add RAG context as the first message
+                        val augmentedMessages = listOf<Message>(
+                            Message.System(additionalContext, RequestMetaInfo.Empty)
+                        ) + prompt.messages
+
+                        transformedPromptMessageCount = augmentedMessages.size
+                        prompt.copy(messages = augmentedMessages)
+                    }
+
+                    // STEP 2: Verify onLLMCallStarting receives the transformed prompt
+                    onLLMCallStarting { ctx ->
+                        llmCallStartingPromptMessageCount = ctx.prompt.messages.size
+                        llmCallStartingPromptFirstMessage = ctx.prompt.messages.firstOrNull()
+                    }
+
+                    // STEP 3: Verify onLLMCallCompleted receives the transformed prompt and persist it
+                    onLLMCallCompleted { ctx ->
+                        llmCallCompletedPromptMessageCount = ctx.prompt.messages.size
+                        llmCallCompletedPromptFirstMessage = ctx.prompt.messages.firstOrNull()
+
+                        // Persist the transformed prompt to the context
+                        ctx.context.llm.prompt = ctx.prompt
+
+                        // Verify the context's prompt was updated
+                        persistedPromptMessageCount = ctx.context.llm.prompt.messages.size
+                        persistedPromptFirstMessage = ctx.context.llm.prompt.messages.firstOrNull()
+                    }
+                }
+            }
+        )
+
+        agent.use { it.run(userPrompt) }
+
+        // Verify the original prompt had 4 messages (system + user + assistant from initial prompt + user from testLLMResponse)
+        assertEquals(4, originalPromptMessageCount)
+
+        // Verify the transformed prompt has 5 messages (added RAG context + original 4)
+        assertEquals(5, transformedPromptMessageCount)
+
+        // Verify onLLMCallStarting received the transformed prompt (5 messages)
+        assertEquals(5, llmCallStartingPromptMessageCount)
+        assertTrue(llmCallStartingPromptFirstMessage is Message.System)
+        assertEquals(additionalContext, (llmCallStartingPromptFirstMessage as Message.System).content)
+
+        // Verify onLLMCallCompleted received the transformed prompt (5 messages)
+        assertEquals(5, llmCallCompletedPromptMessageCount)
+        assertTrue(llmCallCompletedPromptFirstMessage is Message.System)
+        assertEquals(additionalContext, (llmCallCompletedPromptFirstMessage as Message.System).content)
+
+        // Verify the persisted prompt in context has the transformed prompt (5 messages)
+        assertEquals(5, persistedPromptMessageCount)
+
+        // Verify the first message in the persisted prompt is the RAG context
+        assertTrue(persistedPromptFirstMessage is Message.System)
+        assertEquals(additionalContext, (persistedPromptFirstMessage as Message.System).content)
+    }
+
     //region Private Methods
 
     private fun AIAgentSubgraphBuilderBase<*, *>.nodeException(name: String? = null): AIAgentNodeDelegate<String, Message.Response> =
