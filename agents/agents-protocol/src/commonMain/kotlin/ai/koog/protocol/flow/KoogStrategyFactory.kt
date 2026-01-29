@@ -212,15 +212,7 @@ public object KoogStrategyFactory {
         agent: FlowAgent
     ): AIAgentNodeDelegate<String, String> {
         return node(agent.name) { input ->
-            val transformations = agent.input.transformations
-            if (transformations.isNullOrEmpty()) {
-                agent.input.task ?: input
-            } else {
-                // Apply transformations: for now, return a description
-                transformations.joinToString("\n") { transformation ->
-                    "${transformation.input} -> ${transformation.to}"
-                }
-            }
+
         }
     }
 
