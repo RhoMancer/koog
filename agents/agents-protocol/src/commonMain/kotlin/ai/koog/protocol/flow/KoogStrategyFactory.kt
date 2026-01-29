@@ -1,6 +1,5 @@
 package ai.koog.protocol.flow
 
-import ai.koog._initial.agent.FlowAgentKind
 import ai.koog._initial.agent.koog.PromptExecutorFactory
 import ai.koog.agents.core.agent.context.DetachedPromptExecutorAPI
 import ai.koog.agents.core.agent.entity.AIAgentGraphStrategy
@@ -11,8 +10,10 @@ import ai.koog.agents.core.dsl.builder.AIAgentSubgraphBuilderBase
 import ai.koog.agents.core.dsl.builder.forwardTo
 import ai.koog.agents.core.dsl.builder.strategy
 import ai.koog.protocol.agent.FlowAgent
+import ai.koog.protocol.agent.FlowAgentKind
 import ai.koog.protocol.tool.FlowTool
 import ai.koog.protocol.transition.FlowTransition
+import ai.koog.protocol.transition.FlowTransitionCondition
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.booleanOrNull
 import kotlinx.serialization.json.doubleOrNull
@@ -46,7 +47,7 @@ public object KoogStrategyFactory {
         return strategy(id) {
             // Create nodes for each agent type
             val collectedNodes = agents.map { agent ->
-                val node by createAgentNode(agent, defaultModel)
+                val node by convertFlowAgentToKoogNode(agent, defaultModel)
                 node
             }
 
@@ -106,10 +107,10 @@ public object KoogStrategyFactory {
     //region Private Methods
 
     /**
-     * Creates a node delegate for a given agent based on its type.
+     * Converts a flow agent into Koog node delegate for a given flow agent type.
      */
-    private fun AIAgentSubgraphBuilderBase<*, *>.createAgentNode(
-        agent: ai.koog._initial.agent.FlowAgent,
+    private fun AIAgentSubgraphBuilderBase<*, *>.convertFlowAgentToKoogNode(
+        agent: FlowAgent,
         defaultModel: String?
     ): AIAgentNodeDelegate<String, String> {
         return when (agent.type) {
@@ -124,7 +125,7 @@ public object KoogStrategyFactory {
      * Creates a task node that performs LLM request with the agent's configuration.
      */
     private fun AIAgentSubgraphBuilderBase<*, *>.nodeTask(
-        agent: ai.koog._initial.agent.FlowAgent,
+        agent: FlowAgent,
         defaultModel: String?
     ): AIAgentNodeDelegate<String, String> {
         return node(agent.name) { input ->
@@ -164,13 +165,16 @@ public object KoogStrategyFactory {
     }
 
     /**
-     * Creates a verify node that checks/validates using LLM.
+     * Creates a node that checks/validates using LLM.
      */
     private fun AIAgentSubgraphBuilderBase<*, *>.nodeVerify(
-        agent: ai.koog._initial.agent.FlowAgent,
+        agent: FlowAgent,
         defaultModel: String?
     ): AIAgentNodeDelegate<String, String> {
-        val defaultVerifyPrompt = "You are a verification agent. Verify the task was completed correctly. Return 'PASS' if correct, or describe the issues if not."
+        val defaultVerifyPrompt =
+            "You are a verification agent. " +
+                "Verify the task was completed correctly. " +
+                "Return 'PASS' if correct, or describe the issues if not."
 
         return node(agent.name) { input ->
             // Switch to an agent-specific model if specified
@@ -205,7 +209,7 @@ public object KoogStrategyFactory {
      * Creates a transform node that applies transformations without LLM.
      */
     private fun AIAgentSubgraphBuilderBase<*, *>.nodeTransform(
-        agent: ai.koog._initial.agent.FlowAgent
+        agent: FlowAgent
     ): AIAgentNodeDelegate<String, String> {
         return node(agent.name) { input ->
             val transformations = agent.input.transformations
@@ -236,7 +240,7 @@ public object KoogStrategyFactory {
      * @param output The current agent output
      * @return true if the condition is satisfied
      */
-    private fun evaluateCondition(condition: TransitionCondition, output: String): Boolean {
+    private fun evaluateCondition(condition: FlowTransitionCondition, output: String): Boolean {
         // For now, we support simple string comparisons
         // TODO: Implement variable resolution (e.g., agent.verify.output.success)
         val actualValue = output
