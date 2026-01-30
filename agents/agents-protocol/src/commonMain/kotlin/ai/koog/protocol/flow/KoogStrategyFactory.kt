@@ -182,18 +182,67 @@ public object KoogStrategyFactory {
 
     /**
      * Creates a transform node that applies transformations without LLM.
-     * The transformation uses the agent's configured input as the target output type.
+     * The transformation converts input from one FlowAgentInput type to another based on defined rules.
      */
     private fun AIAgentSubgraphBuilderBase<*, *>.nodeTransform(
         agent: FlowAgent
     ): AIAgentSubgraphDelegate<FlowAgentInput, FlowAgentInput> {
         return subgraph(name = agent.name) {
-            val transform by node<FlowAgentInput, FlowAgentInput> {
-                // Use agent's configured input as the transformation target
-                agent.input
+            val transform by node<FlowAgentInput, FlowAgentInput> { runtimeInput ->
+                transformFlowAgentInput(runtimeInput, agent.input)
             }
 
             nodeStart then transform then nodeFinish
+        }
+    }
+
+    /**
+     * Transforms a FlowAgentInput based on the provided transformation configuration.
+     *
+     * @param runtimeInput The actual runtime input to transform
+     * @param transformationConfig The transformation configuration from agent.input
+     * @return Transformed input, or original input if no matching transformation found
+     */
+    private fun transformFlowAgentInput(
+        runtimeInput: FlowAgentInput,
+        transformationConfig: FlowAgentInput
+    ): FlowAgentInput {
+        // Extract transformations based on configuration type
+        val transformations: List<FlowAgentInput.InputTransformation> = when (transformationConfig) {
+            is FlowAgentInput.InputWithTransformations -> transformationConfig.transformations
+            is FlowAgentInput.InputTransformation -> listOf(transformationConfig)
+            else -> emptyList()
+        }
+
+        if (transformations.isEmpty()) {
+            return runtimeInput
+        }
+
+        // For now, apply the first transformation rule
+        // TODO: Support matching based on value reference path
+        val targetTypeName = transformations.first().to
+
+        // Apply type conversion based on target type name
+        return convertToTargetType(runtimeInput, targetTypeName)
+    }
+
+    /**
+     * Converts a FlowAgentInput to the target type specified by type name string.
+     */
+    private fun convertToTargetType(
+        input: FlowAgentInput,
+        targetTypeName: String
+    ): FlowAgentInput {
+        return when (targetTypeName.lowercase()) {
+            "string" -> convertToString(input)
+            "int", "integer" -> convertToInt(input)
+            "double", "float" -> convertToDouble(input)
+            "boolean", "bool" -> convertToBoolean(input)
+            "arraystrings", "array_strings", "string_array" -> convertToArrayStrings(input)
+            "arrayint", "array_int", "int_array" -> convertToArrayInt(input)
+            "arraydouble", "array_double", "double_array" -> convertToArrayDouble(input)
+            "arraybooleans", "array_booleans", "boolean_array" -> convertToArrayBooleans(input)
+            else -> input // Unsupported or same type
         }
     }
 

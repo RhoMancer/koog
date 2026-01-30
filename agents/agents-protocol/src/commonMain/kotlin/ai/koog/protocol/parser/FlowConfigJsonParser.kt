@@ -2,7 +2,6 @@ package ai.koog.protocol.parser
 
 import ai.koog.protocol.agent.FlowAgent
 import ai.koog.protocol.agent.FlowAgentConfig
-import ai.koog.protocol.agent.FlowAgentInput
 import ai.koog.protocol.agent.FlowAgentPrompt
 import ai.koog.protocol.agent.FlowAgentRuntimeKind
 import ai.koog.protocol.agent.KoogFlowAgent

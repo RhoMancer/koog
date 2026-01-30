@@ -8,6 +8,8 @@ import kotlinx.serialization.Serializable
 @Serializable
 public sealed interface FlowAgentInput {
 
+    //region Entities
+
     /**
      *
      */
@@ -31,6 +33,29 @@ public sealed interface FlowAgentInput {
      */
     @Serializable
     public data class InputBoolean(public val data: Boolean) : FlowAgentInput
+
+    /**
+     *
+     */
+    @Serializable
+    public data class InputCritiqueResult(
+        public val success: Boolean,
+        public val feedback: String,
+        public val input: FlowAgentInput
+    ) : FlowAgentInput
+
+    /**
+     *
+     */
+    @Serializable
+    public data class InputTransformation(
+        public val value: FlowAgentInput,
+        public val to: String
+    ) : FlowAgentInput
+
+    //endregion Entities
+
+    //region Arrays
 
     /**
      *
@@ -93,9 +118,16 @@ public sealed interface FlowAgentInput {
      *
      */
     @Serializable
-    public data class InputCritiqueResult(
-        public val success: Boolean,
-        public val feedback: String,
-        public val input: FlowAgentInput
-    ) : FlowAgentInput
+    public data class InputArrayTransformation(
+        public val data: Array<InputTransformation>,
+    ) : FlowAgentInput {
+        override fun equals(other: Any?): Boolean {
+            if (this === other) return true
+            if (other == null || this::class != other::class) return false
+            return data.contentEquals((other as InputArrayTransformation).data)
+        }
+        override fun hashCode(): Int = data.contentHashCode()
+    }
+
+    //endregion Arrays
 }
