@@ -182,16 +182,18 @@ public object KoogStrategyFactory {
 
     /**
      * Creates a transform node that applies transformations without LLM.
+     * The transformation uses the agent's configured input as the target output type.
      */
     private fun AIAgentSubgraphBuilderBase<*, *>.nodeTransform(
         agent: FlowAgent
     ): AIAgentSubgraphDelegate<FlowAgentInput, FlowAgentInput> {
-        return subgraph<FlowAgentInput, FlowAgentInput>(
-            name = agent.name,
-            toolSelectionStrategy = ToolSelectionStrategy.ALL,
-            llmModel = null
-        ) { input: FlowAgentInput ->
-            
+        return subgraph(name = agent.name) {
+            val transform by node<FlowAgentInput, FlowAgentInput> {
+                // Use agent's configured input as the transformation target
+                agent.input
+            }
+
+            nodeStart then transform then nodeFinish
         }
     }
 
