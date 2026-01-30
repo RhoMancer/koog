@@ -95,6 +95,7 @@ public sealed interface FlowAgentInput {
     @Serializable
     public data class InputCritiqueResult(
         public val success: Boolean,
-        public val feedback: String
+        public val feedback: String,
+        public val input: FlowAgentInput
     ) : FlowAgentInput
 }

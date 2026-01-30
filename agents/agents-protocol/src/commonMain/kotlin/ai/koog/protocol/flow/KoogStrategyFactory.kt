@@ -8,6 +8,7 @@ import ai.koog.agents.core.dsl.builder.AIAgentSubgraphBuilderBase
 import ai.koog.agents.core.dsl.builder.AIAgentSubgraphDelegate
 import ai.koog.agents.core.dsl.builder.forwardTo
 import ai.koog.agents.core.dsl.builder.strategy
+import ai.koog.agents.ext.agent.CriticResult
 import ai.koog.agents.ext.agent.subgraphWithTask
 import ai.koog.agents.ext.agent.subgraphWithVerification
 import ai.koog.prompt.llm.LLMCapability
@@ -153,19 +154,29 @@ public object KoogStrategyFactory {
     }
 
     /**
-     * Creates a node that checks/validates using LLM.
+     * Creates a node that checks/validates using LLM with structured verification output.
      */
     private fun AIAgentSubgraphBuilderBase<*, *>.nodeVerify(
         agent: FlowAgent,
         defaultModel: String?
     ): AIAgentSubgraphDelegate<FlowAgentInput, FlowAgentInput> {
-        return subgraphWithTask<FlowAgentInput, FlowAgentInput>(
-            name = agent.name,
+        val verifySubgraph by subgraphWithVerification<FlowAgentInput>(
             toolSelectionStrategy = ToolSelectionStrategy.ALL,
             llmModel = (agent.model ?: defaultModel)?.let { parseModel(it) }
         ) { input ->
-            buildTaskPrompt(agent, input) +
-                "\n\nProvide verification result indicating success/failure."
+            buildTaskPrompt(agent, input)
+        }
+
+        return subgraph(name = agent.name) {
+            val transformResult by node<CriticResult<FlowAgentInput>, FlowAgentInput> { result ->
+                FlowAgentInput.InputCritiqueResult(
+                    success = result.successful,
+                    feedback = result.feedback,
+                    input = result.input
+                )
+            }
+
+            nodeStart then verifySubgraph then transformResult then nodeFinish
         }
     }
 
@@ -175,12 +186,12 @@ public object KoogStrategyFactory {
     private fun AIAgentSubgraphBuilderBase<*, *>.nodeTransform(
         agent: FlowAgent
     ): AIAgentSubgraphDelegate<FlowAgentInput, FlowAgentInput> {
-        return subgraphWithTask<FlowAgentInput, FlowAgentInput>(
+        return subgraph<FlowAgentInput, FlowAgentInput>(
             name = agent.name,
             toolSelectionStrategy = ToolSelectionStrategy.ALL,
             llmModel = null
-        ) { input ->
-            buildTaskPrompt(agent, input)
+        ) { input: FlowAgentInput ->
+            
         }
     }
 
