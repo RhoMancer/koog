@@ -26,7 +26,7 @@ class FlowTest {
         }
         println("  Transitions: ${flowConfig.transitions.size}")
         flowConfig.transitions.forEach { transition ->
-            println("    - ${transition.from} -> ${transition.to}")
+            println("    - ${transition.transitionString}")
         }
 
         // Create a test executor that returns mock responses

@@ -1,24 +1,24 @@
 package ai.koog.protocol.flow
 
 import ai.koog.agents.core.agent.entity.AIAgentGraphStrategy
+import ai.koog.agents.core.agent.entity.AIAgentNodeBase
 import ai.koog.agents.core.agent.entity.AIAgentSubgraph.Companion.FINISH_NODE_PREFIX
 import ai.koog.agents.core.agent.entity.ToolSelectionStrategy
-import ai.koog.agents.core.dsl.builder.AIAgentGraphStrategyBuilder
 import ai.koog.agents.core.dsl.builder.AIAgentSubgraphBuilderBase
 import ai.koog.agents.core.dsl.builder.AIAgentSubgraphDelegate
 import ai.koog.agents.core.dsl.builder.forwardTo
 import ai.koog.agents.core.dsl.builder.strategy
 import ai.koog.agents.ext.agent.subgraphWithTask
+import ai.koog.agents.ext.agent.subgraphWithVerification
 import ai.koog.prompt.llm.LLMCapability
-import ai.koog.prompt.llm.LLModel
 import ai.koog.prompt.llm.LLMProvider
+import ai.koog.prompt.llm.LLModel
 import ai.koog.protocol.agent.FlowAgent
 import ai.koog.protocol.agent.FlowAgentInput
 import ai.koog.protocol.agent.FlowAgentKind
 import ai.koog.protocol.tool.FlowTool
 import ai.koog.protocol.transition.FlowTransition
 import ai.koog.protocol.transition.FlowTransitionCondition
-import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.booleanOrNull
 import kotlinx.serialization.json.doubleOrNull
 import kotlinx.serialization.json.intOrNull
@@ -56,67 +56,75 @@ public object KoogStrategyFactory {
                 node
             }
 
-            val firstAgentName = FlowUtil.getFirstAgent(agents, transitions)?.name
-                ?: error("Unexpected case. Fist agent name is not found." +
-                    "\nCollected agent names: ${agents.joinToString { " - ${it.name}" } }")
-
-            val firstNode = collectedNodes.find { node -> node.id == firstAgentName }
-                ?: error("First agent node not found in collected nodes." +
-                    "\nExpected agent name: $firstAgentName," +
-                    "\nActual node names: ${collectedNodes.joinToString("\n") { " - ${it.id}" } }")
+            val firstAgentName = FlowUtil.getFirstAgent(agents, transitions).name
+            val firstNode = collectedNodes.find { it.name == firstAgentName }
+                ?: error("First agent not found: $firstAgentName")
 
             // Edges
+            // Connect the koog system start node to the first flow node
             edge(nodeStart forwardTo firstNode)
 
-            // Process transitions and create edges
-            transitions.forEach { transition ->
-                val fromNode = collectedNodes.find { it.name == transition.from }
-                    ?: error("Failed to build edge. Node id not found: ${transition.from}")
+            // Process the rest of transitions and create edges
+            transitions.forEach { transition -> transitionToEdge(collectedNodes, transition) }
 
-                if (transition.to == FINISH_NODE_PREFIX) {
-                    // Edge to finish node
-                    val edgeBuilder = fromNode forwardTo nodeFinish
-                    if (transition.condition != null) {
-                        edge(edgeBuilder onCondition { output ->
-                            evaluateCondition(transition.condition, output)
-                        })
-                    } else {
-                        edge(edgeBuilder)
-                    }
-                } else {
-                    // Edge to another agent
-                    val toNode = collectedNodes.find { it.name == transition.to }
-                        ?: error("Agent not found: ${transition.to}")
-
-                    val edgeBuilder = fromNode forwardTo toNode
-                    if (transition.condition != null) {
-                        edge(edgeBuilder onCondition { output ->
-                            evaluateCondition(transition.condition, output)
-                        })
-                    } else {
-                        edge(edgeBuilder)
-                    }
-                }
-            }
-
-            // For agents without outgoing transitions, connect them to finish
+            // Connect all agents without outgoing transitions to finish
             val agentsWithOutgoingTransitions = transitions.map { it.from }.toSet()
             val nodesWithoutFinish = collectedNodes.filter { node ->
                 node.name !in agentsWithOutgoingTransitions
             }
 
             nodesWithoutFinish.forEach { nodeWithoutFinish ->
-                edge(nodeWithoutFinish forwardTo nodeFinish)
+                connectNodeToFinish(nodeWithoutFinish, null)
             }
         }
     }
 
     //region Private Methods
 
+    private fun AIAgentSubgraphBuilderBase<FlowAgentInput, FlowAgentInput>.transitionToEdge(
+        collectedNodes: List<AIAgentNodeBase<FlowAgentInput, FlowAgentInput>>,
+        transition: FlowTransition,
+    ) {
+        val fromNode = collectedNodes.find { it.name == transition.from }
+            ?: error("Unable to find 'from' node for transition '${transition.transitionString}': ${transition.from}")
+
+        if (transition.to == FINISH_NODE_PREFIX) {
+            connectNodeToFinish(fromNode, transition.condition)
+        } else {
+            val toNode = collectedNodes.find { it.name == transition.to }
+                ?: error("Unable to find 'to' node for transition '${transition.transitionString}': ${transition.to}")
+
+            connectNodes(fromNode, toNode, transition.condition)
+        }
+    }
+
+    private fun AIAgentSubgraphBuilderBase<FlowAgentInput, FlowAgentInput>.connectNodes(
+        fromNode: AIAgentNodeBase<FlowAgentInput, FlowAgentInput>,
+        toNode: AIAgentNodeBase<FlowAgentInput, FlowAgentInput>,
+        condition: FlowTransitionCondition?
+    ) {
+        if (condition == null) {
+            edge(fromNode forwardTo toNode)
+            return
+        }
+
+        edge(fromNode forwardTo toNode onCondition { output ->
+            evaluateCondition(condition, output)
+        })
+    }
+
+    /**
+     * Creates an edge from a node to the finish node, optionally with a condition.
+     */
+    private fun AIAgentSubgraphBuilderBase<FlowAgentInput, FlowAgentInput>.connectNodeToFinish(
+        fromNode: AIAgentNodeBase<FlowAgentInput, FlowAgentInput>,
+        condition: FlowTransitionCondition?
+    ) = connectNodes(fromNode, nodeFinish, condition)
+
     /**
      * Converts a flow agent into Koog node delegate for a given flow agent type.
      */
-    private fun AIAgentGraphStrategyBuilder<*, *>.convertFlowAgentToKoogNode(
+    private fun AIAgentSubgraphBuilderBase<*, *>.convertFlowAgentToKoogNode(
         agent: FlowAgent,
         defaultModel: String?
     ): AIAgentSubgraphDelegate<FlowAgentInput, FlowAgentInput> {
@@ -200,7 +208,7 @@ public object KoogStrategyFactory {
         }
 
         appendLine("Input:")
-        appendLine(input.toStringValue())
+        appendLine(input)
     }
 
     /**
@@ -245,22 +253,21 @@ public object KoogStrategyFactory {
     private fun evaluateCondition(condition: FlowTransitionCondition, output: FlowAgentInput): Boolean {
         // Extract value from output based on variable name
         val outputValue: Any = when (output) {
-            is FlowAgentInput.Boolean -> output.data
-            is FlowAgentInput.Int -> output.data
-            is FlowAgentInput.Double -> output.data
-            is FlowAgentInput.String -> output.data
-            is FlowAgentInput.CritiqueResult -> {
-                // For CritiqueResult, check the variable name
+            is FlowAgentInput.InputBoolean -> output.data
+            is FlowAgentInput.InputInt -> output.data
+            is FlowAgentInput.InputDouble -> output.data
+            is FlowAgentInput.InputString -> output.data
+            is FlowAgentInput.InputCritiqueResult -> {
                 when (condition.variable) {
                     "success" -> output.success
                     "feedback" -> output.feedback
-                    else -> output.toStringValue()
+                    else -> output
                 }
             }
-            is FlowAgentInput.ArrayBooleans,
-            is FlowAgentInput.ArrayDouble,
-            is FlowAgentInput.ArrayInt,
-            is FlowAgentInput.ArrayStrings -> output.toStringValue()
+            is FlowAgentInput.InputArrayBooleans,
+            is FlowAgentInput.InputArrayDouble,
+            is FlowAgentInput.InputArrayInt,
+            is FlowAgentInput.InputArrayStrings -> output
         }
 
         val conditionValue = when {

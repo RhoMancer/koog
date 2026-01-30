@@ -33,8 +33,8 @@ public class KoogFlow(
      */
     override suspend fun run(): FlowAgentInput {
         val agent = buildAgent()
-        val firstFlowAgent = FlowUtil.getFirstAgent(agents, transitions)
-        val input = firstFlowAgent?.input ?: FlowAgentInput.String("")
+        val input = FlowUtil.getFirstAgentOrNull(agents, transitions)?.input
+            ?: FlowAgentInput.InputString("")
 
         return agent.run(input)
     }
@@ -103,7 +103,7 @@ public class KoogFlow(
         val strategy = buildStrategy(agents, transitions)
         val model = buildModel()
 
-        val firstAgent = FlowUtil.getFirstAgent(agents, transitions)
+        val firstAgent = FlowUtil.getFirstAgentOrNull(agents, transitions)
         val agentPrompt = prompt(id = "koog-flow-${id}") {
             firstAgent?.prompt?.system?.let { systemPrompt ->
                 system(systemPrompt)
