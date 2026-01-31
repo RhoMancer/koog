@@ -31,8 +31,8 @@ public class JavaAIAgentAdvancedFeaturesIntegrationTest extends KoogJavaTestBase
         AtomicBoolean agentStarted = new AtomicBoolean(false);
         AtomicBoolean agentCompleted = new AtomicBoolean(false);
 
-        JavaInteropUtils.TransactionTools transactionTools = new JavaInteropUtils.TransactionTools();
-        ToolRegistry toolRegistry = JavaInteropUtils.createToolRegistry(transactionTools);
+        TransactionTools transactionTools = new TransactionTools();
+        ToolRegistry toolRegistry = ToolRegistry.builder().tools(transactionTools).build();
 
         AIAgent<String, String> agent = AIAgent.builder()
             .promptExecutor(createExecutor(model))
