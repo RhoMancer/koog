@@ -39,7 +39,6 @@ public object KoogStrategyFactory {
         tools: List<FlowTool>,
         defaultModel: String?
     ): AIAgentGraphStrategy<FlowAgentInput, FlowAgentInput> {
-
         // No agents
         if (agents.isEmpty()) {
             return createEmptyStrategy(id)
@@ -111,9 +110,9 @@ public object KoogStrategyFactory {
             return
         }
 
-        edge(fromNode forwardTo toNode onCondition { output ->
-            evaluateCondition(condition, output)
-        })
+        edge(
+            fromNode forwardTo toNode onCondition { output -> evaluateCondition(condition, output) }
+        )
     }
 
     /**

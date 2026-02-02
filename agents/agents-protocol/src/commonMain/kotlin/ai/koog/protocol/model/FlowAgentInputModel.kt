@@ -70,7 +70,7 @@ internal fun JsonObject.toInputObject(): FlowAgentInput {
         ?: error("Unable to create Flow Agent Input type from Json input: $this")
 }
 
-internal fun JsonObject.toInputCritiqueResult() : FlowAgentInput.InputCritiqueResult? {
+internal fun JsonObject.toInputCritiqueResult(): FlowAgentInput.InputCritiqueResult? {
     val success = this["success"]?.jsonPrimitive?.booleanOrNull ?: return null
     val feedback = this["feedback"]?.jsonPrimitive?.contentOrNull ?: return null
     val input = this["input"]?.toFlowAgentInput() ?: return null

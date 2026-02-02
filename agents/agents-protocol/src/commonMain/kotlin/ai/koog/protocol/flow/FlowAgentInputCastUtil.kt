@@ -189,7 +189,7 @@ public object FlowAgentInputCastUtil {
     }
 
     private fun convertToCritiqueResult(input: FlowAgentInput): FlowAgentInput.InputCritiqueResult {
-        return when(input) {
+        return when (input) {
             is FlowAgentInput.InputInt -> FlowAgentInput.InputCritiqueResult(input.data != 0, "", input)
             is FlowAgentInput.InputDouble -> FlowAgentInput.InputCritiqueResult(input.data != 0.0, "", input)
             is FlowAgentInput.InputBoolean -> FlowAgentInput.InputCritiqueResult(input.data, "", input)

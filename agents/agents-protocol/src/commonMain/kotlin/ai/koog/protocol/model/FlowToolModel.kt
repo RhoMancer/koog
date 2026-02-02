@@ -9,7 +9,13 @@ import kotlinx.serialization.descriptors.buildClassSerialDescriptor
 import kotlinx.serialization.descriptors.element
 import kotlinx.serialization.encoding.Decoder
 import kotlinx.serialization.encoding.Encoder
-import kotlinx.serialization.json.*
+import kotlinx.serialization.json.JsonDecoder
+import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonEncoder
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
 
 /**
  *
@@ -52,12 +58,17 @@ public data class FlowToolModel(
  *
  */
 @Serializable
-public enum class FlowToolKind(public val id: String) {
-    @SerialName("mcp")
-    MCP("mcp"),
+public sealed class FlowToolKind(public val id: String) {
 
-    @SerialName("local")
-    LOCAL("local")
+    /**
+     *
+     */
+    public data object MCP : FlowToolKind("mcp")
+
+    /**
+     *
+     */
+    public data object LOCAL : FlowToolKind("local")
 }
 
 /**
@@ -138,8 +149,10 @@ internal object FlowToolModelSerializer : KSerializer<FlowToolModel> {
         val parametersJson = when (val params = value.parameters) {
             is FlowToolParameters.FlowToolStdioParameters ->
                 json.encodeToJsonElement(FlowToolParameters.FlowToolStdioParameters.serializer(), params)
+
             is FlowToolParameters.FlowToolSSEParameters ->
                 json.encodeToJsonElement(FlowToolParameters.FlowToolSSEParameters.serializer(), params)
+
             is FlowToolParameters.FlowLocalToolParameters ->
                 json.encodeToJsonElement(FlowToolParameters.FlowLocalToolParameters.serializer(), params)
         }
@@ -149,6 +162,7 @@ internal object FlowToolModelSerializer : KSerializer<FlowToolModel> {
             put("type", json.encodeToJsonElement(FlowToolKind.serializer(), value.type))
             put("parameters", parametersJson)
         }
+
         encoder.encodeJsonElement(jsonObject)
     }
 
@@ -163,7 +177,8 @@ internal object FlowToolModelSerializer : KSerializer<FlowToolModel> {
 
         val parameters: FlowToolParameters = when (type) {
             FlowToolKind.LOCAL -> json.decodeFromJsonElement(
-                FlowToolParameters.FlowLocalToolParameters.serializer(), parametersJson
+                FlowToolParameters.FlowLocalToolParameters.serializer(),
+                parametersJson
             )
             FlowToolKind.MCP -> {
                 val transport = json.decodeFromJsonElement(
@@ -172,10 +187,12 @@ internal object FlowToolModelSerializer : KSerializer<FlowToolModel> {
                 )
                 when (transport) {
                     FlowMcpToolTransportKind.STDIO -> json.decodeFromJsonElement(
-                        FlowToolParameters.FlowToolStdioParameters.serializer(), parametersJson
+                        FlowToolParameters.FlowToolStdioParameters.serializer(),
+                        parametersJson
                     )
                     FlowMcpToolTransportKind.SSE -> json.decodeFromJsonElement(
-                        FlowToolParameters.FlowToolSSEParameters.serializer(), parametersJson
+                        FlowToolParameters.FlowToolSSEParameters.serializer(),
+                        parametersJson
                     )
                 }
             }

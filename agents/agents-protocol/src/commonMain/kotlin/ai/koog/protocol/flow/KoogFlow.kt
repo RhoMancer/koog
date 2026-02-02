@@ -9,8 +9,8 @@ import ai.koog.prompt.dsl.prompt
 import ai.koog.prompt.executor.llms.MultiLLMPromptExecutor
 import ai.koog.prompt.executor.model.PromptExecutor
 import ai.koog.prompt.llm.LLMCapability
-import ai.koog.prompt.llm.LLModel
 import ai.koog.prompt.llm.LLMProvider
+import ai.koog.prompt.llm.LLModel
 import ai.koog.protocol.agent.FlowAgent
 import ai.koog.protocol.agent.FlowAgentInput
 import ai.koog.protocol.tool.FlowTool
@@ -43,12 +43,23 @@ public class KoogFlow(
     //region Private Methods
 
     private fun buildPromptExecutor(agents: List<FlowAgent>): PromptExecutor {
-        // TODO: Read from all agents and collect a list of prompt executor clients
-        val promptExecutor = MultiLLMPromptExecutor(
+        // Collect unique providers from agents' model strings
+        val providers = agents.map { agent ->
+            agent.model.split("/", limit = 2).getOrNull(0)?.lowercase() ?: "openai"
+        }.distinct()
 
-        )
+        // Create LLM clients for each provider
+        val clients = providers.mapNotNull { provider ->
+            KoogPromptExecutorFactory.createClientForProvider(provider)?.let { client ->
+                KoogPromptExecutorFactory.resolveProvider(provider) to client
+            }
+        }.toMap()
 
-        return promptExecutor
+        require(clients.isNotEmpty()) {
+            "No LLM clients could be created. Ensure API keys are set for providers: ${providers.joinToString()}"
+        }
+
+        return MultiLLMPromptExecutor(clients)
     }
 
     private suspend fun buildToolRegistry(): ToolRegistry {
@@ -130,13 +141,13 @@ public class KoogFlow(
         val model = buildModel()
 
         val firstAgent = FlowUtil.getFirstAgentOrNull(agents, transitions)
-        val agentPrompt = prompt(id = "koog-flow-${id}") {
+        val agentPrompt = prompt(id = "koog-flow-$id") {
             firstAgent?.prompt?.system?.let { systemPrompt ->
                 system(systemPrompt)
             }
         }
 
-        // Calculate a reasonable default for maxAgentIterations based on number of agents
+        // Calculate a reasonable default for maxAgentIterations based on the number of agents
         // Each agent subgraph can use multiple iterations (setup, call, decide, tools, finalize, etc.)
         val defaultMaxIterations = (agents.size * 10).coerceAtLeast(50)
 
@@ -147,7 +158,7 @@ public class KoogFlow(
         )
 
         return GraphAIAgent(
-            id = "koog-flow-agent-${id}",
+            id = "koog-flow-agent-$id",
             inputType = typeOf<FlowAgentInput>(),
             outputType = typeOf<FlowAgentInput>(),
             promptExecutor = promptExecutor,

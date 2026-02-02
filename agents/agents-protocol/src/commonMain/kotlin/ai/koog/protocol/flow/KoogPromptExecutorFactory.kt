@@ -1,8 +1,16 @@
 package ai.koog.protocol.flow
 
+import ai.koog.prompt.executor.clients.LLMClient
+import ai.koog.prompt.executor.clients.anthropic.AnthropicLLMClient
+import ai.koog.prompt.executor.clients.deepseek.DeepSeekLLMClient
+import ai.koog.prompt.executor.clients.google.GoogleLLMClient
+import ai.koog.prompt.executor.clients.mistralai.MistralAILLMClient
+import ai.koog.prompt.executor.clients.openai.OpenAILLMClient
 import ai.koog.prompt.executor.clients.openai.OpenAIModels
+import ai.koog.prompt.executor.clients.openrouter.OpenRouterLLMClient
 import ai.koog.prompt.executor.llms.all.simpleOpenAIExecutor
 import ai.koog.prompt.executor.model.PromptExecutor
+import ai.koog.prompt.executor.ollama.client.OllamaClient
 import ai.koog.prompt.llm.LLMCapability
 import ai.koog.prompt.llm.LLMProvider
 import ai.koog.prompt.llm.LLModel
@@ -14,6 +22,12 @@ import ai.koog.utils.system.systemSecretsReader
 public object KoogPromptExecutorFactory {
 
     private const val OPENAI_API_KEY_ENV = "OPENAI_API_KEY"
+    private const val ANTHROPIC_API_KEY_ENV = "ANTHROPIC_API_KEY"
+    private const val GOOGLE_API_KEY_ENV = "GOOGLE_API_KEY"
+    private const val OPENROUTER_API_KEY_ENV = "OPENROUTER_API_KEY"
+    private const val DEEPSEEK_API_KEY_ENV = "DEEPSEEK_API_KEY"
+    private const val MISTRAL_API_KEY_ENV = "MISTRAL_API_KEY"
+    private const val OLLAMA_BASE_URL_ENV = "OLLAMA_BASE_URL"
 
     /**
      * Creates a PromptExecutor based on the model string (e.g., "openai/gpt-4o").
@@ -85,7 +99,7 @@ public object KoogPromptExecutorFactory {
         }
     }
 
-    private fun resolveProvider(provider: String): LLMProvider {
+    internal fun resolveProvider(provider: String): LLMProvider {
         return when (provider.lowercase()) {
             "openai" -> LLMProvider.OpenAI
             "anthropic" -> LLMProvider.Anthropic
@@ -98,6 +112,48 @@ public object KoogPromptExecutorFactory {
             "deepseek" -> LLMProvider.DeepSeek
             "mistralai" -> LLMProvider.MistralAI
             else -> LLMProvider.OpenAI
+        }
+    }
+
+    /**
+     * Creates an LLM client for the specified provider.
+     * Reads API keys from environment variables.
+     *
+     * @param provider Provider name (e.g., "openai", "anthropic", "google")
+     * @return LLMClient instance or null if the provider is not supported or API key is missing
+     */
+    public fun createClientForProvider(provider: String): LLMClient? {
+        val secrets = systemSecretsReader()
+        return when (provider.lowercase()) {
+            "openai" -> {
+                val apiKey = secrets.getSecret(OPENAI_API_KEY_ENV) ?: return null
+                OpenAILLMClient(apiKey)
+            }
+            "anthropic" -> {
+                val apiKey = secrets.getSecret(ANTHROPIC_API_KEY_ENV) ?: return null
+                AnthropicLLMClient(apiKey)
+            }
+            "google" -> {
+                val apiKey = secrets.getSecret(GOOGLE_API_KEY_ENV) ?: return null
+                GoogleLLMClient(apiKey)
+            }
+            "openrouter" -> {
+                val apiKey = secrets.getSecret(OPENROUTER_API_KEY_ENV) ?: return null
+                OpenRouterLLMClient(apiKey)
+            }
+            "deepseek" -> {
+                val apiKey = secrets.getSecret(DEEPSEEK_API_KEY_ENV) ?: return null
+                DeepSeekLLMClient(apiKey)
+            }
+            "mistralai" -> {
+                val apiKey = secrets.getSecret(MISTRAL_API_KEY_ENV) ?: return null
+                MistralAILLMClient(apiKey)
+            }
+            "ollama" -> {
+                val baseUrl = secrets.getSecret(OLLAMA_BASE_URL_ENV) ?: "http://localhost:11434"
+                OllamaClient(baseUrl)
+            }
+            else -> null
         }
     }
 }
