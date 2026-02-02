@@ -4,7 +4,6 @@ import kotlinx.serialization.Serializable
 
 /**
  * config:
- *      model: string,
  *      temperature: number
  *      max_iterations: number
  *      max_tokens: number
@@ -14,19 +13,10 @@ import kotlinx.serialization.Serializable
  */
 @Serializable
 public data class FlowAgentConfig(
-    val model: String? = null,
     val temperature: Double? = null,
     val maxIterations: Int? = null,
     val maxTokens: Int? = null,
     val topP: Double? = null,
     val toolChoice: ToolChoiceKind? = null,
     val speculation: String? = null
-) {
-    /**
-     *
-     */
-    public companion object {
-
-        private const val DEFAULT_MODEL = "openai/gpt-3.5-turbo"
-    }
-}
+)

@@ -13,11 +13,12 @@ import kotlinx.serialization.json.JsonElement
  * agent:
  *      name: string
  * 	    type: agent.type
+ * 	    model: string (optional, falls back to flow's defaultModel)
  * 	    provider: agent.provider
  * 	    config: agent.config
  * 	    runtime: agent.runtime
  * 	    prompt: agent.prompt
- * 	    input: agent.input
+ * 	    input: agent.input (task description for task/verify agents)
  * 	    output: agent.output
  * 	    features: [agent.feature]
  */
@@ -25,9 +26,8 @@ import kotlinx.serialization.json.JsonElement
 public data class FlowAgentModel(
     val name: String,
     val type: FlowAgentKind,
-    val model: String,
-    val input: JsonElement,
-    val parameters: JsonElement,
+    val input: String,
+    val model: String? = null,
     val runtime: FlowAgentRuntimeKind? = null,
     val config: FlowAgentConfig? = null,
     val prompt: FlowAgentPrompt? = null,

@@ -33,8 +33,8 @@ public class KoogFlow(
      */
     override suspend fun run(): FlowAgentInput {
         val agent = buildAgent()
-        val input = FlowUtil.getFirstAgentOrNull(agents, transitions)?.input
-            ?: FlowAgentInput.InputString("")
+        // Initial input is empty - the task description is in agent's parameters
+        val input = FlowAgentInput.InputString("")
 
         return agent.run(input)
     }
@@ -110,10 +110,14 @@ public class KoogFlow(
             }
         }
 
+        // Calculate a reasonable default for maxAgentIterations based on number of agents
+        // Each agent subgraph can use multiple iterations (setup, call, decide, tools, finalize, etc.)
+        val defaultMaxIterations = (agents.size * 10).coerceAtLeast(50)
+
         val agentConfig = AIAgentConfig(
             prompt = agentPrompt,
             model = model,
-            maxAgentIterations = firstAgent?.config?.maxIterations ?: 10
+            maxAgentIterations = firstAgent?.config?.maxIterations ?: defaultMaxIterations
         )
 
         return GraphAIAgent(

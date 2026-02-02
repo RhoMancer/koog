@@ -16,6 +16,11 @@ public interface FlowAgent {
     public val type: FlowAgentKind
 
     /**
+     * LLM model to use for this agent.
+     */
+    public val model: String
+
+    /**
      * Agent configuration.
      */
     public val config: FlowAgentConfig
@@ -26,12 +31,7 @@ public interface FlowAgent {
     public val prompt: FlowAgentPrompt?
 
     /**
-     * Agent input type.
-     */
-    public val input: FlowAgentInput
-
-    /**
-     *
+     * Agent-specific parameters.
      */
     public val parameters: FlowAgentParameters
 }

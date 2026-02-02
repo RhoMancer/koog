@@ -136,8 +136,8 @@ public object KoogStrategyFactory {
         defaultModel: String?
     ): AIAgentSubgraphDelegate<FlowAgentInput, FlowAgentInput> {
         return when (agent) {
-            is FlowTaskAgent -> nodeTask(agent, defaultModel)
-            is FlowVerifyAgent -> nodeVerify(agent, defaultModel)
+            is FlowTaskAgent -> nodeTask(agent)
+            is FlowVerifyAgent -> nodeVerify(agent)
             is FlowInputTransformAgent -> nodeTransform(agent)
             else -> error("Parallel agent type is not yet supported")
         }
@@ -149,13 +149,12 @@ public object KoogStrategyFactory {
      * Creates a task node that performs LLM request with the agent's configuration.
      */
     private fun AIAgentSubgraphBuilderBase<*, *>.nodeTask(
-        agent: FlowTaskAgent,
-        defaultModel: String?
+        agent: FlowTaskAgent
     ): AIAgentSubgraphDelegate<FlowAgentInput, FlowAgentInput> {
         return subgraphWithTask<FlowAgentInput, FlowAgentInput>(
             name = agent.name,
             toolSelectionStrategy = ToolSelectionStrategy.ALL,
-            llmModel = KoogPromptExecutorFactory.resolveModel(agent.config.model ?: defaultModel)
+            llmModel = KoogPromptExecutorFactory.resolveModel(agent.model)
         ) { input ->
             agent.parameters.task
         }
@@ -169,12 +168,11 @@ public object KoogStrategyFactory {
      * Creates a node that checks/validates using LLM with structured verification output.
      */
     private fun AIAgentSubgraphBuilderBase<*, *>.nodeVerify(
-        agent: FlowVerifyAgent,
-        defaultModel: String?
+        agent: FlowVerifyAgent
     ): AIAgentSubgraphDelegate<FlowAgentInput, FlowAgentInput> {
         val verifySubgraph by subgraphWithVerification<FlowAgentInput>(
             toolSelectionStrategy = ToolSelectionStrategy.ALL,
-            llmModel = KoogPromptExecutorFactory.resolveModel(agent.config.model ?: defaultModel),
+            llmModel = KoogPromptExecutorFactory.resolveModel(agent.model),
         ) { input ->
             agent.parameters.task
         }

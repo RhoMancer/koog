@@ -14,7 +14,6 @@ import ai.koog.protocol.agent.agents.verify.FlowVerifyAgentParameters
 import ai.koog.protocol.flow.FlowConfig
 import ai.koog.protocol.model.FlowAgentModel
 import ai.koog.protocol.model.FlowModel
-import ai.koog.protocol.model.toFlowAgentInput
 import kotlinx.serialization.json.Json
 
 /**
@@ -34,7 +33,10 @@ public class FlowJsonConfigParser : FlowConfigParser {
         return FlowConfig(
             id = model.id,
             version = model.version,
-            agents = model.agents.map { agentModel -> agentModel.toFlowAgent() },
+            defaultModel = model.defaultModel,
+            agents = model.agents.map { agentModel ->
+                agentModel.toFlowAgent(model.defaultModel)
+            },
             tools = model.tools.map { toolModel -> toolModel.toFlowTool() },
             transitions = model.transitions.map { transitionModel -> transitionModel.toFlowTransition() }
         )
@@ -42,60 +44,57 @@ public class FlowJsonConfigParser : FlowConfigParser {
 
     //region Private Methods
 
-    private fun FlowAgentModel.toFlowAgent(): FlowAgent {
+    private fun FlowAgentModel.toFlowAgent(defaultModel: String?): FlowAgent {
         return when (runtime) {
             FlowAgentRuntimeKind.KOOG,
-            null -> createKoogFlowAgent()
+            null -> createKoogFlowAgent(defaultModel)
 
             else -> error("Unknown runtime: $runtime")
         }
     }
 
-    private fun FlowAgentModel.createKoogFlowAgent(): FlowAgent {
-        val agentInput = input.toFlowAgentInput()
-            ?: error("Unable to parse input for agent '$name': $input")
+    private fun FlowAgentModel.createKoogFlowAgent(defaultModel: String?): FlowAgent {
+        // Resolve model: agent.model -> flow.defaultModel -> error
+        val resolvedModel = model ?: defaultModel
+            ?: error("Model must be specified either on agent '$name' or as flow's defaultModel")
+
         val agentConfig = config ?: FlowAgentConfig()
         val agentPrompt = prompt ?: FlowAgentPrompt("")
 
         return when (type) {
             FlowAgentKind.TASK -> {
-                val params = json.decodeFromJsonElement(
-                    FlowTaskAgentParameters.serializer(),
-                    parameters
-                )
+                // Derive parameters from input for task agents
+                val params = FlowTaskAgentParameters(task = input)
                 FlowTaskAgent(
                     name = name,
+                    model = resolvedModel,
                     config = agentConfig,
                     prompt = agentPrompt,
-                    input = agentInput,
                     parameters = params
                 )
             }
 
             FlowAgentKind.VERIFY -> {
-                val params = json.decodeFromJsonElement(
-                    FlowVerifyAgentParameters.serializer(),
-                    parameters
-                )
+                // Derive parameters from input for verify agents
+                val params = FlowVerifyAgentParameters(task = input)
                 FlowVerifyAgent(
                     name = name,
+                    model = resolvedModel,
                     config = agentConfig,
                     prompt = agentPrompt,
-                    input = agentInput,
                     parameters = params
                 )
             }
 
             FlowAgentKind.TRANSFORM -> {
-                val params = json.decodeFromJsonElement(
-                    FlowInputTransformParameters.serializer(),
-                    parameters
-                )
+                // Transform agents need explicit parameters (transformations list)
+                // For now, create empty transformations - this should be enhanced later
+                val params = FlowInputTransformParameters(transformations = emptyList())
                 FlowInputTransformAgent(
                     name = name,
+                    model = resolvedModel,
                     config = agentConfig,
                     prompt = agentPrompt,
-                    input = agentInput,
                     parameters = params
                 )
             }
