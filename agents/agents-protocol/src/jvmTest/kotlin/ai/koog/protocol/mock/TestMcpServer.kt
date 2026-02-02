@@ -82,6 +82,7 @@ internal class TestMcpServer(private val port: Int) {
         ) { request ->
             val name = request.arguments?.get("name")?.jsonPrimitive?.content
             val title = request.arguments?.get("title")?.jsonPrimitive?.content
+
             CallToolResult(
                 content = listOf(TextContent("Hello, ${if (title.isNullOrEmpty()) "" else "$title "}$name!"))
             )

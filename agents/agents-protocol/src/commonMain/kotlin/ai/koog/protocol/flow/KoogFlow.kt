@@ -116,6 +116,7 @@ public class KoogFlow(
             capabilities = listOf(
                 LLMCapability.Temperature,
                 LLMCapability.Tools,
+                LLMCapability.ToolChoice,
                 LLMCapability.Completion
             ),
             contextLength = 128_000

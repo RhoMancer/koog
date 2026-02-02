@@ -11,8 +11,10 @@ import ai.koog.protocol.flow.KoogFlow
 import ai.koog.protocol.mock.TestMcpServer
 import ai.koog.protocol.parser.FlowJsonConfigParser
 import io.github.oshai.kotlinlogging.KotlinLogging
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.test.runTest
+import kotlinx.coroutines.withContext
 import kotlinx.serialization.builtins.serializer
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.buildJsonObject
@@ -50,7 +52,6 @@ class FlowExecutionTest : FlowTestBase() {
             )
         ) {
             override suspend fun execute(args: JsonObject): String {
-                // This won't be called - the real MCP tool will be used
                 throw UnsupportedOperationException("Mock tool should not be executed directly")
             }
         }
@@ -100,21 +101,20 @@ class FlowExecutionTest : FlowTestBase() {
         val parser = FlowJsonConfigParser()
         val flowConfig = parser.parse(jsonContent)
 
+        val taskInput = "Use the greeting tool to greet the user named 'TestUser'"
+
         assertEquals(1, flowConfig.tools.size, "Check tools were parsed from JSON")
 
         // Finalized tool for mocking with FlowAgentInput type
         val finalizeTool = SubgraphWithTaskUtils.finishTool<FlowAgentInput>()
 
-        // Mock executor that:
-        // 1. First, tells the LLM to call the greeting MCP tool with name "TestUser"
-        // 2. After receiving the tool result (containing "Hello, TestUser!"), finalizes the task
         val testExecutor = getMockExecutor {
             // When asked to greet, call the greeting tool
             mockLLMToolCall(
                 greetingToolMock,
                 buildJsonObject { put("name", "TestUser") }
             ) onCondition { request ->
-                request.contains("greeting tool") && !request.contains("Hello, TestUser!")
+                request.contains(taskInput)
             }
 
             // After getting a tool result, finalize with the greeting
@@ -135,27 +135,27 @@ class FlowExecutionTest : FlowTestBase() {
             promptExecutor = testExecutor
         )
 
-        val result = withMcpServer(port = 3002) { _ ->
-            flow.run()
+        val result = withContext(Dispatchers.Default.limitedParallelism(1)) {
+            withMcpServer(port = 3002) { _ ->
+                flow.run()
+            }
         }
 
-        // Verify the result contains the greeting from the MCP tool
         assertIs<FlowAgentInput.InputString>(result)
         assertTrue(result.data.contains("Hello, TestUser!"), "Result should contain greeting: ${result.data}")
     }
 
     //region Private Methods
 
-    private suspend fun withMcpServer(port: Int, block: suspend (mcpServer: TestMcpServer) -> FlowAgentInput): FlowAgentInput? {
+    private suspend fun withMcpServer(port: Int, block: suspend (mcpServer: TestMcpServer) -> FlowAgentInput): FlowAgentInput {
         val mcpServer = TestMcpServer(port)
         try {
+            logger.info { "Starting MCP server on port $port" }
             mcpServer.start()
             delay(1.seconds)
             return block(mcpServer)
-        } catch (e: Exception) {
-            logger.error { "Error starting MCP server on port $port: ${e.message}" }
-            return null
         } finally {
+            logger.info { "Stopping MCP server" }
             mcpServer.stop()
         }
     }
