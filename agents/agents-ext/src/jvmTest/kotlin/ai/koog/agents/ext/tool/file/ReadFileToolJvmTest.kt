@@ -209,7 +209,7 @@ class ReadFileToolJvmTest {
         val f = createTestFile("empty.md", "")
         val result = readFile(f)
         val expected = """
-            ${"${f.toAbsolutePath().toString().norm()} (0 bytes, 1 line)"}
+            ${"${f.toAbsolutePath().toString().norm()} (0 bytes, 0 lines)"}
             Content:
             ```markdown
             ```
@@ -259,7 +259,7 @@ class ReadFileToolJvmTest {
         val f = createTestFile("Empty.kt", "")
         val result = readFile(f)
         val expected = """
-            ${"${f.toAbsolutePath().toString().norm()} (0 bytes, 1 line)"}
+            ${"${f.toAbsolutePath().toString().norm()} (0 bytes, 0 lines)"}
             Content:
             ```kotlin
             ```
