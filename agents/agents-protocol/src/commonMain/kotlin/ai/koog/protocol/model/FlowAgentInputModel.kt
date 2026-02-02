@@ -10,7 +10,6 @@ import kotlinx.serialization.json.booleanOrNull
 import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.doubleOrNull
 import kotlinx.serialization.json.intOrNull
-import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 
 /**
@@ -60,18 +59,14 @@ internal fun JsonArray.toInputArray(): FlowAgentInput {
         all { it.jsonPrimitive.doubleOrNull != null } -> {
             FlowAgentInput.InputArrayDouble(mapNotNull { it.jsonPrimitive.doubleOrNull }.toTypedArray())
         }
-        all { it.jsonObject.toInputTransformation() != null } -> {
-            FlowAgentInput.InputArrayTransformation(mapNotNull { it.jsonObject.toInputTransformation() }.toTypedArray())
-        }
         else -> {
             error("Expected an array of uniform primitive types, but got: <$this>")
         }
     }
 }
 
-internal fun JsonObject.toInputObject(): FlowAgentInput? {
+internal fun JsonObject.toInputObject(): FlowAgentInput {
     return this.toInputCritiqueResult()
-        ?: this.toInputTransformation()
         ?: error("Unable to create Flow Agent Input type from Json input: $this")
 }
 
@@ -81,11 +76,4 @@ internal fun JsonObject.toInputCritiqueResult() : FlowAgentInput.InputCritiqueRe
     val input = this["input"]?.toFlowAgentInput() ?: return null
 
     return FlowAgentInput.InputCritiqueResult(success, feedback, input)
-}
-
-internal fun JsonObject.toInputTransformation(): FlowAgentInput.InputTransformation? {
-    val transformationValue: FlowAgentInput = this["value"]?.jsonPrimitive?.toFlowAgentInput()  ?: return null
-    val transformationTo = this["to"]?.jsonPrimitive?.contentOrNull ?: return null
-
-    return FlowAgentInput.InputTransformation(transformationValue, transformationTo)
 }

@@ -27,6 +27,7 @@ public data class FlowAgentModel(
     val type: FlowAgentKind,
     val model: String,
     val input: JsonElement,
+    val parameters: JsonElement,
     val runtime: FlowAgentRuntimeKind? = null,
     val config: FlowAgentConfig? = null,
     val prompt: FlowAgentPrompt? = null,
