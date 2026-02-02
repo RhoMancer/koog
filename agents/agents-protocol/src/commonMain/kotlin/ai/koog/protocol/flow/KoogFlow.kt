@@ -4,6 +4,7 @@ import ai.koog.agents.core.agent.GraphAIAgent
 import ai.koog.agents.core.agent.config.AIAgentConfig
 import ai.koog.agents.core.agent.entity.AIAgentGraphStrategy
 import ai.koog.agents.core.tools.ToolRegistry
+import ai.koog.agents.mcp.McpToolRegistryProvider
 import ai.koog.prompt.dsl.prompt
 import ai.koog.prompt.executor.llms.MultiLLMPromptExecutor
 import ai.koog.prompt.executor.model.PromptExecutor
@@ -39,6 +40,14 @@ public class KoogFlow(
         return agent.run(input)
     }
 
+    /**
+     * Builds and returns the tool registry for testing purposes.
+     * This method connects to MCP servers and creates the registry with available tools.
+     */
+    public suspend fun buildToolRegistryForTest(): ToolRegistry {
+        return buildToolRegistry()
+    }
+
     //region Private Methods
 
     private fun buildPromptExecutor(agents: List<FlowAgent>): PromptExecutor {
@@ -50,9 +59,33 @@ public class KoogFlow(
         return promptExecutor
     }
 
-    private fun buildToolRegistry(): ToolRegistry {
-        // TODO: Update later parsing tools from config
-        return ToolRegistry.EMPTY
+    private suspend fun buildToolRegistry(): ToolRegistry {
+        if (tools.isEmpty()) {
+            return ToolRegistry.EMPTY
+        }
+
+        // Collect all MCP tool registries
+        val mcpToolRegistries: List<ToolRegistry> = tools.filterIsInstance<FlowTool.Mcp>().map { mcpTool ->
+            when (mcpTool) {
+                is FlowTool.Mcp.SSE -> {
+                    val transport = McpToolRegistryProvider.defaultSseTransport(mcpTool.url)
+                    McpToolRegistryProvider.fromTransport(transport)
+                }
+                is FlowTool.Mcp.Stdio -> {
+                    // Stdio transport requires platform-specific implementation (JVM only)
+                    // For now, we skip stdio tools in common code
+                    // The JVM-specific implementation should be provided via expect/actual
+                    ToolRegistry.EMPTY
+                }
+            }
+        }
+
+        // Merge all tool registries
+        return if (mcpToolRegistries.isEmpty()) {
+            ToolRegistry.EMPTY
+        } else {
+            mcpToolRegistries.reduce { acc, registry -> acc + registry }
+        }
     }
 
     private fun buildStrategy(
@@ -97,7 +130,7 @@ public class KoogFlow(
         )
     }
 
-    private fun buildAgent(): GraphAIAgent<FlowAgentInput, FlowAgentInput> {
+    private suspend fun buildAgent(): GraphAIAgent<FlowAgentInput, FlowAgentInput> {
         val promptExecutor = promptExecutor ?: buildPromptExecutor(agents)
         val toolRegistry = buildToolRegistry()
         val strategy = buildStrategy(agents, transitions)

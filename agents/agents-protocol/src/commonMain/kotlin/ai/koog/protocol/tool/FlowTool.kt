@@ -8,7 +8,7 @@ public sealed interface FlowTool {
     /**
      *
      */
-    public interface Mcp : FlowTool {
+    public sealed interface Mcp : FlowTool {
 
         /**
          *
