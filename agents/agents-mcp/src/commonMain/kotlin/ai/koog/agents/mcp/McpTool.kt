@@ -29,7 +29,7 @@ public class McpTool(
     argsSerializer = JsonObject.serializer(),
     resultSerializer = CallToolResult.serializer().nullable,
     descriptor = descriptor,
-    metaData = metaData
+    metadata = metaData
 ) {
 
     /**

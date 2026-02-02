@@ -46,7 +46,7 @@ class McpServerTest {
     @MethodSource("getModels")
     fun integration_testMcpServerWithSSETransport(model: LLModel) = runTest(timeout = 1.minutes) {
         val randomNumberTool = RandomNumberTool()
-        randomNumberTool.metaData shouldBe emptyMap()
+        randomNumberTool.metadata shouldBe emptyMap()
 
         val (server, connectors) = startSseMcpServer(
             factory = Netty,
@@ -66,7 +66,7 @@ class McpServerTest {
             }
 
             toolRegistry.tools.map { it.descriptor }.shouldContainExactly(randomNumberTool.descriptor)
-            toolRegistry.tools.forEach { it.metaData shouldContain (McpMetaDataKeys.ToolId to it.name) }
+            toolRegistry.tools.forEach { it.metadata shouldContain (McpMetaDataKeys.ToolId to it.name) }
 
             withContext(Dispatchers.Default.limitedParallelism(1)) {
                 withTimeout(40.seconds) {

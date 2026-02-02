@@ -34,6 +34,7 @@ import kotlin.time.Duration.Companion.seconds
  * Integration tests for MCP feature with OpenTelemetry tracing.
  */
 @Execution(ExecutionMode.SAME_THREAD)
+@OptIn(InternalAgentsApi::class)
 class McpOpenTelemetryIntegrationTest {
 
     private lateinit var server: Server
@@ -52,18 +53,16 @@ class McpOpenTelemetryIntegrationTest {
         }
     }
 
-    @OptIn(InternalAgentsApi::class)
     @Test
     fun `should create OpenTelemetry spans for MCP tool calls`() = runTestWithTimeout {
         runAgentWithMcpAndOtel({
             mockLLMToolCall(RandomNumberTool(), RandomNumberTool.Args(42)) onRequestEquals "test"
         }) { spans ->
             val mcpToolCall = spans.single { it.attributes.has("mcp.method.name") }
-            verifyCallToolSpan(mcpToolCall = mcpToolCall, port = McpServerPort, toolName = RandomNumberTool().name)
+            verifyMcpSpanAttributes(mcpToolCall = mcpToolCall, port = McpServerPort, toolName = RandomNumberTool().name)
         }
     }
 
-    @OptIn(InternalAgentsApi::class)
     @Test
     fun `should create OpenTelemetry spans for regular tool calls`() = runTestWithTimeout {
         runAgentWithMcpAndOtel({
@@ -77,7 +76,6 @@ class McpOpenTelemetryIntegrationTest {
         }
     }
 
-    @OptIn(InternalAgentsApi::class)
     @Test
     fun `should trace multiple MCP tool calls in OpenTelemetry`() = runTestWithTimeout {
         runAgentWithMcpAndOtel({
@@ -90,17 +88,16 @@ class McpOpenTelemetryIntegrationTest {
         }) { spans ->
             val mcpToolCall = spans.filter { it.attributes.has("mcp.method.name") }
             mcpToolCall.size shouldBe 2
-            mcpToolCall.forEach { span ->
-                verifyCallToolSpan(mcpToolCall = span, port = McpServerPort, toolName = RandomNumberTool().name)
-            }
         }
     }
 
-    private fun verifyCallToolSpan(mcpToolCall: SpanData, port: Int, toolName: String) {
+    private fun verifyMcpSpanAttributes(mcpToolCall: SpanData, port: Int, toolName: String) {
+        mcpToolCall.attributes[AttributeKey.stringKey("mcp.protocol.version")] shouldBe LATEST_PROTOCOL_VERSION
+        mcpToolCall.attributes[AttributeKey.stringKey("mcp.method.name")] shouldBe "tools/call"
         mcpToolCall.attributes[AttributeKey.stringKey("server.address")] shouldBe "http://localhost:$port"
         mcpToolCall.attributes[AttributeKey.longKey("server.port")] shouldBe port.toLong()
+        mcpToolCall.attributes[AttributeKey.stringKey("network.transport")] shouldBe "tcp"
         mcpToolCall.attributes[AttributeKey.stringKey("gen_ai.tool.name")] shouldBe toolName
-        mcpToolCall.attributes[AttributeKey.stringKey("mcp.protocol.version")] shouldBe LATEST_PROTOCOL_VERSION
     }
 
     private suspend fun runAgentWithMcpAndOtel(

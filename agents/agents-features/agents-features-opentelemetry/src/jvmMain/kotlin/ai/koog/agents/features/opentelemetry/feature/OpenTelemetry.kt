@@ -6,7 +6,6 @@ import ai.koog.agents.core.annotation.InternalAgentsApi
 import ai.koog.agents.core.feature.AIAgentGraphFeature
 import ai.koog.agents.core.feature.handler.tool.McpMetaDataKeys
 import ai.koog.agents.core.feature.handler.tool.ToolCallEventContext
-import ai.koog.agents.core.feature.handler.tool.ToolCallStartingContext
 import ai.koog.agents.core.feature.model.AIAgentError
 import ai.koog.agents.core.feature.pipeline.AIAgentGraphPipeline
 import ai.koog.agents.core.tools.ToolRegistry
@@ -27,21 +26,19 @@ import ai.koog.agents.features.opentelemetry.span.endCreateAgentSpan
 import ai.koog.agents.features.opentelemetry.span.endExecuteToolSpan
 import ai.koog.agents.features.opentelemetry.span.endInferenceSpan
 import ai.koog.agents.features.opentelemetry.span.endInvokeAgentSpan
-import ai.koog.agents.features.opentelemetry.span.endMcpClientSpan
 import ai.koog.agents.features.opentelemetry.span.endNodeExecuteSpan
 import ai.koog.agents.features.opentelemetry.span.endStrategySpan
 import ai.koog.agents.features.opentelemetry.span.endSubgraphExecuteSpan
+import ai.koog.agents.features.opentelemetry.span.enrichExecuteToolSpanWithMcpAttrs
 import ai.koog.agents.features.opentelemetry.span.startCreateAgentSpan
 import ai.koog.agents.features.opentelemetry.span.startExecuteToolSpan
 import ai.koog.agents.features.opentelemetry.span.startInferenceSpan
 import ai.koog.agents.features.opentelemetry.span.startInvokeAgentSpan
-import ai.koog.agents.features.opentelemetry.span.startMcpClientSpan
 import ai.koog.agents.features.opentelemetry.span.startNodeExecuteSpan
 import ai.koog.agents.features.opentelemetry.span.startStrategySpan
 import ai.koog.agents.features.opentelemetry.span.startSubgraphExecuteSpan
 import ai.koog.prompt.message.Message
 import io.github.oshai.kotlinlogging.KotlinLogging
-import io.opentelemetry.api.trace.Tracer
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import kotlin.reflect.KType
@@ -516,7 +513,14 @@ public class OpenTelemetry {
                             }
 
                             is Message.Tool.Call -> {
-                                add(ChoiceEvent(provider, message, arguments = message.contentJsonResult.getOrNull(), index = index))
+                                add(
+                                    ChoiceEvent(
+                                        provider,
+                                        message,
+                                        arguments = message.contentJsonResult.getOrNull(),
+                                        index = index
+                                    )
+                                )
                             }
                         }
                     }
@@ -565,20 +569,45 @@ public class OpenTelemetry {
             pipeline.interceptToolCallStarting(this) intercept@{ eventContext ->
                 logger.debug { "Execute OpenTelemetry tool call handler" }
 
-                val path = eventContext.withRunAndEventId()
+                val path = eventContext.executionInfo.appendRunId(eventContext.runId).appendId(eventContext.eventId)
                 val parentSpan = spanCollector.getParentSpanForEvent(
                     executionInfo = path,
                 ) ?: return@intercept
 
-                val toolCallSpan = startCallToolSpan(tracer, parentSpan, eventContext)
-                spanAdapter?.onBeforeSpanStarted(toolCallSpan)
-                spanCollector.collectSpan(toolCallSpan, path)
+                val executeToolSpan = startExecuteToolSpan(
+                    tracer = tracer,
+                    parentSpan = parentSpan,
+                    id = eventContext.eventId,
+                    toolName = eventContext.toolName,
+                    toolArgs = eventContext.toolArgs,
+                    toolDescription = eventContext.toolDescription,
+                    toolCallId = eventContext.toolCallId
+                )
+                val mcpToolMetaData = eventContext.context.llm.toolRegistry.getMcpToolMeta(eventContext.toolName)
+                if (mcpToolMetaData != null) {
+                    executeToolSpan.enrichExecuteToolSpanWithMcpAttrs(
+                        toolName = eventContext.toolName,
+                        sessionId = mcpToolMetaData[McpMetaDataKeys.McpSessionId],
+                        method = McpMethod.TOOLS_CALL,
+                        serverPort = mcpToolMetaData[McpMetaDataKeys.ServerPort]?.toIntOrNull(),
+                        serverAddress = mcpToolMetaData[McpMetaDataKeys.ServerUrl],
+                        mcpProtocolVersion = requireNotNull(mcpToolMetaData[McpMetaDataKeys.McpProtocolVersion]) {
+                            "MCP protocol version is required for MCP tool calls."
+                        },
+                        mcpTransportType = requireNotNull(mcpToolMetaData[McpMetaDataKeys.McpTransportType]) {
+                            "MCP transport type is required for MCP tool calls."
+                        },
+                    )
+                }
+
+                spanAdapter?.onBeforeSpanStarted(executeToolSpan)
+                spanCollector.collectSpan(executeToolSpan, path)
             }
 
             pipeline.interceptToolCallCompleted(this) intercept@{ eventContext ->
                 logger.debug { "Execute OpenTelemetry tool result handler" }
                 val toolResult = eventContext.toolResult ?: JsonObject(emptyMap())
-                endAndRemoveToolCallSpan(
+                endAndRemoveExecuteToolSpan(
                     toolResult = toolResult,
                     config = config,
                     spanAdapter = spanAdapter,
@@ -589,7 +618,7 @@ public class OpenTelemetry {
 
             pipeline.interceptToolCallFailed(this) intercept@{ eventContext ->
                 logger.debug { "Execute OpenTelemetry tool call failure handler" }
-                endAndRemoveToolCallSpan(
+                endAndRemoveExecuteToolSpan(
                     spanAdapter = spanAdapter,
                     spanCollector = spanCollector,
                     toolResult = JsonObject(emptyMap()),
@@ -601,7 +630,7 @@ public class OpenTelemetry {
 
             pipeline.interceptToolValidationFailed(this) intercept@{ eventContext ->
                 logger.debug { "Execute OpenTelemetry tool validation error handler" }
-                endAndRemoveToolCallSpan(
+                endAndRemoveExecuteToolSpan(
                     spanAdapter = spanAdapter,
                     spanCollector = spanCollector,
                     toolResult = null,
@@ -656,7 +685,7 @@ public class OpenTelemetry {
          *
          * @param runId The run identifier to be injected into the execution information hierarchy.
          *              Can be null for creating top level agent spans,
-         *              e.g., span wihh type [ai.koog.agents.features.opentelemetry.span.SpanType.CREATE_AGENT].
+         *              e.g., span with type [ai.koog.agents.features.opentelemetry.span.SpanType.CREATE_AGENT].
          * @return The updated [AgentExecutionInfo] object, reflecting the injected run ID where applicable.
          */
         internal fun appendRunId(executionInfo: AgentExecutionInfo, runId: String?): AgentExecutionInfo {
@@ -694,10 +723,6 @@ public class OpenTelemetry {
         private fun AgentExecutionInfo.appendId(id: String): AgentExecutionInfo =
             appendId(this, id)
 
-        private fun ToolCallEventContext.withRunAndEventId(): AgentExecutionInfo = executionInfo
-            .appendRunId(runId)
-            .appendId(eventId)
-
         /**
          * Ends all unfinished spans that match the given predicate.
          * If no predicate is provided, ends all spans.
@@ -724,48 +749,7 @@ public class OpenTelemetry {
             }
         }
 
-        @OptIn(InternalAgentsApi::class)
-        private fun startCallToolSpan(
-            tracer: Tracer,
-            parentSpan: GenAIAgentSpan,
-            eventContext: ToolCallStartingContext
-        ): GenAIAgentSpan {
-            val mcpToolMetaData = eventContext.context.llm.toolRegistry.getMcpToolMeta(eventContext.toolName)
-            return if (mcpToolMetaData != null) {
-                startMcpClientSpan(
-                    tracer = tracer,
-                    parentSpan = parentSpan,
-                    id = eventContext.eventId,
-                    toolName = eventContext.toolName,
-                    toolArgs = eventContext.toolArgs,
-                    toolDescription = eventContext.toolDescription,
-                    toolCallId = eventContext.toolCallId,
-                    sessionId = mcpToolMetaData[McpMetaDataKeys.McpSessionId],
-                    requestId = null,
-                    method = McpMethod.TOOLS_CALL,
-                    serverPort = mcpToolMetaData[McpMetaDataKeys.ServerPort]?.toIntOrNull(),
-                    serverAddress = mcpToolMetaData[McpMetaDataKeys.ServerUrl],
-                    mcpProtocolVersion = requireNotNull(mcpToolMetaData[McpMetaDataKeys.McpProtocolVersion]) {
-                        "MCP protocol version is required for MCP tool calls."
-                    },
-                    mcpTransportType = requireNotNull(mcpToolMetaData[McpMetaDataKeys.McpTransportType]) {
-                        "MCP transport type is required for MCP tool calls."
-                    },
-                )
-            } else {
-                startExecuteToolSpan(
-                    tracer = tracer,
-                    parentSpan = parentSpan,
-                    id = eventContext.eventId,
-                    toolName = eventContext.toolName,
-                    toolArgs = eventContext.toolArgs,
-                    toolDescription = eventContext.toolDescription,
-                    toolCallId = eventContext.toolCallId
-                )
-            }
-        }
-
-        private fun endAndRemoveToolCallSpan(
+        private fun endAndRemoveExecuteToolSpan(
             toolResult: JsonElement?,
             config: OpenTelemetryConfig,
             spanAdapter: SpanAdapter?,
@@ -773,59 +757,32 @@ public class OpenTelemetry {
             eventContext: ToolCallEventContext,
             error: AIAgentError? = null,
         ) {
-            val path = eventContext.withRunAndEventId()
-            val callToolSpan = spanCollector.getStartCallToolSpan(path, eventContext)
-                ?: return
+            val path = eventContext.executionInfo.appendRunId(eventContext.runId).appendId(eventContext.eventId)
+            val span = spanCollector.getStartedSpan(
+                executionInfo = path,
+                eventId = eventContext.eventId,
+                spanType = SpanType.EXECUTE_TOOL
+            ) ?: return
 
-            spanAdapter?.onBeforeSpanFinished(span = callToolSpan)
-            if (callToolSpan.type == SpanType.MCP) {
-                endMcpClientSpan(
-                    span = callToolSpan,
-                    error = error,
-                    rpcStatusCode = null,
-                    toolCallResult = toolResult,
-                    verbose = config.isVerbose
-                )
-            } else {
-                endExecuteToolSpan(
-                    span = callToolSpan,
-                    toolResult = toolResult,
-                    error = error,
-                    verbose = config.isVerbose
-                )
-            }
+            spanAdapter?.onBeforeSpanFinished(span = span)
+            endExecuteToolSpan(
+                span = span,
+                toolResult = toolResult,
+                error = error,
+                verbose = config.isVerbose
+            )
             spanCollector.removeSpan(
-                span = callToolSpan,
+                span = span,
                 path = path
             )
-        }
-
-        @OptIn(InternalAgentsApi::class)
-        private fun SpanCollector.getStartCallToolSpan(
-            patchedExecutionInfo: AgentExecutionInfo,
-            eventContext: ToolCallEventContext
-        ): GenAIAgentSpan? {
-            val mcpTool = eventContext.context.llm.toolRegistry.getMcpToolMeta(eventContext.toolName)
-            return when (mcpTool) {
-                null -> getStartedSpan(
-                    executionInfo = patchedExecutionInfo,
-                    eventId = eventContext.eventId,
-                    spanType = SpanType.EXECUTE_TOOL
-                )
-                else -> getStartedSpan(
-                    executionInfo = patchedExecutionInfo,
-                    eventId = eventContext.eventId,
-                    spanType = SpanType.MCP
-                )
-            }
         }
 
         @OptIn(InternalAgentsApi::class)
         private fun ToolRegistry.getMcpToolMeta(
             toolName: String,
         ): Map<String, String>? = tools.firstNotNullOfOrNull { tool ->
-            if (tool.name == toolName && McpMetaDataKeys.ToolId in tool.metaData) {
-                tool.metaData
+            if (tool.name == toolName && McpMetaDataKeys.ToolId in tool.metadata) {
+                tool.metadata
             } else {
                 null
             }

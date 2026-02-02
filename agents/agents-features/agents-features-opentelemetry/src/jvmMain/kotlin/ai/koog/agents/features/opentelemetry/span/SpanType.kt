@@ -8,5 +8,4 @@ internal enum class SpanType {
     SUBGRAPH,
     INFERENCE,
     EXECUTE_TOOL,
-    MCP,
 }

@@ -7,19 +7,40 @@ import ai.koog.agents.core.annotation.InternalAgentsApi
  */
 @InternalAgentsApi
 public object McpMetaDataKeys {
+    /**
+     * Required key to identify an MCP tool.
+     */
     public const val ToolId: String = "koog.mcp.tool.id"
-    // The URL where the server is accessible, if applicable (e.g., "http://localhost").
+
+    /**
+     * The URL where the server is accessible, if applicable (e.g., "http://localhost").
+     */
     public const val ServerUrl: String = "koog.mcp.server.url"
-    // The port number on which the server listens, if applicable.
+
+    /**
+     * The port number on which the server listens, if applicable.
+     */
     public const val ServerPort: String = "koog.mcp.server.port"
-    // Optional server-provided instructions or documentation for using its tools.
+
+    /**
+     * Optional server-provided instructions or documentation for using its tools.
+     */
     public const val Instructions: String = "koog.mcp.server.instructions"
-    // The MCP protocol version supported by this server connection.
+
+    /**
+     * The MCP protocol version supported by this server connection.
+     */
     public const val McpProtocolVersion: String = "koog.mcp.protocol.version"
-    // The transport protocol type used for this connection (e.g., pipe for stdio, tcp for HTTP).
+
+    /**
+     * The transport protocol type used for this connection (e.g., pipe for stdio, tcp for HTTP).
+     */
     public const val McpTransportType: String = "koog.mcp.transport.type"
-    // TODO: support [mcpSessionId] when it would be available in the sdk client
-    // Unique identifier for the current MCP session, if session management is enabled.
+
+    /**
+     * Unique identifier for the current MCP session, if session management is enabled.
+     * TODO: support [McpSessionId] when it would be available in the sdk client
+     */
     public const val McpSessionId: String = "koog.mcp.session.id"
 }
 
