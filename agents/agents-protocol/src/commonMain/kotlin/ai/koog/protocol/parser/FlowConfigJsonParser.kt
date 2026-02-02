@@ -64,24 +64,26 @@ public class FlowJsonConfigParser : FlowConfigParser {
         return when (type) {
             FlowAgentKind.TASK -> {
                 // Derive parameters from input for task agents
-                val params = FlowTaskAgentParameters(task = input)
+                val params = FlowTaskAgentParameters(toolNames = )
                 FlowTaskAgent(
                     name = name,
                     model = resolvedModel,
                     config = agentConfig,
                     prompt = agentPrompt,
+                    input = input,
                     parameters = params
                 )
             }
 
             FlowAgentKind.VERIFY -> {
                 // Derive parameters from input for verify agents
-                val params = FlowVerifyAgentParameters(task = input)
+                val params = FlowVerifyAgentParameters(toolNames = )
                 FlowVerifyAgent(
                     name = name,
                     model = resolvedModel,
                     config = agentConfig,
                     prompt = agentPrompt,
+                    input = input,
                     parameters = params
                 )
             }
@@ -89,12 +91,13 @@ public class FlowJsonConfigParser : FlowConfigParser {
             FlowAgentKind.TRANSFORM -> {
                 // Transform agents need explicit parameters (transformations list)
                 // For now, create empty transformations - this should be enhanced later
-                val params = FlowInputTransformParameters(transformations = emptyList())
+                val params = FlowInputTransformParameters(transformations = )
                 FlowInputTransformAgent(
                     name = name,
                     model = resolvedModel,
                     config = agentConfig,
                     prompt = agentPrompt,
+                    input = input,
                     parameters = params
                 )
             }

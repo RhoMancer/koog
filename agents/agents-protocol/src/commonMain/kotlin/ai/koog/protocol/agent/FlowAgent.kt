@@ -31,6 +31,11 @@ public interface FlowAgent {
     public val prompt: FlowAgentPrompt?
 
     /**
+     * Agent-specific input parameters.
+     */
+    public val input: FlowAgentInput
+
+    /**
      * Agent-specific parameters.
      */
     public val parameters: FlowAgentParameters

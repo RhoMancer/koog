@@ -6,11 +6,7 @@ import ai.koog.agents.core.agent.entity.AIAgentGraphStrategy
 import ai.koog.agents.core.tools.ToolRegistry
 import ai.koog.agents.mcp.McpToolRegistryProvider
 import ai.koog.prompt.dsl.prompt
-import ai.koog.prompt.executor.llms.MultiLLMPromptExecutor
 import ai.koog.prompt.executor.model.PromptExecutor
-import ai.koog.prompt.llm.LLMCapability
-import ai.koog.prompt.llm.LLMProvider
-import ai.koog.prompt.llm.LLModel
 import ai.koog.protocol.agent.FlowAgent
 import ai.koog.protocol.agent.FlowAgentInput
 import ai.koog.protocol.tool.FlowTool
@@ -26,7 +22,7 @@ public class KoogFlow(
     override val tools: List<FlowTool>,
     override val transitions: List<FlowTransition>,
     public val defaultModel: String? = null,
-    private val promptExecutor: PromptExecutor? = null
+    public val promptExecutor: PromptExecutor? = null
 ) : Flow {
 
     /**
@@ -34,20 +30,53 @@ public class KoogFlow(
      */
     override suspend fun run(): FlowAgentInput {
         val agent = buildAgent()
-        // Initial input is empty - the task description is in agent's parameters
-        val input = FlowAgentInput.InputString("")
-
+        val input: FlowAgentInput = FlowUtil.getFirstAgentOrNull(agents, transitions)?.input ?: ""
         return agent.run(input)
     }
 
     //region Private Methods
+
+    private suspend fun buildAgent(): GraphAIAgent<FlowAgentInput, FlowAgentInput> {
+        val promptExecutor = promptExecutor ?: buildPromptExecutor(agents)
+        val toolRegistry = buildToolRegistry()
+        val strategy = buildStrategy(agents, transitions, toolRegistry)
+        val model = buildModel()
+
+        val firstAgent = FlowUtil.getFirstAgentOrNull(agents, transitions)
+        val agentPrompt = prompt(id = "koog-flow-$id") {
+            firstAgent?.prompt?.system?.let { systemPrompt ->
+                system(systemPrompt)
+            }
+        }
+
+        // Calculate a reasonable default for maxAgentIterations based on the number of agents
+        // Each agent subgraph can use multiple iterations (setup, call, decide, tools, finalize, etc.)
+        val defaultMaxIterations = (agents.size * 10).coerceAtLeast(50)
+
+        val agentConfig = AIAgentConfig(
+            prompt = agentPrompt,
+            model = model,
+            maxAgentIterations = firstAgent?.config?.maxIterations ?: defaultMaxIterations
+        )
+
+        return GraphAIAgent(
+            id = "koog-flow-agent-$id",
+            inputType = typeOf<FlowAgentInput>(),
+            outputType = typeOf<FlowAgentInput>(),
+            promptExecutor = promptExecutor,
+            agentConfig = agentConfig,
+            strategy = strategy,
+            toolRegistry = toolRegistry
+        )
+    }
 
     private fun buildPromptExecutor(agents: List<FlowAgent>): PromptExecutor {
         val models = agents.map { agent -> agent.model }.distinct().map { modelName ->
             KoogPromptExecutorFactory.resolveModel(modelName, defaultModel)
         }
 
-        return MultiLLMPromptExecutor()
+        return KoogPromptExecutorFactory.buildFromModels(models)
+            ?: error("Unable to build PromptExecutor from provided models: $models")
     }
 
     private suspend fun buildToolRegistry(): ToolRegistry {
@@ -92,39 +121,11 @@ public class KoogFlow(
             defaultModel = defaultModel
         )
 
-    private suspend fun buildAgent(): GraphAIAgent<FlowAgentInput, FlowAgentInput> {
-        val promptExecutor = promptExecutor ?: buildPromptExecutor(agents)
-        val toolRegistry = buildToolRegistry()
-        val strategy = buildStrategy(agents, transitions, toolRegistry)
-        val model = buildModel()
-
-        val firstAgent = FlowUtil.getFirstAgentOrNull(agents, transitions)
-        val agentPrompt = prompt(id = "koog-flow-$id") {
-            firstAgent?.prompt?.system?.let { systemPrompt ->
-                system(systemPrompt)
-            }
-        }
-
-        // Calculate a reasonable default for maxAgentIterations based on the number of agents
-        // Each agent subgraph can use multiple iterations (setup, call, decide, tools, finalize, etc.)
-        val defaultMaxIterations = (agents.size * 10).coerceAtLeast(50)
-
-        val agentConfig = AIAgentConfig(
-            prompt = agentPrompt,
-            model = model,
-            maxAgentIterations = firstAgent?.config?.maxIterations ?: defaultMaxIterations
+    private fun buildModel() =
+        KoogPromptExecutorFactory.resolveModel(
+            modelString = defaultModel,
+            defaultModel = null
         )
-
-        return GraphAIAgent(
-            id = "koog-flow-agent-$id",
-            inputType = typeOf<FlowAgentInput>(),
-            outputType = typeOf<FlowAgentInput>(),
-            promptExecutor = promptExecutor,
-            agentConfig = agentConfig,
-            strategy = strategy,
-            toolRegistry = toolRegistry
-        )
-    }
 
     //endregion Private Methods
 }

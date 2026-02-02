@@ -1,7 +1,9 @@
 package ai.koog.protocol.model
 
 import ai.koog.protocol.agent.FlowAgentConfig
+import ai.koog.protocol.agent.FlowAgentInput
 import ai.koog.protocol.agent.FlowAgentKind
+import ai.koog.protocol.agent.FlowAgentParameters
 import ai.koog.protocol.agent.FlowAgentPrompt
 import ai.koog.protocol.agent.FlowAgentRuntimeKind
 import kotlinx.serialization.Serializable
@@ -23,11 +25,12 @@ import kotlinx.serialization.Serializable
 public data class FlowAgentModel(
     val name: String,
     val type: FlowAgentKind,
-    val input: String,
     val model: String? = null,
     val runtime: FlowAgentRuntimeKind? = null,
     val config: FlowAgentConfig? = null,
     val prompt: FlowAgentPrompt? = null,
+    val input: FlowAgentInput,
+    val params: FlowAgentParameters? = null,
     val output: FlowAgentOutputModel? = null,
 )
 
