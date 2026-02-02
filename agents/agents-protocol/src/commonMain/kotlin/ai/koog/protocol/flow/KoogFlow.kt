@@ -40,14 +40,6 @@ public class KoogFlow(
         return agent.run(input)
     }
 
-    /**
-     * Builds and returns the tool registry for testing purposes.
-     * This method connects to MCP servers and creates the registry with available tools.
-     */
-    public suspend fun buildToolRegistryForTest(): ToolRegistry {
-        return buildToolRegistry()
-    }
-
     //region Private Methods
 
     private fun buildPromptExecutor(agents: List<FlowAgent>): PromptExecutor {

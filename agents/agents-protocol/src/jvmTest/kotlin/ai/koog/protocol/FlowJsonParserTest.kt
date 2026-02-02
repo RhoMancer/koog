@@ -12,6 +12,7 @@ import kotlin.test.assertNotNull
 class FlowJsonParserTest : FlowTestBase() {
 
     //region Flow
+
     @Test
     fun testJsonParsing_randomNumbersFlowJson() {
         val jsonContent = readFlow("random_koog_agent_flow.json")
@@ -23,15 +24,17 @@ class FlowJsonParserTest : FlowTestBase() {
         assertEquals("random-numbers-flow", flowConfig.id)
         assertEquals("1.0", flowConfig.version)
         assertEquals("openai/gpt-4o", flowConfig.defaultModel)
-        assertEquals(2, flowConfig.agents.size)
-        assertEquals(1, flowConfig.transitions.size)
 
-        // Verify first agent (get_numbers) - uses defaultModel
+
+        // Verify agents
+        assertEquals(2, flowConfig.agents.size)
+
+        // get_numbers
         val getNumbersAgent = flowConfig.agents[0]
         assertIs<FlowTaskAgent>(getNumbersAgent)
         assertEquals("get_numbers", getNumbersAgent.name)
         assertEquals(FlowAgentKind.TASK, getNumbersAgent.type)
-        assertEquals("openai/gpt-4o", getNumbersAgent.model) // inherited from defaultModel
+        assertEquals("openai/gpt-4o", getNumbersAgent.model, "Expected to get a default model, but received ${getNumbersAgent.model}")
         assertNotNull(getNumbersAgent.parameters)
         assertEquals(
             "Generate two random numbers between 1 and 100. Output them with a space between them.",
@@ -43,7 +46,7 @@ class FlowJsonParserTest : FlowTestBase() {
         assertIs<FlowTaskAgent>(calculatorAgent)
         assertEquals("calculator", calculatorAgent.name)
         assertEquals(FlowAgentKind.TASK, calculatorAgent.type)
-        assertEquals("openai/gpt-4o-mini", calculatorAgent.model) // agent-specific model
+        assertEquals("openai/gpt-4o-mini", calculatorAgent.model, "Expected to get a custom model, but received ${calculatorAgent.model}")
         assertNotNull(calculatorAgent.parameters)
         assertEquals(
             "Your task is to sum all individual numbers in the input string. Numbers are separated by spaces.",
@@ -51,6 +54,8 @@ class FlowJsonParserTest : FlowTestBase() {
         )
 
         // Verify transition
+        assertEquals(1, flowConfig.transitions.size)
+
         val transition = flowConfig.transitions[0]
         assertEquals("get_numbers", transition.from)
         assertEquals("calculator", transition.to)
