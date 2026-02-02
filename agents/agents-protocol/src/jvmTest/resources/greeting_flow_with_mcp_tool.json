@@ -22,11 +22,5 @@
       },
       "input": "Use the greeting tool to greet the user named 'TestUser'."
     }
-  ],
-  "transitions": [
-    {
-      "from": "greeter",
-      "to": "__finish__"
-    }
   ]
 }

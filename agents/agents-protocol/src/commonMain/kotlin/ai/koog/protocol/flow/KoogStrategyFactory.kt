@@ -45,9 +45,9 @@ public object KoogStrategyFactory {
             return createEmptyStrategy(id)
         }
 
-        // No transitions
+        // No transitions - chain agents sequentially
         if (transitions.isEmpty()) {
-            return createEmptyStrategy(id)
+            return createSequentialStrategy(id, agents, defaultModel)
         }
 
         return strategy(id) {
@@ -247,6 +247,34 @@ public object KoogStrategyFactory {
     private fun createEmptyStrategy(id: String): AIAgentGraphStrategy<FlowAgentInput, FlowAgentInput> {
         return strategy(id) {
             edge(nodeStart forwardTo nodeFinish)
+        }
+    }
+
+    /**
+     * Creates a sequential strategy that chains all agents one after another.
+     * Agents are connected in order: start → agent1 → agent2 → ... → finish
+     */
+    private fun createSequentialStrategy(
+        id: String,
+        agents: List<FlowAgent>,
+        defaultModel: String?
+    ): AIAgentGraphStrategy<FlowAgentInput, FlowAgentInput> {
+        return strategy(id) {
+            val collectedNodes = agents.map { agent ->
+                val node by convertFlowAgentToKoogNode(agent, defaultModel)
+                node
+            }
+
+            // Chain: start → first agent
+            edge(nodeStart forwardTo collectedNodes.first())
+
+            // Chain agents sequentially: agent[i] → agent[i+1]
+            collectedNodes.zipWithNext { current, next ->
+                edge(current forwardTo next)
+            }
+
+            // Chain: last agent → finish
+            edge(collectedNodes.last() forwardTo nodeFinish)
         }
     }
 
