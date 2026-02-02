@@ -14,6 +14,10 @@ import ai.koog.agents.ext.agent.subgraphWithVerification
 import ai.koog.protocol.agent.FlowAgent
 import ai.koog.protocol.agent.FlowAgentInput
 import ai.koog.protocol.agent.FlowAgentKind
+import ai.koog.protocol.agent.agents.task.FlowTaskAgent
+import ai.koog.protocol.agent.agents.transform.FlowInputTransformAgent
+import ai.koog.protocol.agent.agents.transform.FlowInputTransformation
+import ai.koog.protocol.agent.agents.verify.FlowVerifyAgent
 import ai.koog.protocol.tool.FlowTool
 import ai.koog.protocol.transition.FlowTransition
 import ai.koog.protocol.transition.FlowTransitionCondition
@@ -132,11 +136,11 @@ public object KoogStrategyFactory {
         agent: FlowAgent,
         defaultModel: String?
     ): AIAgentSubgraphDelegate<FlowAgentInput, FlowAgentInput> {
-        return when (agent.type) {
-            FlowAgentKind.TASK -> nodeTask(agent, defaultModel)
-            FlowAgentKind.VERIFY -> nodeVerify(agent, defaultModel)
-//            FlowAgentKind.TRANSFORM -> nodeTransform(agent)
-            FlowAgentKind.PARALLEL -> error("Parallel agent type is not yet supported")
+        return when (agent) {
+            is FlowTaskAgent -> nodeTask(agent, defaultModel)
+            is FlowVerifyAgent -> nodeVerify(agent, defaultModel)
+            is FlowInputTransformAgent -> nodeTransform(agent)
+            else -> error("Parallel agent type is not yet supported")
         }
     }
 
@@ -146,15 +150,15 @@ public object KoogStrategyFactory {
      * Creates a task node that performs LLM request with the agent's configuration.
      */
     private fun AIAgentSubgraphBuilderBase<*, *>.nodeTask(
-        agent: FlowAgent,
+        agent: FlowTaskAgent,
         defaultModel: String?
     ): AIAgentSubgraphDelegate<FlowAgentInput, FlowAgentInput> {
         return subgraphWithTask<FlowAgentInput, FlowAgentInput>(
             name = agent.name,
             toolSelectionStrategy = ToolSelectionStrategy.ALL,
-            llmModel = KoogPromptExecutorFactory.resolveModel(agent.model ?: defaultModel)
+            llmModel = KoogPromptExecutorFactory.resolveModel(agent.config.model ?: defaultModel)
         ) { input ->
-            buildTaskPrompt(agent, input)
+            agent.parameters.task
         }
     }
 
@@ -166,14 +170,14 @@ public object KoogStrategyFactory {
      * Creates a node that checks/validates using LLM with structured verification output.
      */
     private fun AIAgentSubgraphBuilderBase<*, *>.nodeVerify(
-        agent: FlowAgent,
+        agent: FlowVerifyAgent,
         defaultModel: String?
     ): AIAgentSubgraphDelegate<FlowAgentInput, FlowAgentInput> {
         val verifySubgraph by subgraphWithVerification<FlowAgentInput>(
             toolSelectionStrategy = ToolSelectionStrategy.ALL,
-            llmModel = KoogPromptExecutorFactory.resolveModel(agent.model ?: defaultModel)
+            llmModel = KoogPromptExecutorFactory.resolveModel(agent.config.model ?: defaultModel),
         ) { input ->
-            buildTaskPrompt(agent, input)
+            agent.parameters.task
         }
 
         return subgraph(name = agent.name) {
@@ -198,7 +202,7 @@ public object KoogStrategyFactory {
      * The transformation converts input from one FlowAgentInput type to another based on defined rules.
      */
     private fun AIAgentSubgraphBuilderBase<*, *>.nodeTransform(
-        agent: FlowAgent
+        agent: FlowInputTransformAgent
     ): AIAgentSubgraphDelegate<FlowAgentInput, FlowAgentInput> {
         return subgraph(name = agent.name) {
             val transform by node<FlowAgentInput, FlowAgentInput> { runtimeInput ->
@@ -219,30 +223,16 @@ public object KoogStrategyFactory {
      */
     private fun transformFlowAgentInput(
         input: FlowAgentInput,
-        transformations: FlowAgentInput.InputArrayTransformation
+        transformations: List<FlowInputTransformation>
     ): FlowAgentInput {
-        if (transformations.data.isEmpty()) {
+        if (transformations.isEmpty()) {
             return input
         }
 
         // Process transformations
-        transformations.data.forEach { transformation ->
-            if (transformation.isPrimitive) {
-                applyPrimitiveTypeTransformation()
-            }
+        transformations.forEach { transformation ->
+            // TODO: Write logic to transform based on transformation type
         }
-
-
-        // For now, apply the first transformation rule
-        // TODO: Support matching based on value reference path
-        val targetTypeName = transformations.first().to
-
-        // Apply type conversion based on target type name
-        return FlowAgentInputTransitionUtil.convertToTargetType(runtimeInput, targetTypeName)
-    }
-
-    private fun applyPrimitiveTypeTransformation():  {
-
     }
 
     //endregion Transformation
@@ -261,24 +251,6 @@ public object KoogStrategyFactory {
     }
 
     //endregion Strategy
-
-    /**
-     * Builds a task prompt combining agent's system and user prompts with input.
-     */
-    private fun buildTaskPrompt(agent: FlowAgent, input: FlowAgentInput): String = buildString {
-        agent.prompt?.system?.let { system ->
-            appendLine(system)
-            appendLine()
-        }
-
-        agent.prompt?.user?.let { user ->
-            appendLine(user)
-            appendLine()
-        }
-
-        appendLine("Input:")
-        appendLine(input)
-    }
 
     /**
      * Evaluates a transition condition against the current output.
