@@ -6,7 +6,7 @@ import kotlin.reflect.KClass
 /**
  *
  */
-public object FlowAgentInputTransitionUtil {
+public object FlowAgentInputCastUtil {
 
     /**
      * Converts a FlowAgentInput to the target type specified by KClass.

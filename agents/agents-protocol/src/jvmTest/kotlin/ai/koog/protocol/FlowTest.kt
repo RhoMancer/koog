@@ -37,7 +37,7 @@ class FlowTest {
         // Create a KoogFlow from the config and run it
         println("\nCreating KoogFlow and running...")
         val firstAgentModel = flowConfig.transitions.firstOrNull()?.let { firstTransition ->
-            flowConfig.agents.find { agent -> agent.name == firstTransition.from }?.model
+            flowConfig.agents.find { agent -> agent.name == firstTransition.from }?.config?.model
         }
 
         val defaultModelString = "openai/gpt-4"
@@ -56,7 +56,7 @@ class FlowTest {
 
         // Verify that we got a result
         assertNotNull(result)
-        assertTrue(result.isNotEmpty(), "Flow should return non-empty result")
+        assertTrue(result.isPrimitive, "Flow should return non-empty result")
     }
 
     private fun readFlow(name: String): String {

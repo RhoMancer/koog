@@ -13,7 +13,6 @@ import ai.koog.agents.ext.agent.subgraphWithTask
 import ai.koog.agents.ext.agent.subgraphWithVerification
 import ai.koog.protocol.agent.FlowAgent
 import ai.koog.protocol.agent.FlowAgentInput
-import ai.koog.protocol.agent.FlowAgentKind
 import ai.koog.protocol.agent.agents.task.FlowTaskAgent
 import ai.koog.protocol.agent.agents.transform.FlowInputTransformAgent
 import ai.koog.protocol.agent.agents.transform.FlowInputTransformation
@@ -206,7 +205,7 @@ public object KoogStrategyFactory {
     ): AIAgentSubgraphDelegate<FlowAgentInput, FlowAgentInput> {
         return subgraph(name = agent.name) {
             val transform by node<FlowAgentInput, FlowAgentInput> { runtimeInput ->
-                transformFlowAgentInput(runtimeInput, agent.input)
+                transformFlowAgentInput(runtimeInput, agent.parameters.transformations)
             }
 
             nodeStart then transform then nodeFinish
@@ -217,7 +216,7 @@ public object KoogStrategyFactory {
      * Transforms a FlowAgentInput based on the provided transformation configuration.
      *
      * @param input The input to transform
-     * @param transformations The array of transformations.
+     * @param transformations The list of transformations to apply.
      *
      * @return Transformed input, or original input if no matching transformation found
      */
@@ -229,10 +228,13 @@ public object KoogStrategyFactory {
             return input
         }
 
-        // Process transformations
-        transformations.forEach { transformation ->
-            // TODO: Write logic to transform based on transformation type
-        }
+        // Find matching transformation based on input type
+        val matchingTransformation = transformations.find { transformation ->
+            transformation.value::class == input::class
+        } ?: return input
+
+        // Convert input to a target type
+        return FlowAgentInputCastUtil.convertToTargetType(input, matchingTransformation.to)
     }
 
     //endregion Transformation
@@ -260,7 +262,7 @@ public object KoogStrategyFactory {
      * @return true if the condition is satisfied
      */
     private fun evaluateCondition(condition: FlowTransitionCondition, output: FlowAgentInput): Boolean {
-        // Extract value from output based on variable name
+        // Extract value from output based on the variable name
         val outputValue: Any = when (output) {
             is FlowAgentInput.InputBoolean -> output.data
             is FlowAgentInput.InputInt -> output.data
@@ -276,9 +278,7 @@ public object KoogStrategyFactory {
             is FlowAgentInput.InputArrayBooleans,
             is FlowAgentInput.InputArrayDouble,
             is FlowAgentInput.InputArrayInt,
-            is FlowAgentInput.InputArrayStrings,
-            is FlowAgentInput.InputArrayTransformation,
-            is FlowAgentInput.InputTransformation -> output
+            is FlowAgentInput.InputArrayStrings -> output
         }
 
         val conditionValue = when {
