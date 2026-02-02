@@ -1,4 +1,5 @@
 import ai.koog.gradle.publish.maven.Publishing.publishToMaven
+import org.gradle.kotlin.dsl.project
 
 group = rootProject.group
 version = rootProject.version
@@ -14,6 +15,7 @@ kotlin {
             dependencies {
                 api(project(":agents:agents-core"))
                 api(project(":agents:agents-mcp"))
+                implementation(project(":koog-ktor"))
                 implementation(project(":prompt:prompt-executor:prompt-executor-llms-all"))
 
                 api(libs.kotlinx.serialization.json)

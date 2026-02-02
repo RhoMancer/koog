@@ -43,23 +43,11 @@ public class KoogFlow(
     //region Private Methods
 
     private fun buildPromptExecutor(agents: List<FlowAgent>): PromptExecutor {
-        // Collect unique providers from agents' model strings
-        val providers = agents.map { agent ->
-            agent.model.split("/", limit = 2).getOrNull(0)?.lowercase() ?: "openai"
-        }.distinct()
-
-        // Create LLM clients for each provider
-        val clients = providers.mapNotNull { provider ->
-            KoogPromptExecutorFactory.createClientForProvider(provider)?.let { client ->
-                KoogPromptExecutorFactory.resolveProvider(provider) to client
-            }
-        }.toMap()
-
-        require(clients.isNotEmpty()) {
-            "No LLM clients could be created. Ensure API keys are set for providers: ${providers.joinToString()}"
+        val models = agents.map { agent -> agent.model }.distinct().map { modelName ->
+            KoogPromptExecutorFactory.resolveModel(modelName, defaultModel)
         }
 
-        return MultiLLMPromptExecutor(clients)
+        return MultiLLMPromptExecutor()
     }
 
     private suspend fun buildToolRegistry(): ToolRegistry {
@@ -103,37 +91,6 @@ public class KoogFlow(
             toolRegistry = toolRegistry,
             defaultModel = defaultModel
         )
-
-    private fun buildModel(): LLModel {
-        val modelString = defaultModel ?: "openai/gpt-4o"
-        val parts = modelString.split("/")
-        val providerName = if (parts.size > 1) parts[0].lowercase() else "openai"
-        val modelId = if (parts.size > 1) parts[1] else modelString
-
-        val provider = when (providerName) {
-            "openai" -> LLMProvider.OpenAI
-            "anthropic" -> LLMProvider.Anthropic
-            "google" -> LLMProvider.Google
-            "meta" -> LLMProvider.Meta
-            "ollama" -> LLMProvider.Ollama
-            "openrouter" -> LLMProvider.OpenRouter
-            "deepseek" -> LLMProvider.DeepSeek
-            "mistralai" -> LLMProvider.MistralAI
-            else -> LLMProvider.OpenAI // default to OpenAI
-        }
-
-        return LLModel(
-            provider = provider,
-            id = modelId,
-            capabilities = listOf(
-                LLMCapability.Temperature,
-                LLMCapability.Tools,
-                LLMCapability.ToolChoice,
-                LLMCapability.Completion
-            ),
-            contextLength = 128_000
-        )
-    }
 
     private suspend fun buildAgent(): GraphAIAgent<FlowAgentInput, FlowAgentInput> {
         val promptExecutor = promptExecutor ?: buildPromptExecutor(agents)

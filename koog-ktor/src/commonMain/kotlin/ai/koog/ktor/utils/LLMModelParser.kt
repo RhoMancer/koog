@@ -19,8 +19,8 @@ private val logger = KtorSimpleLogger("ai.koog.ktor.utils.LLMModelParser")
  * @param identifier The string identifier of the model.
  * @return The resolved LLModel or null if the model cannot be resolved.
  */
-internal fun getModelFromIdentifier(identifier: String): LLModel? {
-    val parts = identifier.split(".")
+public fun getModelFromIdentifier(identifier: String, delimiter: String = "."): LLModel? {
+    val parts = identifier.split(delimiter)
 
     if (parts.isEmpty()) {
         return null
