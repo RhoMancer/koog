@@ -39,6 +39,10 @@ public object KoogPromptExecutorFactory {
     /**
      * Resolves model string to LLModel instance.
      *
+     * Supports various model string formats:
+     * - "provider/model-id" (e.g., "openai/gpt-4o")
+     * - Just "model-id" (defaults to OpenAI)
+     *
      * @param modelString Model string in format "provider/model-id" (e.g., "openai/gpt-4o")
      * @return LLModel instance
      */
@@ -48,13 +52,13 @@ public object KoogPromptExecutorFactory {
         }
 
         val parts = modelString.split("/", limit = 2)
-        val provider = parts.getOrNull(0) ?: "openai"
-        val modelId = parts.getOrNull(1) ?: modelString
+        val providerName = if (parts.size > 1) parts[0].lowercase() else "openai"
+        val modelId = if (parts.size > 1) parts[1] else modelString
 
-        return when (provider.lowercase()) {
+        return when (providerName) {
             "openai" -> resolveOpenAIModel(modelId)
             else -> LLModel(
-                provider = resolveProvider(provider),
+                provider = resolveProvider(providerName),
                 id = modelId,
                 capabilities = listOf(
                     LLMCapability.Temperature,

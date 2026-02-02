@@ -208,12 +208,13 @@ public object FlowAgentInputTransitionUtil {
 
     /**
      * Converts a FlowAgentInput to the target type specified by type name string.
+     * Supports both class simple names and common aliases.
      */
     public fun convertToTargetType(
         input: FlowAgentInput,
         targetTypeName: String
     ): FlowAgentInput {
-        return when (targetTypeName.lowercase()) {
+        return when (targetTypeName) {
             "${FlowAgentInput.InputString::class.simpleName}" -> convertToString(input)
             "${FlowAgentInput.InputInt::class.simpleName}" -> convertToInt(input)
             "${FlowAgentInput.InputDouble::class.simpleName}" -> convertToDouble(input)

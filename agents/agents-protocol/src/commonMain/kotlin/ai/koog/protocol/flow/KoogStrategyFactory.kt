@@ -11,9 +11,6 @@ import ai.koog.agents.core.dsl.builder.strategy
 import ai.koog.agents.ext.agent.CriticResult
 import ai.koog.agents.ext.agent.subgraphWithTask
 import ai.koog.agents.ext.agent.subgraphWithVerification
-import ai.koog.prompt.llm.LLMCapability
-import ai.koog.prompt.llm.LLMProvider
-import ai.koog.prompt.llm.LLModel
 import ai.koog.protocol.agent.FlowAgent
 import ai.koog.protocol.agent.FlowAgentInput
 import ai.koog.protocol.agent.FlowAgentKind
@@ -75,12 +72,14 @@ public object KoogStrategyFactory {
             }
 
             nodesWithoutFinish.forEach { nodeWithoutFinish ->
-                connectNodeToFinish(nodeWithoutFinish, null)
+                createEdgeToFinish(nodeWithoutFinish, null)
             }
         }
     }
 
     //region Private Methods
+
+    //region Edges
 
     private fun AIAgentSubgraphBuilderBase<FlowAgentInput, FlowAgentInput>.transitionToEdge(
         collectedNodes: List<AIAgentNodeBase<FlowAgentInput, FlowAgentInput>>,
@@ -90,16 +89,16 @@ public object KoogStrategyFactory {
             ?: error("Unable to find 'from' node for transition '${transition.transitionString}': ${transition.from}")
 
         if (transition.to == FINISH_NODE_PREFIX) {
-            connectNodeToFinish(fromNode, transition.condition)
+            createEdgeToFinish(fromNode, transition.condition)
         } else {
             val toNode = collectedNodes.find { it.name == transition.to }
                 ?: error("Unable to find 'to' node for transition '${transition.transitionString}': ${transition.to}")
 
-            connectNodes(fromNode, toNode, transition.condition)
+            createEdge(fromNode, toNode, transition.condition)
         }
     }
 
-    private fun AIAgentSubgraphBuilderBase<FlowAgentInput, FlowAgentInput>.connectNodes(
+    private fun AIAgentSubgraphBuilderBase<FlowAgentInput, FlowAgentInput>.createEdge(
         fromNode: AIAgentNodeBase<FlowAgentInput, FlowAgentInput>,
         toNode: AIAgentNodeBase<FlowAgentInput, FlowAgentInput>,
         condition: FlowTransitionCondition?
@@ -117,10 +116,14 @@ public object KoogStrategyFactory {
     /**
      * Creates an edge from a node to the finish node, optionally with a condition.
      */
-    private fun AIAgentSubgraphBuilderBase<FlowAgentInput, FlowAgentInput>.connectNodeToFinish(
+    private fun AIAgentSubgraphBuilderBase<FlowAgentInput, FlowAgentInput>.createEdgeToFinish(
         fromNode: AIAgentNodeBase<FlowAgentInput, FlowAgentInput>,
         condition: FlowTransitionCondition?
-    ) = connectNodes(fromNode, nodeFinish, condition)
+    ) = createEdge(fromNode, nodeFinish, condition)
+
+    //endregion Edges
+
+    //region Nodes
 
     /**
      * Converts a flow agent into Koog node delegate for a given flow agent type.
@@ -132,10 +135,12 @@ public object KoogStrategyFactory {
         return when (agent.type) {
             FlowAgentKind.TASK -> nodeTask(agent, defaultModel)
             FlowAgentKind.VERIFY -> nodeVerify(agent, defaultModel)
-            FlowAgentKind.TRANSFORM -> nodeTransform(agent)
+//            FlowAgentKind.TRANSFORM -> nodeTransform(agent)
             FlowAgentKind.PARALLEL -> error("Parallel agent type is not yet supported")
         }
     }
+
+    //region Task
 
     /**
      * Creates a task node that performs LLM request with the agent's configuration.
@@ -147,11 +152,15 @@ public object KoogStrategyFactory {
         return subgraphWithTask<FlowAgentInput, FlowAgentInput>(
             name = agent.name,
             toolSelectionStrategy = ToolSelectionStrategy.ALL,
-            llmModel = (agent.model ?: defaultModel)?.let { parseModel(it) }
+            llmModel = KoogPromptExecutorFactory.resolveModel(agent.model ?: defaultModel)
         ) { input ->
             buildTaskPrompt(agent, input)
         }
     }
+
+    //endregion Task
+
+    //region Verify
 
     /**
      * Creates a node that checks/validates using LLM with structured verification output.
@@ -162,7 +171,7 @@ public object KoogStrategyFactory {
     ): AIAgentSubgraphDelegate<FlowAgentInput, FlowAgentInput> {
         val verifySubgraph by subgraphWithVerification<FlowAgentInput>(
             toolSelectionStrategy = ToolSelectionStrategy.ALL,
-            llmModel = (agent.model ?: defaultModel)?.let { parseModel(it) }
+            llmModel = KoogPromptExecutorFactory.resolveModel(agent.model ?: defaultModel)
         ) { input ->
             buildTaskPrompt(agent, input)
         }
@@ -179,6 +188,10 @@ public object KoogStrategyFactory {
             nodeStart then verifySubgraph then transformResult then nodeFinish
         }
     }
+
+    //endregion Verify
+
+    //region Transformation
 
     /**
      * Creates a transform node that applies transformations without LLM.
@@ -199,52 +212,44 @@ public object KoogStrategyFactory {
     /**
      * Transforms a FlowAgentInput based on the provided transformation configuration.
      *
-     * @param runtimeInput The actual runtime input to transform
-     * @param transformationConfig The transformation configuration from agent.input
+     * @param input The input to transform
+     * @param transformations The array of transformations.
+     *
      * @return Transformed input, or original input if no matching transformation found
      */
     private fun transformFlowAgentInput(
-        runtimeInput: FlowAgentInput,
-        transformationConfig: FlowAgentInput
+        input: FlowAgentInput,
+        transformations: FlowAgentInput.InputArrayTransformation
     ): FlowAgentInput {
-        // Extract transformations based on configuration type
-        val transformations: List<FlowAgentInput.InputTransformation> = when (transformationConfig) {
-            is FlowAgentInput.InputWithTransformations -> transformationConfig.transformations
-            is FlowAgentInput.InputTransformation -> listOf(transformationConfig)
-            else -> emptyList()
+        if (transformations.data.isEmpty()) {
+            return input
         }
 
-        if (transformations.isEmpty()) {
-            return runtimeInput
+        // Process transformations
+        transformations.data.forEach { transformation ->
+            if (transformation.isPrimitive) {
+                applyPrimitiveTypeTransformation()
+            }
         }
+
 
         // For now, apply the first transformation rule
         // TODO: Support matching based on value reference path
         val targetTypeName = transformations.first().to
 
         // Apply type conversion based on target type name
-        return convertToTargetType(runtimeInput, targetTypeName)
+        return FlowAgentInputTransitionUtil.convertToTargetType(runtimeInput, targetTypeName)
     }
 
-    /**
-     * Converts a FlowAgentInput to the target type specified by type name string.
-     */
-    private fun convertToTargetType(
-        input: FlowAgentInput,
-        targetTypeName: String
-    ): FlowAgentInput {
-        return when (targetTypeName.lowercase()) {
-            "string" -> convertToString(input)
-            "int", "integer" -> convertToInt(input)
-            "double", "float" -> convertToDouble(input)
-            "boolean", "bool" -> convertToBoolean(input)
-            "arraystrings", "array_strings", "string_array" -> convertToArrayStrings(input)
-            "arrayint", "array_int", "int_array" -> convertToArrayInt(input)
-            "arraydouble", "array_double", "double_array" -> convertToArrayDouble(input)
-            "arraybooleans", "array_booleans", "boolean_array" -> convertToArrayBooleans(input)
-            else -> input // Unsupported or same type
-        }
+    private fun applyPrimitiveTypeTransformation():  {
+
     }
+
+    //endregion Transformation
+
+    //endregion Nodes
+
+    //region Strategy
 
     /**
      * Creates an empty strategy that immediately finishes.
@@ -254,6 +259,8 @@ public object KoogStrategyFactory {
             edge(nodeStart forwardTo nodeFinish)
         }
     }
+
+    //endregion Strategy
 
     /**
      * Builds a task prompt combining agent's system and user prompts with input.
@@ -271,38 +278,6 @@ public object KoogStrategyFactory {
 
         appendLine("Input:")
         appendLine(input)
-    }
-
-    /**
-     * Parses a model string into an LLModel instance.
-     */
-    private fun parseModel(modelString: String): LLModel {
-        val parts = modelString.split("/")
-        val providerName = if (parts.size > 1) parts[0].lowercase() else "openai"
-        val modelId = if (parts.size > 1) parts[1] else modelString
-
-        val provider = when (providerName) {
-            "openai" -> LLMProvider.OpenAI
-            "anthropic" -> LLMProvider.Anthropic
-            "google" -> LLMProvider.Google
-            "meta" -> LLMProvider.Meta
-            "ollama" -> LLMProvider.Ollama
-            "openrouter" -> LLMProvider.OpenRouter
-            "deepseek" -> LLMProvider.DeepSeek
-            "mistralai" -> LLMProvider.MistralAI
-            else -> LLMProvider.OpenAI
-        }
-
-        return LLModel(
-            provider = provider,
-            id = modelId,
-            capabilities = listOf(
-                LLMCapability.Temperature,
-                LLMCapability.Tools,
-                LLMCapability.Completion
-            ),
-            contextLength = 128_000
-        )
     }
 
     /**
@@ -329,7 +304,9 @@ public object KoogStrategyFactory {
             is FlowAgentInput.InputArrayBooleans,
             is FlowAgentInput.InputArrayDouble,
             is FlowAgentInput.InputArrayInt,
-            is FlowAgentInput.InputArrayStrings -> output
+            is FlowAgentInput.InputArrayStrings,
+            is FlowAgentInput.InputArrayTransformation,
+            is FlowAgentInput.InputTransformation -> output
         }
 
         val conditionValue = when {

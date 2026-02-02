@@ -44,15 +44,6 @@ public sealed interface FlowAgentInput {
         public val input: FlowAgentInput
     ) : FlowAgentInput
 
-    /**
-     *
-     */
-    @Serializable
-    public data class InputTransformation(
-        public val value: FlowAgentInput,
-        public val to: String
-    ) : FlowAgentInput
-
     //endregion Entities
 
     //region Arrays
@@ -114,20 +105,15 @@ public sealed interface FlowAgentInput {
         override fun hashCode(): Int = data.contentHashCode()
     }
 
-    /**
-     *
-     */
-    @Serializable
-    public data class InputArrayTransformation(
-        public val data: Array<InputTransformation>,
-    ) : FlowAgentInput {
-        override fun equals(other: Any?): Boolean {
-            if (this === other) return true
-            if (other == null || this::class != other::class) return false
-            return data.contentEquals((other as InputArrayTransformation).data)
-        }
-        override fun hashCode(): Int = data.contentHashCode()
-    }
-
     //endregion Arrays
+
+    /**
+     * Determines if the input is a primitive type.
+     */
+    public val isPrimitive: Boolean
+        get() = this is InputInt ||
+            this is InputDouble ||
+            this is InputString ||
+            this is InputBoolean ||
+            this is InputCritiqueResult
 }

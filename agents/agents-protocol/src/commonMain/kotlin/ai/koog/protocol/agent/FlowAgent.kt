@@ -16,9 +16,9 @@ public interface FlowAgent {
     public val type: FlowAgentKind
 
     /**
-     * Model identifier (e.g., "openai/gpt-4o").
+     * Agent configuration.
      */
-    public val model: String?
+    public val config: FlowAgentConfig
 
     /**
      * Agent prompt configuration.
@@ -26,12 +26,12 @@ public interface FlowAgent {
     public val prompt: FlowAgentPrompt?
 
     /**
-     * Agent input configuration.
+     * Agent input type.
      */
     public val input: FlowAgentInput
 
     /**
-     * Agent configuration.
+     *
      */
-    public val config: FlowAgentConfig
+    public val parameters: FlowAgentParameters
 }
