@@ -1,6 +1,7 @@
-package ai.koog.protocol
+package ai.koog.protocol.mock
 
 import ai.koog.utils.io.SuitableForIO
+import io.github.oshai.kotlinlogging.KotlinLogging
 import io.ktor.server.cio.CIO
 import io.ktor.server.engine.embeddedServer
 import io.modelcontextprotocol.kotlin.sdk.server.Server
@@ -14,6 +15,7 @@ import io.modelcontextprotocol.kotlin.sdk.types.ToolSchema
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.addJsonObject
 import kotlinx.serialization.json.buildJsonObject
@@ -26,9 +28,14 @@ import kotlinx.serialization.json.putJsonObject
  * A simple MCP server for testing purposes.
  * This server provides a simple tool that returns a greeting message.
  */
-class TestMcpServer(private val port: Int) {
+internal class TestMcpServer(private val port: Int) {
+
+    companion object {
+        private val logger = KotlinLogging.logger { }
+    }
+
     private var serverJob: Job? = null
-    private var isRunning = false
+    private val isRunning = MutableStateFlow(false)
 
     /**
      * Configures the MCP server with a simple greeting tool.
@@ -96,7 +103,9 @@ class TestMcpServer(private val port: Int) {
      * Starts the MCP server on the specified port.
      */
     fun start() {
-        if (isRunning) return
+        if (isRunning.value) {
+            return
+        }
 
         serverJob = CoroutineScope(Dispatchers.SuitableForIO).launch {
             embeddedServer(CIO, host = "0.0.0.0", port = port) {
@@ -106,19 +115,21 @@ class TestMcpServer(private val port: Int) {
             }.start(wait = true)
         }
 
-        isRunning = true
-        println("Test MCP server started on port $port")
+        isRunning.value = true
+        logger.info { "Test MCP server started on port $port" }
     }
 
     /**
      * Stops the MCP server.
      */
     fun stop() {
-        if (!isRunning) return
+        if (!isRunning.value) {
+            return
+        }
 
         serverJob?.cancel()
         serverJob = null
-        isRunning = false
-        println("Test MCP server stopped")
+        isRunning.value = false
+        logger.info { "Test MCP server stopped" }
     }
 }
