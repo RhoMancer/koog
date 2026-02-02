@@ -9,4 +9,4 @@ import kotlinx.serialization.Serializable
 @Serializable
 public data class FlowInputTransformParameters(
     val transformations: List<FlowInputTransformation>
-): FlowAgentParameters
+) : FlowAgentParameters

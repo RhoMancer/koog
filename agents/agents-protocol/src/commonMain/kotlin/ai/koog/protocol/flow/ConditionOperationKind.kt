@@ -12,5 +12,5 @@ public enum class ConditionOperationKind(public val text: String) {
     LESS_OR_EQUAL("less or equal"),
     NOT("not"),
     AND("and"),
-    OR("or");
+    OR("or")
 }

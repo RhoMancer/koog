@@ -15,7 +15,6 @@ public object FlowAgentInputCastUtil {
         input: FlowAgentInput,
         targetType: KClass<FlowAgentInput>,
     ): FlowAgentInput {
-
         return when (targetType) {
             FlowAgentInput.InputString::class -> convertToString(input)
             FlowAgentInput.InputInt::class -> convertToInt(input)
@@ -44,7 +43,6 @@ public object FlowAgentInputCastUtil {
                 is FlowAgentInput.InputArrayBooleans -> input.data.joinToString(",")
                 is FlowAgentInput.InputArrayStrings -> input.data.joinToString(",")
                 is FlowAgentInput.InputCritiqueResult -> "${input.success}:${input.feedback}"
-                else -> error("Unsupported input type for conversion to String: $input")
             }
         )
     }
@@ -186,7 +184,6 @@ public object FlowAgentInputCastUtil {
                     .toTypedArray()
 
                 is FlowAgentInput.InputCritiqueResult -> arrayOf(input.success)
-                else -> error("Unsupported input type for conversion to Array Boolean: $input")
             }
         )
     }
@@ -202,7 +199,6 @@ public object FlowAgentInputCastUtil {
             is FlowAgentInput.InputArrayBooleans -> FlowAgentInput.InputCritiqueResult(input.data.firstOrNull() ?: false, "", input)
             is FlowAgentInput.InputArrayStrings -> FlowAgentInput.InputCritiqueResult(input.data.firstOrNull()?.toBooleanStrictOrNull() ?: false, "", input)
             is FlowAgentInput.InputCritiqueResult -> input
-            else -> error("Unsupported input type for conversion to Critique Result: $input")
         }
     }
 
