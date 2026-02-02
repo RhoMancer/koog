@@ -60,7 +60,7 @@ public object KoogPromptExecutorFactory {
      * @param modelString Model string in format "provider/model-id" (e.g., "openai/gpt-4o")
      * @return LLModel instance
      */
-    public fun resolveModel(modelString: String?): LLModel {
+    public fun resolveModel(modelString: String?, defaultModel: String?): LLModel {
         if (modelString == null) {
             return OpenAIModels.Chat.GPT4o
         }

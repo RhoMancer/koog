@@ -8,5 +8,6 @@ import kotlinx.serialization.Serializable
  */
 @Serializable
 public data class FlowTaskAgentParameters(
-    val task: String
+    val task: String,
+    val toolNames: List<String> = emptyList()
 ) : FlowAgentParameters

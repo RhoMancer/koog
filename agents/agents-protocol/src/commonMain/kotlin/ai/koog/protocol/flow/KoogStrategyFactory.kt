@@ -8,6 +8,7 @@ import ai.koog.agents.core.dsl.builder.AIAgentSubgraphBuilderBase
 import ai.koog.agents.core.dsl.builder.AIAgentSubgraphDelegate
 import ai.koog.agents.core.dsl.builder.forwardTo
 import ai.koog.agents.core.dsl.builder.strategy
+import ai.koog.agents.core.tools.ToolRegistry
 import ai.koog.agents.ext.agent.CriticResult
 import ai.koog.agents.ext.agent.subgraphWithTask
 import ai.koog.agents.ext.agent.subgraphWithVerification
@@ -17,7 +18,6 @@ import ai.koog.protocol.agent.agents.task.FlowTaskAgent
 import ai.koog.protocol.agent.agents.transform.FlowInputTransformAgent
 import ai.koog.protocol.agent.agents.transform.FlowInputTransformation
 import ai.koog.protocol.agent.agents.verify.FlowVerifyAgent
-import ai.koog.protocol.tool.FlowTool
 import ai.koog.protocol.transition.FlowTransition
 import ai.koog.protocol.transition.FlowTransitionCondition
 import kotlinx.serialization.json.booleanOrNull
@@ -36,23 +36,23 @@ public object KoogStrategyFactory {
         id: String,
         agents: List<FlowAgent>,
         transitions: List<FlowTransition>,
-        tools: List<FlowTool>,
+        toolRegistry: ToolRegistry,
         defaultModel: String?
     ): AIAgentGraphStrategy<FlowAgentInput, FlowAgentInput> {
-        // No agents
+        // No agents - create an empty strategy
         if (agents.isEmpty()) {
             return createEmptyStrategy(id)
         }
 
         // No transitions - chain agents sequentially
         if (transitions.isEmpty()) {
-            return createSequentialStrategy(id, agents, defaultModel)
+            return createSequentialStrategy(id, agents, toolRegistry, defaultModel)
         }
 
         return strategy(id) {
             // Nodes
             val collectedNodes = agents.map { agent ->
-                val node by convertFlowAgentToKoogNode(agent, defaultModel)
+                val node by convertFlowAgentToKoogNode(agent, toolRegistry, defaultModel)
                 node
             }
 
@@ -132,14 +132,27 @@ public object KoogStrategyFactory {
      */
     private fun AIAgentSubgraphBuilderBase<*, *>.convertFlowAgentToKoogNode(
         agent: FlowAgent,
+        toolRegistry: ToolRegistry,
         defaultModel: String?
     ): AIAgentSubgraphDelegate<FlowAgentInput, FlowAgentInput> {
         return when (agent) {
-            is FlowTaskAgent -> nodeTask(agent)
-            is FlowVerifyAgent -> nodeVerify(agent)
+            is FlowTaskAgent -> nodeTask(agent, toolRegistry, defaultModel)
+            is FlowVerifyAgent -> nodeVerify(agent, toolRegistry, defaultModel)
             is FlowInputTransformAgent -> nodeTransform(agent)
             else -> error("Parallel agent type is not yet supported")
         }
+    }
+
+    private fun ToolRegistry.defineToolSelectionStrategy(toolNames: List<String>): ToolSelectionStrategy {
+        if (toolNames.isEmpty()) {
+            return ToolSelectionStrategy.ALL
+        }
+
+        val selectedTools = this.tools.filter { tool ->
+            tool.name in toolNames
+        }
+
+        return ToolSelectionStrategy.Tools(selectedTools.map { it.descriptor })
     }
 
     //region Task
@@ -148,16 +161,17 @@ public object KoogStrategyFactory {
      * Creates a task node that performs LLM request with the agent's configuration.
      */
     private fun AIAgentSubgraphBuilderBase<*, *>.nodeTask(
-        agent: FlowTaskAgent
-    ): AIAgentSubgraphDelegate<FlowAgentInput, FlowAgentInput> {
-        return subgraphWithTask<FlowAgentInput, FlowAgentInput>(
+        agent: FlowTaskAgent,
+        toolRegistry: ToolRegistry,
+        defaultModel: String?,
+    ): AIAgentSubgraphDelegate<FlowAgentInput, FlowAgentInput> =
+        subgraphWithTask<FlowAgentInput, FlowAgentInput>(
             name = agent.name,
-            toolSelectionStrategy = ToolSelectionStrategy.ALL,
-            llmModel = KoogPromptExecutorFactory.resolveModel(agent.model)
+            toolSelectionStrategy = toolRegistry.defineToolSelectionStrategy(toolNames = agent.parameters.toolNames),
+            llmModel = KoogPromptExecutorFactory.resolveModel(agent.model, defaultModel),
         ) { input ->
             agent.parameters.task
         }
-    }
 
     //endregion Task
 
@@ -167,11 +181,13 @@ public object KoogStrategyFactory {
      * Creates a node that checks/validates using LLM with structured verification output.
      */
     private fun AIAgentSubgraphBuilderBase<*, *>.nodeVerify(
-        agent: FlowVerifyAgent
+        agent: FlowVerifyAgent,
+        toolRegistry: ToolRegistry,
+        defaultModel: String?,
     ): AIAgentSubgraphDelegate<FlowAgentInput, FlowAgentInput> {
         val verifySubgraph by subgraphWithVerification<FlowAgentInput>(
-            toolSelectionStrategy = ToolSelectionStrategy.ALL,
-            llmModel = KoogPromptExecutorFactory.resolveModel(agent.model),
+            toolSelectionStrategy = toolRegistry.defineToolSelectionStrategy(toolNames = agent.parameters.toolNames),
+            llmModel = KoogPromptExecutorFactory.resolveModel(agent.model, defaultModel),
         ) { input ->
             agent.parameters.task
         }
@@ -256,11 +272,12 @@ public object KoogStrategyFactory {
     private fun createSequentialStrategy(
         id: String,
         agents: List<FlowAgent>,
+        toolRegistry: ToolRegistry,
         defaultModel: String?
     ): AIAgentGraphStrategy<FlowAgentInput, FlowAgentInput> {
         return strategy(id) {
             val collectedNodes = agents.map { agent ->
-                val node by convertFlowAgentToKoogNode(agent, defaultModel)
+                val node by convertFlowAgentToKoogNode(agent, toolRegistry, defaultModel)
                 node
             }
 

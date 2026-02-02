@@ -93,13 +93,14 @@ public class KoogFlow(
 
     private fun buildStrategy(
         agents: List<FlowAgent>,
-        transitions: List<FlowTransition>
+        transitions: List<FlowTransition>,
+        toolRegistry: ToolRegistry,
     ): AIAgentGraphStrategy<FlowAgentInput, FlowAgentInput> =
         KoogStrategyFactory.buildStrategy(
             id = "koog-flow-strategy-$id",
             agents = agents,
             transitions = transitions,
-            tools = tools,
+            toolRegistry = toolRegistry,
             defaultModel = defaultModel
         )
 
@@ -137,7 +138,7 @@ public class KoogFlow(
     private suspend fun buildAgent(): GraphAIAgent<FlowAgentInput, FlowAgentInput> {
         val promptExecutor = promptExecutor ?: buildPromptExecutor(agents)
         val toolRegistry = buildToolRegistry()
-        val strategy = buildStrategy(agents, transitions)
+        val strategy = buildStrategy(agents, transitions, toolRegistry)
         val model = buildModel()
 
         val firstAgent = FlowUtil.getFirstAgentOrNull(agents, transitions)
