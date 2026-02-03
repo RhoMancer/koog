@@ -3,7 +3,7 @@ package ai.koog.integration.tests.mcp
 import ai.koog.agents.core.agent.AIAgent
 import ai.koog.agents.core.agent.singleRunStrategy
 import ai.koog.agents.core.annotation.InternalAgentsApi
-import ai.koog.agents.core.feature.handler.tool.McpMetaDataKeys
+import ai.koog.agents.core.feature.handler.tool.McpMetadataKeys
 import ai.koog.agents.core.tools.ToolRegistry
 import ai.koog.agents.mcp.McpToolRegistryProvider
 import ai.koog.agents.mcp.server.startSseMcpServer
@@ -66,7 +66,7 @@ class McpServerTest {
             }
 
             toolRegistry.tools.map { it.descriptor }.shouldContainExactly(randomNumberTool.descriptor)
-            toolRegistry.tools.forEach { it.metadata shouldContain (McpMetaDataKeys.ToolId to it.name) }
+            toolRegistry.tools.forEach { it.metadata shouldContain (McpMetadataKeys.ToolId to it.name) }
 
             withContext(Dispatchers.Default.limitedParallelism(1)) {
                 withTimeout(40.seconds) {

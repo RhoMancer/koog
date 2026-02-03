@@ -4,7 +4,7 @@ import ai.koog.agents.core.agent.entity.AIAgentStorageKey
 import ai.koog.agents.core.agent.execution.AgentExecutionInfo
 import ai.koog.agents.core.annotation.InternalAgentsApi
 import ai.koog.agents.core.feature.AIAgentGraphFeature
-import ai.koog.agents.core.feature.handler.tool.McpMetaDataKeys
+import ai.koog.agents.core.feature.handler.tool.McpMetadataKeys
 import ai.koog.agents.core.feature.handler.tool.ToolCallEventContext
 import ai.koog.agents.core.feature.model.AIAgentError
 import ai.koog.agents.core.feature.pipeline.AIAgentGraphPipeline
@@ -587,14 +587,14 @@ public class OpenTelemetry {
                 if (mcpToolMetaData != null) {
                     executeToolSpan.enrichExecuteToolSpanWithMcpAttrs(
                         toolName = eventContext.toolName,
-                        sessionId = mcpToolMetaData[McpMetaDataKeys.McpSessionId],
+                        sessionId = mcpToolMetaData[McpMetadataKeys.McpSessionId],
                         method = McpMethod.TOOLS_CALL,
-                        serverPort = mcpToolMetaData[McpMetaDataKeys.ServerPort]?.toIntOrNull(),
-                        serverAddress = mcpToolMetaData[McpMetaDataKeys.ServerUrl],
-                        mcpProtocolVersion = requireNotNull(mcpToolMetaData[McpMetaDataKeys.McpProtocolVersion]) {
+                        serverPort = mcpToolMetaData[McpMetadataKeys.ServerPort]?.toIntOrNull(),
+                        serverAddress = mcpToolMetaData[McpMetadataKeys.ServerUrl],
+                        mcpProtocolVersion = requireNotNull(mcpToolMetaData[McpMetadataKeys.McpProtocolVersion]) {
                             "MCP protocol version is required for MCP tool calls."
                         },
-                        mcpTransportType = requireNotNull(mcpToolMetaData[McpMetaDataKeys.McpTransportType]) {
+                        mcpTransportType = requireNotNull(mcpToolMetaData[McpMetadataKeys.McpTransportType]) {
                             "MCP transport type is required for MCP tool calls."
                         },
                     )
@@ -781,7 +781,7 @@ public class OpenTelemetry {
         private fun ToolRegistry.getMcpToolMeta(
             toolName: String,
         ): Map<String, String>? = tools.firstNotNullOfOrNull { tool ->
-            if (tool.name == toolName && McpMetaDataKeys.ToolId in tool.metadata) {
+            if (tool.name == toolName && McpMetadataKeys.ToolId in tool.metadata) {
                 tool.metadata
             } else {
                 null

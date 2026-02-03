@@ -6,7 +6,7 @@ import ai.koog.agents.core.annotation.InternalAgentsApi
  * Metadata keys for tools provided by MCP servers.
  */
 @InternalAgentsApi
-public object McpMetaDataKeys {
+public object McpMetadataKeys {
     /**
      * Required key to identify an MCP tool.
      */

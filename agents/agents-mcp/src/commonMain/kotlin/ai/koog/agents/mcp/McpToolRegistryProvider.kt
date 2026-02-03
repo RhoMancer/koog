@@ -1,7 +1,7 @@
 package ai.koog.agents.mcp
 
 import ai.koog.agents.core.annotation.InternalAgentsApi
-import ai.koog.agents.core.feature.handler.tool.McpMetaDataKeys
+import ai.koog.agents.core.feature.handler.tool.McpMetadataKeys
 import ai.koog.agents.core.feature.handler.tool.McpServerInfo
 import ai.koog.agents.core.feature.handler.tool.McpTransportType
 import ai.koog.agents.core.tools.ToolRegistry
@@ -102,16 +102,16 @@ public object McpToolRegistryProvider {
             try {
                 val toolDescriptor = mcpToolParser.parse(sdkTool)
                 val toolMetaData = mapOf(
-                    McpMetaDataKeys.ToolId to sdkTool.name,
-                    McpMetaDataKeys.McpProtocolVersion to LATEST_PROTOCOL_VERSION,
-                    McpMetaDataKeys.McpTransportType to when (mcpClient.transport) {
+                    McpMetadataKeys.ToolId to sdkTool.name,
+                    McpMetadataKeys.McpProtocolVersion to LATEST_PROTOCOL_VERSION,
+                    McpMetadataKeys.McpTransportType to when (mcpClient.transport) {
                         is SseClientTransport -> McpTransportType.Tcp
                         is StdioClientTransport -> McpTransportType.Stdio
                         else -> error("Unexpected null for client transport: ${mcpClient.transport}")
                     }.value,
-                    McpMetaDataKeys.McpSessionId to "",
-                    McpMetaDataKeys.ServerUrl to serverInfo.url.orEmpty(),
-                    McpMetaDataKeys.ServerPort to getPort(serverInfo.url),
+                    McpMetadataKeys.McpSessionId to "",
+                    McpMetadataKeys.ServerUrl to serverInfo.url.orEmpty(),
+                    McpMetadataKeys.ServerPort to getPort(serverInfo.url),
                 )
                 tool(McpTool(mcpClient, toolDescriptor, toolMetaData))
             } catch (e: Throwable) {
