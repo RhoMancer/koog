@@ -407,6 +407,40 @@ public abstract class AbstractOpenAILLMClient<TResponse : OpenAIBaseLLMResponse,
         metaInfo: ResponseMetaInfo
     ): List<Message.Response> {
         return when {
+            // DeepSeek Reasoner returns both reasoningContent and toolCalls
+            // Check reasoningContent first to preserve reasoning in multi-turn conversations
+            this is OpenAIMessage.Assistant && this.reasoningContent != null -> {
+                val responses = mutableListOf<Message.Response>()
+                // Add reasoning message first
+                responses += Message.Reasoning(
+                    content = this.reasoningContent,
+                    metaInfo = metaInfo
+                )
+                // Add content if present
+                if (this.content != null) {
+                    responses += Message.Assistant(
+                        content = this.content.text(),
+                        finishReason = finishReason,
+                        metaInfo = metaInfo
+                    )
+                }
+                // Add tool calls if present
+                if (!this.toolCalls.isNullOrEmpty()) {
+                    this.toolCalls.forEach { toolCall ->
+                        responses += Message.Tool.Call(
+                            id = toolCall.id,
+                            tool = toolCall.function.name,
+                            content = toolCall.function.arguments
+                                .takeIf { it.isNotEmpty() }
+                                ?: "{}",
+                            metaInfo = metaInfo
+                        )
+                    }
+                }
+                responses
+            }
+
+            // Standard tool calls without reasoning
             this is OpenAIMessage.Assistant && !this.toolCalls.isNullOrEmpty() -> {
                 this.toolCalls.map { toolCall ->
                     Message.Tool.Call(
@@ -423,18 +457,6 @@ public abstract class AbstractOpenAILLMClient<TResponse : OpenAIBaseLLMResponse,
                     )
                 }
             }
-
-            this is OpenAIMessage.Assistant && this.reasoningContent != null && this.content != null -> listOf(
-                Message.Reasoning(
-                    content = this.reasoningContent,
-                    metaInfo = metaInfo
-                ),
-                Message.Assistant(
-                    content = this.content.text(),
-                    finishReason = finishReason,
-                    metaInfo = metaInfo
-                )
-            )
 
             this.content != null -> listOf(
                 Message.Assistant(
