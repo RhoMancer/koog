@@ -3,10 +3,10 @@ package ai.koog.protocol.model
 import ai.koog.protocol.agent.FlowAgentConfig
 import ai.koog.protocol.agent.FlowAgentInput
 import ai.koog.protocol.agent.FlowAgentKind
-import ai.koog.protocol.agent.FlowAgentParameters
 import ai.koog.protocol.agent.FlowAgentPrompt
 import ai.koog.protocol.agent.FlowAgentRuntimeKind
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.JsonObject
 
 /**
  * agent:
@@ -30,7 +30,7 @@ public data class FlowAgentModel(
     val config: FlowAgentConfig? = null,
     val prompt: FlowAgentPrompt? = null,
     val input: FlowAgentInput,
-    val params: FlowAgentParameters? = null,
+    val params: JsonObject? = null,
     val output: FlowAgentOutputModel? = null,
 )
 

@@ -15,6 +15,9 @@ import ai.koog.protocol.flow.FlowConfig
 import ai.koog.protocol.model.FlowAgentModel
 import ai.koog.protocol.model.FlowModel
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.contentOrNull
+import kotlinx.serialization.json.jsonPrimitive
 
 /**
  * Parser for JSON flow configuration files.
@@ -63,35 +66,44 @@ public class FlowJsonConfigParser : FlowConfigParser {
 
         return when (type) {
             FlowAgentKind.TASK -> {
-                // Derive parameters from input for task agents
-                val params = FlowTaskAgentParameters(toolNames = )
+                val toolNames = params?.get("toolNames")
+                    ?.let { it as? JsonArray }
+                    ?.mapNotNull { it.jsonPrimitive.contentOrNull }
+                    ?: emptyList()
+
+                val agentParams = FlowTaskAgentParameters(toolNames = toolNames)
+
                 FlowTaskAgent(
                     name = name,
                     model = resolvedModel,
                     config = agentConfig,
                     prompt = agentPrompt,
                     input = input,
-                    parameters = params
+                    parameters = agentParams
                 )
             }
 
             FlowAgentKind.VERIFY -> {
-                // Derive parameters from input for verify agents
-                val params = FlowVerifyAgentParameters(toolNames = )
+                val toolNames = params?.get("toolNames")
+                    ?.let { it as? JsonArray }
+                    ?.mapNotNull { it.jsonPrimitive.contentOrNull }
+                    ?: emptyList()
+
+                val agentParams = FlowVerifyAgentParameters(toolNames = toolNames)
+
                 FlowVerifyAgent(
                     name = name,
                     model = resolvedModel,
                     config = agentConfig,
                     prompt = agentPrompt,
                     input = input,
-                    parameters = params
+                    parameters = agentParams
                 )
             }
 
             FlowAgentKind.TRANSFORM -> {
-                // Transform agents need explicit parameters (transformations list)
-                // For now, create empty transformations - this should be enhanced later
                 val params = FlowInputTransformParameters(transformations = )
+
                 FlowInputTransformAgent(
                     name = name,
                     model = resolvedModel,
