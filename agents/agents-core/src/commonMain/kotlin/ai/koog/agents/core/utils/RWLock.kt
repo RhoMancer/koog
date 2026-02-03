@@ -13,6 +13,10 @@ internal class RWLock {
     private var readersCount = 0
     private val readersCountMutex = Mutex()
 
+    /**
+     * CAVEAT: allows writer starvation: new readers can continuously acquire the lock while a writer is waiting.
+     * If there's a steady stream of read requests, writers may wait indefinitely.
+     */
     suspend fun <T> withReadLock(block: suspend () -> T): T {
         readersCountMutex.withLock {
             if (++readersCount == 1) {
@@ -31,6 +35,10 @@ internal class RWLock {
         }
     }
 
+    /**
+     * CAVEAT: uses kotlinx.coroutines.sync.Mutex which is not reentrant.
+     * When the same coroutine tries to acquire the mutex it already holds, it blocks forever waiting for itself to release it.
+     */
     suspend fun <T> withWriteLock(block: suspend () -> T): T {
         writeMutex.withLock {
             return block()
