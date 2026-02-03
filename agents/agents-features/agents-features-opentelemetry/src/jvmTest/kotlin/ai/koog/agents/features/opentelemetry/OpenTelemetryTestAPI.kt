@@ -1,7 +1,10 @@
 package ai.koog.agents.features.opentelemetry
 
 import ai.koog.agents.core.agent.AIAgent
+import ai.koog.agents.core.agent.AIAgentFunctionalStrategy
 import ai.koog.agents.core.agent.AIAgentService
+import ai.koog.agents.core.agent.FunctionalAIAgent
+import ai.koog.agents.core.agent.FunctionalAIAgentService
 import ai.koog.agents.core.agent.GraphAIAgent
 import ai.koog.agents.core.agent.GraphAIAgentService
 import ai.koog.agents.core.agent.config.AIAgentConfig
@@ -255,6 +258,76 @@ internal object OpenTelemetryTestAPI {
         assistantPrompt: String? = null,
         installFeatures: GraphAIAgent.FeatureContext.() -> Unit = { }
     ): GraphAIAgentService<String, String> {
+        val agentConfig = AIAgentConfig(
+            prompt = prompt(
+                id = promptId ?: "Test prompt",
+                clock = testClock,
+                params = LLMParams(
+                    temperature = temperature,
+                    maxTokens = maxTokens
+                )
+            ) {
+                systemPrompt?.let { system(systemPrompt) }
+                userPrompt?.let { user(userPrompt) }
+                assistantPrompt?.let { assistant(assistantPrompt) }
+            },
+            model = model ?: OpenAIModels.Chat.GPT4o,
+            maxAgentIterations = 10,
+        )
+
+        return AIAgentService(
+            promptExecutor = executor ?: getMockExecutor(clock = testClock) { },
+            strategy = strategy,
+            agentConfig = agentConfig,
+            toolRegistry = toolRegistry ?: ToolRegistry { },
+            installFeatures = installFeatures,
+        )
+    }
+
+    internal suspend fun createAgent(
+        agentId: String = "test-agent-id",
+        strategy: AIAgentFunctionalStrategy<String, String>,
+        executor: PromptExecutor? = null,
+        promptId: String? = null,
+        toolRegistry: ToolRegistry? = null,
+        model: LLModel? = null,
+        temperature: Double? = 0.0,
+        maxTokens: Int? = null,
+        systemPrompt: String? = null,
+        userPrompt: String? = null,
+        assistantPrompt: String? = null,
+        installFeatures: FunctionalAIAgent.FeatureContext.() -> Unit = { }
+    ): AIAgent<String, String> {
+        val agentService = createAgentService(
+            strategy,
+            executor,
+            promptId,
+            toolRegistry,
+            model,
+            temperature,
+            maxTokens,
+            systemPrompt,
+            userPrompt,
+            assistantPrompt,
+            installFeatures
+        )
+
+        return agentService.createAgent(id = agentId)
+    }
+
+    internal fun createAgentService(
+        strategy: AIAgentFunctionalStrategy<String, String>,
+        executor: PromptExecutor? = null,
+        promptId: String? = null,
+        toolRegistry: ToolRegistry? = null,
+        model: LLModel? = null,
+        temperature: Double? = 0.0,
+        maxTokens: Int? = null,
+        systemPrompt: String? = null,
+        userPrompt: String? = null,
+        assistantPrompt: String? = null,
+        installFeatures: FunctionalAIAgent.FeatureContext.() -> Unit = { }
+    ): FunctionalAIAgentService<String, String> {
         val agentConfig = AIAgentConfig(
             prompt = prompt(
                 id = promptId ?: "Test prompt",

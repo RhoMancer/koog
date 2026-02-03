@@ -1,5 +1,9 @@
 package ai.koog.agents.features.opentelemetry.feature
 
+import ai.koog.agents.core.agent.AIAgent
+import ai.koog.agents.core.agent.FunctionalAIAgent
+import ai.koog.agents.core.agent.GraphAIAgent
+import ai.koog.agents.core.agent.functionalStrategy
 import ai.koog.agents.core.dsl.builder.forwardTo
 import ai.koog.agents.core.dsl.builder.strategy
 import ai.koog.agents.core.dsl.extension.nodeLLMRequest
@@ -24,8 +28,10 @@ import ai.koog.utils.io.use
 import io.opentelemetry.api.common.AttributeKey
 import io.opentelemetry.sdk.OpenTelemetrySdk
 import kotlinx.coroutines.test.runTest
+import org.junit.jupiter.params.ParameterizedTest
+import org.junit.jupiter.params.provider.MethodSource
 import java.util.Properties
-import kotlin.test.Test
+import java.util.stream.Stream
 import kotlin.test.assertEquals
 import kotlin.test.assertFails
 import kotlin.test.assertTrue
@@ -38,22 +44,142 @@ import kotlin.test.assertTrue
  */
 class OpenTelemetryConfigTest : OpenTelemetryTestBase() {
 
-    @Test
-    fun `test Open Telemetry feature default configuration`() = runTest {
-        val strategy = strategy<String, String>("test-strategy") {
-            nodeStart then nodeFinish
+    companion object {
+
+        // custom attributes
+
+        const val USER_PROMPT = "What's the weather in Paris?"
+        const val AGENT_ID = "test-agent-id"
+        const val PROMPT_ID = "test-prompt-id"
+        val model = OpenAIModels.Chat.GPT4o
+
+        const val STRATEGY_NAME = "test-strategy"
+
+        // mock executor
+
+        const val MOCK_RESPONSE = "Sunny"
+        val mockExecutor = getMockExecutor(clock = testClock) {
+            mockLLMAnswer(MOCK_RESPONSE) onRequestEquals USER_PROMPT
         }
 
+        // strategies
+
+        val simpleGraphStrategy = strategy<String, String>(STRATEGY_NAME) {
+            nodeStart then nodeFinish
+        }
+        val simpleFunctionalStrategy = functionalStrategy<String, String>(STRATEGY_NAME) { it }
+
+        val singleLLMCallGraphStrategy = strategy<String, String>(STRATEGY_NAME) {
+            val nodeSendInput by nodeLLMRequest("test-llm-call")
+
+            edge(nodeStart forwardTo nodeSendInput)
+            edge(nodeSendInput forwardTo nodeFinish onAssistantMessage { true })
+        }
+
+        val singleLLMCallFunctionalStrategy = functionalStrategy<String, String>(STRATEGY_NAME) { input ->
+            requestLLM(input).content
+        }
+
+        // agent configurations
+
+        @JvmStatic
+        fun simpleAgents(): Stream<suspend (OpenTelemetryConfig.() -> Unit) -> AIAgent<String, String>> {
+            return Stream.of(
+                { configure ->
+                    createAgent(strategy = simpleGraphStrategy) {
+                        install(OpenTelemetry) {
+                            configure()
+                        }
+                    }
+                },
+                { configure ->
+                    createAgent(strategy = simpleFunctionalStrategy) {
+                        install(OpenTelemetry) {
+                            configure()
+                        }
+                    }
+                }
+            )
+        }
+
+        @JvmStatic
+        fun singleLLMCallAgents(): Stream<suspend (OpenTelemetryConfig.() -> Unit) -> AIAgent<String, String>> {
+            return Stream.of(
+                { configure ->
+                    createAgent(
+                        strategy = singleLLMCallGraphStrategy,
+                        executor = mockExecutor
+                    ) {
+                        install(OpenTelemetry) {
+                            configure()
+                        }
+                    }
+                },
+                { configure ->
+                    createAgent(
+                        strategy = singleLLMCallFunctionalStrategy,
+                        executor = mockExecutor
+                    ) {
+                        install(OpenTelemetry) {
+                            configure()
+                        }
+                    }
+                }
+            )
+        }
+
+        @JvmStatic
+        fun customAttributesAgents(): Stream<suspend (OpenTelemetryConfig.() -> Unit) -> AIAgent<String, String>> {
+            return Stream.of(
+                { configure ->
+                    createAgent(
+                        agentId = AGENT_ID,
+                        strategy = singleLLMCallGraphStrategy,
+                        promptId = PROMPT_ID,
+                        executor = mockExecutor,
+                        model = model,
+                        systemPrompt = SYSTEM_PROMPT,
+                        temperature = TEMPERATURE,
+                        userPrompt = USER_PROMPT,
+                    ) {
+                        install(OpenTelemetry) {
+                            configure()
+                        }
+                    }
+                },
+                { configure ->
+                    createAgent(
+                        agentId = AGENT_ID,
+                        strategy = singleLLMCallFunctionalStrategy,
+                        promptId = PROMPT_ID,
+                        executor = mockExecutor,
+                        model = model,
+                        systemPrompt = SYSTEM_PROMPT,
+                        temperature = TEMPERATURE,
+                        userPrompt = USER_PROMPT,
+                    ) {
+                        install(OpenTelemetry) {
+                            configure()
+                        }
+                    }
+                }
+            )
+        }
+    }
+
+    @ParameterizedTest
+    @MethodSource("simpleAgents")
+    fun `test Open Telemetry feature default configuration`(
+        createAgent: suspend (OpenTelemetryConfig.() -> Unit) -> AIAgent<String, String>
+    ) = runTest {
         var actualServiceName: String? = null
         var actualServiceVersion: String? = null
         var actualIsVerbose: Boolean? = null
 
-        createAgent(strategy = strategy) {
-            install(OpenTelemetry) {
-                actualServiceName = serviceName
-                actualServiceVersion = serviceVersion
-                actualIsVerbose = isVerbose
-            }
+        createAgent {
+            actualServiceName = serviceName
+            actualServiceVersion = serviceVersion
+            actualIsVerbose = isVerbose
         }
 
         val props = Properties()
@@ -64,12 +190,11 @@ class OpenTelemetryConfigTest : OpenTelemetryTestBase() {
         assertEquals(false, actualIsVerbose)
     }
 
-    @Test
-    fun `test custom configuration is applied`() = runTest {
-        val strategy = strategy<String, String>("test-strategy") {
-            nodeStart then nodeFinish
-        }
-
+    @ParameterizedTest
+    @MethodSource("simpleAgents")
+    fun `test custom configuration is applied`(
+        createAgent: suspend (OpenTelemetryConfig.() -> Unit) -> AIAgent<String, String>
+    ) = runTest {
         val expectedServiceName = "test-service-name"
         val expectedServiceVersion = "test-service-version"
         val expectedIsVerbose = true
@@ -78,15 +203,13 @@ class OpenTelemetryConfigTest : OpenTelemetryTestBase() {
         var actualServiceVersion: String? = null
         var actualIsVerbose: Boolean? = null
 
-        createAgent(strategy = strategy) {
-            install(OpenTelemetry) {
-                setServiceInfo(expectedServiceName, expectedServiceVersion)
-                setVerbose(expectedIsVerbose)
+        createAgent {
+            setServiceInfo(expectedServiceName, expectedServiceVersion)
+            setVerbose(expectedIsVerbose)
 
-                actualServiceName = serviceName
-                actualServiceVersion = serviceVersion
-                actualIsVerbose = isVerbose
-            }
+            actualServiceName = serviceName
+            actualServiceVersion = serviceVersion
+            actualIsVerbose = isVerbose
         }
 
         assertEquals(expectedServiceName, actualServiceName)
@@ -94,18 +217,15 @@ class OpenTelemetryConfigTest : OpenTelemetryTestBase() {
         assertEquals(expectedIsVerbose, actualIsVerbose)
     }
 
-    @Test
-    fun `test filter is not allowed for open telemetry feature`() = runTest {
-        val strategy = strategy<String, String>("test-strategy") {
-            nodeStart then nodeFinish
-        }
-
+    @ParameterizedTest
+    @MethodSource("simpleAgents")
+    fun `test filter is not allowed for open telemetry feature`(
+        createAgent: suspend (OpenTelemetryConfig.() -> Unit) -> AIAgent<String, String>
+    ) = runTest {
         val throwable = assertFails {
-            createAgent(strategy = strategy) {
-                install(OpenTelemetry) {
-                    // Try to filter out all events. OpenTelemetryConfig should ignore this filter
-                    setEventFilter { false }
-                }
+            createAgent {
+                // Try to filter out all events. OpenTelemetryConfig should ignore this filter
+                setEventFilter { false }
             }
         }
 
@@ -120,85 +240,55 @@ class OpenTelemetryConfigTest : OpenTelemetryTestBase() {
         )
     }
 
-    @Test
-    fun `test install Open Telemetry feature with custom sdk, should use provided sdk`() = runTest {
-        val strategy = strategy<String, String>("test-strategy") {
-            edge(nodeStart forwardTo nodeFinish transformed { "Done" })
-        }
-
+    @ParameterizedTest
+    @MethodSource("simpleAgents")
+    fun `test install Open Telemetry feature with custom sdk, should use provided sdk`(
+        createAgent: suspend (OpenTelemetryConfig.() -> Unit) -> AIAgent<String, String>
+    ) = runTest {
         val expectedSdk = OpenTelemetrySdk.builder().build()
         var actualSdk: OpenTelemetrySdk? = null
 
-        createAgent(
-            strategy = strategy,
-        ) {
-            install(OpenTelemetry) {
-                setSdk(expectedSdk)
-                actualSdk = sdk
-            }
+        createAgent {
+            setSdk(expectedSdk)
+            actualSdk = sdk
         }
 
         assertEquals(expectedSdk, actualSdk)
     }
 
-    @Test
-    fun `test custom sdk configuration emits correct spans`() = runTest {
+    @ParameterizedTest
+    @MethodSource("singleLLMCallAgents")
+    fun `test custom sdk configuration emits correct spans`(
+        createAgent: suspend (OpenTelemetryConfig.() -> Unit) -> AIAgent<String, String>
+    ) = runTest {
         MockSpanExporter().use { mockExporter ->
-            val userPrompt = "What's the weather in Paris?"
-
-            val strategy = strategy("test-strategy") {
-                val nodeSendInput by nodeLLMRequest("test-llm-call")
-                edge(nodeStart forwardTo nodeSendInput)
-                edge(nodeSendInput forwardTo nodeFinish onAssistantMessage { true })
-            }
-
-            val mockResponse = "The weather in Paris is rainy and overcast, with temperatures around 57°F"
-
-            val mockExecutor = getMockExecutor {
-                mockLLMAnswer(mockResponse) onRequestEquals userPrompt
-            }
 
             val expectedSdk = createCustomSdk(mockExporter)
 
-            val agent = createAgent(
-                executor = mockExecutor,
-                strategy = strategy,
-            ) {
-                install(OpenTelemetry) {
-                    setSdk(expectedSdk)
-                }
+            val agent = createAgent {
+                setSdk(expectedSdk)
             }
 
-            agent.run(userPrompt)
+            agent.run(USER_PROMPT)
             val collectedSpans = mockExporter.collectedSpans
             agent.close()
 
-            assertEquals(7, collectedSpans.size)
+            val expected = when (agent) {
+                is GraphAIAgent -> 7
+                is FunctionalAIAgent -> 4
+                else -> error("Unexpected agent type: ${agent::class.simpleName}")
+            }
+
+            assertEquals(expected, collectedSpans.size)
         }
     }
 
-    @Test
-    fun `test span adapter applies custom attribute to invoke agent span`() = runTest {
+    @ParameterizedTest
+    @MethodSource("customAttributesAgents")
+    fun `test span adapter applies custom attribute to invoke agent span`(
+        createAgent: suspend (OpenTelemetryConfig.() -> Unit) -> AIAgent<String, String>
+    ) = runTest {
         MockSpanExporter().use { mockExporter ->
-
-            val userPrompt = "What's the weather in Paris?"
-            val agentId = "test-agent-id"
-            val promptId = "test-prompt-id"
-            val model = OpenAIModels.Chat.GPT4o
-
-            val strategyName = "test-strategy"
-
-            val strategy = strategy(strategyName) {
-                val nodeSendInput by nodeLLMRequest("test-llm-call")
-
-                edge(nodeStart forwardTo nodeSendInput)
-                edge(nodeSendInput forwardTo nodeFinish onAssistantMessage { true })
-            }
-
-            val mockResponse = "Sunny"
-            val mockExecutor = getMockExecutor(clock = testClock) {
-                mockLLMAnswer(mockResponse) onRequestEquals userPrompt
-            }
 
             // Custom SpanAdapter that adds a test attribute to each processed span
             val customBeforeStartAttribute = CustomAttribute(key = "test.adapter.before.start.key", value = "test-value-before-start")
@@ -213,23 +303,12 @@ class OpenTelemetryConfigTest : OpenTelemetryTestBase() {
                 }
             }
 
-            createAgent(
-                agentId = agentId,
-                strategy = strategy,
-                promptId = promptId,
-                executor = mockExecutor,
-                model = model,
-                systemPrompt = SYSTEM_PROMPT,
-                temperature = TEMPERATURE,
-                userPrompt = userPrompt,
-            ) {
-                install(OpenTelemetry) {
-                    addSpanExporter(mockExporter)
+            createAgent {
+                addSpanExporter(mockExporter)
 
-                    // Add custom span adapter
-                    addSpanAdapter(adapter)
-                    setVerbose(true)
-                }
+                // Add custom span adapter
+                addSpanAdapter(adapter)
+                setVerbose(true)
             }.use { agent ->
                 agent.run("")
             }
@@ -243,7 +322,7 @@ class OpenTelemetryConfigTest : OpenTelemetryTestBase() {
             fun attributesMatches(attributes: Map<AttributeKey<*>, Any>): Boolean {
                 var conversationIdAttributeExists = false
                 var operationNameAttributeExists = false
-                attributes.forEach { key, value ->
+                attributes.forEach { (key, value) ->
                     if (key.key == conversationIdAttribute.key && value == conversationIdAttribute.value) {
                         conversationIdAttributeExists = true
                     }
@@ -263,11 +342,11 @@ class OpenTelemetryConfigTest : OpenTelemetryTestBase() {
 
             val expectedInvokeAgentSpans = listOf(
                 mapOf(
-                    "${SpanAttributes.Operation.OperationNameType.INVOKE_AGENT.id} $agentId" to mapOf(
+                    "${SpanAttributes.Operation.OperationNameType.INVOKE_AGENT.id} $AGENT_ID" to mapOf(
                         "attributes" to mapOf(
                             "gen_ai.operation.name" to SpanAttributes.Operation.OperationNameType.INVOKE_AGENT.id,
                             "gen_ai.provider.name" to model.provider.id,
-                            "gen_ai.agent.id" to agentId,
+                            "gen_ai.agent.id" to AGENT_ID,
                             "gen_ai.conversation.id" to mockExporter.lastRunId,
                             "gen_ai.output.type" to "text",
                             "gen_ai.request.model" to model.id,
@@ -275,7 +354,7 @@ class OpenTelemetryConfigTest : OpenTelemetryTestBase() {
                             "gen_ai.input.messages" to getMessagesString(
                                 listOf(
                                     Message.System(SYSTEM_PROMPT, RequestMetaInfo(testClock.now())),
-                                    Message.User(userPrompt, RequestMetaInfo(testClock.now()))
+                                    Message.User(USER_PROMPT, RequestMetaInfo(testClock.now()))
                                 )
                             ),
                             "system_instructions" to getSystemInstructionsString(listOf(SYSTEM_PROMPT)),
@@ -285,7 +364,7 @@ class OpenTelemetryConfigTest : OpenTelemetryTestBase() {
                             "gen_ai.output.messages" to getMessagesString(
                                 listOf(
                                     Message.System(SYSTEM_PROMPT, RequestMetaInfo(testClock.now())),
-                                    Message.User(userPrompt, RequestMetaInfo(testClock.now()))
+                                    Message.User(USER_PROMPT, RequestMetaInfo(testClock.now()))
                                 )
                             ),
                             customBeforeStartAttribute.key to customBeforeStartAttribute.value,
