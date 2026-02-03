@@ -761,7 +761,7 @@ public open class GoogleLLMClient @JvmOverloads constructor(
      *
      * @return A list of strings, each representing a model identifier available for use.
      */
-    public override suspend fun models(): List<String> {
+    public override suspend fun models(): List<LLModel> {
         var response: GoogleModelsResponse? = null
         val models = mutableListOf<String>()
 
@@ -783,7 +783,9 @@ public open class GoogleLLMClient @JvmOverloads constructor(
             }
         }
 
-        return models
+        val modelsByIde = GoogleModels.models.associateBy { it.id }
+
+        return models.mapNotNull { id -> modelsByIde[id] }
     }
 
     override fun close() {

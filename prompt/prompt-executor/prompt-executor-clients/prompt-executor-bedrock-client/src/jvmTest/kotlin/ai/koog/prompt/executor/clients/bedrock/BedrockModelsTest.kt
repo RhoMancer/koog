@@ -1,17 +1,16 @@
-package dashscope
+package ai.koog.prompt.executor.clients.bedrock
 
-import ai.koog.prompt.executor.clients.dashscope.DashscopeModels
 import ai.koog.prompt.executor.clients.list
 import ai.koog.prompt.llm.LLMProvider
 import io.kotest.matchers.collections.shouldContain
 import kotlin.test.Test
 import kotlin.test.assertSame
 
-class DashscopeModelsTest {
+class BedrockModelsTest {
 
     @Test
-    fun `DashScope models should have DashScope provider`() {
-        val models = DashscopeModels.list()
+    fun `BedrockModels models should have DashScope provider`() {
+        val models = BedrockModels.list()
 
         models.forEach { model ->
             assertSame(
@@ -23,10 +22,10 @@ class DashscopeModelsTest {
     }
 
     @Test
-    fun `DashscopeModels models should return all declared models`() {
-        val reflectionModels = DashscopeModels.list().map { it.id }
+    fun `BedrockModels models should return all declared models`() {
+        val reflectionModels = BedrockModels.list().map { it.id }
 
-        val models = DashscopeModels.models.map { it.id }
+        val models = BedrockModels.models.map { it.id }
 
         assert(models.size == reflectionModels.size)
 

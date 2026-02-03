@@ -16,7 +16,6 @@ import kotlin.jvm.JvmField
  * - [Moderation]: Content safety models
  */
 public object MistralAIModels : LLModelDefinitions {
-
     /**
      * Object containing general purpose chat models for conversations and various tasks.
      * Includes both premier and open-source models with different capabilities and sizes.
@@ -245,4 +244,19 @@ public object MistralAIModels : LLModelDefinitions {
             contextLength = 8_000
         )
     }
+
+    /**
+     * List of the supported models by the Mistral AI provider.
+     */
+    override val models: List<LLModel> = listOf(
+        Chat.MistralMedium31,
+        Chat.MistralLarge21,
+        Chat.MistralSmall2,
+        Chat.MagistralMedium12,
+        Chat.Codestral,
+        Chat.DevstralMedium,
+        Embeddings.MistralEmbed,
+        Embeddings.CodestralEmbed,
+        Moderation.MistralModeration
+    )
 }

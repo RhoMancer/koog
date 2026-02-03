@@ -308,6 +308,23 @@ public object AnthropicModels : LLModelDefinitions {
         contextLength = 200_000,
         maxOutputTokens = 64_000,
     )
+
+    /**
+     * List of available anthropic models
+     */
+    override val models: List<LLModel> = listOf(
+        Opus_3,
+        Haiku_3,
+        Sonnet_3_5,
+        Haiku_3_5,
+        Sonnet_3_7,
+        Sonnet_4,
+        Opus_4,
+        Opus_4_1,
+        Opus_4_5,
+        Sonnet_4_5,
+        Haiku_4_5
+    )
 }
 
 internal val DEFAULT_ANTHROPIC_MODEL_VERSIONS_MAP: Map<LLModel, String> = mapOf(

@@ -192,7 +192,7 @@ public class DeepSeekLLMClient @JvmOverloads constructor(
      *
      * @return A list of string identifiers representing the available models.
      */
-    public override suspend fun models(): List<String> {
+    public override suspend fun models(): List<LLModel> {
         logger.debug { "Fetching available models from DeepSeek" }
 
         val openAIResponse = httpClient.get(
@@ -200,6 +200,8 @@ public class DeepSeekLLMClient @JvmOverloads constructor(
             responseType = DeepSeekModelsResponse::class
         )
 
-        return openAIResponse.data.map { it.id }
+        val modelsById = DeepSeekModels.models.associateBy { it.id }
+
+        return openAIResponse.data.mapNotNull { modelsById[it.id] }
     }
 }

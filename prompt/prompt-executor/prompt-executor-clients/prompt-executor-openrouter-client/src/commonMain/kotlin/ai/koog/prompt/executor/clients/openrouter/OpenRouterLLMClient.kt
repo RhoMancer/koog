@@ -192,12 +192,14 @@ public class OpenRouterLLMClient @JvmOverloads constructor(
      *
      * @return A list of model IDs available from OpenRouter.
      */
-    override suspend fun models(): List<String> {
+    override suspend fun models(): List<LLModel> {
         logger.debug { "Fetching available models from OpenRouter" }
         val response = httpClient.get(
             path = settings.modelsPath,
             responseType = OpenRouterModelsResponse::class
         )
-        return response.data.map { it.id }
+
+        val modelsById = OpenRouterModels.models.associateBy { it.id }
+        return response.data.mapNotNull { modelsById[it.id] }
     }
 }

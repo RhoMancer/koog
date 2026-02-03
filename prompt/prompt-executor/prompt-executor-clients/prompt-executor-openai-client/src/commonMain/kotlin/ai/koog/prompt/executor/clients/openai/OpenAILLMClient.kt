@@ -541,7 +541,7 @@ public open class OpenAILLMClient @JvmOverloads constructor(
      *
      * @return A list of model identifiers available from OpenAI.
      */
-    override suspend fun models(): List<String> {
+    override suspend fun models(): List<LLModel> {
         logger.debug { "Fetching available models from OpenAI" }
 
         val openAIResponse = try {
@@ -559,7 +559,11 @@ public open class OpenAILLMClient @JvmOverloads constructor(
             )
         }
 
-        return openAIResponse.data.map { it.id }
+        val models = OpenAIModels.models.associateBy { it.id }
+
+        return openAIResponse.data.mapNotNull {
+            models[it.id]
+        }
     }
 
     private fun convertModerationResult(result: OpenAIModerationResult): ModerationResult {
@@ -797,7 +801,10 @@ public open class OpenAILLMClient @JvmOverloads constructor(
                         add(InputContent.File(fileData = fileData, fileUrl = fileUrl, filename = part.fileName))
                     }
 
-                    else -> throw LLMClientException(clientName, "Unsupported attachment type: $part, for model: $model with Responses API")
+                    else -> throw LLMClientException(
+                        clientName,
+                        "Unsupported attachment type: $part, for model: $model with Responses API"
+                    )
                 }
             }
         }
@@ -839,7 +846,10 @@ public open class OpenAILLMClient @JvmOverloads constructor(
                         metaInfo = metaInfo
                     )
 
-                    else -> throw LLMClientException(clientName, "Unexpected response from $clientName: no tool calls and no content")
+                    else -> throw LLMClientException(
+                        clientName,
+                        "Unexpected response from $clientName: no tool calls and no content"
+                    )
                 }
             }
     }

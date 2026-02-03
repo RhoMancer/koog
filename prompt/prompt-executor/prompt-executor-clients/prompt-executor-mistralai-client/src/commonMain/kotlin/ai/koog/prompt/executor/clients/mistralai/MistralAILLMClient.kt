@@ -305,12 +305,15 @@ public open class MistralAILLMClient(
      * @return A list of model IDs as strings.
      * @throws Exception if the HTTP request fails or the response cannot be processed.
      */
-    override suspend fun models(): List<String> {
+    override suspend fun models(): List<LLModel> {
         val response = httpClient.get(
             path = settings.modelsPath,
             responseType = MistralModelsResponse::class
         )
-        return response.data.map { it.id }
+
+        val models = MistralAIModels.models.associateBy { it.id }
+
+        return response.data.mapNotNull { models[it.id] }
     }
 
     private fun MistralAIModerationResult.toModerationResult(): ModerationResult {

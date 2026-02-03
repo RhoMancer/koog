@@ -1,6 +1,8 @@
 package ai.koog.prompt.executor.clients.deepseek
 
 import ai.koog.prompt.executor.clients.LLModelDefinitions
+import ai.koog.prompt.executor.clients.deepseek.DeepSeekModels.DeepSeekChat
+import ai.koog.prompt.executor.clients.deepseek.DeepSeekModels.DeepSeekReasoner
 import ai.koog.prompt.llm.LLMCapability
 import ai.koog.prompt.llm.LLMProvider
 import ai.koog.prompt.llm.LLModel
@@ -64,4 +66,9 @@ public object DeepSeekModels : LLModelDefinitions {
         contextLength = 64_000,
         maxOutputTokens = 64_000
     )
+
+    /**
+     * List of the supported models by the DeepSeek provider.
+     */
+    override val models: List<LLModel> = listOf(DeepSeekChat, DeepSeekReasoner)
 }
