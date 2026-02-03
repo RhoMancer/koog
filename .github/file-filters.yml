@@ -1,0 +1,27 @@
+# This is used by the action https://github.com/dorny/paths-filter
+
+# Always include CI changes to all filters so that all CI changes are always tested
+ci-configs: &ci-configs
+  - .github/**
+
+# Mostly Koog's source code
+koog-src:
+  - *ci-configs
+  - '**'
+  - '!examples/**'
+  - '!docs/**'
+  - '!*.md'
+  - '!.editorconfig'
+  - '!.gitignore'
+
+docs:
+  - *ci-configs
+  - 'docs/**'
+
+simple-examples:
+  - *ci-configs
+  - 'examples/simple-examples/**'
+
+code-agent:
+  - *ci-configs
+  - 'examples/code-agent/**'

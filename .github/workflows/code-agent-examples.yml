@@ -16,7 +16,25 @@ env:
   JAVA_DISTRIBUTION: 'corretto'
 
 jobs:
+  changes:
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: read
+    outputs:
+      koog-src: ${{ steps.filter.outputs.koog-src }}
+      code-agent: ${{ steps.filter.outputs.code-agent }}
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: dorny/paths-filter@v3
+        name: Check changed files
+        id: filter
+        with:
+          filters: .github/file-filters.yml
+
   compilation:
+    needs: changes
+    if: ${{ needs.changes.outputs.koog-src == 'true' || needs.changes.outputs.code-agent == 'true' }}
     name: Compile ${{ matrix.step }}
 
     runs-on: ubuntu-latest

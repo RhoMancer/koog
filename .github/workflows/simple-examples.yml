@@ -3,11 +3,7 @@ name: Simple Examples
 on:
   push:
     branches: [ "main", "develop" ]
-    paths:
-      - 'examples/simple-examples/**'
   pull_request:
-    paths:
-      - 'examples/simple-examples/**'
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
@@ -19,8 +15,25 @@ env:
   JAVA_DISTRIBUTION: 'corretto'
 
 jobs:
-  compilation:
+  changes:
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: read
+    outputs:
+      koog-src: ${{ steps.filter.outputs.koog-src }}
+      simple-examples: ${{ steps.filter.outputs.simple-examples }}
+    steps:
+      - uses: actions/checkout@v5
 
+      - uses: dorny/paths-filter@v3
+        name: Check changed files
+        id: filter
+        with:
+          filters: .github/file-filters.yml
+
+  compilation:
+    needs: changes
+    if: ${{ needs.changes.outputs.koog-src == 'true' || needs.changes.outputs.simple-examples == 'true' }}
     runs-on: ubuntu-latest
     permissions:
       contents: read
