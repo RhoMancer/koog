@@ -89,8 +89,8 @@ Once you have the MCP connection, you can create a tool registry with tools from
 * Using the provided transport mechanism for communication. For example:
 
 <!--- INCLUDE
-import ai.koog.agents.core.feature.handler.tool.McpServerInfo
 import ai.koog.agents.example.exampleModelContextProtocol01.transport
+import ai.koog.agents.mcp.McpServerInfo
 import ai.koog.agents.mcp.McpToolRegistryProvider
 import kotlinx.coroutines.runBlocking
 
@@ -114,7 +114,7 @@ val toolRegistry = McpToolRegistryProvider.fromTransport(
 
 * Using an MCP client connected to the MCP server. For example:
 <!--- INCLUDE
-import ai.koog.agents.core.feature.handler.tool.McpServerInfo
+import ai.koog.agents.mcp.McpServerInfo
 import ai.koog.agents.mcp.McpToolRegistryProvider
 import io.modelcontextprotocol.kotlin.sdk.types.Implementation
 import io.modelcontextprotocol.kotlin.sdk.client.Client
@@ -144,10 +144,10 @@ To use MCP tools with your Koog agent, you need to register the tool registry wi
 <!--- INCLUDE
 import ai.koog.agents.core.agent.AIAgent
 import ai.koog.agents.core.agent.singleRunStrategy
-import ai.koog.agents.core.feature.handler.tool.McpServerInfo
 import ai.koog.prompt.executor.clients.openai.OpenAIModels
 import ai.koog.prompt.executor.llms.all.simpleOllamaAIExecutor
 import kotlinx.coroutines.runBlocking
+import ai.koog.agents.mcp.McpServerInfo
 import ai.koog.agents.mcp.McpToolRegistryProvider
 import ai.koog.agents.example.exampleModelContextProtocol04.existingMcpClient
 
@@ -301,7 +301,6 @@ import ai.koog.agents.mcp.McpToolRegistryProvider
 import ai.koog.agents.mcp.fromProcess
 import ai.koog.prompt.executor.clients.openai.OpenAIModels
 import ai.koog.prompt.executor.llms.all.simpleOpenAIExecutor
-import ai.koog.agents.mcp.defaultStdioTransport
 import kotlinx.coroutines.runBlocking
 
 const val googleMapsApiKey = ""

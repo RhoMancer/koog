@@ -1,8 +1,8 @@
 package ai.koog.ktor
 
 import ai.koog.agents.core.annotation.InternalAgentsApi
-import ai.koog.agents.core.feature.handler.tool.McpServerInfo
 import ai.koog.agents.mcp.DefaultMcpToolDescriptorParser
+import ai.koog.agents.mcp.McpServerInfo
 import ai.koog.agents.mcp.McpToolDescriptorParser
 import ai.koog.agents.mcp.McpToolRegistryProvider
 import ai.koog.agents.mcp.McpToolRegistryProvider.DEFAULT_MCP_CLIENT_NAME

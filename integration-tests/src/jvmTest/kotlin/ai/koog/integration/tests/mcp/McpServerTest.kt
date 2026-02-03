@@ -3,8 +3,8 @@ package ai.koog.integration.tests.mcp
 import ai.koog.agents.core.agent.AIAgent
 import ai.koog.agents.core.agent.singleRunStrategy
 import ai.koog.agents.core.annotation.InternalAgentsApi
-import ai.koog.agents.core.feature.handler.tool.McpMetadataKeys
 import ai.koog.agents.core.tools.ToolRegistry
+import ai.koog.agents.mcp.McpMetadataKeys
 import ai.koog.agents.mcp.McpToolRegistryProvider
 import ai.koog.agents.mcp.server.startSseMcpServer
 import ai.koog.agents.testing.network.NetUtil.isPortAvailable

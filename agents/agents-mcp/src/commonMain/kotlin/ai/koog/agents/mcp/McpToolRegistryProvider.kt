@@ -1,9 +1,6 @@
 package ai.koog.agents.mcp
 
 import ai.koog.agents.core.annotation.InternalAgentsApi
-import ai.koog.agents.core.feature.handler.tool.McpMetadataKeys
-import ai.koog.agents.core.feature.handler.tool.McpServerInfo
-import ai.koog.agents.core.feature.handler.tool.McpTransportType
 import ai.koog.agents.core.tools.ToolRegistry
 import io.github.oshai.kotlinlogging.KotlinLogging
 import io.ktor.client.HttpClient

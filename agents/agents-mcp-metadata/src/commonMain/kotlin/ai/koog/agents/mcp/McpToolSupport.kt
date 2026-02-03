@@ -1,11 +1,8 @@
-package ai.koog.agents.core.feature.handler.tool
-
-import ai.koog.agents.core.annotation.InternalAgentsApi
+package ai.koog.agents.mcp
 
 /**
  * Metadata keys for tools provided by MCP servers.
  */
-@InternalAgentsApi
 public object McpMetadataKeys {
     /**
      * Required key to identify an MCP tool.

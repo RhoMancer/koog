@@ -1,6 +1,5 @@
 package ai.koog.agents.mcp
 
-import ai.koog.agents.core.feature.handler.tool.McpServerInfo
 import ai.koog.agents.core.tools.ToolRegistry
 import io.modelcontextprotocol.kotlin.sdk.client.Client
 import io.modelcontextprotocol.kotlin.sdk.client.StdioClientTransport

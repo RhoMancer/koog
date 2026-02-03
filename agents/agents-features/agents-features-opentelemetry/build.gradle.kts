@@ -18,6 +18,7 @@ kotlin {
                 api(project(":agents:agents-core"))
                 api(project(":agents:agents-utils"))
                 api(libs.kotlinx.serialization.json)
+                implementation(project(":agents:agents-mcp-metadata"))
             }
         }
 
