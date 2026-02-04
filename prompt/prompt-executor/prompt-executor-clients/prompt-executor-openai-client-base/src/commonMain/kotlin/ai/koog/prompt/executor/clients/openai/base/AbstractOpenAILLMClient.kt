@@ -267,11 +267,25 @@ public abstract class AbstractOpenAILLMClient<TResponse : OpenAIBaseLLMResponse,
     protected fun convertPromptToMessages(prompt: Prompt, model: LLModel): List<OpenAIMessage> {
         val messages = mutableListOf<OpenAIMessage>()
         val pendingCalls = mutableListOf<OpenAIToolCall>()
+        var pendingReasoningContent: String? = null
 
         fun flushPendingCalls() {
             if (pendingCalls.isNotEmpty()) {
-                messages += OpenAIMessage.Assistant(toolCalls = pendingCalls.toList())
+                // Combine reasoning with tool calls (DeepSeek Reasoner requires this)
+                messages += OpenAIMessage.Assistant(
+                    content = null,
+                    reasoningContent = pendingReasoningContent,
+                    toolCalls = pendingCalls.toList()
+                )
                 pendingCalls.clear()
+                pendingReasoningContent = null
+            } else if (pendingReasoningContent != null) {
+                // Standalone reasoning without tool calls
+                messages += OpenAIMessage.Assistant(
+                    content = OpenAIContent.Text(pendingReasoningContent!!),
+                    reasoningContent = pendingReasoningContent
+                )
+                pendingReasoningContent = null
             }
         }
 
@@ -293,11 +307,10 @@ public abstract class AbstractOpenAILLMClient<TResponse : OpenAIBaseLLMResponse,
                 }
 
                 is Message.Reasoning -> {
-                    flushPendingCalls()
-                    messages += OpenAIMessage.Assistant(
-                        content = OpenAIContent.Text(message.content),
-                        reasoningContent = message.content
-                    )
+                    // Store reasoning content to be combined with subsequent tool calls
+                    // DeepSeek Reasoner returns reasoning_content and tool_calls together,
+                    // so we need to include them in a single assistant message
+                    pendingReasoningContent = message.content
                 }
 
                 is Message.Tool.Result -> {
@@ -309,6 +322,16 @@ public abstract class AbstractOpenAILLMClient<TResponse : OpenAIBaseLLMResponse,
                 }
 
                 is Message.Tool.Call -> {
+                    // Extract reasoning content from first tool call's metaInfo if present
+                    // (Stored by toMessageResponses when processing DeepSeek Reasoner responses)
+                    if (pendingCalls.isEmpty() && pendingReasoningContent == null) {
+                        val reasoningContent = (message.metaInfo as? ResponseMetaInfo)
+                            ?.additionalInfo
+                            ?.get("reasoning_content") as? String
+                        if (reasoningContent != null) {
+                            pendingReasoningContent = reasoningContent
+                        }
+                    }
                     pendingCalls += OpenAIToolCall(
                         message.id ?: Uuid.random().toString(),
                         function = OpenAIFunction(message.tool, message.content)
@@ -407,35 +430,45 @@ public abstract class AbstractOpenAILLMClient<TResponse : OpenAIBaseLLMResponse,
         metaInfo: ResponseMetaInfo
     ): List<Message.Response> {
         return when {
-            // DeepSeek Reasoner returns both reasoningContent and toolCalls
-            // Check reasoningContent first to preserve reasoning in multi-turn conversations
+            // DeepSeek Reasoner with reasoning + tool calls: Only create Tool.Call messages
+            // The reasoning is stored in the first tool call's metaInfo for recombination
+            this is OpenAIMessage.Assistant && this.reasoningContent != null && !this.toolCalls.isNullOrEmpty() -> {
+                this.toolCalls.mapIndexed { index, toolCall ->
+                    Message.Tool.Call(
+                        id = toolCall.id,
+                        tool = toolCall.function.name,
+                        content = toolCall.function.arguments
+                            .takeIf { it.isNotEmpty() }
+                            ?: "{}",
+                        metaInfo = if (index == 0) {
+                            // Embed reasoning content in first tool call's metaInfo
+                            ResponseMetaInfo.create(
+                                clock = clock,
+                                totalTokensCount = metaInfo.totalTokensCount,
+                                inputTokensCount = metaInfo.inputTokensCount,
+                                outputTokensCount = metaInfo.outputTokensCount,
+                                additionalInfo = metaInfo.additionalInfo + ("reasoning_content" to this.reasoningContent)
+                            )
+                        } else {
+                            metaInfo
+                        }
+                    )
+                }
+            }
+
+            // Standalone reasoning without tool calls
             this is OpenAIMessage.Assistant && this.reasoningContent != null -> {
                 val responses = mutableListOf<Message.Response>()
-                // Add reasoning message first
                 responses += Message.Reasoning(
                     content = this.reasoningContent,
                     metaInfo = metaInfo
                 )
-                // Add content if present
                 if (this.content != null) {
                     responses += Message.Assistant(
                         content = this.content.text(),
                         finishReason = finishReason,
                         metaInfo = metaInfo
                     )
-                }
-                // Add tool calls if present
-                if (!this.toolCalls.isNullOrEmpty()) {
-                    this.toolCalls.forEach { toolCall ->
-                        responses += Message.Tool.Call(
-                            id = toolCall.id,
-                            tool = toolCall.function.name,
-                            content = toolCall.function.arguments
-                                .takeIf { it.isNotEmpty() }
-                                ?: "{}",
-                            metaInfo = metaInfo
-                        )
-                    }
                 }
                 responses
             }
@@ -446,10 +479,6 @@ public abstract class AbstractOpenAILLMClient<TResponse : OpenAIBaseLLMResponse,
                     Message.Tool.Call(
                         id = toolCall.id,
                         tool = toolCall.function.name,
-                        /*
-                         If the tool has no arguments, OpenRouter puts an empty string in the arguments instead of an empty object
-                         But we always expect arguments to be a JSON object. Fixing this.
-                         */
                         content = toolCall.function.arguments
                             .takeIf { it.isNotEmpty() }
                             ?: "{}",
@@ -473,7 +502,9 @@ public abstract class AbstractOpenAILLMClient<TResponse : OpenAIBaseLLMResponse,
                         add(
                             ContentPart.Audio(
                                 content = AttachmentContent.Binary.Base64(this@toMessageResponses.audio.data),
-                                format = "unknown", // FIXME: clarify format from response
+                                // OpenAI doesn't specify the audio format in the response
+                                // Possible formats: mp3, opus, aac, wav, flac (model-dependent)
+                                format = "unknown"
                             )
                         )
                     },
